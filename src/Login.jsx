@@ -30,9 +30,9 @@ export default function Login() {
   return (
     <main className="login-page">
       <form className="login-card" onSubmit={submit}>
-        <b className="brand">TEAM PROJECT HUB</b>
-        <h1>{signup ? "회사 계정 가입" : "팀원 로그인"}</h1>
-        <p>@twgroup.co.kr 회사 이메일만 사용할 수 있습니다.</p>
+        <b className="brand">TW PROJECT</b>
+        <h1>Project Management</h1>
+        <p>{signup ? "회사 계정 가입" : "팀원 로그인"}</p>
         <label>이메일<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
         <label>비밀번호<input type="password" minLength="6" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
         <button className="primary" disabled={busy}>{busy ? "처리 중..." : signup ? "회원가입" : "로그인"}</button>

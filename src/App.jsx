@@ -14,9 +14,9 @@ const progressOf = (p) => p.status==="완료" ? 100 : !p.autoProgress ? Number(p
 
 export default function App() {
   const [session,setSession]=useState(null), [loading,setLoading]=useState(true), [profile,setProfile]=useState(null);
-  const [users,setUsers]=useState([]), [projects,setProjects]=useState([]), [sites,setSites]=useState([]);
+  const [users,setUsers]=useState([]), [projects,setProjects]=useState([]), [sites,setSites]=useState([]), [personnel,setPersonnel]=useState([]);
   const [form,setForm]=useState(blank()), [editing,setEditing]=useState(null), [filter,setFilter]=useState("전체"), [search,setSearch]=useState(""), [message,setMessage]=useState("");
-  const [newSite,setNewSite]=useState(""), [msName,setMsName]=useState(""), [msDate,setMsDate]=useState(iso());
+  const [newSite,setNewSite]=useState(""), [newPerson,setNewPerson]=useState(""), [msName,setMsName]=useState(""), [msDate,setMsDate]=useState(iso());
 
   useEffect(() => {
     supabase.auth.getSession().then(({data}) => { setSession(data.session); setLoading(false); });
@@ -29,11 +29,12 @@ export default function App() {
     const {data:p,error} = await supabase.from("profiles").select("*").eq("id",session.user.id).single();
     if(error) return setMessage(error.message);
     setProfile(p);
-    await Promise.all([loadProjects(),loadSites()]);
+    await Promise.all([loadProjects(),loadSites(),loadPersonnel()]);
     if(p.role==="admin") await loadUsers();
   }
   async function loadProjects() { const {data,error}=await supabase.from("projects").select("*").order("created_at",{ascending:false}); if(error)setMessage(error.message); else setProjects((data||[]).map(fromDb)); }
   async function loadSites() { const {data,error}=await supabase.from("sites").select("*").order("name"); if(error)setMessage(error.message); else setSites(data||[]); }
+  async function loadPersonnel() { const {data,error}=await supabase.from("personnel").select("*").order("name"); if(error)setMessage(error.message); else setPersonnel(data||[]); }
   async function loadUsers() { const {data,error}=await supabase.from("profiles").select("*").order("email"); if(error)setMessage(error.message); else setUsers(data||[]); }
 
   const role=profile?.role;
@@ -50,6 +51,13 @@ export default function App() {
     const {data,error}=await supabase.from("sites").insert({name,created_by:session.user.id}).select().single();
     if(error) { setMessage(error.code==="23505"?"이미 등록된 Site입니다.":error.message); return; }
     await loadSites(); setForm({...form,site:data.name}); setNewSite(""); setMessage("Site를 추가했습니다.");
+  }
+  async function addPerson() {
+    const name=newPerson.trim();
+    if(!name) return setMessage("추가할 담당자 이름을 입력하세요.");
+    const {error}=await supabase.from("personnel").insert({name,created_by:session.user.id});
+    if(error) { setMessage(error.code==="23505"?"이미 등록된 담당자입니다.":error.message); return; }
+    await loadPersonnel(); setNewPerson(""); setMessage("담당자를 목록에 추가했습니다.");
   }
   function addMilestone() { if(!msName.trim()||!msDate)return; setForm(f=>({...f,milestones:[...f.milestones,{id:uid(),name:msName.trim(),date:msDate}]})); setMsName(""); }
   async function save() {
@@ -69,7 +77,7 @@ export default function App() {
   function edit(p) { if(!canEdit)return; setEditing(p.id); setForm({...p,progress:p.value}); window.scrollTo({top:0,behavior:"smooth"}); }
   async function remove(id) { if(!canDelete||!confirm("삭제할까요?"))return; const {error}=await supabase.from("projects").delete().eq("id",id); if(error)setMessage(error.message); else loadProjects(); }
   async function setRole(id,nextRole) { const {error}=await supabase.from("profiles").update({role:nextRole}).eq("id",id); if(error)setMessage(error.message); else loadUsers(); }
-  function csv() { const esc=v=>`"${String(v??"").replaceAll('"','""')}"`; const rows=[["제조번호","Site","프로젝트명","PM","설계","설비기술","제어","비전","시작일","종료일","상태","진행률"],...visible.map(p=>[p.manufacturingNo,p.site,p.name,p.pm,p.design,p.facilityTechnology,p.control,p.vision,p.startDate,p.endDate,p.status,`${p.value}%`])]; const u=URL.createObjectURL(new Blob(["\ufeff"+rows.map(r=>r.map(esc).join(",")).join("\r\n")],{type:"text/csv"})); const a=document.createElement("a"); a.href=u;a.download=`프로젝트_${iso()}.csv`;a.click();URL.revokeObjectURL(u); }
+  function csv() { const esc=v=>`"${String(v??"").replaceAll('"','""')}"`; const rows=[["제조번호","Site","프로젝트명","PM 담당자","설계 담당자","설비기술 담당자","제어 담당자","비전 담당자","시작일","종료일","상태","진행률"],...visible.map(p=>[p.manufacturingNo,p.site,p.name,p.pm,p.design,p.facilityTechnology,p.control,p.vision,p.startDate,p.endDate,p.status,`${p.value}%`])]; const u=URL.createObjectURL(new Blob(["\ufeff"+rows.map(r=>r.map(esc).join(",")).join("\r\n")],{type:"text/csv"})); const a=document.createElement("a"); a.href=u;a.download=`프로젝트_${iso()}.csv`;a.click();URL.revokeObjectURL(u); }
 
   if(loading)return <div className="center">로그인 확인 중...</div>;
   if(!session)return <Login/>;
@@ -83,23 +91,24 @@ export default function App() {
         <label>제조번호 *<input value={form.manufacturingNo} disabled={role==="grade2"} onChange={e=>setForm({...form,manufacturingNo:e.target.value})}/></label>
         <label>Site *<select value={form.site} disabled={role==="grade2"} onChange={e=>setForm({...form,site:e.target.value})}><option value="">선택</option>{sites.map(s=><option key={s.id}>{s.name}</option>)}</select></label>
         <label className="wide">프로젝트명 *<input value={form.name} disabled={role==="grade2"} onChange={e=>setForm({...form,name:e.target.value})}/></label>
-        <label>PM<input value={form.pm} disabled={role==="grade2"} onChange={e=>setForm({...form,pm:e.target.value})}/></label>
-        <label>설계<input value={form.design} disabled={role==="grade2"} onChange={e=>setForm({...form,design:e.target.value})}/></label>
-        <label>설비기술<input value={form.facilityTechnology} disabled={role==="grade2"} onChange={e=>setForm({...form,facilityTechnology:e.target.value})}/></label>
-        <label>제어<input value={form.control} disabled={role==="grade2"} onChange={e=>setForm({...form,control:e.target.value})}/></label>
-        <label>비전<input value={form.vision} disabled={role==="grade2"} onChange={e=>setForm({...form,vision:e.target.value})}/></label>
+        <label>PM 담당자<select value={form.pm} disabled={role==="grade2"} onChange={e=>setForm({...form,pm:e.target.value})}><option value="">선택</option>{personnel.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}</select></label>
+        <label>설계 담당자<select value={form.design} disabled={role==="grade2"} onChange={e=>setForm({...form,design:e.target.value})}><option value="">선택</option>{personnel.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}</select></label>
+        <label>설비기술 담당자<select value={form.facilityTechnology} disabled={role==="grade2"} onChange={e=>setForm({...form,facilityTechnology:e.target.value})}><option value="">선택</option>{personnel.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}</select></label>
+        <label>제어 담당자<select value={form.control} disabled={role==="grade2"} onChange={e=>setForm({...form,control:e.target.value})}><option value="">선택</option>{personnel.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}</select></label>
+        <label>비전 담당자<select value={form.vision} disabled={role==="grade2"} onChange={e=>setForm({...form,vision:e.target.value})}><option value="">선택</option>{personnel.map(p=><option key={p.id} value={p.name}>{p.name}</option>)}</select></label>
         <label>시작일<input type="date" value={form.startDate} disabled={role==="grade2"} onChange={e=>setForm({...form,startDate:e.target.value})}/></label>
         <label>종료일<input type="date" value={form.endDate} disabled={role==="grade2"} onChange={e=>setForm({...form,endDate:e.target.value})}/></label>
         <label>상태<select value={form.status} onChange={e=>setForm({...form,status:e.target.value})}><option>진행예정</option><option>진행중</option><option>보류</option><option>완료</option></select></label>
       </div>
       {canCreate&&<div className="site-add"><input placeholder="새 Site명" value={newSite} onChange={e=>setNewSite(e.target.value)}/><button onClick={addSite}>Site 목록에 추가</button></div>}
+      {canCreate&&<div className="site-add"><input placeholder="새 담당자 이름" value={newPerson} onChange={e=>setNewPerson(e.target.value)}/><button onClick={addPerson}>담당자 목록에 추가</button></div>}
       <label className="check"><input type="checkbox" checked={form.autoProgress} onChange={e=>setForm({...form,autoProgress:e.target.checked})}/> 자동 진행률</label>
       {!form.autoProgress&&<input type="range" min="0" max="100" value={form.progress} onChange={e=>setForm({...form,progress:e.target.value})}/>} 
       {canCreate&&<div className="milestones"><input placeholder="마일스톤" value={msName} onChange={e=>setMsName(e.target.value)}/><input type="date" value={msDate} onChange={e=>setMsDate(e.target.value)}/><button onClick={addMilestone}>추가</button></div>}
       <button className="primary" onClick={save}>{editing?"수정 저장":"프로젝트 추가"}</button>
     </section>}
     <section><div className="tools"><h2>프로젝트 목록</h2><input placeholder="제조번호, Site, 프로젝트명, 담당자 검색" value={search} onChange={e=>setSearch(e.target.value)}/>{["전체","진행중","완료","지연"].map(x=><button className={filter===x?"active":""} onClick={()=>setFilter(x)} key={x}>{x}</button>)}</div>{message&&<p className="notice">{message}</p>}
-      <div className="cards">{visible.map(p=><article key={p.id}><div><h3>{p.manufacturingNo||"제조번호 미등록"} · {p.name}</h3><p><b>Site</b> {p.site||"-"}</p><p><b>PM</b> {p.pm||"-"} · <b>설계</b> {p.design||"-"} · <b>설비기술</b> {p.facilityTechnology||"-"} · <b>제어</b> {p.control||"-"} · <b>비전</b> {p.vision||"-"}</p><p>{p.startDate} ~ {p.endDate} · {p.status}</p></div><div className="progress"><i style={{width:`${p.value}%`}}/><b>{p.value}%</b></div><div>{canEdit&&<button onClick={()=>edit(p)}>수정</button>}{canDelete&&<button className="danger" onClick={()=>remove(p.id)}>삭제</button>}</div></article>)}</div>
+      <div className="cards">{visible.map(p=><article key={p.id}><div><h3>{p.manufacturingNo||"제조번호 미등록"} · {p.name}</h3><p><b>Site</b> {p.site||"-"}</p><p><b>PM 담당자</b> {p.pm||"-"} · <b>설계 담당자</b> {p.design||"-"} · <b>설비기술 담당자</b> {p.facilityTechnology||"-"} · <b>제어 담당자</b> {p.control||"-"} · <b>비전 담당자</b> {p.vision||"-"}</p><p>{p.startDate} ~ {p.endDate} · {p.status}</p></div><div className="progress"><i style={{width:`${p.value}%`}}/><b>{p.value}%</b></div><div>{canEdit&&<button onClick={()=>edit(p)}>수정</button>}{canDelete&&<button className="danger" onClick={()=>remove(p.id)}>삭제</button>}</div></article>)}</div>
     </section>
   </main>;
 }

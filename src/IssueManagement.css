@@ -181,12 +181,12 @@
 
 /* Content Area Styling */
 .issue-management-container .content-area {
-    margin: 1rem 1rem 1rem 0;
+    margin: 0;
     padding: 2rem;
     background-color: var(--panel-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
     overflow-y: auto;
     overflow-x: hidden;
     display: flex;

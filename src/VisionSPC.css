@@ -16,7 +16,7 @@
     --font-display: 'Outfit', 'Inter', sans-serif;
     --font-body: 'Inter', 'Nanum Gothic', sans-serif;
 
-    background-color: var(--bg-color);
+    background-color: var(--panel-bg);
     color: var(--text-color);
     font-family: var(--font-body);
     line-height: 1.5;
@@ -26,6 +26,9 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    margin: 10px 0;
 }
 
 .vision-spc-container * {

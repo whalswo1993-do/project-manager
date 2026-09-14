@@ -13,7 +13,7 @@
     --warning: #bf8700;
     --warning-bg: rgba(191, 135, 0, 0.15);
     
-    background-color: transparent;
+    background-color: var(--panel-bg);
     color: var(--text-color);
     font-family: 'Inter', 'Nanum Gothic', sans-serif;
     line-height: 1.5;
@@ -21,6 +21,10 @@
     min-height: 550px;
     display: flex;
     flex-direction: column;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 10px 0;
 }
 
 .issue-management-container * {

@@ -237,7 +237,11 @@ ${compiledText.substring(0, 30000)}
 
         } catch (error) {
             console.error(error);
-            setAnalyzeMsg('오류 발생: ' + error.message);
+            if (error.message.includes('429') || error.message.includes('quota') || error.message.toLowerCase().includes('too many requests') || error.message.includes('exceeded')) {
+                setAnalyzeMsg('🚨 무료 AI 사용량이 일시적으로 초과되었습니다. 1분 뒤에 다시 시도해주세요. (과금되지 않습니다)');
+            } else {
+                setAnalyzeMsg('오류 발생: ' + error.message);
+            }
         } finally {
             setIsAnalyzing(false);
         }

@@ -11,7 +11,13 @@ export default function IssueManagement({ projects }) {
     // Register Tab States
     const [selectedProject, setSelectedProject] = useState('');
     const [reportDate, setReportDate] = useState(new Date().toISOString().slice(0, 10));
-    const [pastedText, setPastedText] = useState('');
+    const [reportForm, setReportForm] = useState({
+        work_details: '',
+        special_notes: '',
+        issues: '',
+        personnel_count: 0
+    });
+    const [isExtracting, setIsExtracting] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [msg, setMsg] = useState('');
     const [projectReports, setProjectReports] = useState([]);
@@ -69,6 +75,7 @@ export default function IssueManagement({ projects }) {
     const handleFileUpload = async (file) => {
         if (!file) return;
         setMsg('엑셀 파일을 읽는 중...');
+        setIsExtracting(true);
         try {
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(new Uint8Array(data), { type: 'array', cellDates: false });
@@ -78,30 +85,68 @@ export default function IssueManagement({ projects }) {
                 const text = XLSX.utils.sheet_to_csv(sheet);
                 allText += `\n[Sheet: ${sheetName}]\n` + text;
             });
-            setPastedText(allText.trim());
-            setMsg('엑셀 내용을 불러왔습니다. 저장 버튼을 눌러주세요.');
+            
+            setMsg('AI가 주요 항목을 추출하고 있습니다... (약 5~10초)');
+            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            if (!apiKey) throw new Error('Gemini API 키가 설정되지 않았습니다.');
+            
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const prompt = `
+다음은 현장 공사일보(엑셀)의 원본 텍스트입니다. 이 내용에서 4가지 주요 정보를 추출하여 순수 JSON 포맷으로 반환해주세요. (마크다운 포맷이나 백틱을 절대로 포함하지 마세요.)
+
+형식:
+{
+  "work_details": "금일 진행한 주요 작업(업무) 내용 요약 (다중 라인은 \\n 사용)",
+  "special_notes": "특이사항, 공지사항, 기타 참고사항 요약 (없으면 빈 문자열)",
+  "issues": "이슈사항, 문제점, 자재 결품, 지연 사유 요약 (없으면 빈 문자열)",
+  "personnel_count": 투입 인원 실적 총합 (숫자만, 파악이 안 되면 0)
+}
+
+원본 텍스트:
+${allText.substring(0, 30000)}
+`;
+            const result = await model.generateContent(prompt);
+            const responseText = result.response.text();
+            const cleanText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(cleanText);
+            
+            setReportForm({
+                work_details: parsed.work_details || '',
+                special_notes: parsed.special_notes || '',
+                issues: parsed.issues || '',
+                personnel_count: Number(parsed.personnel_count) || 0
+            });
+            setMsg('AI가 일보 내용을 성공적으로 구조화했습니다. 저장 버튼을 눌러주세요.');
         } catch (error) {
-            setMsg('엑셀 파일 읽기 실패: ' + error.message);
+            console.error(error);
+            setMsg('파일 분석 실패: ' + error.message);
+        } finally {
+            setIsExtracting(false);
         }
     };
 
     const saveReport = async () => {
         if (!selectedProject) return setMsg('프로젝트를 먼저 선택해주세요.');
         if (!reportDate) return setMsg('날짜를 선택해주세요.');
-        if (!pastedText.trim()) return setMsg('공사일보 내용이 없습니다.');
+        if (!reportForm.work_details.trim()) return setMsg('작업(업무) 내용을 입력해주세요.');
 
         setMsg('저장 중...');
         const { error } = await supabase.from('daily_reports').insert([{
             project_id: selectedProject,
             report_date: reportDate,
-            content: pastedText.trim()
+            work_details: reportForm.work_details.trim(),
+            special_notes: reportForm.special_notes.trim(),
+            issues: reportForm.issues.trim(),
+            personnel_count: reportForm.personnel_count,
+            content: '' // fallback or obsolete
         }]);
 
         if (error) {
             setMsg('저장 실패: ' + error.message);
         } else {
             setMsg('공사일보가 성공적으로 저장되었습니다.');
-            setPastedText('');
+            setReportForm({ work_details: '', special_notes: '', issues: '', personnel_count: 0 });
             loadReports(selectedProject);
         }
     };
@@ -144,12 +189,15 @@ export default function IssueManagement({ projects }) {
                 if (!p) return;
                 const pName = `${p.manufacturingNo} ${p.name}`;
                 if (!grouped[pName]) grouped[pName] = [];
-                grouped[pName].push(`- ${r.report_date}: ${r.content}`);
+                // Use structured data for PPT gen
+                const details = `작업내용: ${r.work_details || ''}\n특이사항: ${r.special_notes || ''}\n이슈: ${r.issues || ''}\n투입인원: ${r.personnel_count || 0}명`;
+                const content = r.content || details; // Fallback for old records
+                grouped[pName].push(`- ${r.report_date}:\n${content}`);
             });
 
             let compiledText = '';
             for (const [pName, lines] of Object.entries(grouped)) {
-                compiledText += `\n\n[프로젝트: ${pName}]\n` + lines.join('\n');
+                compiledText += `\n\n[프로젝트: ${pName}]\n` + lines.join('\n\n');
             }
 
             // 2. Call Gemini
@@ -300,13 +348,31 @@ ${compiledText.substring(0, 30000)}
 
                         <div>
                             <div className="panel-title" style={{fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between'}}>
-                                <span>텍스트 붙여넣기</span>
-                                {pastedText && <span style={{color: 'var(--primary)', cursor: 'pointer'}} onClick={()=>setPastedText('')}>초기화</span>}
+                                <span>공사일보 데이터</span>
+                                {(reportForm.work_details || reportForm.special_notes || reportForm.issues) && <span style={{color: 'var(--primary)', cursor: 'pointer'}} onClick={()=>setReportForm({work_details: '', special_notes: '', issues: '', personnel_count: 0})}>초기화</span>}
                             </div>
-                            <textarea className="paste-textarea" placeholder="공사일보 내용을 붙여넣으세요..." value={pastedText} onChange={(e) => setPastedText(e.target.value)}></textarea>
+                            
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem'}}>
+                                <div>
+                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>작업(업무) 내용 *</label>
+                                    <textarea className="paste-textarea" style={{minHeight: '100px'}} placeholder="AI가 자동으로 추출한 작업 내용이 표시됩니다." value={reportForm.work_details} onChange={(e) => setReportForm({...reportForm, work_details: e.target.value})}></textarea>
+                                </div>
+                                <div>
+                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>특이사항</label>
+                                    <textarea className="paste-textarea" style={{minHeight: '60px'}} placeholder="특이사항" value={reportForm.special_notes} onChange={(e) => setReportForm({...reportForm, special_notes: e.target.value})}></textarea>
+                                </div>
+                                <div>
+                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>이슈사항</label>
+                                    <textarea className="paste-textarea" style={{minHeight: '60px'}} placeholder="이슈 및 지연 사유" value={reportForm.issues} onChange={(e) => setReportForm({...reportForm, issues: e.target.value})}></textarea>
+                                </div>
+                                <div>
+                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>투입 인원 실적</label>
+                                    <input type="number" className="project-select" placeholder="0" value={reportForm.personnel_count} onChange={(e) => setReportForm({...reportForm, personnel_count: Number(e.target.value)})} />
+                                </div>
+                            </div>
 
-                            <button className="btn-analyze" onClick={saveReport} disabled={!pastedText.trim() || !selectedProject || !reportDate}>
-                                Save
+                            <button className="btn-analyze" onClick={saveReport} disabled={!reportForm.work_details.trim() || !selectedProject || !reportDate || isExtracting}>
+                                {isExtracting ? 'AI 추출 중...' : 'Save'}
                             </button>
                             
                             {msg && (
@@ -341,8 +407,34 @@ ${compiledText.substring(0, 30000)}
                                                 <span><b style={{color: '#24292f'}}>{report.report_date}</b> 일보</span>
                                                 <button onClick={() => removeReport(report.id)} style={{background:'transparent', border:'none', color:'var(--danger)', cursor:'pointer', fontSize:'0.8rem'}}>삭제</button>
                                             </div>
-                                            <div className="issue-content" style={{maxHeight: '150px', overflowY: 'auto', background: '#f6f8fa', padding: '1rem', borderRadius: '6px', fontSize: '0.85rem'}}>
-                                                {report.content}
+                                            <div className="issue-content" style={{background: '#f6f8fa', padding: '1rem', borderRadius: '6px', fontSize: '0.85rem'}}>
+                                                {report.work_details ? (
+                                                    <div style={{display: 'flex', flexDirection: 'column', gap: '0.8rem'}}>
+                                                        <div>
+                                                            <div style={{fontWeight: 600, color: '#0969da', marginBottom: '0.3rem'}}>작업(업무) 내용</div>
+                                                            <div style={{whiteSpace: 'pre-wrap'}}>{report.work_details}</div>
+                                                        </div>
+                                                        {report.special_notes && (
+                                                            <div>
+                                                                <div style={{fontWeight: 600, color: '#1f2328', marginBottom: '0.3rem'}}>특이사항</div>
+                                                                <div style={{whiteSpace: 'pre-wrap'}}>{report.special_notes}</div>
+                                                            </div>
+                                                        )}
+                                                        {report.issues && (
+                                                            <div>
+                                                                <div style={{fontWeight: 600, color: 'var(--danger)', marginBottom: '0.3rem'}}>이슈사항</div>
+                                                                <div style={{whiteSpace: 'pre-wrap'}}>{report.issues}</div>
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <div style={{fontWeight: 600, color: '#1f2328', marginBottom: '0.3rem'}}>투입 인원 실적: <span style={{fontWeight: 'normal'}}>{report.personnel_count}명</span></div>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{whiteSpace: 'pre-wrap', maxHeight: '150px', overflowY: 'auto'}}>
+                                                        {report.content}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     ))}

@@ -91,7 +91,7 @@ export default function IssueManagement({ projects }) {
             if (!apiKey) throw new Error('Gemini API 키가 설정되지 않았습니다.');
             
             const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             const prompt = `
 다음은 현장 공사일보(엑셀)의 원본 텍스트입니다. 이 내용에서 3가지 주요 정보를 추출하여 순수 JSON 포맷으로 반환해주세요. (마크다운 포맷이나 백틱을 절대로 포함하지 마세요.)
 
@@ -200,7 +200,7 @@ ${allText.substring(0, 30000)}
 
             // 2. Call Gemini
             const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
             const prompt = `
 다음은 ${startDate}부터 ${endDate}까지 수집된 각 프로젝트들의 공사일보 내용입니다.

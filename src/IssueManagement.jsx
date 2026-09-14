@@ -138,7 +138,7 @@ ${allText.substring(0, 30000)}
                     vision_count: Number(r.vision_count) || 0
                 })));
             }
-            setMsg(\`AI가 \${parsed.length}일치의 일보 내용을 성공적으로 구조화했습니다. 저장 버튼을 눌러주세요.\`);
+            setMsg(`AI가 ${parsed.length}일치의 일보 내용을 성공적으로 구조화했습니다. 저장 버튼을 눌러주세요.`);
         } catch (error) {
             console.error(error);
             setMsg('파일 분석 실패: ' + error.message);
@@ -182,7 +182,7 @@ ${allText.substring(0, 30000)}
         if (error) {
             setMsg('저장 실패: ' + error.message);
         } else {
-            setMsg(\`\${validReports.length}일치의 공사일보가 성공적으로 저장(업데이트)되었습니다.\`);
+            setMsg(`${validReports.length}일치의 공사일보가 성공적으로 저장(업데이트)되었습니다.`);
             setExtractedReports([{
                 date: new Date().toISOString().slice(0, 10),
                 work_details: '', special_notes: '', personnel_count: 0,

@@ -91,7 +91,7 @@ export default function IssueManagement({ projects }) {
             if (!apiKey) throw new Error('Gemini API ?��? ?�정?��? ?�았?�니??');
             
             const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
             const prompt = `
 ?�음?� ?�장 공사?�보(?��?)???�본 ?�스?�입?�다. ???�용?�서 4가지 주요 ?�보�?추출?�여 ?�수 JSON ?�맷?�로 반환?�주?�요. (마크?�운 ?�맷?�나 백틱???��?�??�함?��? 마세??)
 
@@ -202,7 +202,7 @@ ${allText.substring(0, 30000)}
 
             // 2. Call Gemini
             const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
 
             const prompt = `
 ?�음?� ${startDate}부??${endDate}까�? ?�집??�??�로?�트?�의 공사?�보 ?�용?�니??
@@ -480,4 +480,5 @@ ${compiledText.substring(0, 30000)}
         </div>
     );
 }
+
 

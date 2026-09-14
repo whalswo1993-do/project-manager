@@ -533,8 +533,8 @@ export default function VisionSPC() {
                     {!activeItem ? (
                         <div className="welcome-screen">
                             <div className="welcome-icon">⚡</div>
-                            <h2>설비 비전 SPC 분석기 v4</h2>
-                            <p>설비의 비전 검사 데이터를 로드하여 공정능력(Cp/Cpk) 통계와 정규분포 차트를 오프라인에서 실시간으로 분석합니다.</p>
+                            <h2>Vision SPC 분석기</h2>
+                            <p>설비 비전 검사 데이터 기반 공정능력(Cp/Cpk) 통계 및 분석을 오프라인에서 실시간으로 지원합니다.</p>
                             <div className="welcome-steps">
                                 <div className="welcome-step">
                                     <div className="welcome-step-num">1</div>

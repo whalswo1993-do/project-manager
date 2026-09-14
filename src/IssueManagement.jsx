@@ -375,6 +375,18 @@ ${compiledText.substring(0, 30000)}
                                     <option key={p.id} value={p.id}>{p.manufacturingNo} · {p.name}</option>
                                 ))}
                             </select>
+                        </div>
+
+                        <div style={{marginTop: '1rem', marginBottom: '1rem'}}>
+                            <div className="panel-title">공사일보 원본 업로드</div>
+                            <div className={`dropzone ${isDragging ? 'dragover' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => fileInputRef.current.click()}>
+                                <div className="dropzone-icon">📁</div>
+                                <div style={{fontSize: '0.85rem', fontWeight: 500}}>엑셀 파일 업로드 (.xlsx)</div>
+                                <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>클릭하거나 드래그</div>
+                            </div>
+                        </div>
+
+                        <div>
                             <div className="panel-title" style={{fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems:'center'}}>
                                 <span>공사일보 데이터 ({extractedReports.length}일치)</span>
                                 <div style={{display:'flex', gap:'8px'}}>

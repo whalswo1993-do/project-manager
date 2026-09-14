@@ -296,33 +296,32 @@ ${compiledText.substring(0, 30000)}
                 background: { color: 'F1F5F9' },
                 objects: [
                     { rect: { x: 0, y: 0, w: '100%', h: 0.6, fill: { color: '0F172A' } } },
-                    { text: { text: 'TW 프로젝트 관리 - AI 통합 분석 보고서', options: { x: 0.2, y: 0.1, w: 5, h: 0.4, color: 'FFFFFF', fontSize: 12, bold: true } } },
-                    { text: { text: `${startDate} ~ ${endDate}`, options: { x: '70%', y: 0.1, w: '28%', h: 0.4, color: 'FFFFFF', fontSize: 10, align: 'right' } } }
+                    { text: { text: 'TW 프로젝트 관리 - AI 통합 분석 보고서', options: { x: 0.2, y: 0.1, w: 5, h: 0.4, color: 'FFFFFF', fontSize: 12, bold: true, fontFace: '맑은 고딕' } } },
+                    { text: { text: `${startDate} ~ ${endDate}`, options: { x: '70%', y: 0.1, w: '28%', h: 0.4, color: 'FFFFFF', fontSize: 10, align: 'right', fontFace: '맑은 고딕' } } },
+                    { rect: { x: 0.5, y: 1.5, w: '90%', h: 3.5, fill: { color: 'FFFFFF' }, line: { color: 'CBD5E1', width: 1 } } }
                 ]
             });
 
             // Slide 1: Summary
             let slide1 = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
-            slide1.addText('전체 프로젝트 종합 요약', { x: 0.5, y: 0.8, w: '90%', h: 0.5, fontSize: 24, bold: true, color: '0F172A' });
+            slide1.addText('전체 프로젝트 종합 요약', { x: 0.5, y: 0.8, w: '90%', h: 0.5, fontSize: 12, bold: true, color: '0F172A', fontFace: '맑은 고딕' });
             
-            // Draw a neat box for summary
-            slide1.addShape(pptx.ShapeType.rect, { x: 0.5, y: 1.5, w: '90%', h: 3.5, fill: { color: 'FFFFFF' }, line: { color: 'CBD5E1', width: 1 } });
             slide1.addText(parsed.summary, {
                 x: 0.7, y: 1.7, w: '86%', h: 3.1,
-                fontSize: 12, color: '334155', valign: 'top', breakLine: true
+                fontSize: 8, color: '334155', valign: 'top', breakLine: true, fontFace: '맑은 고딕',
+                lineSpacingMultiple: 1.5, autoPaged: true
             });
 
             // Slide 2..N: Projects
             parsed.projects.forEach(p => {
                 let pSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
-                pSlide.addText(`프로젝트별 이슈: ${p.project_name}`, { x: 0.5, y: 0.8, w: '90%', h: 0.5, fontSize: 22, bold: true, color: '0F172A' });
+                pSlide.addText(`프로젝트별 이슈: ${p.project_name}`, { x: 0.5, y: 0.8, w: '90%', h: 0.5, fontSize: 12, bold: true, color: '0F172A', fontFace: '맑은 고딕' });
                 
-                pSlide.addShape(pptx.ShapeType.rect, { x: 0.5, y: 1.5, w: '90%', h: 3.5, fill: { color: 'FFFFFF' }, line: { color: 'CBD5E1', width: 1 } });
-                
-                const bulletList = p.issues.map(iss => ({ text: iss, options: { bullet: true } }));
+                const bulletList = p.issues.map(iss => ({ text: iss, options: { bullet: true, fontFace: '맑은 고딕' } }));
                 pSlide.addText(bulletList, {
                     x: 0.7, y: 1.7, w: '86%', h: 3.1,
-                    fontSize: 14, color: '334155', valign: 'top', lineSpacing: 24
+                    fontSize: 8, color: '334155', valign: 'top', fontFace: '맑은 고딕',
+                    lineSpacingMultiple: 1.5, autoPaged: true
                 });
             });
 

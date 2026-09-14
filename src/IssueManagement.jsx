@@ -302,7 +302,7 @@ ${compiledText.substring(0, 30000)}
                             <textarea className="paste-textarea" placeholder="공사일보 내용을 붙여넣으세요..." value={pastedText} onChange={(e) => setPastedText(e.target.value)}></textarea>
 
                             <button className="btn-analyze" onClick={saveReport} disabled={!pastedText.trim() || !selectedProject || !reportDate}>
-                                DB에 일보 원본 저장
+                                Save
                             </button>
                             
                             {msg && (

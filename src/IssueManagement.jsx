@@ -71,7 +71,7 @@ export default function IssueManagement({ projects }) {
         setMsg('엑셀 파일을 읽는 중...');
         try {
             const data = await file.arrayBuffer();
-            const workbook = XLSX.read(data, { cellDates: false });
+            const workbook = XLSX.read(new Uint8Array(data), { type: 'array', cellDates: false });
             let allText = '';
             workbook.SheetNames.forEach(sheetName => {
                 const sheet = workbook.Sheets[sheetName];

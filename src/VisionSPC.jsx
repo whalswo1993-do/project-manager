@@ -421,10 +421,10 @@ export default function VisionSPC() {
         <div className="vision-spc-container">
             <header className="vision-spc-header">
                 <div className="logo-area">
-                    <div className="logo-icon">TW</div>
+                    <div className="logo-icon">SPC</div>
                     <div className="logo-text">
-                        <h1><span style={{color: 'var(--primary)'}}>TW</span>티더블유 <span style={{fontSize:'0.75rem', color:'#58a6ff', fontWeight:'normal'}}>v4 (React)</span></h1>
-                        <p>설비 공정능력 분석 및 스펙 관리</p>
+                        <h1><span style={{color: 'var(--primary)'}}>Vision</span> SPC 분석기</h1>
+                        <p>설비 비전 검사 데이터 기반 공정능력(Cp/Cpk) 통계 및 분석</p>
                     </div>
                 </div>
             </header>

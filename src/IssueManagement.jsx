@@ -25,6 +25,7 @@ export default function IssueManagement({ projects }) {
     const [isDragging, setIsDragging] = useState(false);
     const [msg, setMsg] = useState('');
     const [projectReports, setProjectReports] = useState([]);
+    const [expandedReports, setExpandedReports] = useState({});
     
     // Analyze Tab States
     const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10));
@@ -197,6 +198,10 @@ ${allText.substring(0, 30000)}
             await supabase.from('daily_reports').delete().eq('id', id);
             loadReports(selectedProject);
         }
+    };
+
+    const toggleReport = (id) => {
+        setExpandedReports(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
     const generatePPT = async () => {
@@ -467,16 +472,19 @@ ${compiledText.substring(0, 30000)}
                             <div className="dashboard-section">
                                 <div className="section-header">
                                     <span style={{fontSize: '1.5rem'}}>📝</span>
-                                    <h2 className="section-title">등록된 일보 목록</h2>
+                                    <h2 className="section-title">
+                                        {projects.find(p => p.id === selectedProject)?.name || '등록된'} 일보
+                                    </h2>
                                 </div>
                                 <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
                                     {projectReports.map(report => (
                                         <div key={report.id} className="issue-card" style={{borderLeftColor: '#6e7781'}}>
-                                            <div className="issue-meta">
-                                                <span><b style={{color: '#24292f'}}>{report.report_date}</b> 일보</span>
-                                                <button onClick={() => removeReport(report.id)} style={{background:'transparent', border:'none', color:'var(--danger)', cursor:'pointer', fontSize:'0.8rem'}}>삭제</button>
+                                            <div className="issue-meta" onClick={() => toggleReport(report.id)} style={{cursor: 'pointer'}}>
+                                                <span><b style={{color: '#24292f'}}>{report.report_date}</b> 일보 <span style={{fontSize:'0.8rem', color:'#6e7781', marginLeft:'5px'}}>{expandedReports[report.id] ? '▲' : '▼'}</span></span>
+                                                <button onClick={(e) => { e.stopPropagation(); removeReport(report.id); }} style={{background:'transparent', border:'none', color:'var(--danger)', cursor:'pointer', fontSize:'0.8rem'}}>삭제</button>
                                             </div>
-                                            <div className="issue-content" style={{background: '#f6f8fa', padding: '1rem', borderRadius: '6px', fontSize: '0.85rem'}}>
+                                            {expandedReports[report.id] && (
+                                                <div className="issue-content" style={{background: '#f6f8fa', padding: '1rem', borderRadius: '6px', fontSize: '0.85rem'}}>
                                                 {report.work_details ? (
                                                     <div style={{display: 'flex', flexDirection: 'column', gap: '0.8rem'}}>
                                                         <div>
@@ -513,7 +521,8 @@ ${compiledText.substring(0, 30000)}
                                                         {report.content}
                                                     </div>
                                                 )}
-                                            </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

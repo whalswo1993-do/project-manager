@@ -10,12 +10,17 @@ export default function IssueManagement({ projects }) {
     
     // Register Tab States
     const [selectedProject, setSelectedProject] = useState('');
-    const [reportDate, setReportDate] = useState(new Date().toISOString().slice(0, 10));
-    const [reportForm, setReportForm] = useState({
+    const [extractedReports, setExtractedReports] = useState([{
+        date: new Date().toISOString().slice(0, 10),
         work_details: '',
         special_notes: '',
-        personnel_count: 0
-    });
+        personnel_count: 0,
+        pm_count: 0,
+        design_count: 0,
+        facility_count: 0,
+        control_count: 0,
+        vision_count: 0
+    }]);
     const [isExtracting, setIsExtracting] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [msg, setMsg] = useState('');
@@ -93,29 +98,47 @@ export default function IssueManagement({ projects }) {
             const genAI = new GoogleGenerativeAI(apiKey);
             const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
             const prompt = `
-다음은 현장 공사일보(엑셀)의 원본 텍스트입니다. 이 내용에서 3가지 주요 정보를 추출하여 순수 JSON 포맷으로 반환해주세요. (마크다운 포맷이나 백틱을 절대로 포함하지 마세요.)
+다음은 현장 공사일보(엑셀)의 원본 텍스트입니다. 이 내용에서 일자별로 데이터를 분류하여 3가지 주요 정보(작업내용, 특이사항, 투입인원)를 추출해주세요.
+특히 투입인원은 부서별(PM, 설계, 설비기술, 제어, 비전)로 세분화하여 파악해주세요. 파악할 수 없는 인원은 기타(personnel_count)로 합산하세요.
+결과는 반드시 아래 JSON 배열 포맷으로만 반환해주세요. (마크다운 포맷이나 백틱을 절대로 포함하지 마세요.)
 
 형식:
-{
-  "work_details": "금일 진행한 주요 작업(업무) 내용 요약 (다중 라인은 \\n 사용)",
-  "special_notes": "특이사항, 이슈사항, 문제점, 지연 사유 등 요약 (없으면 빈 문자열)",
-  "personnel_count": 투입 인원 실적 총합 (숫자만, 파악이 안 되면 0)
-}
+[
+  {
+    "date": "YYYY-MM-DD",
+    "work_details": "해당 일자의 진행 작업(업무) 내용 요약 (다중 라인은 \\n 사용)",
+    "special_notes": "특이사항, 이슈사항, 문제점, 지연 사유 등 요약 (없으면 빈 문자열)",
+    "personnel_count": 부서 파악이 안되는 기타 인원수 합계 (숫자),
+    "pm_count": PM 투입 인원 (숫자),
+    "design_count": 설계 투입 인원 (숫자),
+    "facility_count": 설비기술 투입 인원 (숫자),
+    "control_count": 제어 투입 인원 (숫자),
+    "vision_count": 비전 투입 인원 (숫자)
+  }
+]
 
 원본 텍스트:
 ${allText.substring(0, 30000)}
 `;
             const result = await model.generateContent(prompt);
-            const responseText = result.response.text();
-            const cleanText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
-            const parsed = JSON.parse(cleanText);
+            let responseText = result.response.text();
+            responseText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            const parsed = JSON.parse(responseText);
             
-            setReportForm({
-                work_details: parsed.work_details || '',
-                special_notes: parsed.special_notes || parsed.issues || '',
-                personnel_count: Number(parsed.personnel_count) || 0
-            });
-            setMsg('AI가 일보 내용을 성공적으로 구조화했습니다. 저장 버튼을 눌러주세요.');
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                setExtractedReports(parsed.map(r => ({
+                    date: r.date || new Date().toISOString().slice(0, 10),
+                    work_details: r.work_details || '',
+                    special_notes: r.special_notes || r.issues || '',
+                    personnel_count: Number(r.personnel_count) || 0,
+                    pm_count: Number(r.pm_count) || 0,
+                    design_count: Number(r.design_count) || 0,
+                    facility_count: Number(r.facility_count) || 0,
+                    control_count: Number(r.control_count) || 0,
+                    vision_count: Number(r.vision_count) || 0
+                })));
+            }
+            setMsg(\`AI가 \${parsed.length}일치의 일보 내용을 성공적으로 구조화했습니다. 저장 버튼을 눌러주세요.\`);
         } catch (error) {
             console.error(error);
             setMsg('파일 분석 실패: ' + error.message);
@@ -126,25 +149,45 @@ ${allText.substring(0, 30000)}
 
     const saveReport = async () => {
         if (!selectedProject) return setMsg('프로젝트를 먼저 선택해주세요.');
-        if (!reportDate) return setMsg('날짜를 선택해주세요.');
-        if (!reportForm.work_details.trim()) return setMsg('작업(업무) 내용을 입력해주세요.');
+        const validReports = extractedReports.filter(r => r.date && r.work_details.trim());
+        if (validReports.length === 0) return setMsg('저장할 작업(업무) 내용과 날짜가 없습니다.');
 
-        setMsg('저장 중...');
-        const { error } = await supabase.from('daily_reports').insert([{
+        setMsg('중복 데이터 확인 및 저장 중...');
+        const dates = validReports.map(r => r.date);
+        
+        // 1. Delete overlapping dates for this project (Overwrite mechanism)
+        await supabase.from('daily_reports')
+            .delete()
+            .eq('project_id', selectedProject)
+            .in('report_date', dates);
+
+        // 2. Insert new ones
+        const insertData = validReports.map(r => ({
             project_id: selectedProject,
-            report_date: reportDate,
-            work_details: reportForm.work_details.trim(),
-            special_notes: reportForm.special_notes.trim(),
-            issues: '', // Fallback empty
-            personnel_count: reportForm.personnel_count,
-            content: '' // fallback or obsolete
-        }]);
+            report_date: r.date,
+            work_details: r.work_details.trim(),
+            special_notes: r.special_notes.trim(),
+            issues: '', 
+            personnel_count: r.personnel_count || 0,
+            pm_count: r.pm_count || 0,
+            design_count: r.design_count || 0,
+            facility_count: r.facility_count || 0,
+            control_count: r.control_count || 0,
+            vision_count: r.vision_count || 0,
+            content: '' 
+        }));
+
+        const { error } = await supabase.from('daily_reports').insert(insertData);
 
         if (error) {
             setMsg('저장 실패: ' + error.message);
         } else {
-            setMsg('공사일보가 성공적으로 저장되었습니다.');
-            setReportForm({ work_details: '', special_notes: '', personnel_count: 0 });
+            setMsg(\`\${validReports.length}일치의 공사일보가 성공적으로 저장(업데이트)되었습니다.\`);
+            setExtractedReports([{
+                date: new Date().toISOString().slice(0, 10),
+                work_details: '', special_notes: '', personnel_count: 0,
+                pm_count: 0, design_count: 0, facility_count: 0, control_count: 0, vision_count: 0
+            }]);
             loadReports(selectedProject);
         }
     };
@@ -332,41 +375,61 @@ ${compiledText.substring(0, 30000)}
                                     <option key={p.id} value={p.id}>{p.manufacturingNo} · {p.name}</option>
                                 ))}
                             </select>
-                            <input type="date" className="project-select" value={reportDate} onChange={(e) => setReportDate(e.target.value)} />
-                        </div>
-
-                        <div style={{marginTop: '1rem'}}>
-                            <div className="panel-title">공사일보 원본 업로드</div>
-                            <div className={`dropzone ${isDragging ? 'dragover' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => fileInputRef.current.click()}>
-                                <div className="dropzone-icon">📁</div>
-                                <div style={{fontSize: '0.85rem', fontWeight: 500}}>엑셀 파일 업로드 (.xlsx)</div>
-                                <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>클릭하거나 드래그</div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <div className="panel-title" style={{fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between'}}>
-                                <span>공사일보 데이터</span>
-                                {(reportForm.work_details || reportForm.special_notes) && <span style={{color: 'var(--primary)', cursor: 'pointer'}} onClick={()=>setReportForm({work_details: '', special_notes: '', personnel_count: 0})}>초기화</span>}
+                            <div className="panel-title" style={{fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems:'center'}}>
+                                <span>공사일보 데이터 ({extractedReports.length}일치)</span>
+                                <div style={{display:'flex', gap:'8px'}}>
+                                    <span style={{color: 'var(--primary)', cursor: 'pointer'}} onClick={() => setExtractedReports([...extractedReports, {date: new Date().toISOString().slice(0,10), work_details:'', special_notes:'', personnel_count:0, pm_count:0, design_count:0, facility_count:0, control_count:0, vision_count:0}])}>+ 일자 추가</span>
+                                    <span style={{color: 'var(--danger)', cursor: 'pointer'}} onClick={()=>setExtractedReports([{date: new Date().toISOString().slice(0, 10), work_details: '', special_notes: '', personnel_count: 0, pm_count:0, design_count:0, facility_count:0, control_count:0, vision_count:0}])}>초기화</span>
+                                </div>
                             </div>
                             
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem'}}>
-                                <div>
-                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>작업(업무) 내용 *</label>
-                                    <textarea className="paste-textarea" style={{minHeight: '100px'}} placeholder="AI가 자동으로 추출한 작업 내용이 표시됩니다." value={reportForm.work_details} onChange={(e) => setReportForm({...reportForm, work_details: e.target.value})}></textarea>
-                                </div>
-                                <div>
-                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>특이/이슈사항</label>
-                                    <textarea className="paste-textarea" style={{minHeight: '100px'}} placeholder="특이사항 및 이슈사항" value={reportForm.special_notes} onChange={(e) => setReportForm({...reportForm, special_notes: e.target.value})}></textarea>
-                                </div>
-                                <div>
-                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>투입 인원 실적</label>
-                                    <input type="number" className="project-select" placeholder="0" value={reportForm.personnel_count} onChange={(e) => setReportForm({...reportForm, personnel_count: Number(e.target.value)})} />
-                                </div>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem', maxHeight:'60vh', overflowY:'auto', paddingRight:'5px'}}>
+                                {extractedReports.map((report, idx) => (
+                                    <div key={idx} style={{background:'#f6f8fa', padding:'10px', borderRadius:'8px', border:'1px solid #e1e4e8', position:'relative'}}>
+                                        {extractedReports.length > 1 && (
+                                            <button onClick={() => setExtractedReports(extractedReports.filter((_, i) => i !== idx))} style={{position:'absolute', right:'5px', top:'5px', background:'transparent', border:'none', color:'var(--danger)', cursor:'pointer', fontWeight:'bold'}}>×</button>
+                                        )}
+                                        <div style={{marginBottom:'8px'}}>
+                                            <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>일자</label>
+                                            <input type="date" className="project-select" value={report.date} onChange={(e) => {
+                                                const newR = [...extractedReports];
+                                                newR[idx].date = e.target.value;
+                                                setExtractedReports(newR);
+                                            }} style={{padding:'4px'}} />
+                                        </div>
+                                        <div style={{marginBottom:'8px'}}>
+                                            <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>작업(업무) 내용 *</label>
+                                            <textarea className="paste-textarea" style={{minHeight: '60px'}} placeholder="작업 내용" value={report.work_details} onChange={(e) => {
+                                                const newR = [...extractedReports];
+                                                newR[idx].work_details = e.target.value;
+                                                setExtractedReports(newR);
+                                            }}></textarea>
+                                        </div>
+                                        <div style={{marginBottom:'8px'}}>
+                                            <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>특이/이슈사항</label>
+                                            <textarea className="paste-textarea" style={{minHeight: '40px'}} placeholder="특이사항 및 이슈사항" value={report.special_notes} onChange={(e) => {
+                                                const newR = [...extractedReports];
+                                                newR[idx].special_notes = e.target.value;
+                                                setExtractedReports(newR);
+                                            }}></textarea>
+                                        </div>
+                                        <div>
+                                            <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom:'4px', display:'block'}}>투입 인원 실적</label>
+                                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'4px'}}>
+                                                <div style={{fontSize:'0.7rem'}}>PM <input type="number" value={report.pm_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].pm_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                                <div style={{fontSize:'0.7rem'}}>설계 <input type="number" value={report.design_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].design_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                                <div style={{fontSize:'0.7rem'}}>설비 <input type="number" value={report.facility_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].facility_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                                <div style={{fontSize:'0.7rem'}}>제어 <input type="number" value={report.control_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].control_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                                <div style={{fontSize:'0.7rem'}}>비전 <input type="number" value={report.vision_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].vision_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                                <div style={{fontSize:'0.7rem'}}>기타 <input type="number" value={report.personnel_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].personnel_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
 
-                            <button className="btn-analyze" onClick={saveReport} disabled={!reportForm.work_details.trim() || !selectedProject || !reportDate || isExtracting}>
-                                {isExtracting ? 'AI 추출 중...' : 'Save'}
+                            <button className="btn-analyze" onClick={saveReport} disabled={!selectedProject || isExtracting || extractedReports.every(r=>!r.work_details.trim())}>
+                                {isExtracting ? 'AI 추출 중...' : 'Save All'}
                             </button>
                             
                             {msg && (
@@ -421,7 +484,16 @@ ${compiledText.substring(0, 30000)}
                                                             </div>
                                                         )}
                                                         <div>
-                                                            <div style={{fontWeight: 600, color: '#1f2328', marginBottom: '0.3rem'}}>투입 인원 실적: <span style={{fontWeight: 'normal'}}>{report.personnel_count}명</span></div>
+                                                            <div style={{fontWeight: 600, color: '#1f2328', marginBottom: '0.3rem'}}>투입 인원 실적 (총 {(report.pm_count||0)+(report.design_count||0)+(report.facility_count||0)+(report.control_count||0)+(report.vision_count||0)+(report.personnel_count||0)}명)</div>
+                                                            <div style={{display:'flex', gap:'8px', flexWrap:'wrap', fontSize:'0.75rem', background:'#fff', padding:'6px', borderRadius:'4px', border:'1px solid #e1e4e8'}}>
+                                                                {report.pm_count > 0 && <span>PM: {report.pm_count}</span>}
+                                                                {report.design_count > 0 && <span>설계: {report.design_count}</span>}
+                                                                {report.facility_count > 0 && <span>설비: {report.facility_count}</span>}
+                                                                {report.control_count > 0 && <span>제어: {report.control_count}</span>}
+                                                                {report.vision_count > 0 && <span>비전: {report.vision_count}</span>}
+                                                                {report.personnel_count > 0 && <span>기타: {report.personnel_count}</span>}
+                                                                {(!report.pm_count && !report.design_count && !report.facility_count && !report.control_count && !report.vision_count && !report.personnel_count) && <span>없음</span>}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 ) : (

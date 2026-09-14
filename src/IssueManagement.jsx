@@ -219,7 +219,7 @@ ${allText.substring(0, 30000)}
                 .from('daily_reports')
                 .select('*')
                 .gte('report_date', startDate)
-                .lte('report_date', endDate);
+                .lte('report_date', endDate + 'T23:59:59.999Z');
 
             if (error) throw error;
             if (!reports || reports.length === 0) {

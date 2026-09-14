@@ -1,0 +1,279 @@
+/* Issue Management Container */
+.issue-management-container {
+    --bg-color: #f6f8fa;
+    --panel-bg: #ffffff;
+    --border-color: #d0d7de;
+    --text-color: #24292f;
+    --text-muted: #57606a;
+    --primary: #0969da;
+    --accent: #2da44e;
+    --accent-bg: rgba(45, 164, 78, 0.15);
+    --danger: #cf222e;
+    --danger-bg: rgba(207, 34, 46, 0.15);
+    --warning: #bf8700;
+    --warning-bg: rgba(191, 135, 0, 0.15);
+    
+    background-color: transparent;
+    color: var(--text-color);
+    font-family: 'Inter', 'Nanum Gothic', sans-serif;
+    line-height: 1.5;
+    height: calc(100vh - 220px);
+    min-height: 550px;
+    display: flex;
+    flex-direction: column;
+}
+
+.issue-management-container * {
+    box-sizing: border-box;
+}
+
+.issue-management-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+}
+
+.issue-management-container .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.issue-management-container .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #0969da, #db2777);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+.issue-management-container .logo-text h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    background: linear-gradient(90deg, #24292f 0%, #57606a 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+}
+
+.issue-management-container .logo-text p {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.issue-management-container .main-container {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+/* Sidebar styling */
+.issue-management-container .sidebar {
+    border-right: 1px solid var(--border-color);
+    background: var(--panel-bg);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+}
+
+.issue-management-container .panel-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+}
+
+.issue-management-container .project-select {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    background-color: #fff;
+    outline: none;
+}
+
+.issue-management-container .project-select:focus {
+    border-color: var(--primary);
+}
+
+/* Dropzone */
+.issue-management-container .dropzone {
+    border: 2px dashed var(--border-color);
+    border-radius: 10px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #f6f8fa;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.issue-management-container .dropzone:hover, 
+.issue-management-container .dropzone.dragover {
+    border-color: var(--primary);
+    background-color: rgba(9, 105, 218, 0.05);
+}
+
+.issue-management-container .dropzone-icon {
+    font-size: 2rem;
+}
+
+/* Paste Area */
+.issue-management-container .paste-textarea {
+    width: 100%;
+    height: 120px;
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.6rem;
+    font-size: 0.8rem;
+    resize: none;
+    outline: none;
+    margin-bottom: 1rem;
+}
+
+.issue-management-container .paste-textarea:focus {
+    border-color: var(--primary);
+}
+
+/* Button */
+.issue-management-container .btn-analyze {
+    width: 100%;
+    padding: 0.8rem;
+    background: linear-gradient(135deg, #0969da, #0550ae);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.issue-management-container .btn-analyze:hover:not(:disabled) {
+    box-shadow: 0 4px 12px rgba(9, 105, 218, 0.3);
+}
+
+.issue-management-container .btn-analyze:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Content Area Styling */
+.issue-management-container .content-area {
+    margin: 1rem 1rem 1rem 0;
+    padding: 2rem;
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    min-width: 0;
+}
+
+.issue-management-container .dashboard-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.issue-management-container .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 2px solid #e1e4e8;
+    padding-bottom: 0.5rem;
+}
+
+.issue-management-container .section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #24292f;
+    margin: 0;
+}
+
+.issue-management-container .issue-card {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--primary);
+    border-radius: 8px;
+    padding: 1.2rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.issue-management-container .issue-card.category-지속 {
+    border-left-color: var(--danger);
+}
+.issue-management-container .issue-card.category-주의 {
+    border-left-color: var(--warning);
+}
+
+.issue-management-container .issue-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.issue-management-container .issue-badge {
+    background: #f6f8fa;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+}
+
+.issue-management-container .issue-content {
+    font-size: 0.95rem;
+    color: var(--text-color);
+    margin: 0 0 0.8rem 0;
+    white-space: pre-wrap;
+}
+
+.issue-management-container .issue-future {
+    background: #fff8c5;
+    border: 1px solid #e0cd75;
+    padding: 0.8rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: #7d5a00;
+}
+
+.issue-management-container .issue-future strong {
+    display: block;
+    margin-bottom: 0.3rem;
+}
+
+.issue-management-container .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-muted);
+    background: #f6f8fa;
+    border-radius: 8px;
+    border: 1px dashed var(--border-color);
+}

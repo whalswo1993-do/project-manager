@@ -478,8 +478,8 @@ export default function Quotations({ projects, session, role }) {
             <section>
                 <div className="filterbar" style={{ flexWrap: 'wrap', gap: '10px' }}>
                     <h2>품목별 단가 검색</h2>
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginLeft: 'auto' }}>
-                        <div className="category-checkboxes">
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginLeft: 'auto', flexWrap: 'nowrap' }}>
+                        <div className="category-checkboxes" style={{ flexWrap: 'nowrap' }}>
                             <label><input type="checkbox" checked={filterCategory['가공품']} onChange={() => handleCheckboxChange('가공품')} /> 가공품</label>
                             <label><input type="checkbox" checked={filterCategory['구매품']} onChange={() => handleCheckboxChange('구매품')} /> 구매품</label>
                             <label><input type="checkbox" checked={filterCategory['용역/기타']} onChange={() => handleCheckboxChange('용역/기타')} /> 개발/이설/기타</label>

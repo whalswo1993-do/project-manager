@@ -563,8 +563,11 @@ export default function Quotations({ projects, session, role }) {
             </section>
 
             <section>
-                <div className="title">
+                <div className="title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <h2>프로젝트별 견적 비용 집계</h2>
+                    <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'normal' }}>
+                        ※품목별 견적단가를 확인하기 위한 단순 합산 집계로 최종 견적 금액과 총 금액의 차이가 있을 수 있습니다.
+                    </span>
                 </div>
                 <div style={{ marginTop: '15px' }}>
                     {Object.values(groupedQuotations).map(group => (

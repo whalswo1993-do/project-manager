@@ -197,18 +197,25 @@ export default function Quotations({ projects, session, role }) {
             const totalAmount = extractedData.items.reduce((sum, item) => sum + (parseFloat(item.total_price) || 0), 0);
             
             let targetQuotId;
-            let existingQuot = null;
+            let existingQuots = [];
 
             if (projectId) {
-                const { data } = await supabase.from('quotations').select('id').eq('project_id', projectId).maybeSingle();
-                existingQuot = data;
+                const { data } = await supabase.from('quotations').select('id').eq('project_id', projectId);
+                existingQuots = data || [];
             } else if (projectName) {
-                const { data } = await supabase.from('quotations').select('id').eq('project_name', projectName).maybeSingle();
-                existingQuot = data;
+                const { data } = await supabase.from('quotations').select('id').eq('project_name', projectName);
+                existingQuots = data || [];
             }
 
-            if (existingQuot) {
-                targetQuotId = existingQuot.id;
+            if (existingQuots.length > 0) {
+                targetQuotId = existingQuots[0].id;
+                
+                if (existingQuots.length > 1) {
+                    const extraIds = existingQuots.slice(1).map(q => q.id);
+                    await supabase.from('quotation_items').delete().in('quotation_id', extraIds);
+                    await supabase.from('quotations').delete().in('id', extraIds);
+                }
+
                 const { error: upErr } = await supabase.from('quotations').update({
                     title: extractedData.title,
                     total_amount: totalAmount,

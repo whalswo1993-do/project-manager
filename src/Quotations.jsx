@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as XLSX from 'xlsx';
 
-export default function Quotations({ projects, session }) {
+export default function Quotations({ projects, session, role }) {
     const [isDragging, setIsDragging] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
     const [selectedProjectInput, setSelectedProjectInput] = useState('');
@@ -507,7 +507,7 @@ export default function Quotations({ projects, session }) {
                                             <div key={quotation.id} className="pa-quotation">
                                                 <h4 className="pa-quotation-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                     <span>📄 {quotation.title} <small>({new Date(quotation.created_at).toLocaleDateString()})</small></span>
-                                                    {['admin', 'grade3'].includes(session?.user?.user_metadata?.role || session?.user?.role) && (
+                                                    {['admin', 'grade3'].includes(role) && (
                                                         <button onClick={() => handleDeleteQuotation(quotation.id)} style={{ padding: '2px 8px', fontSize: '11px', color: 'white', background: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>삭제</button>
                                                     )}
                                                 </h4>

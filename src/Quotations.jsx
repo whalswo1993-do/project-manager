@@ -84,7 +84,9 @@ export default function Quotations({ projects, session }) {
                 const prompt = `당신은 견적서(Quotation) 데이터를 분석하는 전문가입니다. 첨부된 엑셀 복사 데이터를 분석하여 아래 JSON 구조로만 데이터를 추출하세요.
 요구사항:
 1. title: 문서의 제목(알 수 없으면 "클립보드 견적 데이터"로 입력)
-2. items: 배열 형태. 품목명(item_name), 품목구분(item_category), 수량(quantity), 단가(unit_price), 총액(total_price)
+2. items: 배열 형태. 품목명(item_name), 유닛명(unit_name), 품목구분(item_category), 수량(quantity), 단가(unit_price), 총액(total_price)
+유닛명(unit_name) 규칙:
+ - 어떤 유닛/파트에 들어가는 부품인지 명시되어 있다면 해당 유닛명을 추출, 없으면 빈 문자열("")
 품목구분(item_category) 규칙:
  - Maker가 명시되어 있는 상용품은 "구매품"
  - 스틸계열, AL계열, Acetal, Peak재질, 도면참조 등 제작/가공품은 "가공품"
@@ -95,7 +97,7 @@ export default function Quotations({ projects, session }) {
 {
   "title": "클립보드 견적 데이터",
   "items": [
-    { "item_name": "도면참조 Base Plate", "item_category": "가공품", "quantity": 2, "unit_price": 5000000, "total_price": 10000000 }
+    { "item_name": "도면참조 Base Plate", "unit_name": "Stacking부", "item_category": "가공품", "quantity": 2, "unit_price": 5000000, "total_price": 10000000 }
   ]
 }`;
                 
@@ -151,7 +153,9 @@ export default function Quotations({ projects, session }) {
                 const prompt = `당신은 견적서(Quotation) 데이터를 분석하는 전문가입니다. 첨부된 이미지나 문서를 분석하여 아래 JSON 구조로만 데이터를 추출하세요.
 요구사항:
 1. title: 견적서의 제목이나 발행처 이름
-2. items: 배열 형태. 품목명(item_name), 품목구분(item_category), 수량(quantity), 단가(unit_price), 총액(total_price)
+2. items: 배열 형태. 품목명(item_name), 유닛명(unit_name), 품목구분(item_category), 수량(quantity), 단가(unit_price), 총액(total_price)
+유닛명(unit_name) 규칙:
+ - 어떤 유닛/파트에 들어가는 부품인지 명시되어 있다면 해당 유닛명을 추출, 없으면 빈 문자열("")
 품목구분(item_category) 규칙:
  - Maker가 명시되어 있는 상용품은 "구매품"
  - 스틸계열, AL계열, Acetal, Peak재질, 도면참조 등 제작/가공품은 "가공품"
@@ -162,8 +166,8 @@ export default function Quotations({ projects, session }) {
 {
   "title": "부품 견적서",
   "items": [
-    { "item_name": "도면참조 Base Plate", "item_category": "가공품", "quantity": 2, "unit_price": 5000000, "total_price": 10000000 },
-    { "item_name": "SMC 실린더", "item_category": "구매품", "quantity": 4, "unit_price": 300000, "total_price": 1200000 }
+    { "item_name": "도면참조 Base Plate", "unit_name": "Stacking부", "item_category": "가공품", "quantity": 2, "unit_price": 5000000, "total_price": 10000000 },
+    { "item_name": "SMC 실린더", "unit_name": "Lifter", "item_category": "구매품", "quantity": 4, "unit_price": 300000, "total_price": 1200000 }
   ]
 }`;
                 
@@ -204,6 +208,7 @@ export default function Quotations({ projects, session }) {
             const itemsToInsert = extractedData.items.map(item => ({
                 quotation_id: newQuot.id,
                 item_name: item.item_name,
+                unit_name: item.unit_name || '',
                 item_category: item.item_category || '구매품',
                 quantity: parseFloat(item.quantity) || 1,
                 unit_price: parseFloat(item.unit_price) || 0,
@@ -409,8 +414,8 @@ export default function Quotations({ projects, session }) {
                             <thead>
                                 <tr>
                                     <th>구분</th>
+                                    <th>유닛명</th>
                                     <th>품목명</th>
-                                    <th>수량</th>
                                     <th className="money-cell">단가 (₩)</th>
                                     <th>등록일</th>
                                 </tr>
@@ -420,8 +425,8 @@ export default function Quotations({ projects, session }) {
                                     searchResults.map(item => (
                                         <tr key={item.id}>
                                             <td><span className={`badge-category cat-${item.item_category === '가공품' ? 'process' : item.item_category === '구매품' ? 'purchase' : 'other'}`}>{item.item_category}</span></td>
+                                            <td>{item.unit_name || '-'}</td>
                                             <td>{item.item_name}</td>
-                                            <td>{item.quantity}</td>
                                             <td className="money-cell">{Number(item.unit_price).toLocaleString()}</td>
                                             <td>{new Date(item.created_at).toLocaleDateString()}</td>
                                         </tr>
@@ -466,6 +471,7 @@ export default function Quotations({ projects, session }) {
                                                         <thead>
                                                             <tr>
                                                                 <th>구분</th>
+                                                                <th>유닛명</th>
                                                                 <th>품목명</th>
                                                                 <th>수량</th>
                                                                 <th className="money-cell">단가 (₩)</th>
@@ -476,13 +482,14 @@ export default function Quotations({ projects, session }) {
                                                             {itemsInQuotation.map(item => (
                                                                 <tr key={item.id}>
                                                                     <td><span className={`badge-category cat-${item.item_category === '가공품' ? 'process' : item.item_category === '구매품' ? 'purchase' : 'other'}`}>{item.item_category}</span></td>
+                                                                    <td>{item.unit_name || '-'}</td>
                                                                     <td>{item.item_name}</td>
                                                                     <td>{item.quantity}</td>
                                                                     <td className="money-cell">{Number(item.unit_price).toLocaleString()}</td>
                                                                     <td className="money-cell">{Number(item.total_price).toLocaleString()}</td>
                                                                 </tr>
                                                             ))}
-                                                            {itemsInQuotation.length === 0 && <tr><td colSpan="5">품목이 없습니다.</td></tr>}
+                                                            {itemsInQuotation.length === 0 && <tr><td colSpan="6">품목이 없습니다.</td></tr>}
                                                         </tbody>
                                                     </table>
                                                 </div>

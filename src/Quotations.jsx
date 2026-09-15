@@ -300,10 +300,47 @@ export default function Quotations({ projects, session }) {
             <section>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px'}}>
                     <h2>새 견적서 등록</h2>
-                    <div>
+                    <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
                         <input type="file" ref={fileInputRef} onChange={e=>handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, image/*, .pdf" style={{display:'none'}}/>
-                        <button onClick={()=>fileInputRef.current.click()} disabled={isExtracting} style={{background:isExtracting?'#94a3b8':'linear-gradient(135deg, #10b981, #059669)',color:'#fff',padding:'8px 14px',borderRadius:'8px',fontWeight:'bold',border:'none',boxShadow:'0 2px 5px rgba(0,0,0,0.1)'}}>
-                            {isExtracting ? "✨ AI 분석 중..." : "✨ 견적서 자동 분석 (Excel/이미지/붙여넣기)"}
+                        <textarea 
+                            placeholder="엑셀 표 붙여넣기 (Ctrl+V)"
+                            disabled={isExtracting}
+                            style={{
+                                height: '35px',
+                                width: '180px',
+                                padding: '8px 14px',
+                                borderRadius: '8px',
+                                border: '1px solid #10b981',
+                                outline: 'none',
+                                resize: 'none',
+                                overflow: 'hidden',
+                                whiteSpace: 'nowrap',
+                                boxSizing: 'border-box',
+                                fontSize: '13px',
+                                fontFamily: 'inherit'
+                            }}
+                            onPaste={(e) => {
+                                const items = e.clipboardData?.items;
+                                if (items) {
+                                    for (let i = 0; i < items.length; i++) {
+                                        const item = items[i];
+                                        if (item.type.indexOf("image") !== -1) {
+                                            e.preventDefault();
+                                            const file = item.getAsFile();
+                                            if (file) { handleFileUpload(file); return; }
+                                        }
+                                    }
+                                }
+                                const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text");
+                                if (text && text.trim().length > 5) {
+                                    e.preventDefault();
+                                    e.target.value = ""; // 입력창 비우기
+                                    handleFileUpload(text);
+                                }
+                            }}
+                        />
+                        <button onClick={()=>fileInputRef.current.click()} disabled={isExtracting} style={{background:isExtracting?'#94a3b8':'linear-gradient(135deg, #10b981, #059669)',color:'#fff',padding:'8px 14px',borderRadius:'8px',fontWeight:'bold',border:'none',boxShadow:'0 2px 5px rgba(0,0,0,0.1)', height:'35px', whiteSpace:'nowrap'}}>
+                            {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel/이미지)"}
                         </button>
                     </div>
                 </div>
@@ -325,34 +362,7 @@ export default function Quotations({ projects, session }) {
                     </label>
                 </div>
                 
-                <div className="grid" style={{ marginTop: '14px' }}>
-                    <label className="wide" style={{ gridColumn: 'span 7' }}>
-                        엑셀에서 복사한 데이터를 직접 붙여넣기 (Ctrl+V)
-                        <textarea 
-                            placeholder="엑셀 내용 드래그 복사(Ctrl+C) 후 여기에 붙여넣기(Ctrl+V) 해주세요..."
-                            style={{ width: '100%', minHeight: '60px', padding: '10px', borderRadius: '8px', border: '1px solid #bdccda', resize: 'vertical', fontFamily: 'inherit', fontSize: '13px' }}
-                            onPaste={(e) => {
-                                const items = e.clipboardData?.items;
-                                if (items) {
-                                    for (let i = 0; i < items.length; i++) {
-                                        const item = items[i];
-                                        if (item.type.indexOf("image") !== -1) {
-                                            e.preventDefault();
-                                            const file = item.getAsFile();
-                                            if (file) { handleFileUpload(file); return; }
-                                        }
-                                    }
-                                }
-                                const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text");
-                                if (text && text.trim().length > 5) {
-                                    e.preventDefault();
-                                    e.target.value = ""; // 입력창 비우기
-                                    handleFileUpload(text);
-                                }
-                            }}
-                        />
-                    </label>
-                </div>
+
                 {msg && <p className="notice" style={{marginTop:'10px',fontWeight:'bold',color:'#059669'}}>{msg}</p>}
             </section>
 

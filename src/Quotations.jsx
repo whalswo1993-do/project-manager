@@ -34,32 +34,11 @@ export default function Quotations({ projects, session }) {
                 setIsSearchFocused(false);
             }
         };
-        const handlePaste = (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-            const items = e.clipboardData?.items;
-            if (items) {
-                for (let i = 0; i < items.length; i++) {
-                    const item = items[i];
-                    if (item.type.indexOf("image") !== -1) {
-                        e.preventDefault();
-                        const file = item.getAsFile();
-                        if (file) { handleFileUpload(file); return; }
-                    }
-                }
-            }
-            const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text");
-            if (text && text.trim().length > 5) {
-                e.preventDefault();
-                handleFileUpload(text);
-            }
-        };
         document.addEventListener("mousedown", handleClickOutside);
-        document.addEventListener("paste", handlePaste);
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
-            document.removeEventListener("paste", handlePaste);
         };
-    }, [selectedProjectInput]);
+    }, []);
 
     const loadQuotationsData = async () => {
         try {
@@ -343,6 +322,35 @@ export default function Quotations({ projects, session }) {
                                 <option key={p.id} value={p.name}>{p.manufacturing_no} · {p.name}</option>
                             ))}
                         </datalist>
+                    </label>
+                </div>
+                
+                <div className="grid" style={{ marginTop: '14px' }}>
+                    <label className="wide" style={{ gridColumn: 'span 7' }}>
+                        엑셀에서 복사한 데이터를 직접 붙여넣기 (Ctrl+V)
+                        <textarea 
+                            placeholder="엑셀 내용 드래그 복사(Ctrl+C) 후 여기에 붙여넣기(Ctrl+V) 해주세요..."
+                            style={{ width: '100%', minHeight: '60px', padding: '10px', borderRadius: '8px', border: '1px solid #bdccda', resize: 'vertical', fontFamily: 'inherit', fontSize: '13px' }}
+                            onPaste={(e) => {
+                                const items = e.clipboardData?.items;
+                                if (items) {
+                                    for (let i = 0; i < items.length; i++) {
+                                        const item = items[i];
+                                        if (item.type.indexOf("image") !== -1) {
+                                            e.preventDefault();
+                                            const file = item.getAsFile();
+                                            if (file) { handleFileUpload(file); return; }
+                                        }
+                                    }
+                                }
+                                const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text");
+                                if (text && text.trim().length > 5) {
+                                    e.preventDefault();
+                                    e.target.value = ""; // 입력창 비우기
+                                    handleFileUpload(text);
+                                }
+                            }}
+                        />
                     </label>
                 </div>
                 {msg && <p className="notice" style={{marginTop:'10px',fontWeight:'bold',color:'#059669'}}>{msg}</p>}

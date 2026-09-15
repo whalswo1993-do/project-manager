@@ -1,193 +1,86 @@
-/* 기존 Quotations.css 파일 내용 보존 및 스타일 추가 */
+/* 
+ Quotations.css 
+ 이제 App.css의 기본 레이아웃(<section>, .grid, .filterbar 등)을 따르므로, 
+ 견적 조회에만 필요한 특수 스타일(팝업, 뱃지, 아코디언 등)만 남깁니다.
+*/
 
-.quotations-container {
-    padding: 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color: #24292e;
-}
-
-.quotations-header {
+/* 카테고리 체크박스 (가로 정렬 보장) */
+.category-checkboxes {
     display: flex;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
     align-items: center;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e1e4e8;
 }
 
-.quotations-main {
+.category-checkboxes label {
     display: flex;
-    gap: 2rem;
-}
-
-.quotations-sidebar {
-    flex: 0 0 350px;
-    background: #f6f8fa;
-    border-radius: 8px;
-    padding: 1.5rem;
-    border: 1px solid #d0d7de;
-    align-self: flex-start;
-}
-
-.quotations-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.form-group label {
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-.form-control {
-    padding: 0.5rem;
-    border: 1px solid #d0d7de;
-    border-radius: 6px;
-    font-size: 0.95rem;
-    background: #fff;
-}
-
-/* Dropzone Styles */
-.dropzone {
-    border: 2px dashed #d0d7de;
-    border-radius: 8px;
-    padding: 2rem 1rem;
-    text-align: center;
-    background: #fff;
+    align-items: center;
+    gap: 5px;
+    font-size: 13px;
     cursor: pointer;
-    transition: all 0.2s;
-}
-
-.dropzone:hover, .dropzone.dragover {
-    border-color: #0969da;
-    background: #f3f8ff;
-}
-
-.dropzone-icon {
-    font-size: 2.5rem;
-    color: #57606a;
-    margin-bottom: 0.5rem;
-}
-
-.dropzone-text {
-    font-weight: 600;
-    color: #24292e;
-}
-
-.dropzone-subtext {
-    font-size: 0.8rem;
-    color: #57606a;
-    margin-top: 0.5rem;
-}
-
-/* Card Styles */
-.card {
-    background: #fff;
-    border: 1px solid #d0d7de;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.card-header {
-    background: #f6f8fa;
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #d0d7de;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.card-title {
-    font-weight: 600;
-    font-size: 1.1rem;
-}
-
-.filter-checkboxes {
-    display: flex;
-    gap: 1rem;
-}
-.filter-checkboxes label {
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    cursor: pointer;
-}
-
-.search-bar {
-    padding: 1.5rem;
-}
-
-.search-input {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border: 1px solid #d0d7de;
-    border-radius: 6px;
-    font-size: 1rem;
-    box-sizing: border-box;
+    white-space: nowrap;
 }
 
 /* Autocomplete Dropdown */
 .autocomplete-dropdown {
     position: absolute;
     top: 100%;
-    left: 1.5rem;
-    right: 1.5rem;
+    left: 0;
+    right: 0;
     background: white;
-    border: 1px solid #d0d7de;
+    border: 1px solid #bdccda;
     border-top: none;
-    border-radius: 0 0 6px 6px;
+    border-radius: 0 0 8px 8px;
     max-height: 250px;
     overflow-y: auto;
     z-index: 10;
     margin: 0;
     padding: 0;
     list-style: none;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .autocomplete-dropdown li {
-    padding: 0.5rem 1rem;
+    padding: 8px 12px;
     cursor: pointer;
-    font-size: 0.95rem;
-    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    border-bottom: 1px solid #f1f5f9;
 }
 
 .autocomplete-dropdown li:hover {
-    background: #f6f8fa;
+    background: #f5f8fb;
 }
 
 /* Table Styles */
 .data-table {
     width: 100%;
     border-collapse: collapse;
+    background: #fff;
+    border: 1px solid #dce5ed;
+    border-radius: 6px;
+    overflow: hidden;
 }
 
 .data-table th, .data-table td {
-    padding: 0.75rem 1.5rem;
+    padding: 10px 14px;
     text-align: left;
-    border-bottom: 1px solid #e1e4e8;
+    border-bottom: 1px solid #e2e8f0;
 }
 
 .data-table th {
-    background: #fcfcfc;
-    font-size: 0.85rem;
-    color: #57606a;
+    background: #f8fafc;
+    font-size: 13px;
+    color: #475569;
     font-weight: 600;
 }
 
 .data-table td {
-    font-size: 0.95rem;
+    font-size: 13px;
+}
+
+.data-table.nested {
+    border: 1px solid #e2e8f0;
+    margin-top: 10px;
 }
 
 .money-cell {
@@ -198,35 +91,36 @@
 /* Badges for Item Category */
 .badge-category {
     display: inline-block;
-    padding: 0.2rem 0.5rem;
+    padding: 3px 8px;
     border-radius: 12px;
-    font-size: 0.75rem;
+    font-size: 11px;
     font-weight: 600;
+    white-space: nowrap;
 }
 .cat-process {
-    background-color: #dbeafe;
-    color: #1e40af;
+    background-color: #e0f2fe;
+    color: #0369a1;
 }
 .cat-purchase {
     background-color: #dcfce7;
-    color: #166534;
+    color: #15803d;
 }
 .cat-other {
     background-color: #f3f4f6;
     color: #374151;
 }
 
-/* Accordion Styles */
-.accordion-item {
-    border-bottom: 1px solid #e1e4e8;
+/* Project Accordion (New Style) */
+.project-accordion {
+    border: 1px solid #dce5ed;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    background: #fff;
+    overflow: hidden;
 }
 
-.accordion-item:last-child {
-    border-bottom: none;
-}
-
-.accordion-header {
-    padding: 1.25rem 1.5rem;
+.pa-header {
+    padding: 14px 18px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -235,25 +129,80 @@
     transition: background 0.2s;
 }
 
-.accordion-header:hover {
-    background: #f6f8fa;
+.pa-header:hover {
+    background: #f8fafc;
 }
 
-.accordion-title {
+.pa-title h3 {
+    margin: 0 0 6px 0;
+    font-size: 15px;
+    color: #17263b;
+}
+
+.pa-summary {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.pa-badge {
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 6px;
     font-weight: 600;
-    font-size: 1rem;
+}
+.pa-badge.process {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+.pa-badge.purchase {
+    background: #f0fdf4;
+    color: #15803d;
+}
+.pa-badge.other {
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
 }
 
-.accordion-amount {
+.pa-total {
     font-weight: 700;
-    color: #0969da;
+    color: #0b68b5;
+    font-size: 16px;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 6px;
 }
 
-.accordion-body {
-    background: #f6f8fa;
-    padding: 0.5rem 0;
-    border-top: 1px solid #e1e4e8;
+.pa-body {
+    background: #f8fafc;
+    padding: 16px;
+    border-top: 1px solid #dce5ed;
+}
+
+.pa-quotation {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.pa-quotation:last-child {
+    margin-bottom: 0;
+}
+
+.pa-quotation-title {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pa-quotation-title small {
+    color: #94a3b8;
+    font-weight: normal;
 }

@@ -7,17 +7,14 @@ import * as XLSX from 'xlsx';
 export default function Quotations({ projects, session }) {
     const [isDragging, setIsDragging] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
-    
-    // 직접 입력을 위한 상태
     const [selectedProjectInput, setSelectedProjectInput] = useState('');
-    
     const [quotations, setQuotations] = useState([]);
     const [quotationItems, setQuotationItems] = useState([]);
     
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const [sortOrder, setSortOrder] = useState('recent'); // 'recent' or 'priceDesc'
     
-    // 카테고리 필터
     const [filterCategory, setFilterCategory] = useState({
         '가공품': true,
         '구매품': true,
@@ -32,8 +29,6 @@ export default function Quotations({ projects, session }) {
 
     useEffect(() => {
         loadQuotationsData();
-        
-        // 검색창 바깥 클릭 시 드롭다운 닫기
         const handleClickOutside = (event) => {
             if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
                 setIsSearchFocused(false);
@@ -45,11 +40,11 @@ export default function Quotations({ projects, session }) {
 
     const loadQuotationsData = async () => {
         try {
-            const { data: qData, error: qError } = await supabase.from('quotations').select('*');
+            const { data: qData, error: qError } = await supabase.from('quotations').select('*').order('created_at', { ascending: false });
             if (qError) throw qError;
             setQuotations(qData || []);
 
-            const { data: iData, error: iError } = await supabase.from('quotation_items').select('*');
+            const { data: iData, error: iError } = await supabase.from('quotation_items').select('*').order('created_at', { ascending: false });
             if (iError) throw iError;
             setQuotationItems(iData || []);
         } catch (error) {
@@ -58,27 +53,10 @@ export default function Quotations({ projects, session }) {
         }
     };
 
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
-
-    const handleDragLeave = () => {
-        setIsDragging(false);
-    };
-
-    const handleDrop = (e) => {
-        e.preventDefault();
-        setIsDragging(false);
-        const file = e.dataTransfer.files[0];
-        handleFileUpload(file);
-    };
-
     const determineCategory = (text) => {
         const lower = String(text).toLowerCase();
         if (/개조|개발|이설|비용|용역/i.test(lower)) return '용역/기타';
         if (/스틸|al|알루미늄|acetal|아세탈|peak|피크|도면/i.test(lower)) return '가공품';
-        // 기본값 및 Maker가 있는 경우
         return '구매품';
     };
 
@@ -96,7 +74,6 @@ export default function Quotations({ projects, session }) {
             let extractedData = { title: file.name, items: [] };
 
             if (file.name.match(/\.(xlsx|xls)$/i)) {
-                // 엑셀 처리
                 const data = await file.arrayBuffer();
                 const wb = XLSX.read(data, { cellDates: false });
                 const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -122,7 +99,6 @@ export default function Quotations({ projects, session }) {
                     }
                 });
             } else if (file.type.startsWith("image/") || file.name.match(/\.(pdf)$/i)) {
-                // Gemini API 처리
                 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
                 if (!apiKey) throw new Error("AI 분석용 Gemini API 키가 설정되지 않았습니다.");
                 const genAI = new GoogleGenerativeAI(apiKey);
@@ -173,7 +149,6 @@ export default function Quotations({ projects, session }) {
                 throw new Error("파일에서 품목 데이터를 추출하지 못했습니다.");
             }
 
-            // Project ID 매핑 로직 (입력값이 프로젝트 목록에 있는지 확인)
             const matchedProject = projects.find(p => p.name === selectedProjectInput.trim() || p.manufacturing_no === selectedProjectInput.trim());
             const projectId = matchedProject ? matchedProject.id : null;
             const projectName = matchedProject ? null : selectedProjectInput.trim();
@@ -217,17 +192,13 @@ export default function Quotations({ projects, session }) {
         setFilterCategory(prev => ({ ...prev, [cat]: !prev[cat] }));
     };
 
-    // 고유 품목명 추출 (자동완성용)
     const uniqueItemNames = [...new Set(quotationItems.map(item => item.item_name))].sort();
-    
-    // 자동완성 드롭다운 필터링
     const suggestedItems = uniqueItemNames.filter(name => 
         name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // 검색 결과 필터링
-    const searchResults = quotationItems.filter(item => {
-        if (!searchQuery) return false; // 검색어가 없으면 결과 렌더링 안 함
+    let searchResults = quotationItems.filter(item => {
+        if (!searchQuery) return false;
         
         const matchName = item.item_name.toLowerCase() === searchQuery.toLowerCase() || 
                           item.item_name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -240,15 +211,19 @@ export default function Quotations({ projects, session }) {
         return matchName && matchCategory;
     });
 
+    if (sortOrder === 'priceDesc') {
+        searchResults.sort((a, b) => b.unit_price - a.unit_price);
+    } else {
+        searchResults.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
     const selectSuggestion = (name) => {
         setSearchQuery(name);
         setIsSearchFocused(false);
     };
 
-    // 프로젝트 및 직접 입력 이름 기준 그룹화
     const groupedQuotations = {};
     quotations.forEach(q => {
-        // 기존 프로젝트에 연결된 경우 프로젝트 이름 사용, 아니면 직접 입력된 이름 사용
         let key = "미지정 프로젝트";
         if (q.project_id) {
             const p = projects.find(proj => proj.id === q.project_id);
@@ -261,11 +236,22 @@ export default function Quotations({ projects, session }) {
             groupedQuotations[key] = {
                 name: key,
                 quotations: [],
-                total_amount: 0
+                total_amount: 0,
+                process_amount: 0,
+                purchase_amount: 0,
+                other_amount: 0
             };
         }
         groupedQuotations[key].quotations.push(q);
         groupedQuotations[key].total_amount += Number(q.total_amount);
+        
+        // 카테고리별 누적액 계산
+        const qItems = quotationItems.filter(item => item.quotation_id === q.id);
+        qItems.forEach(item => {
+            if (item.item_category === '가공품') groupedQuotations[key].process_amount += Number(item.total_price);
+            else if (item.item_category === '구매품') groupedQuotations[key].purchase_amount += Number(item.total_price);
+            else groupedQuotations[key].other_amount += Number(item.total_price);
+        });
     });
 
     const toggleProject = (name) => {
@@ -273,27 +259,24 @@ export default function Quotations({ projects, session }) {
     };
 
     return (
-        <div className="quotations-container">
-            <header className="quotations-header">
-                <div className="logo-area">
-                    <div className="logo-text" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <h1 style={{ fontSize: '1.25rem', margin: 0 }}>
-                            <span style={{color: 'var(--primary)'}}>견적</span> 데이터베이스
-                        </h1>
+        <>
+            <section>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px'}}>
+                    <h2>새 견적서 등록</h2>
+                    <div>
+                        <input type="file" ref={fileInputRef} onChange={e=>handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, image/*, .pdf" style={{display:'none'}}/>
+                        <button onClick={()=>fileInputRef.current.click()} disabled={isExtracting} style={{background:isExtracting?'#94a3b8':'linear-gradient(135deg, #10b981, #059669)',color:'#fff',padding:'8px 14px',borderRadius:'8px',fontWeight:'bold',border:'none',boxShadow:'0 2px 5px rgba(0,0,0,0.1)'}}>
+                            {isExtracting ? "✨ AI 분석 중..." : "✨ 견적서 자동 분석 (Excel/이미지/PDF)"}
+                        </button>
                     </div>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>프로젝트 투입 비용 관리 및 과거 단가 검색</p>
                 </div>
-            </header>
-
-            <div className="quotations-main">
-                <aside className="quotations-sidebar">
-                    <div className="form-group">
-                        <label>적용할 프로젝트명 (선택 또는 직접 입력)</label>
+                <div className="grid">
+                    <label className="wide" style={{ gridColumn: 'span 7' }}>
+                        적용할 프로젝트명 (선택 또는 직접 입력)
                         <input 
                             type="text"
                             list="project-list"
-                            className="form-control" 
-                            placeholder="프로젝트명을 입력하세요..."
+                            placeholder="A사 10라인 라우팅..."
                             value={selectedProjectInput}
                             onChange={(e) => setSelectedProjectInput(e.target.value)}
                         />
@@ -302,153 +285,145 @@ export default function Quotations({ projects, session }) {
                                 <option key={p.id} value={p.name}>{p.manufacturing_no} · {p.name}</option>
                             ))}
                         </datalist>
-                    </div>
+                    </label>
+                </div>
+                {msg && <p className="notice" style={{marginTop:'10px',fontWeight:'bold',color:'#059669'}}>{msg}</p>}
+            </section>
 
-                    <div 
-                        className={`dropzone ${isDragging ? 'dragover' : ''}`}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
-                        onClick={() => fileInputRef.current.click()}
-                        style={{marginTop: '1rem', opacity: selectedProjectInput.trim() ? 1 : 0.5, pointerEvents: selectedProjectInput.trim() ? 'auto' : 'none'}}
-                    >
-                        <div className="dropzone-icon">📄</div>
-                        <div className="dropzone-text">{isExtracting ? "분석 중..." : "견적서 파일 업로드"}</div>
-                        <div className="dropzone-subtext">Excel, PDF, 이미지 지원<br/>AI가 자동으로 품목을 추출합니다.</div>
+            <section>
+                <div className="filterbar">
+                    <h2>품목별 단가 검색</h2>
+                    <div className="category-checkboxes">
+                        <label><input type="checkbox" checked={filterCategory['가공품']} onChange={() => handleCheckboxChange('가공품')} /> 가공품</label>
+                        <label><input type="checkbox" checked={filterCategory['구매품']} onChange={() => handleCheckboxChange('구매품')} /> 구매품</label>
+                        <label><input type="checkbox" checked={filterCategory['용역/기타']} onChange={() => handleCheckboxChange('용역/기타')} /> 개조/이설/기타</label>
                     </div>
-                    <input type="file" ref={fileInputRef} onChange={(e) => handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, .pdf, image/*" style={{display: 'none'}} />
-
-                    {msg && (
-                        <div style={{ marginTop: '1rem', padding: '1rem', background: '#e0f2fe', color: '#0369a1', borderRadius: '8px', fontSize: '0.85rem' }}>
-                            {msg}
-                        </div>
+                    <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} style={{maxWidth: '150px'}}>
+                        <option value="recent">최신순</option>
+                        <option value="priceDesc">단가 높은 순</option>
+                    </select>
+                </div>
+                <div className="search-bar" ref={searchContainerRef} style={{ position: 'relative', marginTop: '10px' }}>
+                    <input 
+                        type="text" 
+                        placeholder="품목명을 검색하세요 (예: 렌즈, 서버, 모터)"
+                        value={searchQuery}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setIsSearchFocused(true);
+                        }}
+                        onFocus={() => setIsSearchFocused(true)}
+                        style={{ width: '100%', fontSize: '15px' }}
+                    />
+                    
+                    {isSearchFocused && suggestedItems.length > 0 && (
+                        <ul className="autocomplete-dropdown">
+                            {suggestedItems.slice(0, 100).map((name, idx) => (
+                                <li key={idx} onMouseDown={() => selectSuggestion(name)}>
+                                    {name}
+                                </li>
+                            ))}
+                        </ul>
                     )}
-                </aside>
+                </div>
 
-                <main className="quotations-content">
-                    <div className="card">
-                        <div className="card-header">
-                            <div className="card-title">품목별 단가 검색</div>
-                            <div className="filter-checkboxes">
-                                <label><input type="checkbox" checked={filterCategory['가공품']} onChange={() => handleCheckboxChange('가공품')} /> 가공품</label>
-                                <label><input type="checkbox" checked={filterCategory['구매품']} onChange={() => handleCheckboxChange('구매품')} /> 구매품</label>
-                                <label><input type="checkbox" checked={filterCategory['용역/기타']} onChange={() => handleCheckboxChange('용역/기타')} /> 개조/이설/기타</label>
-                            </div>
-                        </div>
-                        
-                        <div className="search-bar" ref={searchContainerRef} style={{ position: 'relative' }}>
-                            <input 
-                                type="text" 
-                                className="search-input" 
-                                placeholder="품목명을 검색하세요 (예: 렌즈, 서버, 모터)"
-                                value={searchQuery}
-                                onChange={(e) => {
-                                    setSearchQuery(e.target.value);
-                                    setIsSearchFocused(true);
-                                }}
-                                onFocus={() => setIsSearchFocused(true)}
-                            />
-                            
-                            {/* 자동완성 팝업 */}
-                            {isSearchFocused && suggestedItems.length > 0 && (
-                                <ul className="autocomplete-dropdown">
-                                    {suggestedItems.slice(0, 100).map((name, idx) => (
-                                        <li key={idx} onMouseDown={() => selectSuggestion(name)}>
-                                            {name}
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
-                        
-                        {searchQuery && (
-                            <div style={{ padding: '0 0 1.5rem 0' }}>
-                                <table className="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>구분</th>
-                                            <th>품목명</th>
-                                            <th>수량</th>
-                                            <th className="money-cell">단가 (₩)</th>
-                                            <th>등록일</th>
+                {searchQuery && (
+                    <div style={{ marginTop: '15px', overflowX: 'auto' }}>
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>구분</th>
+                                    <th>품목명</th>
+                                    <th>수량</th>
+                                    <th className="money-cell">단가 (₩)</th>
+                                    <th>등록일</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {searchResults.length > 0 ? (
+                                    searchResults.map(item => (
+                                        <tr key={item.id}>
+                                            <td><span className={`badge-category cat-${item.item_category === '가공품' ? 'process' : item.item_category === '구매품' ? 'purchase' : 'other'}`}>{item.item_category}</span></td>
+                                            <td>{item.item_name}</td>
+                                            <td>{item.quantity}</td>
+                                            <td className="money-cell">{Number(item.unit_price).toLocaleString()}</td>
+                                            <td>{new Date(item.created_at).toLocaleDateString()}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {searchResults.length > 0 ? (
-                                            searchResults.map(item => (
-                                                <tr key={item.id}>
-                                                    <td><span className={`badge-category cat-${item.item_category === '가공품' ? 'process' : item.item_category === '구매품' ? 'purchase' : 'other'}`}>{item.item_category}</span></td>
-                                                    <td>{item.item_name}</td>
-                                                    <td>{item.quantity}</td>
-                                                    <td className="money-cell">{Number(item.unit_price).toLocaleString()}</td>
-                                                    <td>{new Date(item.created_at).toLocaleDateString()}</td>
-                                                </tr>
-                                            ))
-                                        ) : (
-                                            <tr><td colSpan="5" style={{ textAlign: 'center', color: '#57606a' }}>검색 결과가 없습니다. 체크박스 필터를 확인해주세요.</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+                                    ))
+                                ) : (
+                                    <tr><td colSpan="5" style={{ textAlign: 'center', color: '#57606a', padding: '20px' }}>검색 결과가 없습니다. 체크박스 필터를 확인해주세요.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
+                )}
+            </section>
 
-                    <div className="card">
-                        <div className="card-header">
-                            <div className="card-title">프로젝트별 견적 비용 집계</div>
-                        </div>
-                        <div>
-                            {Object.values(groupedQuotations).map(group => (
-                                <div key={group.name} className="accordion-item">
-                                    <div className="accordion-header" onClick={() => toggleProject(group.name)}>
-                                        <div className="accordion-title">{group.name}</div>
-                                        <div className="accordion-amount">총 ₩ {group.total_amount.toLocaleString()} <span>{expandedProjects[group.name] ? '▴' : '▾'}</span></div>
+            <section>
+                <div className="title">
+                    <h2>프로젝트별 견적 비용 집계</h2>
+                </div>
+                <div style={{ marginTop: '15px' }}>
+                    {Object.values(groupedQuotations).map(group => (
+                        <div key={group.name} className="project-accordion">
+                            <div className="pa-header" onClick={() => toggleProject(group.name)}>
+                                <div className="pa-title">
+                                    <h3>{group.name}</h3>
+                                    <div className="pa-summary">
+                                        <span className="pa-badge process">가공품: ₩{group.process_amount.toLocaleString()}</span>
+                                        <span className="pa-badge purchase">구매품: ₩{group.purchase_amount.toLocaleString()}</span>
+                                        <span className="pa-badge other">기타: ₩{group.other_amount.toLocaleString()}</span>
                                     </div>
-                                    {expandedProjects[group.name] && (
-                                        <div className="accordion-body">
-                                            <table className="data-table" style={{ background: '#fff', margin: '1rem', width: 'calc(100% - 2rem)', border: '1px solid #d0d7de', borderRadius: '8px' }}>
-                                                <thead>
-                                                    <tr>
-                                                        <th>견적서명</th>
-                                                        <th>구분</th>
-                                                        <th>품목명</th>
-                                                        <th>수량</th>
-                                                        <th className="money-cell">단가 (₩)</th>
-                                                        <th className="money-cell">총액 (₩)</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {quotationItems
-                                                        .filter(item => group.quotations.some(q => q.id === item.quotation_id))
-                                                        .map(item => {
-                                                            const qName = group.quotations.find(q => q.id === item.quotation_id)?.title;
-                                                            return (
+                                </div>
+                                <div className="pa-total">총 ₩ {group.total_amount.toLocaleString()} <span>{expandedProjects[group.name] ? '▴' : '▾'}</span></div>
+                            </div>
+                            
+                            {expandedProjects[group.name] && (
+                                <div className="pa-body">
+                                    {group.quotations.map((quotation, qIdx) => {
+                                        const itemsInQuotation = quotationItems.filter(item => item.quotation_id === quotation.id);
+                                        return (
+                                            <div key={quotation.id} className="pa-quotation">
+                                                <h4 className="pa-quotation-title">📄 {quotation.title} <small>({new Date(quotation.created_at).toLocaleDateString()})</small></h4>
+                                                <div style={{ overflowX: 'auto' }}>
+                                                    <table className="data-table nested">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>구분</th>
+                                                                <th>품목명</th>
+                                                                <th>수량</th>
+                                                                <th className="money-cell">단가 (₩)</th>
+                                                                <th className="money-cell">총액 (₩)</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {itemsInQuotation.map(item => (
                                                                 <tr key={item.id}>
-                                                                    <td style={{ fontSize: '0.8rem', color: '#57606a' }}>{qName}</td>
                                                                     <td><span className={`badge-category cat-${item.item_category === '가공품' ? 'process' : item.item_category === '구매품' ? 'purchase' : 'other'}`}>{item.item_category}</span></td>
                                                                     <td>{item.item_name}</td>
                                                                     <td>{item.quantity}</td>
                                                                     <td className="money-cell">{Number(item.unit_price).toLocaleString()}</td>
                                                                     <td className="money-cell">{Number(item.total_price).toLocaleString()}</td>
                                                                 </tr>
-                                                            );
-                                                        })
-                                                    }
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                            {Object.values(groupedQuotations).length === 0 && (
-                                <div style={{ padding: '2rem', textAlign: 'center', color: '#57606a' }}>
-                                    아직 등록된 견적서가 없습니다.
+                                                            ))}
+                                                            {itemsInQuotation.length === 0 && <tr><td colSpan="5">품목이 없습니다.</td></tr>}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
-                    </div>
-                </main>
-            </div>
-        </div>
+                    ))}
+                    {Object.values(groupedQuotations).length === 0 && (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: '#57606a', border: '1px solid #dce5ed', borderRadius: '8px' }}>
+                            아직 등록된 견적서가 없습니다.
+                        </div>
+                    )}
+                </div>
+            </section>
+        </>
     );
 }

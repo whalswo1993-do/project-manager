@@ -196,17 +196,41 @@ export default function Quotations({ projects, session }) {
 
             const totalAmount = extractedData.items.reduce((sum, item) => sum + (parseFloat(item.total_price) || 0), 0);
             
-            const { data: newQuot, error: qErr } = await supabase.from('quotations').insert({
-                project_id: projectId,
-                project_name: projectName,
-                title: extractedData.title,
-                total_amount: totalAmount
-            }).select().single();
-            
-            if (qErr) throw qErr;
+            let targetQuotId;
+            let existingQuot = null;
+
+            if (projectId) {
+                const { data } = await supabase.from('quotations').select('id').eq('project_id', projectId).maybeSingle();
+                existingQuot = data;
+            } else if (projectName) {
+                const { data } = await supabase.from('quotations').select('id').eq('project_name', projectName).maybeSingle();
+                existingQuot = data;
+            }
+
+            if (existingQuot) {
+                targetQuotId = existingQuot.id;
+                const { error: upErr } = await supabase.from('quotations').update({
+                    title: extractedData.title,
+                    total_amount: totalAmount,
+                    created_at: new Date().toISOString()
+                }).eq('id', targetQuotId);
+                if (upErr) throw upErr;
+                
+                const { error: delErr } = await supabase.from('quotation_items').delete().eq('quotation_id', targetQuotId);
+                if (delErr) throw delErr;
+            } else {
+                const { data: newQuot, error: qErr } = await supabase.from('quotations').insert({
+                    project_id: projectId,
+                    project_name: projectName,
+                    title: extractedData.title,
+                    total_amount: totalAmount
+                }).select().single();
+                if (qErr) throw qErr;
+                targetQuotId = newQuot.id;
+            }
 
             const itemsToInsert = extractedData.items.map(item => ({
-                quotation_id: newQuot.id,
+                quotation_id: targetQuotId,
                 item_name: item.item_name,
                 unit_name: item.unit_name || '',
                 item_category: item.item_category || '구매품',
@@ -227,6 +251,22 @@ export default function Quotations({ projects, session }) {
         } finally {
             setIsExtracting(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+
+    const handleDeleteQuotation = async (id) => {
+        if (!window.confirm('이 견적서와 모든 세부 품목 데이터를 삭제하시겠습니까?')) return;
+        try {
+            const { error: iErr } = await supabase.from('quotation_items').delete().eq('quotation_id', id);
+            if (iErr) throw iErr;
+            const { error: qErr } = await supabase.from('quotations').delete().eq('id', id);
+            if (qErr) throw qErr;
+            
+            setMsg('견적서가 성공적으로 삭제되었습니다.');
+            loadQuotationsData();
+        } catch (error) {
+            console.error(error);
+            setMsg('삭제 실패: ' + error.message);
         }
     };
 
@@ -465,7 +505,12 @@ export default function Quotations({ projects, session }) {
                                         const itemsInQuotation = quotationItems.filter(item => item.quotation_id === quotation.id);
                                         return (
                                             <div key={quotation.id} className="pa-quotation">
-                                                <h4 className="pa-quotation-title">📄 {quotation.title} <small>({new Date(quotation.created_at).toLocaleDateString()})</small></h4>
+                                                <h4 className="pa-quotation-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <span>📄 {quotation.title} <small>({new Date(quotation.created_at).toLocaleDateString()})</small></span>
+                                                    {['admin', 'grade3'].includes(session?.user?.user_metadata?.role || session?.user?.role) && (
+                                                        <button onClick={() => handleDeleteQuotation(quotation.id)} style={{ padding: '2px 8px', fontSize: '11px', color: 'white', background: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>삭제</button>
+                                                    )}
+                                                </h4>
                                                 <div style={{ overflowX: 'auto' }}>
                                                     <table className="data-table nested">
                                                         <thead>

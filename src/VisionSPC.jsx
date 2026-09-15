@@ -1,12 +1,13 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import ExcelJS from 'exceljs';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarController, LineController, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
 import './VisionSPC.css';
 import { calculateStats, exportResultsToExcelWithExcelJS } from './exportSPC';
 import { supabase } from './supabase';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
+ChartJS.register(CategoryScale, LinearScale, BarController, LineController, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
+
 
 export default function VisionSPC() {
     const [isDragging, setIsDragging] = useState(false);
@@ -392,9 +393,11 @@ export default function VisionSPC() {
         if (!activeItem || !activeItem.stats) return null;
         const { data, specs, stats } = activeItem;
         
-        const min = Math.min(...data, specs.lsl || 0);
-        const max = Math.max(...data, specs.usl || 0);
-        const range = max - min;
+        const min = Math.min(...data, specs?.lsl || 0);
+        const max = Math.max(...data, specs?.usl || 0);
+        const rangeMin = Math.min(min, specs?.lsl || 0) - 0.5 * (stats?.sigma || 0.0001);
+        const rangeMax = Math.max(max, specs?.usl || 0) + 0.5 * (stats?.sigma || 0.0001);
+        const range = rangeMax - rangeMin || 0.001;
         const binCount = 20;
         const binWidth = range / binCount;
         
@@ -405,7 +408,7 @@ export default function VisionSPC() {
         }
 
         data.forEach(val => {
-            let binIndex = Math.floor((val - min) / binWidth);
+            let binIndex = Math.floor((val - rangeMin) / binWidth);
             if (binIndex >= binCount) binIndex = binCount - 1;
             if (binIndex < 0) binIndex = 0;
             bins[binIndex]++;
@@ -413,9 +416,9 @@ export default function VisionSPC() {
 
         const normalCurve = [];
         for (let i = 0; i < binCount; i++) {
-            const x = min + (i * binWidth) + (binWidth / 2);
-            const exponent = -Math.pow(x - stats.mean, 2) / (2 * Math.pow(stats.sigma, 2));
-            const y = (1 / (stats.sigma * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
+            const x = rangeMin + (i * binWidth) + (binWidth / 2);
+            const exponent = -Math.pow(x - (stats?.mean || 0), 2) / (2 * Math.pow(stats?.sigma || 0.0001, 2));
+            const y = (1 / ((stats?.sigma || 0.0001) * Math.sqrt(2 * Math.PI))) * Math.exp(exponent);
             normalCurve.push(y * data.length * binWidth);
         }
 
@@ -512,9 +515,9 @@ export default function VisionSPC() {
                                     >
                                         <div className="item-info">
                                             <span className="item-name">{item.name}</span>
-                                            <span className="item-subtext">N={item.stats?.n}</span>
+                                            <span className="item-subtext">N={item.stats?.n || 0}</span>
                                         </div>
-                                        {item.stats?.cpk >= parseFloat(targetCp) ? (
+                                        {(item.stats?.cpk || 0) >= parseFloat(targetCp || '1.33') ? (
                                             <span className="badge badge-success">합격</span>
                                         ) : (
                                             <span className="badge badge-danger">불량</span>
@@ -588,20 +591,28 @@ export default function VisionSPC() {
                             </div>
                         </div>
                     ) : (
-                        <div className="dashboard-grid">
+                        <div className="dashboard-grid" style={{gridTemplateColumns: '350px 1fr'}}>
                             <div style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
                                 <div className="card">
                                     <div className="card-header">
                                         <div className="card-title">{activeItem.name} 결과 요약</div>
                                     </div>
                                     <div className="stats-grid">
-                                        <div className={`stat-card ${activeItem.stats?.cp >= parseFloat(targetCp) ? 'pass' : 'fail'}`}>
+                                        <div className={`stat-card ${(activeItem.stats?.cp || 0) >= parseFloat(targetCp || '1.33') ? 'pass' : 'fail'}`}>
                                             <div className="stat-card-title">Cp (단기)</div>
-                                            <div className="stat-card-value">{activeItem.stats?.cp.toFixed(2)}</div>
+                                            <div className="stat-card-value">{(activeItem.stats?.cp || 0).toFixed(2)}</div>
                                         </div>
-                                        <div className={`stat-card ${activeItem.stats?.cpk >= parseFloat(targetCp) ? 'pass' : 'fail'}`}>
+                                        <div className={`stat-card ${(activeItem.stats?.cpk || 0) >= parseFloat(targetCp || '1.33') ? 'pass' : 'fail'}`}>
                                             <div className="stat-card-title">Cpk (치우침 고려)</div>
-                                            <div className="stat-card-value">{activeItem.stats?.cpk.toFixed(2)}</div>
+                                            <div className="stat-card-value">{(activeItem.stats?.cpk || 0).toFixed(2)}</div>
+                                        </div>
+                                        <div className="stat-card">
+                                            <div className="stat-card-title">표준편차 (σ)</div>
+                                            <div className="stat-card-value">{(activeItem.stats?.sigma || 0).toFixed(4)}</div>
+                                        </div>
+                                        <div className="stat-card">
+                                            <div className="stat-card-title">평균 (Mean)</div>
+                                            <div className="stat-card-value">{(activeItem.stats?.mean || 0).toFixed(4)}</div>
                                         </div>
                                     </div>
                                 </div>

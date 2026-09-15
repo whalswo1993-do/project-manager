@@ -277,6 +277,28 @@ export default function Quotations({ projects, session, role }) {
         }
     };
 
+    const handleDeleteProjectQuotations = async (e, group) => {
+        e.stopPropagation();
+        if (!window.confirm(`'${group.name}' 프로젝트의 모든 견적서와 세부 품목 데이터를 삭제하시겠습니까?`)) return;
+        
+        try {
+            const quotationIds = group.quotations.map(q => q.id);
+            if (quotationIds.length === 0) return;
+            
+            const { error: iErr } = await supabase.from('quotation_items').delete().in('quotation_id', quotationIds);
+            if (iErr) throw iErr;
+            
+            const { error: qErr } = await supabase.from('quotations').delete().in('id', quotationIds);
+            if (qErr) throw qErr;
+            
+            setMsg('해당 프로젝트의 모든 견적서가 삭제되었습니다.');
+            loadQuotationsData();
+        } catch (error) {
+            console.error(error);
+            setMsg('삭제 실패: ' + error.message);
+        }
+    };
+
     const handleCheckboxChange = (cat) => {
         setFilterCategory(prev => ({ ...prev, [cat]: !prev[cat] }));
     };
@@ -496,7 +518,12 @@ export default function Quotations({ projects, session, role }) {
                         <div key={group.name} className="project-accordion">
                             <div className="pa-header" onClick={() => toggleProject(group.name)}>
                                 <div className="pa-title">
-                                    <h3>{group.name}</h3>
+                                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        {group.name}
+                                        {['admin', 'grade3'].includes(role) && (
+                                            <button onClick={(e) => handleDeleteProjectQuotations(e, group)} style={{ padding: '2px 8px', fontSize: '11px', color: 'white', background: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>전체 삭제</button>
+                                        )}
+                                    </h3>
                                     <div className="pa-summary">
                                         <span className="pa-badge process">가공품: ₩{group.process_amount.toLocaleString()}</span>
                                         <span className="pa-badge purchase">구매품: ₩{group.purchase_amount.toLocaleString()}</span>

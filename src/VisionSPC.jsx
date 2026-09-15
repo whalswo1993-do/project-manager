@@ -60,6 +60,123 @@ export default function VisionSPC() {
             console.error("Failed to load presets from Supabase", e);
         }
     };
+    const parseSpcGrid = (parsedGrid) => {
+        if (!parsedGrid || parsedGrid.length === 0) return [];
+
+        let labelColIdx = -1;
+        
+        const keywordScore = {};
+        for (let r = 0; r < Math.min(20, parsedGrid.length); r++) {
+            const row = parsedGrid[r];
+            for (let c = 0; c < row.length; c++) {
+                const cell = String(row[c] || "").trim().toLowerCase();
+                if (["usl", "lsl", "target", "raw data"].includes(cell)) {
+                    keywordScore[c] = (keywordScore[c] || 0) + 1;
+                }
+            }
+        }
+        
+        if (Object.keys(keywordScore).length > 0) {
+            labelColIdx = parseInt(Object.keys(keywordScore).reduce((a, b) => keywordScore[a] > keywordScore[b] ? a : b));
+        }
+
+        let uslRowIdx = -1, lslRowIdx = -1, targetRowIdx = -1, rawDataRowIdx = -1;
+        let headerRowIdx = -1;
+
+        if (labelColIdx !== -1) {
+            for (let r = 0; r < Math.min(50, parsedGrid.length); r++) {
+                const cell = String(parsedGrid[r][labelColIdx] || "").trim().toLowerCase();
+                if (cell === "usl") uslRowIdx = r;
+                else if (cell === "lsl") lslRowIdx = r;
+                else if (cell === "target") targetRowIdx = r;
+                else if (cell === "raw data") rawDataRowIdx = r;
+            }
+
+            const pivotRow = Math.max(0, uslRowIdx > -1 ? uslRowIdx : rawDataRowIdx > -1 ? rawDataRowIdx : 1);
+            for (let r = pivotRow - 1; r >= 0; r--) {
+                const nonEmpties = parsedGrid[r].filter((v, i) => i !== labelColIdx && String(v).trim() !== "").length;
+                if (nonEmpties > 0) {
+                    headerRowIdx = r;
+                    break;
+                }
+            }
+        }
+
+        if (headerRowIdx === -1) {
+            for (let r = 0; r < Math.min(10, parsedGrid.length); r++) {
+                if (parsedGrid[r] && parsedGrid[r].some(cell => String(cell).trim() !== "")) {
+                    if (String(parsedGrid[r][0] || "").toUpperCase().includes("CP")) continue;
+                    headerRowIdx = r;
+                    break;
+                }
+            }
+        }
+
+        if (headerRowIdx === -1) return [];
+
+        const headers = parsedGrid[headerRowIdx];
+        const parsedItems = [];
+
+        headers.forEach((headerName, c) => {
+            if (c === labelColIdx) return;
+            const hName = String(headerName || "").trim();
+            if (!hName) return;
+            
+            const colData = [];
+            let startRow = rawDataRowIdx !== -1 ? rawDataRowIdx : headerRowIdx + 1;
+            
+            for (let r = startRow; r < parsedGrid.length; r++) {
+                if (r === uslRowIdx || r === lslRowIdx || r === targetRowIdx || r === headerRowIdx) continue;
+                
+                const row = parsedGrid[r];
+                if (!row) continue;
+                
+                const cellVal = row[c];
+                if (cellVal !== undefined && cellVal !== null && String(cellVal).trim() !== "") {
+                    const num = parseFloat(String(cellVal).replace(/,/g, ''));
+                    if (!isNaN(num)) {
+                        colData.push(num);
+                    }
+                }
+            }
+            
+            if (colData.length > 0) {
+                const min = Math.min(...colData);
+                const max = Math.max(...colData);
+                const calcTarget = (min + max) / 2;
+                const calcMargin = (max - min) * 0.1;
+                
+                let usl = max + calcMargin;
+                let lsl = min - calcMargin;
+                let target = calcTarget;
+
+                if (uslRowIdx !== -1 && parsedGrid[uslRowIdx] && parsedGrid[uslRowIdx][c]) {
+                    const val = parseFloat(String(parsedGrid[uslRowIdx][c]).replace(/,/g, ''));
+                    if (!isNaN(val)) usl = val;
+                }
+                if (lslRowIdx !== -1 && parsedGrid[lslRowIdx] && parsedGrid[lslRowIdx][c]) {
+                    const val = parseFloat(String(parsedGrid[lslRowIdx][c]).replace(/,/g, ''));
+                    if (!isNaN(val)) lsl = val;
+                }
+                if (targetRowIdx !== -1 && parsedGrid[targetRowIdx] && parsedGrid[targetRowIdx][c]) {
+                    const val = parseFloat(String(parsedGrid[targetRowIdx][c]).replace(/,/g, ''));
+                    if (!isNaN(val)) target = val;
+                }
+
+                const specs = { target, usl, lsl, subgroup: 1 };
+                const stats = calculateStats(colData, specs, sigmaMethod);
+                
+                parsedItems.push({
+                    name: hName,
+                    data: colData,
+                    specs,
+                    stats
+                });
+            }
+        });
+        
+        return parsedItems;
+    };
 
     // Excel 파싱
     const handleFileUpload = async (file) => {
@@ -71,40 +188,13 @@ export default function VisionSPC() {
             await workbook.xlsx.load(buffer);
             
             const worksheet = workbook.worksheets[0];
-            const parsedItems = [];
+            const parsedGrid = [];
+            worksheet.eachRow((row, rowNumber) => {
+                const rowValues = row.values.slice(1); // row.values[0] is empty in ExcelJS
+                parsedGrid.push(rowValues);
+            });
             
-            const headers = worksheet.getRow(1).values;
-            
-            for (let col = 1; col < headers.length; col++) {
-                const headerName = headers[col];
-                if (!headerName) continue;
-                
-                const colData = [];
-                worksheet.getColumn(col).eachCell((cell, rowNumber) => {
-                    if (rowNumber > 1 && typeof cell.value === 'number') {
-                        colData.push(cell.value);
-                    }
-                });
-                
-                if (colData.length > 0) {
-                    const min = Math.min(...colData);
-                    const max = Math.max(...colData);
-                    const target = (min + max) / 2;
-                    const margin = (max - min) * 0.1;
-                    const usl = max + margin;
-                    const lsl = min - margin;
-
-                    const specs = { target, usl, lsl, subgroup: 1 };
-                    const stats = calculateStats(colData, specs, sigmaMethod);
-                    
-                    parsedItems.push({
-                        name: headerName,
-                        data: colData,
-                        specs,
-                        stats
-                    });
-                }
-            }
+            const parsedItems = parseSpcGrid(parsedGrid);
             
             setItems(parsedItems);
             if (parsedItems.length > 0) setActiveItemIndex(0);
@@ -282,60 +372,7 @@ export default function VisionSPC() {
             }).filter(row => row.length > 0 && row.some(cell => cell !== ""));
             
             if (parsedGrid.length === 0) return;
-            
-            let headerIdx = -1;
-            for (let r = 0; r < parsedGrid.length; r++) {
-                const row = parsedGrid[r];
-                if (row.some(cell => cell !== "")) {
-                    if (row[0] && row[0].includes("CP")) continue;
-                    headerIdx = r;
-                    break;
-                }
-            }
-            
-            if (headerIdx === -1) {
-                alert("유효한 헤더를 찾을 수 없습니다.");
-                return;
-            }
-            
-            const headers = parsedGrid[headerIdx];
-            const parsedItems = [];
-            
-            headers.forEach((headerName, c) => {
-                if (!headerName) return;
-                
-                const colData = [];
-                for (let r = headerIdx + 1; r < parsedGrid.length; r++) {
-                    const row = parsedGrid[r];
-                    if (!row) continue;
-                    const val = row[c];
-                    if (val !== undefined && val !== "") {
-                        const num = parseFloat(val);
-                        if (!isNaN(num)) {
-                            colData.push(num);
-                        }
-                    }
-                }
-                
-                if (colData.length > 0) {
-                    const min = Math.min(...colData);
-                    const max = Math.max(...colData);
-                    const target = (min + max) / 2;
-                    const margin = (max - min) * 0.1;
-                    const usl = max + margin;
-                    const lsl = min - margin;
-
-                    const specs = { target, usl, lsl, subgroup: 1 };
-                    const stats = calculateStats(colData, specs, sigmaMethod);
-                    
-                    parsedItems.push({
-                        name: headerName,
-                        data: colData,
-                        specs,
-                        stats
-                    });
-                }
-            });
+            const parsedItems = parseSpcGrid(parsedGrid);
             
             if (parsedItems.length > 0) {
                 setItems(parsedItems);

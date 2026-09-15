@@ -23,6 +23,7 @@ export default function Quotations({ projects, session, role }) {
 
     const [msg, setMsg] = useState('');
     const [expandedProjects, setExpandedProjects] = useState({});
+    const [projectScopeFilter, setProjectScopeFilter] = useState("전체");
     
     const fileInputRef = useRef(null);
     const searchContainerRef = useRef(null);
@@ -319,36 +320,6 @@ export default function Quotations({ projects, session, role }) {
         setFilterCategory(prev => ({ ...prev, [cat]: !prev[cat] }));
     };
 
-    const uniqueItemNames = [...new Set(quotationItems.map(item => item.item_name))].sort();
-    const suggestedItems = uniqueItemNames.filter(name => 
-        name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    let searchResults = quotationItems.filter(item => {
-        if (!searchQuery) return false;
-        
-        const matchName = item.item_name.toLowerCase() === searchQuery.toLowerCase() || 
-                          item.item_name.toLowerCase().includes(searchQuery.toLowerCase());
-        
-        let matchCategory = false;
-        if (item.item_category === '가공품' && filterCategory['가공품']) matchCategory = true;
-        if (item.item_category === '구매품' && filterCategory['구매품']) matchCategory = true;
-        if (item.item_category === '용역/기타' && filterCategory['용역/기타']) matchCategory = true;
-        
-        return matchName && matchCategory;
-    });
-
-    if (sortOrder === 'priceDesc') {
-        searchResults.sort((a, b) => b.unit_price - a.unit_price);
-    } else {
-        searchResults.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    }
-
-    const selectSuggestion = (name) => {
-        setSearchQuery(name);
-        setIsSearchFocused(false);
-    };
-
     const groupedQuotations = {};
     quotations.forEach(q => {
         let key = "미지정 프로젝트";
@@ -372,7 +343,6 @@ export default function Quotations({ projects, session, role }) {
         groupedQuotations[key].quotations.push(q);
         groupedQuotations[key].total_amount += Number(q.total_amount);
         
-        // 카테고리별 누적액 계산
         const qItems = quotationItems.filter(item => item.quotation_id === q.id);
         qItems.forEach(item => {
             if (item.item_category === '가공품') groupedQuotations[key].process_amount += Number(item.total_price);
@@ -380,6 +350,55 @@ export default function Quotations({ projects, session, role }) {
             else groupedQuotations[key].other_amount += Number(item.total_price);
         });
     });
+
+    const itemToProjectKey = {};
+    Object.values(groupedQuotations).forEach(group => {
+        group.quotations.forEach(q => {
+            itemToProjectKey[q.id] = group.name;
+        });
+    });
+
+    const uniqueItemNames = [...new Set(quotationItems.map(item => item.item_name))].sort();
+    const suggestedItems = uniqueItemNames.filter(name => 
+        name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    let searchResults = quotationItems.filter(item => {
+        if (!searchQuery) return false;
+        
+        const matchName = item.item_name.toLowerCase() === searchQuery.toLowerCase() || 
+                          item.item_name.toLowerCase().includes(searchQuery.toLowerCase());
+        
+        let matchCategory = false;
+        if (item.item_category === '가공품' && filterCategory['가공품']) matchCategory = true;
+        if (item.item_category === '구매품' && filterCategory['구매품']) matchCategory = true;
+        if (item.item_category === '용역/기타' && filterCategory['용역/기타']) matchCategory = true;
+        
+        let matchScope = true;
+        if (projectScopeFilter !== "전체") {
+            const projectKey = itemToProjectKey[item.quotation_id] || "";
+            if (projectScopeFilter === "Notching") {
+                matchScope = projectKey.toLowerCase().includes("notching") || projectKey.toLowerCase().includes("노칭");
+            } else if (projectScopeFilter === "Stacking") {
+                matchScope = projectKey.toLowerCase().includes("stacking") || projectKey.toLowerCase().includes("스태킹");
+            } else {
+                matchScope = projectKey === projectScopeFilter;
+            }
+        }
+        
+        return matchName && matchCategory && matchScope;
+    });
+
+    if (sortOrder === 'priceDesc') {
+        searchResults.sort((a, b) => b.unit_price - a.unit_price);
+    } else {
+        searchResults.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
+    const selectSuggestion = (name) => {
+        setSearchQuery(name);
+        setIsSearchFocused(false);
+    };
 
     const toggleProject = (name) => {
         setExpandedProjects(prev => ({ ...prev, [name]: !prev[name] }));
@@ -457,17 +476,35 @@ export default function Quotations({ projects, session, role }) {
             </section>
 
             <section>
-                <div className="filterbar">
+                <div className="filterbar" style={{ flexWrap: 'wrap', gap: '10px' }}>
                     <h2>품목별 단가 검색</h2>
-                    <div className="category-checkboxes">
-                        <label><input type="checkbox" checked={filterCategory['가공품']} onChange={() => handleCheckboxChange('가공품')} /> 가공품</label>
-                        <label><input type="checkbox" checked={filterCategory['구매품']} onChange={() => handleCheckboxChange('구매품')} /> 구매품</label>
-                        <label><input type="checkbox" checked={filterCategory['용역/기타']} onChange={() => handleCheckboxChange('용역/기타')} /> 개발/이설/기타</label>
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginLeft: 'auto' }}>
+                        <div className="category-checkboxes">
+                            <label><input type="checkbox" checked={filterCategory['가공품']} onChange={() => handleCheckboxChange('가공품')} /> 가공품</label>
+                            <label><input type="checkbox" checked={filterCategory['구매품']} onChange={() => handleCheckboxChange('구매품')} /> 구매품</label>
+                            <label><input type="checkbox" checked={filterCategory['용역/기타']} onChange={() => handleCheckboxChange('용역/기타')} /> 개발/이설/기타</label>
+                        </div>
+                        <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} style={{maxWidth: '150px'}}>
+                            <option value="recent">최신순</option>
+                            <option value="priceDesc">단가 높은 순</option>
+                        </select>
                     </div>
-                    <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} style={{maxWidth: '150px'}}>
-                        <option value="recent">최신순</option>
-                        <option value="priceDesc">단가 높은 순</option>
-                    </select>
+                    <div style={{ width: '100%', display: 'flex', marginTop: '5px' }}>
+                        <select 
+                            value={projectScopeFilter} 
+                            onChange={e => setProjectScopeFilter(e.target.value)}
+                            style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5da', outline: 'none', width: '250px', fontSize: '13px' }}
+                        >
+                            <option value="전체">모든 견적서에서 검색</option>
+                            <option value="Notching">Notching 관련 견적서만 검색</option>
+                            <option value="Stacking">Stacking 관련 견적서만 검색</option>
+                            <optgroup label="개별 프로젝트 견적">
+                                {Object.keys(groupedQuotations).map(key => (
+                                    <option key={key} value={key}>{key}</option>
+                                ))}
+                            </optgroup>
+                        </select>
+                    </div>
                 </div>
                 <div className="search-bar" ref={searchContainerRef} style={{ position: 'relative', marginTop: '10px' }}>
                     <input 

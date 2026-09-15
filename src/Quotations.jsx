@@ -200,10 +200,10 @@ export default function Quotations({ projects, session, role }) {
             let existingQuots = [];
 
             if (projectId) {
-                const { data } = await supabase.from('quotations').select('id').eq('project_id', projectId);
+                const { data } = await supabase.from('quotations').select('id').eq('project_id', projectId).eq('title', extractedData.title);
                 existingQuots = data || [];
             } else if (projectName) {
-                const { data } = await supabase.from('quotations').select('id').eq('project_name', projectName);
+                const { data } = await supabase.from('quotations').select('id').eq('project_name', projectName).eq('title', extractedData.title);
                 existingQuots = data || [];
             }
 

@@ -254,7 +254,23 @@ export default function Quotations({ projects, session, role }) {
             
         } catch (error) {
             console.error("Upload Error:", error);
-            setMsg("분석/저장 실패: " + error.message);
+            let userFriendlyMsg = "견적서를 분석하거나 저장하는 도중 알 수 없는 오류가 발생했습니다.";
+            if (error.message.includes("429")) {
+                userFriendlyMsg = "AI 분석 요청 횟수(무료 할당량)를 초과했습니다. 약 1분 후 다시 시도해주세요.";
+            } else if (error.message.includes("503")) {
+                userFriendlyMsg = "AI 분석 서버에 일시적인 과부하가 발생했습니다. 잠시 후 다시 시도해주세요.";
+            } else if (error.message.includes("지원하지 않는 파일") || error.message.includes("추출하지 못했습니다") || error.message.includes("API 키가")) {
+                userFriendlyMsg = error.message;
+            }
+            
+            setMsg(
+                <span style={{ color: '#ef4444' }}>
+                    분석/저장 실패: {userFriendlyMsg}
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal', marginTop: '4px' }}>
+                        원인파악용 기술 정보: {error.message}
+                    </div>
+                </span>
+            );
         } finally {
             setIsExtracting(false);
             if (fileInputRef.current) fileInputRef.current.value = "";

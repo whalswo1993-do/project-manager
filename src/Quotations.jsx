@@ -34,9 +34,32 @@ export default function Quotations({ projects, session }) {
                 setIsSearchFocused(false);
             }
         };
+        const handlePaste = (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            const items = e.clipboardData?.items;
+            if (items) {
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    if (item.type.indexOf("image") !== -1) {
+                        e.preventDefault();
+                        const file = item.getAsFile();
+                        if (file) { handleFileUpload(file); return; }
+                    }
+                }
+            }
+            const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text");
+            if (text && text.trim().length > 5) {
+                e.preventDefault();
+                handleFileUpload(text);
+            }
+        };
         document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+        document.addEventListener("paste", handlePaste);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("paste", handlePaste);
+        };
+    }, [selectedProjectInput]);
 
     const loadQuotationsData = async () => {
         try {
@@ -60,8 +83,8 @@ export default function Quotations({ projects, session }) {
         return '구매품';
     };
 
-    const handleFileUpload = async (file) => {
-        if (!file) return;
+    const handleFileUpload = async (fileOrText) => {
+        if (!fileOrText) return;
         if (!selectedProjectInput.trim()) {
             setMsg("업로드하기 전에 견적서를 연결할 프로젝트명을 입력하거나 선택해주세요.");
             return;
@@ -71,10 +94,45 @@ export default function Quotations({ projects, session }) {
         setMsg("견적서를 분석 중입니다...");
 
         try {
-            let extractedData = { title: file.name, items: [] };
+            let extractedData = { title: typeof fileOrText === 'string' ? '클립보드 붙여넣기' : fileOrText.name, items: [] };
 
-            if (file.name.match(/\.(xlsx|xls)$/i)) {
-                const data = await file.arrayBuffer();
+            if (typeof fileOrText === 'string') {
+                const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+                if (!apiKey) throw new Error("AI 분석용 Gemini API 키가 설정되지 않았습니다.");
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" }); 
+                
+                const prompt = `당신은 견적서(Quotation) 데이터를 분석하는 전문가입니다. 첨부된 엑셀 복사 데이터를 분석하여 아래 JSON 구조로만 데이터를 추출하세요.
+요구사항:
+1. title: 문서의 제목(알 수 없으면 "클립보드 견적 데이터"로 입력)
+2. items: 배열 형태. 품목명(item_name), 품목구분(item_category), 수량(quantity), 단가(unit_price), 총액(total_price)
+품목구분(item_category) 규칙:
+ - Maker가 명시되어 있는 상용품은 "구매품"
+ - 스틸계열, AL계열, Acetal, Peak재질, 도면참조 등 제작/가공품은 "가공품"
+ - 개발, 이설 관련 비용은 "용역/기타"
+ 
+주의: JSON 이외의 어떠한 설명이나 마크다운을 포함하지 말고 순수 JSON만 응답하세요. 숫자는 콤마 없이 입력하세요.
+출력 예시:
+{
+  "title": "클립보드 견적 데이터",
+  "items": [
+    { "item_name": "도면참조 Base Plate", "item_category": "가공품", "quantity": 2, "unit_price": 5000000, "total_price": 10000000 }
+  ]
+}`;
+                
+                const result = await model.generateContent([
+                    { text: fileOrText },
+                    prompt
+                ]);
+                
+                let responseText = result.response.text().trim();
+                responseText = responseText.replace(/^\`\`\`json\s*/, "").replace(/\s*\`\`\`$/, "");
+                const json = JSON.parse(responseText);
+                
+                extractedData.title = json.title || '클립보드 데이터';
+                extractedData.items = json.items || [];
+            } else if (fileOrText.name.match(/\.(xlsx|xls)$/i)) {
+                const data = await fileOrText.arrayBuffer();
                 const wb = XLSX.read(data, { cellDates: false });
                 const sheet = wb.Sheets[wb.SheetNames[0]];
                 const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
@@ -98,7 +156,7 @@ export default function Quotations({ projects, session }) {
                         }
                     }
                 });
-            } else if (file.type.startsWith("image/") || file.name.match(/\.(pdf)$/i)) {
+            } else if (fileOrText.type.startsWith("image/") || fileOrText.name.match(/\.(pdf)$/i)) {
                 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
                 if (!apiKey) throw new Error("AI 분석용 Gemini API 키가 설정되지 않았습니다.");
                 const genAI = new GoogleGenerativeAI(apiKey);
@@ -107,7 +165,7 @@ export default function Quotations({ projects, session }) {
                 const reader = new FileReader();
                 const b64 = await new Promise(res => {
                     reader.onload = () => res(reader.result);
-                    reader.readAsDataURL(file);
+                    reader.readAsDataURL(fileOrText);
                 });
                 const b64d = b64.split(",")[1];
                 
@@ -118,7 +176,7 @@ export default function Quotations({ projects, session }) {
 품목구분(item_category) 규칙:
  - Maker가 명시되어 있는 상용품은 "구매품"
  - 스틸계열, AL계열, Acetal, Peak재질, 도면참조 등 제작/가공품은 "가공품"
- - 개조, 개발, 이설 관련 비용은 "용역/기타"
+ - 개발, 이설 관련 비용은 "용역/기타"
  
 주의: JSON 이외의 어떠한 설명이나 마크다운을 포함하지 말고 순수 JSON만 응답하세요. 숫자는 콤마 없이 입력하세요.
 출력 예시:
@@ -131,7 +189,7 @@ export default function Quotations({ projects, session }) {
 }`;
                 
                 const result = await model.generateContent([
-                    { inlineData: { data: b64d, mimeType: file.type } },
+                    { inlineData: { data: b64d, mimeType: fileOrText.type } },
                     prompt
                 ]);
                 
@@ -139,10 +197,10 @@ export default function Quotations({ projects, session }) {
                 responseText = responseText.replace(/^\`\`\`json\s*/, "").replace(/\s*\`\`\`$/, "");
                 const json = JSON.parse(responseText);
                 
-                extractedData.title = json.title || file.name;
+                extractedData.title = json.title || fileOrText.name;
                 extractedData.items = json.items || [];
             } else {
-                throw new Error("지원하지 않는 파일 형식입니다. (Excel, PDF, 이미지)");
+                throw new Error("지원하지 않는 파일 형식입니다. (Excel, PDF, 이미지, 클립보드 텍스트)");
             }
 
             if (extractedData.items.length === 0) {
@@ -266,7 +324,7 @@ export default function Quotations({ projects, session }) {
                     <div>
                         <input type="file" ref={fileInputRef} onChange={e=>handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, image/*, .pdf" style={{display:'none'}}/>
                         <button onClick={()=>fileInputRef.current.click()} disabled={isExtracting} style={{background:isExtracting?'#94a3b8':'linear-gradient(135deg, #10b981, #059669)',color:'#fff',padding:'8px 14px',borderRadius:'8px',fontWeight:'bold',border:'none',boxShadow:'0 2px 5px rgba(0,0,0,0.1)'}}>
-                            {isExtracting ? "✨ AI 분석 중..." : "✨ 견적서 자동 분석 (Excel/이미지/PDF)"}
+                            {isExtracting ? "✨ AI 분석 중..." : "✨ 견적서 자동 분석 (Excel/이미지/붙여넣기)"}
                         </button>
                     </div>
                 </div>
@@ -296,7 +354,7 @@ export default function Quotations({ projects, session }) {
                     <div className="category-checkboxes">
                         <label><input type="checkbox" checked={filterCategory['가공품']} onChange={() => handleCheckboxChange('가공품')} /> 가공품</label>
                         <label><input type="checkbox" checked={filterCategory['구매품']} onChange={() => handleCheckboxChange('구매품')} /> 구매품</label>
-                        <label><input type="checkbox" checked={filterCategory['용역/기타']} onChange={() => handleCheckboxChange('용역/기타')} /> 개조/이설/기타</label>
+                        <label><input type="checkbox" checked={filterCategory['용역/기타']} onChange={() => handleCheckboxChange('용역/기타')} /> 개발/이설/기타</label>
                     </div>
                     <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} style={{maxWidth: '150px'}}>
                         <option value="recent">최신순</option>

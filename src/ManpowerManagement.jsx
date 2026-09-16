@@ -511,7 +511,6 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             <p>마스터 플랜 기반 부서별 일일 투입 인원 및 전사 공수 종합 모니터링</p>
           </div>
         </div>
-        <MonthNavigator currentDate={currentDate} onPrev={prevMonth} onNext={nextMonth} onToday={goToToday} />
       </div>
 
       {/* Filter and Action Bar */}
@@ -535,22 +534,26 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
           {viewMode === "range" ? (
             <div className="mp-date-range-group">
-              <span style={{ fontSize: "12px", fontWeight: "bold", color: "#334155" }}>조회 기간:</span>
+              <span className="mp-date-range-label">조회 기간:</span>
               <input
                 type="date"
+                className="mp-date-input"
                 value={customStart}
                 onChange={e => setCustomStart(e.target.value)}
               />
-              <span style={{ color: "#64748b" }}>~</span>
+              <span className="mp-date-sep">~</span>
               <input
                 type="date"
+                className="mp-date-input"
                 value={customEnd}
                 onChange={e => setCustomEnd(e.target.value)}
               />
-              <button className="mp-quick-btn" onClick={() => handleQuickPreset(1)}>1개월</button>
-              <button className="mp-quick-btn" onClick={() => handleQuickPreset(3)}>3개월</button>
-              <button className="mp-quick-btn" onClick={() => handleQuickPreset(6)}>6개월</button>
-              <button className="mp-quick-btn" onClick={handleAllRange}>전체 기간</button>
+              <div className="mp-quick-btns">
+                <button className="mp-quick-btn" onClick={() => handleQuickPreset(1)}>1개월</button>
+                <button className="mp-quick-btn" onClick={() => handleQuickPreset(3)}>3개월</button>
+                <button className="mp-quick-btn" onClick={() => handleQuickPreset(6)}>6개월</button>
+                <button className="mp-quick-btn" onClick={handleAllRange}>전체 기간</button>
+              </div>
             </div>
           ) : (
             <div style={{ fontSize: "13px", color: "#64748b" }}>

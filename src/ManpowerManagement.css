@@ -165,23 +165,55 @@
 }
 
 .mp-date-range-group {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
-.mp-date-range-group input[type="date"] {
-  padding: 6px 10px;
+.mp-date-range-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  white-space: nowrap;
+}
+
+.mp-date-sep {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.mp-date-range-group input[type="date"],
+.mp-date-input {
+  width: 128px;
+  min-width: 128px;
+  max-width: 128px;
+  height: 32px;
+  padding: 4px 8px;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 12px;
   background: #ffffff;
   color: #1e293b;
+  box-sizing: border-box;
+}
+
+.mp-date-input:focus {
+  border-color: #0969da;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.15);
+}
+
+.mp-quick-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .mp-quick-btn {
-  padding: 5px 10px;
+  height: 32px;
+  padding: 0 9px;
   background: #eff6ff;
   color: #1d4ed8;
   border: 1px solid #bfdbfe;
@@ -189,11 +221,16 @@
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.15s ease;
 }
 
 .mp-quick-btn:hover {
   background: #dbeafe;
+  border-color: #93c5fd;
 }
 
 .mp-filter-group {

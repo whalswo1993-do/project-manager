@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import "./ManpowerManagement.css";
 import ExcelJS from "exceljs";
 import PptxGenJS from "pptxgenjs";
+import { normalizeJVName } from "./utils";
 
 export const DEPT_ORDER = ["mechanical", "vision", "control", "electrical", "safety", "manager"];
 
@@ -95,9 +96,9 @@ function renderProjectDetailCard(slide, p, yTop, C) {
   // Project Header Text
   slide.addText(
     [
-      { text: `[${p.manufacturingNo || "제조번호 없음"}]  `, options: { bold: true, color: "93C5FD", fontSize: 11 } },
-      { text: `${p.name}  `, options: { bold: true, color: C.white, fontSize: 12 } },
-      { text: `(Site: ${p.site || "-"} | Line: ${p.line || "-"} | PM: ${p.pm || "-"})`, options: { color: "CBD5E1", fontSize: 9 } }
+      { text: `[${normalizeJVName(p.manufacturingNo) || "제조번호 없음"}]  `, options: { bold: true, color: "93C5FD", fontSize: 11 } },
+      { text: `${normalizeJVName(p.name)}  `, options: { bold: true, color: C.white, fontSize: 12 } },
+      { text: `(Site: ${normalizeJVName(p.site) || "-"} | Line: ${normalizeJVName(p.line) || "-"} | PM: ${p.pm || "-"})`, options: { color: "CBD5E1", fontSize: 9 } }
     ],
     { x: 0.8, y: yTop + 0.08, w: 7.2, h: 0.3, margin: 0 }
   );
@@ -332,13 +333,17 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
   // Filter projects by site and search
   const filteredProjects = useMemo(() => {
     return projects.filter(p => {
-      if (siteFilter !== "전체" && p.site !== siteFilter) return false;
+      const pSiteNorm = normalizeJVName(p.site);
+      const siteFilterNorm = normalizeJVName(siteFilter);
+      if (siteFilter !== "전체" && pSiteNorm !== siteFilterNorm && p.site !== siteFilter) return false;
       if (search.trim()) {
-        const q = search.toLowerCase();
+        const q = normalizeJVName(search.toLowerCase().trim()).toLowerCase();
+        const rawQ = search.toLowerCase().trim();
         const match =
-          (p.name && p.name.toLowerCase().includes(q)) ||
-          (p.manufacturingNo && p.manufacturingNo.toLowerCase().includes(q)) ||
-          (p.line && p.line.toLowerCase().includes(q));
+          (p.name && (p.name.toLowerCase().includes(q) || p.name.toLowerCase().includes(rawQ) || normalizeJVName(p.name).toLowerCase().includes(q))) ||
+          (p.manufacturingNo && (p.manufacturingNo.toLowerCase().includes(q) || p.manufacturingNo.toLowerCase().includes(rawQ))) ||
+          (p.line && (p.line.toLowerCase().includes(q) || p.line.toLowerCase().includes(rawQ))) ||
+          (p.site && (p.site.toLowerCase().includes(q) || p.site.toLowerCase().includes(rawQ) || pSiteNorm.toLowerCase().includes(q)));
         if (!match) return false;
       }
       return true;
@@ -411,10 +416,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                 if (!pb) {
                   pb = {
                     projectId: p.id,
-                    manufacturingNo: p.manufacturingNo,
-                    name: p.name,
-                    site: p.site,
-                    line: p.line,
+                    manufacturingNo: normalizeJVName(p.manufacturingNo),
+                    name: normalizeJVName(p.name),
+                    site: normalizeJVName(p.site),
+                    line: normalizeJVName(p.line),
                     total: 0,
                     departments: {}
                   };
@@ -438,10 +443,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
               }
               daily[dateStr].projectBreakdown.push({
                 projectId: p.id,
-                manufacturingNo: p.manufacturingNo,
-                name: p.name,
-                site: p.site,
-                line: p.line,
+                manufacturingNo: normalizeJVName(p.manufacturingNo),
+                name: normalizeJVName(p.name),
+                site: normalizeJVName(p.site),
+                line: normalizeJVName(p.line),
                 total: num,
                 departments: {}
               });
@@ -889,9 +894,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
       displayActiveProjects.slice(0, 5).forEach(p => {
         topPjtRows.push([
-          { text: p.manufacturingNo || "-", options: { align: "center", bold: true, color: C.slate } },
-          { text: p.name || "-", options: { align: "left", bold: true, color: C.navy } },
-          { text: p.site || "-", options: { align: "center", color: C.gray } },
+          { text: normalizeJVName(p.manufacturingNo) || "-", options: { align: "center", bold: true, color: C.slate } },
+          { text: normalizeJVName(p.name) || "-", options: { align: "left", bold: true, color: C.navy } },
+          { text: normalizeJVName(p.site) || "-", options: { align: "center", color: C.gray } },
           { text: `${p.pRangeTotal.toLocaleString()} M/D`, options: { align: "right", bold: true, color: C.blue } },
           { text: p.ratio !== "-" ? `${p.ratio}%` : "-", options: { align: "right", bold: true, color: C.green } }
         ]);
@@ -1027,7 +1032,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                 // 3. Project name summary: Text 7.5
                 const pList = dData.projectBreakdown || [];
                 if (pList.length > 0) {
-                  const pName = pList[0].manufacturingNo || pList[0].name;
+                  const pName = normalizeJVName(pList[0].manufacturingNo || pList[0].name);
                   const pExtra = pList.length > 1 ? ` 외 ${pList.length - 1}건` : "";
                   textRuns.push({
                     text: `${pName}${pExtra}`,
@@ -1121,10 +1126,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           const ratio = pTotalManday > 0 ? ((pRangeTotal / pTotalManday) * 100).toFixed(1) + "%" : "-";
 
           tableRows.push([
-            { text: p.manufacturingNo || "-", options: { align: "center", bold: true, color: C.slate } },
-            { text: p.site || "-", options: { align: "center", color: C.gray } },
-            { text: p.line || "-", options: { align: "center", color: C.gray } },
-            { text: p.name || "-", options: { align: "left", bold: true, color: C.navy } },
+            { text: normalizeJVName(p.manufacturingNo) || "-", options: { align: "center", bold: true, color: C.slate } },
+            { text: normalizeJVName(p.site) || "-", options: { align: "center", color: C.gray } },
+            { text: normalizeJVName(p.line) || "-", options: { align: "center", color: C.gray } },
+            { text: normalizeJVName(p.name) || "-", options: { align: "left", bold: true, color: C.navy } },
             { text: pDepts.mechanical > 0 ? String(pDepts.mechanical) : "-", options: { align: "right" } },
             { text: pDepts.vision > 0 ? String(pDepts.vision) : "-", options: { align: "right" } },
             { text: pDepts.control > 0 ? String(pDepts.control) : "-", options: { align: "right" } },
@@ -1420,7 +1425,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                         );
                       })}
                     </div>
-                    <div className="mp-day-projs" title={cell.data.projectBreakdown.map(p => p.name).join(", ")}>
+                    <div className="mp-day-projs" title={cell.data.projectBreakdown.map(p => normalizeJVName(p.name)).join(", ")}>
                       {cell.data.projectBreakdown.length}개 프로젝트 진행중
                     </div>
                   </>
@@ -1474,10 +1479,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
                 return (
                   <tr key={p.id}>
-                    <td><b>{p.manufacturingNo || "-"}</b></td>
-                    <td>{p.site || "-"} {p.line ? `· Line ${p.line}` : ""}</td>
+                    <td><b>{normalizeJVName(p.manufacturingNo) || "-"}</b></td>
+                    <td>{normalizeJVName(p.site) || "-"} {p.line ? `· Line ${normalizeJVName(p.line)}` : ""}</td>
                     <td>
-                      <div style={{ fontWeight: 600, color: "#0f172a" }}>{p.name}</div>
+                      <div style={{ fontWeight: 600, color: "#0f172a" }}>{normalizeJVName(p.name)}</div>
                       {effectiveTotal > 0 ? (
                         <div style={{ fontSize: "11px", color: "#475569", marginTop: "2px" }}>
                           프로젝트 총 공수: <b style={{ color: "#059669" }}>{effectiveTotal.toLocaleString()} M/D</b>
@@ -1607,9 +1612,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                   ) : (
                     selectedDay.projectBreakdown.map((pb, pIdx) => (
                       <tr key={pIdx}>
-                        <td><b>{pb.manufacturingNo || "-"}</b></td>
-                        <td>{pb.site || "-"} · {pb.line || "-"}</td>
-                        <td><b style={{ color: "#0f172a" }}>{pb.name}</b></td>
+                        <td><b>{normalizeJVName(pb.manufacturingNo) || "-"}</b></td>
+                        <td>{normalizeJVName(pb.site) || "-"} · {normalizeJVName(pb.line) || "-"}</td>
+                        <td><b style={{ color: "#0f172a" }}>{normalizeJVName(pb.name)}</b></td>
                         <td style={{ textAlign: "center" }}>{pb.departments.mechanical || "-"}</td>
                         <td style={{ textAlign: "center" }}>{pb.departments.vision || "-"}</td>
                         <td style={{ textAlign: "center" }}>{pb.departments.control || "-"}</td>
@@ -1667,8 +1672,8 @@ export function ProjectManpowerModal({ project, onClose }) {
       <div className="mp-modal-card" onMouseDown={e => e.stopPropagation()}>
         <div className="mp-modal-head">
           <div>
-            <h3>📊 {project.manufacturingNo ? `${project.manufacturingNo} · ` : ""}{project.name} 공수 투입 현황</h3>
-            <p>{project.site || "-"} · Line {project.line || "-"} &nbsp;|&nbsp; 기간: {project.startDate} ~ {project.endDate}</p>
+            <h3>📊 {project.manufacturingNo ? `${normalizeJVName(project.manufacturingNo)} · ` : ""}{normalizeJVName(project.name)} 공수 투입 현황</h3>
+            <p>{normalizeJVName(project.site) || "-"} · Line {normalizeJVName(project.line) || "-"} &nbsp;|&nbsp; 기간: {project.startDate} ~ {project.endDate}</p>
           </div>
           <button className="mp-close-btn" onClick={onClose}>×</button>
         </div>

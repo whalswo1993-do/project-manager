@@ -234,7 +234,7 @@ function parseExcelMasterPlan(wb,context={}){
       const pMatch=val.match(/(?:project\s*name|프로젝트명)\s*[:：]\s*(.+)/i);
       if(pMatch&&pMatch[1].trim()){
         baseProjectName=normalizeJVName(pMatch[1].trim());
-      }else if(/^(?:project\s*name|프로젝트명)$/i.test(val)){
+      }else if(/^(?:project\s*name|프로젝트명)\s*[:：]?$/i.test(val)){
         for(let next=1;next<=3;next++){
           if(row[c+next]&&String(row[c+next]).trim()){
             baseProjectName=normalizeJVName(String(row[c+next]).trim());
@@ -246,14 +246,11 @@ function parseExcelMasterPlan(wb,context={}){
       if(sMatch&&sMatch[1].trim()){
         const isoVal=excelDateToISO(sMatch[1].trim());
         if(isoVal)baseStartDate=isoVal;
-      }else if(/^(?:project\s*start\s*date|plan\s*start\s*date|시작일)$/i.test(val)){
+      }else if(/^(?:project\s*start\s*date|plan\s*start\s*date|시작일)\s*[:：]?$/i.test(val)){
         for(let next=1;next<=3;next++){
           const isoVal=excelDateToISO(row[c+next]);
           if(isoVal){baseStartDate=isoVal;break;}
         }
-      }
-      if(/activity|작업|공정|task|내용|항목|업무|마일스톤|milestone/i.test(val)){
-        headerRowIdx=r;
       }
     }
   }
@@ -270,7 +267,7 @@ function parseExcelMasterPlan(wb,context={}){
 
   let clientPrefix=baseProjectName?baseProjectName.split(' - ')[0].trim():(context.formSite||"Project");
   if(baseProjectName){
-    const linesMatch=baseProjectName.match(/([0-9,\s]+)\s*(?:Line|L|라인)/i);
+    const linesMatch=baseProjectName.match(/(?:^|[\s\-_])([0-9,\s]+)\s*(?:Line|L|라인)/i);
     if(linesMatch){
       titleLines=linesMatch[1].split(',').map(s=>s.trim()).filter(Boolean);
       const prefixPart=baseProjectName.slice(0,linesMatch.index).trim().replace(/[:\-_]+$/,'').trim();
@@ -290,6 +287,16 @@ function parseExcelMasterPlan(wb,context={}){
     }
   }
 
+  if(headerRowIdx===-1){
+    for(let r=0;r<Math.min(25,rows.length);r++){
+      const row=rows[r]||[];
+      const rowStr=row.map(x=>String(x||"").trim().toLowerCase()).join(" ");
+      if((rowStr.includes("activity")||rowStr.includes("공정")||rowStr.includes("작업")||rowStr.includes("task")) &&
+         (rowStr.includes("start")||rowStr.includes("end")||rowStr.includes("시작")||rowStr.includes("종료")||rowStr.includes("equipment")||rowStr.includes("설비")||rowStr.includes("장비"))){
+        headerRowIdx=r;break;
+      }
+    }
+  }
   if(headerRowIdx===-1){
     for(let r=0;r<Math.min(15,rows.length);r++){
       const row=rows[r]||[];
@@ -361,13 +368,30 @@ function parseExcelMasterPlan(wb,context={}){
   let currentMfgNo=context.formMfg||"";
   let currentProject=null;
   let inManpowerSection=false;
+  let inGrandTotalSection=false;
   const projects=[];
 
   for(let r=headerRowIdx+1;r<rows.length;r++){
-    const rowInfo=sheet['!rows']?sheet['!rows'][r]:null;
-    if(rowInfo&&rowInfo.hidden)continue;
     const row=rows[r];
     if(!row||!row.length)continue;
+    const rowInfo=sheet['!rows']?sheet['!rows'][r]:null;
+
+    // Detect section start even in hidden rows (e.g. collapsed outline group)
+    const rawJoined=row.map(x=>String(x||'')).join(' ');
+    if(/grand\s*total/i.test(rawJoined)){
+      inGrandTotalSection=true;
+      inManpowerSection=false;
+      continue;
+    }
+    if(inGrandTotalSection)continue;
+
+    if(/manpower|인력|인원|공수|manday|m\/d/i.test(rawJoined)||
+       (row.some(x=>String(x||'').toLowerCase()==='personnel')&&row.some(x=>/total/i.test(String(x||''))))){
+      inManpowerSection=true;
+      continue;
+    }
+
+    if(rowInfo&&rowInfo.hidden)continue;
 
     const itemRaw=row[colMap.item!==undefined?colMap.item:0];
     const eqRaw=row[colMap.equipment!==undefined?colMap.equipment:1];
@@ -377,7 +401,7 @@ function parseExcelMasterPlan(wb,context={}){
     const eRaw=row[colMap.end!==undefined?colMap.end:4];
 
     const itemStr=String(itemRaw||"").trim();
-    const eqStr=String(eqRaw||"").trim();
+    const eqStr=String(eqRaw||"").replace(/[\r\n]+/g," ").trim();
     const actStr=String(actRaw||"").trim();
     const lineStr=String(lineRaw||"").trim();
     const combinedLineStr=[itemStr,eqStr,actStr,lineStr].join(" ");
@@ -405,16 +429,8 @@ function parseExcelMasterPlan(wb,context={}){
     const mEnd=excelDateToISO(eRaw,refYear);
     const isDateRow=Boolean(mStart&&mEnd);
 
-    // Manpower section detection: "Manpower" can be in activity col (col[3]) or equipment col (col[2])
-    // Also detect by "Personnel" in start col (col[5]) + "Total" in end col (col[6]) + "Peak" in duration col
     const durRaw=colMap.duration!==undefined?row[colMap.duration]:row[7];
-    
-    // Skip "Grand Total Manpower" rows - they aggregate across all projects
-    if(/grand\s*total/i.test(combinedLineStr)){
-      inManpowerSection=false;
-      continue;
-    }
-    
+
     if(/manpower|인력|인원|공수|manday|m\/d/i.test(combinedLineStr)||
        (String(sRaw||'').toLowerCase()==='personnel'&&/total/i.test(String(eRaw||'')))||
        (/total/i.test(String(sRaw))&&/peak/i.test(String(eRaw)))){
@@ -422,7 +438,17 @@ function parseExcelMasterPlan(wb,context={}){
       continue;
     }
 
-    const isDeptRow=inManpowerSection&&!isDateRow;
+    let isDeptRow=inManpowerSection&&!isDateRow;
+    if(!isDeptRow&&!isDateRow&&currentProject){
+      const checkRaw=String(sRaw||actStr||eqStr||'').trim();
+      const checkDept=normalizeDeptName(checkRaw);
+      const isNum=Number(eRaw)>0||Number(durRaw)>0;
+      if(checkDept&&(checkDept!==checkRaw||/mechanical|vision|control|electrical|safety|supervisor/i.test(checkDept))&&isNum){
+        inManpowerSection=true;
+        isDeptRow=true;
+      }
+    }
+
     const isEqStart=eqStr&&!/manpower|personnel|인력|인원|공수|manday|m\/d/i.test(combinedLineStr)&&eqStr!=="0"&&!isDeptRow&&(
       !currentProject||eqStr!==currentProject.equipment||currentLine!==currentProject._lineNum||inManpowerSection
     );
@@ -463,8 +489,8 @@ function parseExcelMasterPlan(wb,context={}){
       const deptFromAct=String(actStr||"").trim();
       const deptFromEq=String(eqStr||"").trim();
       let deptRaw=deptFromStart&&deptFromStart!=="0"&&!/^\d+$/.test(deptFromStart)&&!/personnel|total|peak/i.test(deptFromStart)?deptFromStart:
-                    (deptFromAct&&deptFromAct!=="0"?deptFromAct:
-                    (deptFromEq&&deptFromEq!=="0"?deptFromEq:""));
+                    (deptFromAct&&deptFromAct!=="0"&&!/^\d+$/.test(deptFromAct)&&!/personnel|total|peak/i.test(deptFromAct)?deptFromAct:
+                    (deptFromEq&&deptFromEq!=="0"&&!/^\d+$/.test(deptFromEq)&&!/personnel|total|peak/i.test(deptFromEq)?deptFromEq:""));
       if(!deptRaw){
         for(let c=0;c<=Math.min(6,row.length-1);c++){
           const val=String(row[c]||"").trim();

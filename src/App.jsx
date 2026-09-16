@@ -592,46 +592,121 @@ function parseExcelMasterPlan(wb,context={}){
   return projects.map(adjustProjectDates).filter(p=>p.milestones.length>0||p.manpower);
 }
 
+function hasSharedCode(setA, setB) {
+  if (!setA || !setB) return false;
+  for (let a of setA) {
+    if (setB.has(a)) return true;
+  }
+  return false;
+}
+
+function extractProjectTags(p, sites = []) {
+  const name = String(p.projectName || p.name || '').trim();
+  const mfg = String(p.manufacturingNo || p.manufacturing_no || '').trim();
+  const eq = String(p.equipment || '').toLowerCase().replace(/\s*\(\d+대\)/, '').trim();
+  const line = String(p.line || '').replace(/line/i, '').trim().toLowerCase();
+  const site = String(p.site || '').trim().toLowerCase();
+
+  // 1. Job Change (형교환) project check
+  const isJC = /j\/?c\b|jc\b|job\s*change|형교환|기종교체|모델교체|개조/i.test(name) ||
+               (p.milestones && p.milestones.some(m => /j\/?c|형교환|job\s*change/i.test(m.name)));
+
+  // 2. Setup / Initial installation project check
+  const isSetup = /set-?up|셋업|신규|설치|초기|반입/i.test(name);
+
+  // 3. Known site names to exclude from code matching
+  const siteNamesUpper = new Set((sites || []).map(s => String(s.name || '').toUpperCase().trim()));
+  ['SKOJ', 'SKOY', 'SKOH', 'HSBMA', 'TW'].forEach(s => siteNamesUpper.add(s));
+
+  // 4. Project-specific codes (e.g. E1127, H055, S010A, 2309AD-N, E1144, E1540)
+  const codeMatches = (name + ' ' + mfg).match(/\b([A-Z0-9]{4,12}(?:-[A-Z0-9]+)?)\b/gi) || [];
+  const codes = new Set(codeMatches.map(c => c.toUpperCase()).filter(c => !siteNamesUpper.has(c) && !/line|notcher|stacker|project|schedule|master/i.test(c)));
+  if (mfg && !siteNamesUpper.has(mfg.toUpperCase())) codes.add(mfg.toUpperCase());
+
+  // 5. Phase / Round (1차, 2차 등)
+  const roundMatch = name.match(/([0-9]+)\s*차/);
+  const round = roundMatch ? roundMatch[1] : null;
+
+  return { isJC: !!isJC, isSetup: !!isSetup, codes, round, line, site, eq, name: name.toLowerCase() };
+}
+
+function isSameProjectIdentity(existing, incoming, sites = []) {
+  if (!existing || !incoming) return false;
+
+  const exTags = extractProjectTags(existing, sites);
+  const inTags = extractProjectTags(incoming, sites);
+
+  // 1. Site Check: Must not conflict
+  if (exTags.site && inTags.site && exTags.site !== inTags.site) return false;
+  if (exTags.site && inTags.name) {
+    const conflictingSite = (sites || []).find(s => s.name && s.name.trim().toLowerCase() !== exTags.site && inTags.name.includes(s.name.trim().toLowerCase()));
+    if (conflictingSite) return false;
+  }
+
+  // 2. Line Check: Must not conflict
+  if (exTags.line && inTags.line && exTags.line !== inTags.line) return false;
+
+  // 3. Equipment Check: Notcher vs Stacker
+  const isExNotcher = /notcher|노칭/i.test(exTags.name) || /notcher|노칭/i.test(exTags.eq);
+  const isExStacker = /stacker|스태커|스택/i.test(exTags.name) || /stacker|스태커|스택/i.test(exTags.eq);
+  const isInNotcher = /notcher|노칭/i.test(inTags.name) || /notcher|노칭/i.test(inTags.eq);
+  const isInStacker = /stacker|스태커|스택/i.test(inTags.name) || /stacker|스태커|스택/i.test(inTags.eq);
+
+  if ((isExNotcher && isInStacker) || (isExStacker && isInNotcher)) return false;
+
+  // 4. Job Change (형교환) vs Setup (신규 셋업 / 일반) Distinction:
+  // "동일사이트 동일라인에 형교환 프로젝트가 있을 수 있으니 추가 검증"
+  if (exTags.isJC !== inTags.isJC) {
+    return false;
+  }
+
+  // 5. J/C Round Check (1차 형교환 vs 2차 형교환)
+  if (exTags.round && inTags.round && exTags.round !== inTags.round) {
+    return false;
+  }
+
+  // 6. Project Code / Manufacturing No Check (e.g. H055 vs E1127 or E1144 vs E1540)
+  if (exTags.codes.size > 0 && inTags.codes.size > 0) {
+    if (!hasSharedCode(exTags.codes, inTags.codes)) {
+      return false;
+    }
+  }
+
+  // 7. Date Range Disjointness Check:
+  // If dates are completely separated by more than 45 days with no overlapping code, they are different projects
+  if (existing.startDate && existing.endDate && incoming.startDate && incoming.endDate) {
+    const dtVal = s => new Date(s).getTime();
+    const gap = Math.max(dtVal(incoming.startDate) - dtVal(existing.endDate), dtVal(existing.startDate) - dtVal(incoming.endDate));
+    const dayGap = gap / (1000 * 60 * 60 * 24);
+    if (dayGap > 45 && !hasSharedCode(exTags.codes, inTags.codes)) {
+      return false;
+    }
+  }
+
+  // 8. Positive Match Confirmation:
+  const eqMatch = (isExNotcher && isInNotcher) || (isExStacker && isInStacker) ||
+                  (inTags.eq && exTags.name.includes(inTags.eq)) ||
+                  (exTags.eq && inTags.name.includes(exTags.eq));
+
+  const nameMatch = exTags.name && inTags.name && (
+    exTags.name === inTags.name ||
+    exTags.name.replace(/\s+/g, '') === inTags.name.replace(/\s+/g, '')
+  );
+
+  const codeMatch = hasSharedCode(exTags.codes, inTags.codes);
+
+  return nameMatch || (eqMatch && (codeMatch || (exTags.line === inTags.line && (!exTags.site || exTags.site === inTags.site))));
+}
+
 async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
   if(!directProjects||directProjects.length===0)return false;
   if(editing){
     const curP=projects.find(pr=>pr.id===editing)||form;
-    const curSite=(curP.site||'').trim().toLowerCase();
-    const curLine=(curP.line||'').replace(/line/i,'').trim().toLowerCase();
-    const curMfg=(curP.manufacturingNo||'').trim().toLowerCase();
-    const curName=(curP.name||'').trim().toLowerCase();
-
-    let targetP=directProjects.find(p=>{
-      const pMfg=(p.manufacturingNo||'').trim().toLowerCase();
-      const pSite=(p.projectName||'').toLowerCase();
-      const pLine=(p.line||'').replace(/line/i,'').trim().toLowerCase();
-      const pEq=(p.equipment||'').toLowerCase().replace(/\s*\(\d+대\)/,'').trim();
-      const pProj=(p.projectName||'').trim().toLowerCase();
-
-      // 1. Manufacturing number exact match
-      if(curMfg&&pMfg&&curMfg===pMfg){
-        if(pEq&&curName&&!curName.includes(pEq))return false;
-        return true;
-      }
-      // 2. Exact project name match
-      if(pProj&&curName&&pProj===curName)return true;
-
-      // 3. Equipment & line match, ensuring site does not conflict
-      if(curSite&&!pSite.includes(curSite)){
-        const isConflictSite=sites.some(s=>s.name&&s.name.trim().toLowerCase()!==curSite&&pSite.includes(s.name.trim().toLowerCase()));
-        if(isConflictSite)return false;
-      }
-      if(curLine&&pLine&&curLine!==pLine)return false;
-      if(pEq&&curName&&curName.includes(pEq)){
-        if(curLine&&pLine&&curLine===pLine)return true;
-        if(!curLine&&!pLine)return true;
-        if(curLine&&curName.includes(curLine))return true;
-      }
-      return false;
-    });
+    let targetP=directProjects.find(p=>isSameProjectIdentity(curP, p, sites));
 
     if(!targetP){
-      setMsg(`현재 수정 대상인 '${curP.name}'(Site: ${curP.site||'-'}, Line: ${curP.line||'-'})와 일치하는 프로젝트/설비 정보를 파일에서 찾을 수 없습니다. 신규 프로젝트로 등록하시려면 상단의 [수정 취소]를 누른 후 파일을 첨부해주세요.`);
+      const curType = (/j\/?c|형교환/i.test(curP.name) || (curP.milestones && curP.milestones.some(m => /j\/?c|형교환/i.test(m.name)))) ? "형교환(J/C)" : "일반/셋업";
+      setMsg(`현재 수정 대상인 '${curP.name}'(${curType}, Site: ${curP.site||'-'}, Line: ${curP.line||'-'})와 일치하는 프로젝트/설비 정보를 첨부 파일에서 찾을 수 없습니다. 동일 사이트/라인의 별도 프로젝트(형교환 또는 신규)로 등록하시려면 상단의 [수정 취소]를 누른 후 파일을 첨부해주세요.`);
       return false;
     }
 
@@ -667,12 +742,7 @@ async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
       if(directProjects.length>1){
         for(const otherP of directProjects){
           if(otherP===targetP)continue;
-          const otherProjName=otherP.projectName||"";
-          const existingOther=projects.find(ep=>ep.id!==editing&&(
-            (otherP.manufacturingNo&&ep.manufacturingNo&&ep.manufacturingNo.toLowerCase()===otherP.manufacturingNo.toLowerCase()&&(otherP.equipment?ep.name.toLowerCase().includes(otherP.equipment.toLowerCase().replace(/\s*\(\d+대\)/,'').trim()):true))||
-            (ep.name&&otherProjName&&ep.name.toLowerCase()===otherProjName.toLowerCase())||
-            (otherP.equipment&&otherP.line&&ep.name&&ep.name.toLowerCase().includes(otherP.equipment.toLowerCase())&&(ep.name.toLowerCase().includes((otherP.line||'').toLowerCase())||(ep.line||'').toLowerCase().includes((otherP.line||'').toLowerCase()))&&(!curP.site||!ep.site||ep.site.toLowerCase()===(curP.site||'').toLowerCase()))
-          ));
+          const existingOther=projects.find(ep=>ep.id!==editing&&isSameProjectIdentity(ep, otherP, sites));
           if(existingOther){
             const otherCleanMs=otherP.milestones.map(m=>({...m,name:normalizeJVName(m.name),id:uid()}));
             const otherAutoStat=computeAutoStatus({startDate:otherP.startDate,endDate:otherP.endDate,milestones:otherCleanMs});
@@ -736,10 +806,7 @@ async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
         const matchedSite=sites.find(s=>projName.toLowerCase().includes(s.name.toLowerCase()));
         if(matchedSite)siteVal=matchedSite.name;
       }
-      const existing=projects.find(ep=>(
-        (p.manufacturingNo&&ep.manufacturingNo&&ep.manufacturingNo.trim().toLowerCase()===p.manufacturingNo.trim().toLowerCase()&&(p.equipment?ep.name.toLowerCase().includes(p.equipment.toLowerCase().replace(/\s*\(\d+대\)/,'').trim()):true))||
-        (projName&&ep.name&&ep.name.trim().toLowerCase()===projName.trim().toLowerCase())
-      ));
+      const existing=projects.find(ep=>isSameProjectIdentity(ep, p, sites));
       const cleanMs=p.milestones.map(m=>({...m,name:normalizeJVName(m.name),id:uid()}));
       const autoStat=computeAutoStatus({startDate:p.startDate||iso(),endDate:p.endDate||iso(),milestones:cleanMs});
 

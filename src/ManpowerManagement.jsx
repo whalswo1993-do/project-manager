@@ -4,16 +4,30 @@ import ExcelJS from "exceljs";
 import PptxGenJS from "pptxgenjs";
 import { normalizeJVName } from "./utils";
 
-export const BASE_DEPT_ORDER = ["mechanical", "vision", "vision_sub", "control", "electrical", "electrical_sub", "supervisor", "safety", "manager"];
+export const BASE_DEPT_ORDER = [
+  "mechanical",
+  "mechanical_sub",
+  "vision",
+  "vision_sub",
+  "control",
+  "control_sub",
+  "electrical",
+  "electrical_sub",
+  "supervisor",
+  "safety",
+  "manager"
+];
 export const DEPT_ORDER = BASE_DEPT_ORDER;
 
 export const DEPT_LABELS = {
   mechanical: "기구 (Mechanical)",
+  mechanical_sub: "기구 외주 (Mech Sub)",
   vision: "비전 (Vision)",
   vision_sub: "비전 외주 (Vision Sub)",
   control: "제어 (Control)",
+  control_sub: "제어 외주 (Control Sub)",
   electrical: "전장 (Electrical)",
-  electrical_sub: "전장 외주 (Electrical Sub)",
+  electrical_sub: "전장 외주 (Elec Sub)",
   supervisor: "슈퍼바이저 (Supervisor)",
   safety: "안전 (Safety)",
   manager: "소장 (Manager)"
@@ -21,9 +35,11 @@ export const DEPT_LABELS = {
 
 export const DEPT_SHORT = {
   mechanical: "기구",
+  mechanical_sub: "기구외주",
   vision: "비전",
   vision_sub: "비전외주",
   control: "제어",
+  control_sub: "제어외주",
   electrical: "전장",
   electrical_sub: "전장외주",
   supervisor: "SV",
@@ -33,9 +49,11 @@ export const DEPT_SHORT = {
 
 export const DEPT_COLORS = {
   mechanical: "#3b82f6",
+  mechanical_sub: "#60a5fa",
   vision: "#8b5cf6",
   vision_sub: "#a855f7",
   control: "#10b981",
+  control_sub: "#34d399",
   electrical: "#f59e0b",
   electrical_sub: "#d97706",
   supervisor: "#0284c7",
@@ -67,15 +85,29 @@ export function getDeptColor(key) {
 export function normalizeDeptKey(key) {
   if (!key) return "other";
   const s = String(key).toLowerCase().trim();
+
+  // 0. Manager check
   if (s.includes("소장") || s.includes("manager") || s.includes("현장대리인") || s.includes("site mgr") || s.includes("field mgr")) return "manager";
+
+  // 1. Check if it's an outsourced (외주) department
+  const isSub = s.includes("외주") || s.includes("sub") || s.includes("협력") || s.includes("outsourc") || s.includes("엘라이트");
+
+  if (isSub) {
+    if (s.includes("vision") || s.includes("비전") || s.includes("비젼") || s.includes("vis") || s.includes("엘라이트")) return "vision_sub";
+    if (s.includes("elec") || s.includes("전장") || s.includes("전기")) return "electrical_sub";
+    if (s.includes("mech") || s.includes("기구")) return "mechanical_sub";
+    if (s.includes("cont") || s.includes("제어")) return "control_sub";
+    return "other_sub";
+  }
+
+  // 2. Pure internal departments (No 외주 keyword)
   if (s.includes("supervis") || s.includes("슈퍼바이저") || s.includes("sv") || s.includes("해체") || s.includes("장착") || s.includes("검수")) return "supervisor";
   if (s.includes("mech") || s.includes("기구")) return "mechanical";
-  if (s.includes("vision sub") || s.includes("program sub") || s.includes("비전외주") || s.includes("비전 외주") || s.includes("비전_외주") || s.includes("외주비전") || s.includes("엘라이트")) return "vision_sub";
-  if (s.includes("vis") || s.includes("비전")) return "vision";
+  if (s.includes("vision") || s.includes("비전") || s.includes("비젼") || s.includes("vis")) return "vision";
   if (s.includes("cont") || s.includes("제어")) return "control";
-  if (s.includes("electrical sub") || s.includes("전장외주") || s.includes("전장 외주") || s.includes("전기외주") || s.includes("전기 외주") || s.includes("전장_외주") || s.includes("외주전장") || s.includes("electronical sub")) return "electrical_sub";
   if (s.includes("elec") || s.includes("전장") || s.includes("전기")) return "electrical";
   if (s.includes("safe") || s.includes("안전")) return "safety";
+
   return s;
 }
 

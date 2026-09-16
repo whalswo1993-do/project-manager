@@ -1,7 +1,7 @@
 import{useEffect,useMemo,useState,useRef}from"react";import"./App.css";import{supabase}from"./supabase";import Login from"./Login";import{exportGanttReport,exportCalendarReport,exportExcelReport}from"./reportExports";import VisionSPC from "./VisionSPC";import IssueManagement from "./IssueManagement";import Quotations from "./Quotations";import ManpowerManagement, { ProjectManpowerModal } from "./ManpowerManagement";import{GoogleGenerativeAI}from"@google/generative-ai";import*as XLSX from"xlsx";import { ErrorBoundary } from "./ErrorBoundary";
 import { normalizeJVName } from "./utils";
 export { normalizeJVName };
-const DAY=86400000,STATUSES=["검토중","PO대기중","제작 및 운송중","진행중","완료"],DEPTS=["PM","설계","설비기술","제어","비전","전장","비전 외주","전장 외주","Supervisor","안전","소장"],COLORS=["#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#d946ef","#f43f5e","#14b8a6","#84cc16","#6366f1","#a855f7","#10b981","#f59e0b"];
+const DAY=86400000,STATUSES=["검토중","PO대기중","제작 및 운송중","진행중","완료"],DEPTS=["PM","설계","설비기술","기구","기구 외주","비전","비전 외주","제어","제어 외주","전장","전장 외주","Supervisor","안전","소장"],COLORS=["#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#d946ef","#f43f5e","#14b8a6","#84cc16","#6366f1","#a855f7","#10b981","#f59e0b"];
 const iso=(d=new Date())=>d.toISOString().slice(0,10),dt=s=>new Date(`${s}T00:00:00`),uid=()=>`${Date.now()}-${Math.random().toString(16).slice(2)}`,newMs=()=>Array.from({length:5},()=>({id:uid(),name:"",startDate:iso(),endDate:iso()}));
 export function computeAutoStatus(p, today = iso()){
   const end = p.endDate || p.end_date;
@@ -127,20 +127,35 @@ function parseHeaderDate(val,defaultYear){if(!val&&val!==0)return'';const yr=def
 function excelDateToISO(serial){if(!serial&&serial!==0)return"";if(serial instanceof Date)return serial.toISOString().slice(0,10);if(typeof serial==="number"&&serial>20000&&serial<80000){const u=Math.floor(serial-25569);return new Date(u*86400*1000).toISOString().slice(0,10);}if(typeof serial==="string"){const s=serial.trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;let m=s.match(/^(\d{4})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);if(m)return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;m=s.match(/^(\d{2})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);if(m&&parseInt(m[1],10)>=20&&parseInt(m[1],10)<=40)return `20${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;m=s.match(/^(\d{1,2})[-/ ](\d{1,2})[-/ ](\d{2,4})$/);if(m&&parseInt(m[1],10)<=12&&parseInt(m[2],10)<=31){let yr=m[3].length===2?'20'+m[3]:m[3];return `${yr}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;}const dMatch=s.match(/^(\d{1,2})[-/ ]([a-zA-Z]{3,})[-/ ](\d{2,4})$/);if(dMatch){const day=dMatch[1].padStart(2,'0');const monStr=dMatch[2].slice(0,3).toLowerCase();const mon=monthsMap[monStr];let yr=dMatch[3].length===2?'20'+dMatch[3]:dMatch[3];if(mon)return `${yr}-${mon}-${day}`;}const koMatch=s.match(/^(\d{1,2})[-./월]\s*(\d{1,2})일?$/);if(koMatch&&parseInt(koMatch[1],10)<=12&&parseInt(koMatch[2],10)<=31){const yr=new Date().getFullYear();return `${yr}-${koMatch[1].padStart(2,'0')}-${koMatch[2].padStart(2,'0')}`;}const d=new Date(s);if(!isNaN(d.getTime()))return d.toISOString().slice(0,10);}return"";}
 function adjustProjectDates(project){if(!project)return project;const now=new Date();const uploadYear=now.getFullYear();const uploadMonth=now.getMonth()+1;const allDates=[];if(project.startDate)allDates.push(project.startDate);if(project.endDate)allDates.push(project.endDate);(project.milestones||[]).forEach(m=>{if(m.startDate)allDates.push(m.startDate);if(m.endDate)allDates.push(m.endDate);});if(project.manpower?.dailyTotal){Object.keys(project.manpower.dailyTotal).forEach(d=>allDates.push(d));}const parsed=allDates.map(d=>{const parts=String(d).match(/^(\d{4})-(\d{2})-(\d{2})$/);return parts?{str:d,year:parseInt(parts[1],10),month:parseInt(parts[2],10),day:parts[3]}:null;}).filter(Boolean);if(!parsed.length)return project;const origYears=[...new Set(parsed.map(p=>p.year))].sort((a,b)=>a-b);const minOrigYear=origYears[0]||uploadYear;const needYearShift=minOrigYear<uploadYear;let firstMonth=1;if(project.startDate){const m=project.startDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(m)firstMonth=parseInt(m[2],10);}else if(project.milestones&&project.milestones.length>0){for(const ms of project.milestones){if(ms.startDate){const m=ms.startDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(m){firstMonth=parseInt(m[2],10);break;}}}}let baseStartYear=uploadYear;if(uploadMonth>=10&&firstMonth<=4){baseStartYear=uploadYear+1;}else if(uploadMonth<=3&&firstMonth>=9){baseStartYear=uploadYear-1;}const convertDate=(dateStr)=>{if(!dateStr||typeof dateStr!=="string")return dateStr;const m=dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return dateStr;const origY=parseInt(m[1],10);const mo=parseInt(m[2],10);const da=m[3];if(!needYearShift&&origY>=uploadYear)return dateStr;let yearOffset=Math.max(0,origY-minOrigYear);if(firstMonth>=8&&mo<firstMonth){yearOffset=Math.max(yearOffset,1);}const targetYear=baseStartYear+yearOffset;return `${targetYear}-${String(mo).padStart(2,'0')}-${da}`;};const cleanMs=(project.milestones||[]).map(ms=>({...ms,startDate:convertDate(ms.startDate),endDate:convertDate(ms.endDate)}));let newStart=convertDate(project.startDate);let newEnd=convertDate(project.endDate);let minD="",maxD="";cleanMs.forEach(m=>{if(m.startDate&&(!minD||m.startDate<minD))minD=m.startDate;if(m.endDate&&(!maxD||m.endDate>maxD))maxD=m.endDate;});if(minD&&(!newStart||newStart>minD))newStart=minD;if(maxD&&(!newEnd||newEnd<maxD))newEnd=maxD;let newManpower=project.manpower;if(newManpower){const newDailyTotal={};if(newManpower.dailyTotal){Object.entries(newManpower.dailyTotal).forEach(([dStr,val])=>{newDailyTotal[convertDate(dStr)]=val;});}const newDepartments={};if(newManpower.departments){Object.entries(newManpower.departments).forEach(([deptKey,deptObj])=>{const newDaily={};if(deptObj.daily){Object.entries(deptObj.daily).forEach(([dStr,val])=>{newDaily[convertDate(dStr)]=val;});}newDepartments[deptKey]={...deptObj,daily:newDaily};});}newManpower={...newManpower,dailyTotal:newDailyTotal,departments:newDepartments};}return{...project,startDate:newStart,endDate:newEnd,milestones:cleanMs,manpower:newManpower};}
 function normalizeDeptName(raw){
-  if(!raw)return"";
-  const s=String(raw).trim();
-  const lower=s.toLowerCase();
-  if(/total\s*manday|총\s*공수|합계/i.test(lower))return"Total Manday";
-  if(/vision\s*(program)?\s*sub|비전\s*외주|비전외주|엘라이트/i.test(lower))return"Vision Sub";
-  if(/electrical\s*sub|전장\s*외주|전장외주|전기\s*외주|전기외주|electronical\s*sub/i.test(lower))return"Electrical Sub";
-  if(/supervisor|슈퍼바이저|\bsv\b|해체\s*검수|장착\s*검수|해체\/장착\s*검수/i.test(lower))return"Supervisor";
-  if(/mechanical|기구/i.test(lower))return"Mechanical";
-  if(/vision|비전/i.test(lower))return"Vision";
-  if(/control|제어/i.test(lower))return"Control";
-  if(/electrical|electronical|전장|전기/i.test(lower))return"Electrical";
-  if(/safety|안전/i.test(lower))return"Safety";
-  if(/manager|소장/i.test(lower))return"Manager";
-  return s.replace(/\s*\([^)]*\)$/,'').trim()||s;
+  if(!raw) return "";
+  const s = String(raw).trim();
+  const lower = s.toLowerCase();
+
+  // 0. Total Manday check
+  if (/total\s*manday|총\s*공수|합계/i.test(lower)) return "Total Manday";
+
+  // 1. Check if it's an outsourced (외주) department
+  const isSub = /외주|sub|협력|outsourc|엘라이트/i.test(lower);
+
+  if (isSub) {
+    if (/vision|비전|비젼|vis|엘라이트/i.test(lower)) return "Vision Sub";
+    if (/electrical|electronical|전장|전기|elec/i.test(lower)) return "Electrical Sub";
+    if (/mechanical|기구|mech/i.test(lower)) return "Mechanical Sub";
+    if (/control|제어|cont/i.test(lower)) return "Control Sub";
+    const base = s.replace(/\s*\([^)]*\)$/,'').replace(/외주|sub|협력사?/gi, '').trim();
+    return base ? `${base} 외주` : "기타 외주";
+  }
+
+  // 2. Pure Internal departments (No 외주 keyword)
+  if (/supervisor|슈퍼바이저|\bsv\b|해체\s*검수|장착\s*검수|해체\/장착\s*검수/i.test(lower)) return "Supervisor";
+  if (/mechanical|기구|mech/i.test(lower)) return "Mechanical";
+  if (/vision|비전|비젼/i.test(lower)) return "Vision";
+  if (/control|제어|cont/i.test(lower)) return "Control";
+  if (/electrical|electronical|전장|전기|elec/i.test(lower)) return "Electrical";
+  if (/safety|안전|safe/i.test(lower)) return "Safety";
+  if (/manager|소장|현장대리인/i.test(lower)) return "Manager";
+
+  return s.replace(/\s*\([^)]*\)$/,'').trim() || s;
 }
 
 function parseExcelMasterPlan(wb,context={}){

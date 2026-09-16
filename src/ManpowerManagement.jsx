@@ -64,20 +64,46 @@ export function getProjectTotalManday(p) {
   return 0;
 }
 
+// Reusable Synchronized Month Navigator Component
+export function MonthNavigator({ currentDate, onPrev, onNext, onToday }) {
+  const y = currentDate.getFullYear();
+  const m = currentDate.getMonth() + 1;
+  return (
+    <div className="mp-month-navigator">
+      <button className="mp-nav-btn" onClick={onPrev} title="이전 달">‹</button>
+      <span className="mp-month-text">{y}년 {m}월</span>
+      <button className="mp-nav-btn" onClick={onNext} title="다음 달">›</button>
+      <button className="mp-today-btn" onClick={onToday}>이번달</button>
+    </div>
+  );
+}
+
 export default function ManpowerManagement({ projects = [], sites = [], onSelectProject }) {
   const [currentDate, setCurrentDate] = useState(() => {
-    // If there are projects with manpower, default to the month of the first manpower data
     for (const p of projects) {
       if (p.manpower?.dailyTotal) {
         const dates = Object.keys(p.manpower.dailyTotal).sort();
         if (dates.length > 0) {
-          const firstDate = dates[0];
-          const [y, m] = firstDate.split("-");
+          const [y, m] = dates[0].split("-");
           return new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
         }
       }
     }
     return new Date();
+  });
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth(); // 0-indexed
+  const monthStr = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+  // View mode: 'month' (월간 단위) vs 'range' (기간 지정)
+  const [viewMode, setViewMode] = useState("month");
+
+  // Custom date range
+  const [customStart, setCustomStart] = useState(() => `${year}-${String(month + 1).padStart(2, "0")}-01`);
+  const [customEnd, setCustomEnd] = useState(() => {
+    const endDt = new Date(year, month + 3, 0);
+    return endDt.toISOString().slice(0, 10);
   });
 
   const [siteFilter, setSiteFilter] = useState("전체");
@@ -86,17 +112,68 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedProjectForDetail, setSelectedProjectForDetail] = useState(null);
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth(); // 0-indexed
-
-  const monthStr = `${year}-${String(month + 1).padStart(2, "0")}`;
-
-  // Prev / Next month handlers
+  // Synchronized month navigation handlers (affect all 3 navigators)
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
   const goToToday = () => setCurrentDate(new Date());
 
-  // Filter projects
+  // Extract all dates present across all projects' manpower
+  const allManpowerDates = useMemo(() => {
+    const set = new Set();
+    projects.forEach(p => {
+      if (p.manpower?.dailyTotal) Object.keys(p.manpower.dailyTotal).forEach(d => set.add(d));
+      if (p.manpower?.departments) {
+        Object.values(p.manpower.departments).forEach(d => {
+          if (d?.daily) Object.keys(d.daily).forEach(dt => set.add(dt));
+        });
+      }
+    });
+    return Array.from(set).sort();
+  }, [projects]);
+
+  // Determine effective query date range
+  const { effectiveStartDate, effectiveEndDate, effectiveLabel } = useMemo(() => {
+    if (viewMode === "month") {
+      const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const end = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      return {
+        effectiveStartDate: start,
+        effectiveEndDate: end,
+        effectiveLabel: `${year}년 ${month + 1}월`
+      };
+    } else {
+      const start = customStart || `${year}-01-01`;
+      const end = customEnd >= start ? customEnd : start;
+      return {
+        effectiveStartDate: start,
+        effectiveEndDate: end,
+        effectiveLabel: `${start} ~ ${end}`
+      };
+    }
+  }, [viewMode, year, month, customStart, customEnd]);
+
+  // Quick preset ranges
+  const handleQuickPreset = (monthsCount) => {
+    const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+    const endDt = new Date(year, month + monthsCount, 0);
+    setCustomStart(start);
+    setCustomEnd(endDt.toISOString().slice(0, 10));
+    setViewMode("range");
+  };
+
+  const handleAllRange = () => {
+    if (allManpowerDates.length > 0) {
+      setCustomStart(allManpowerDates[0]);
+      setCustomEnd(allManpowerDates[allManpowerDates.length - 1]);
+    } else {
+      setCustomStart(`${year}-01-01`);
+      setCustomEnd(`${year}-12-31`);
+    }
+    setViewMode("range");
+  };
+
+  // Filter projects by site and search
   const filteredProjects = useMemo(() => {
     return projects.filter(p => {
       if (siteFilter !== "전체" && p.site !== siteFilter) return false;
@@ -112,8 +189,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
     });
   }, [projects, siteFilter, search]);
 
-  // Aggregate daily manpower across filtered projects for the whole month
-  const { dailyData, monthTotalManday, monthDailyPeak, peakDates, deptTotals, projectsWithManpower } = useMemo(() => {
+  // Aggregate daily manpower across filtered projects for effective range AND current visible month
+  const { dailyData, periodTotalManday, periodDailyPeak, peakDates, deptTotals, projectsWithManpower } = useMemo(() => {
     const daily = {};
     let totalM = 0;
     let peakVal = 0;
@@ -121,7 +198,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
     const depts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 };
     const pList = [];
 
-    // Initialize all dates of the month
+    // Ensure all days of the current visible month exist for the calendar
     const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
     for (let d = 1; d <= lastDayOfMonth; d++) {
       const dStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -134,12 +211,27 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       };
     }
 
+    // Also ensure all days in effectiveStartDate ~ effectiveEndDate exist
+    const sDt = new Date(effectiveStartDate);
+    const eDt = new Date(effectiveEndDate);
+    for (let cur = new Date(sDt); cur <= eDt; cur.setDate(cur.getDate() + 1)) {
+      const dStr = cur.toISOString().slice(0, 10);
+      if (!daily[dStr]) {
+        daily[dStr] = {
+          dateStr: dStr,
+          dayNum: cur.getDate(),
+          total: 0,
+          departments: { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 },
+          projectBreakdown: []
+        };
+      }
+    }
+
     filteredProjects.forEach(p => {
       const mp = p.manpower;
       if (!mp) return;
-      pList.push(p);
+      let hasDataInRange = false;
 
-      // Check if departments daily data exists
       if (mp.departments) {
         Object.entries(mp.departments).forEach(([deptRaw, dData]) => {
           const normDept = normalizeDeptKey(deptRaw);
@@ -151,8 +243,13 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
               if (num > 0 && daily[dateStr]) {
                 daily[dateStr].departments[normDept] = (daily[dateStr].departments[normDept] || 0) + num;
                 daily[dateStr].total += num;
-                depts[normDept] = (depts[normDept] || 0) + num;
-                totalM += num;
+
+                // Accumulate totals only within effective range
+                if (dateStr >= effectiveStartDate && dateStr <= effectiveEndDate) {
+                  hasDataInRange = true;
+                  depts[normDept] = (depts[normDept] || 0) + num;
+                  totalM += num;
+                }
 
                 let pb = daily[dateStr].projectBreakdown.find(x => x.projectId === p.id);
                 if (!pb) {
@@ -174,13 +271,15 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           }
         });
       } else if (mp.dailyTotal) {
-        // Fallback to dailyTotal if departments are not specified
         if (deptFilter === "전체") {
           Object.entries(mp.dailyTotal).forEach(([dateStr, count]) => {
             const num = Number(count) || 0;
             if (num > 0 && daily[dateStr]) {
               daily[dateStr].total += num;
-              totalM += num;
+              if (dateStr >= effectiveStartDate && dateStr <= effectiveEndDate) {
+                hasDataInRange = true;
+                totalM += num;
+              }
               daily[dateStr].projectBreakdown.push({
                 projectId: p.id,
                 manufacturingNo: p.manufacturingNo,
@@ -194,30 +293,63 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           });
         }
       }
+
+      if (hasDataInRange) pList.push(p);
     });
 
-    // Calculate peak
-    Object.values(daily).forEach(d => {
-      if (d.total > peakVal) {
-        peakVal = d.total;
-        peakD.length = 0;
-        peakD.push(d.dateStr);
-      } else if (d.total === peakVal && d.total > 0) {
-        peakD.push(d.dateStr);
+    // Calculate peak within effective date range
+    Object.entries(daily).forEach(([dStr, d]) => {
+      if (dStr >= effectiveStartDate && dStr <= effectiveEndDate) {
+        if (d.total > peakVal) {
+          peakVal = d.total;
+          peakD.length = 0;
+          peakD.push(d.dateStr);
+        } else if (d.total === peakVal && d.total > 0) {
+          peakD.push(d.dateStr);
+        }
       }
     });
 
     return {
       dailyData: daily,
-      monthTotalManday: totalM,
-      monthDailyPeak: peakVal,
+      periodTotalManday: totalM,
+      periodDailyPeak: peakVal,
       peakDates: peakD,
       deptTotals: depts,
       projectsWithManpower: pList
     };
-  }, [filteredProjects, year, month, deptFilter]);
+  }, [filteredProjects, effectiveStartDate, effectiveEndDate, year, month, deptFilter]);
 
-  // Calendar cells generation (42 cells: 6 weeks x 7 days)
+  // Helper: compute manpower breakdown for each project within effective range
+  const getProjectRangeData = (p) => {
+    const mp = p.manpower;
+    const pDepts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 };
+    let pRangeTotal = 0;
+
+    if (mp?.departments) {
+      Object.entries(mp.departments).forEach(([rawD, dData]) => {
+        const k = normalizeDeptKey(rawD);
+        if (dData?.daily) {
+          Object.entries(dData.daily).forEach(([dateStr, count]) => {
+            if (dateStr >= effectiveStartDate && dateStr <= effectiveEndDate) {
+              const n = Number(count) || 0;
+              pDepts[k] = (pDepts[k] || 0) + n;
+              pRangeTotal += n;
+            }
+          });
+        }
+      });
+    } else if (mp?.dailyTotal) {
+      Object.entries(mp.dailyTotal).forEach(([dateStr, count]) => {
+        if (dateStr >= effectiveStartDate && dateStr <= effectiveEndDate) {
+          pRangeTotal += (Number(count) || 0);
+        }
+      });
+    }
+    return { pDepts, pRangeTotal };
+  };
+
+  // Calendar cells generation (42 cells: 6 weeks x 7 days) for the visible month
   const calendarCells = useMemo(() => {
     const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Sunday
     const lastDate = new Date(year, month + 1, 0).getDate();
@@ -267,14 +399,14 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  // Excel Export
+  // Excel Export based on effective range
   const exportManpowerExcel = async () => {
     try {
       const wb = new ExcelJS.Workbook();
 
       // Sheet 1: Daily Summary
-      const wsDaily = wb.addWorksheet(`${year}년 ${month + 1}월 일별 공수 집계`);
-      wsDaily.addRow([`TW Project - ${year}년 ${month + 1}월 전사 일별 공수 현황 (총 ${monthTotalManday} M/D, Peak ${monthDailyPeak}명)`]);
+      const wsDaily = wb.addWorksheet(`일별 공수 집계`);
+      wsDaily.addRow([`TW Project - 공수 현황 (${effectiveLabel}, 총 ${periodTotalManday} M/D, Peak ${periodDailyPeak}명)`]);
       wsDaily.addRow([]);
       wsDaily.addRow(["날짜", "요일", "기구 (M/D)", "비전 (M/D)", "제어 (M/D)", "전장 (M/D)", "안전 (M/D)", "소장 (M/D)", "총 인원 (M/D)", "투입 프로젝트 목록"]);
 
@@ -287,28 +419,31 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       });
 
       const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
-      Object.values(dailyData).forEach(d => {
-        const dtObj = new Date(d.dateStr);
-        const dayOfWeek = dayNames[dtObj.getDay()];
-        const projs = d.projectBreakdown.map(x => `${x.manufacturingNo || x.name}(${x.total}명)`).join(", ");
-        const row = wsDaily.addRow([
-          d.dateStr,
-          dayOfWeek,
-          d.departments.mechanical || 0,
-          d.departments.vision || 0,
-          d.departments.control || 0,
-          d.departments.electrical || 0,
-          d.departments.safety || 0,
-          d.departments.manager || 0,
-          d.total,
-          projs || "-"
-        ]);
+      Object.entries(dailyData)
+        .filter(([dStr]) => dStr >= effectiveStartDate && dStr <= effectiveEndDate)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .forEach(([, d]) => {
+          const dtObj = new Date(d.dateStr);
+          const dayOfWeek = dayNames[dtObj.getDay()];
+          const projs = d.projectBreakdown.map(x => `${x.manufacturingNo || x.name}(${x.total}명)`).join(", ");
+          const row = wsDaily.addRow([
+            d.dateStr,
+            dayOfWeek,
+            d.departments.mechanical || 0,
+            d.departments.vision || 0,
+            d.departments.control || 0,
+            d.departments.electrical || 0,
+            d.departments.safety || 0,
+            d.departments.manager || 0,
+            d.total,
+            projs || "-"
+          ]);
 
-        if (d.total === monthDailyPeak && monthDailyPeak > 0) {
-          row.getCell(9).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
-          row.getCell(9).font = { bold: true, color: { argb: "FFDC2626" } };
-        }
-      });
+          if (d.total === periodDailyPeak && periodDailyPeak > 0) {
+            row.getCell(9).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+            row.getCell(9).font = { bold: true, color: { argb: "FFDC2626" } };
+          }
+        });
 
       wsDaily.columns.forEach(col => { col.width = 16; });
       wsDaily.getColumn(1).width = 14;
@@ -316,9 +451,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
       // Sheet 2: Project Breakdown
       const wsProj = wb.addWorksheet("프로젝트별 공수");
-      wsProj.addRow([`${year}년 ${month + 1}월 프로젝트별 공수 투입 현황`]);
+      wsProj.addRow([`프로젝트별 공수 투입 현황 (${effectiveLabel})`]);
       wsProj.addRow([]);
-      wsProj.addRow(["제조번호", "Site", "Line", "프로젝트명", "기구 (M/D)", "비전 (M/D)", "제어 (M/D)", "전장 (M/D)", "안전 (M/D)", "소장 (M/D)", "당월 총합 (M/D)", "전체 총공수 (M/D)"]);
+      wsProj.addRow(["제조번호", "Site", "Line", "프로젝트명", "기구 (M/D)", "비전 (M/D)", "제어 (M/D)", "전장 (M/D)", "안전 (M/D)", "소장 (M/D)", "기간 총합 (M/D)", "프로젝트 전체 총공수 (M/D)"]);
 
       const pHeaderRow = wsProj.getRow(3);
       pHeaderRow.height = 24;
@@ -329,23 +464,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       });
 
       filteredProjects.forEach(p => {
-        const mp = p.manpower;
-        const pDepts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 };
-        let pMonthTotal = 0;
-
-        if (mp?.departments) {
-          Object.entries(mp.departments).forEach(([rawD, dData]) => {
-            const k = normalizeDeptKey(rawD);
-            if (dData?.daily) {
-              Object.entries(dData.daily).forEach(([dateStr, count]) => {
-                if (dateStr.startsWith(monthStr)) {
-                  pDepts[k] = (pDepts[k] || 0) + (Number(count) || 0);
-                  pMonthTotal += (Number(count) || 0);
-                }
-              });
-            }
-          });
-        }
+        const { pDepts, pRangeTotal } = getProjectRangeData(p);
+        const pTotalManday = getProjectTotalManday(p);
 
         wsProj.addRow([
           p.manufacturingNo || "-",
@@ -358,8 +478,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           pDepts.electrical,
           pDepts.safety,
           pDepts.manager,
-          pMonthTotal,
-          mp?.totalManday || pMonthTotal
+          pRangeTotal,
+          pTotalManday || pRangeTotal
         ]);
       });
 
@@ -371,7 +491,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `TW_공수통합보고서_${monthStr}.xlsx`;
+      const fileLabel = viewMode === "month" ? monthStr : `${effectiveStartDate}_${effectiveEndDate}`;
+      a.download = `TW_공수통합보고서_${fileLabel}.xlsx`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 500);
     } catch (err) {
@@ -390,67 +511,108 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             <p>마스터 플랜 기반 부서별 일일 투입 인원 및 전사 공수 종합 모니터링</p>
           </div>
         </div>
-        <div className="mp-month-navigator">
-          <button className="mp-nav-btn" onClick={prevMonth} title="이전 달">‹</button>
-          <span className="mp-month-text">{year}년 {month + 1}월</span>
-          <button className="mp-nav-btn" onClick={nextMonth} title="다음 달">›</button>
-          <button className="mp-today-btn" onClick={goToToday}>이번달</button>
-        </div>
+        <MonthNavigator currentDate={currentDate} onPrev={prevMonth} onNext={nextMonth} onToday={goToToday} />
       </div>
 
       {/* Filter and Action Bar */}
       <div className="mp-controls-bar">
-        <div className="mp-filter-group">
-          <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>Site 필터:</label>
-          <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
-            <option value="전체">전체 Site</option>
-            {sites.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-          </select>
+        {/* Row 1: View Mode & Date Range Picker */}
+        <div className="mp-controls-row">
+          <div className="mp-mode-toggle">
+            <button
+              className={`mp-mode-btn ${viewMode === "month" ? "active" : ""}`}
+              onClick={() => setViewMode("month")}
+            >
+              🗓️ 월간 단위 조회
+            </button>
+            <button
+              className={`mp-mode-btn ${viewMode === "range" ? "active" : ""}`}
+              onClick={() => setViewMode("range")}
+            >
+              📆 기간 지정 조회
+            </button>
+          </div>
 
-          <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>부서 필터:</label>
-          <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}>
-            <option value="전체">전체 부서</option>
-            <option value="mechanical">기구 (Mechanical)</option>
-            <option value="vision">비전 (Vision)</option>
-            <option value="control">제어 (Control)</option>
-            <option value="electrical">전장 (Electrical)</option>
-            <option value="safety">안전 (Safety)</option>
-            <option value="manager">소장 (Manager)</option>
-          </select>
-
-          <input
-            type="text"
-            placeholder="프로젝트, 제조번호 검색..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+          {viewMode === "range" ? (
+            <div className="mp-date-range-group">
+              <span style={{ fontSize: "12px", fontWeight: "bold", color: "#334155" }}>조회 기간:</span>
+              <input
+                type="date"
+                value={customStart}
+                onChange={e => setCustomStart(e.target.value)}
+              />
+              <span style={{ color: "#64748b" }}>~</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={e => setCustomEnd(e.target.value)}
+              />
+              <button className="mp-quick-btn" onClick={() => handleQuickPreset(1)}>1개월</button>
+              <button className="mp-quick-btn" onClick={() => handleQuickPreset(3)}>3개월</button>
+              <button className="mp-quick-btn" onClick={() => handleQuickPreset(6)}>6개월</button>
+              <button className="mp-quick-btn" onClick={handleAllRange}>전체 기간</button>
+            </div>
+          ) : (
+            <div style={{ fontSize: "13px", color: "#64748b" }}>
+              선택 기준월: <b style={{ color: "#0969da" }}>{year}년 {month + 1}월</b>
+            </div>
+          )}
         </div>
 
-        <button className="mp-excel-btn" onClick={exportManpowerExcel}>
-          📥 월간 공수 엑셀 다운로드
-        </button>
+        {/* Row 2: Filters & Excel Download */}
+        <div className="mp-controls-row">
+          <div className="mp-filter-group">
+            <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>Site 필터:</label>
+            <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
+              <option value="전체">전체 Site</option>
+              {sites.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+            </select>
+
+            <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>부서 필터:</label>
+            <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}>
+              <option value="전체">전체 부서</option>
+              <option value="mechanical">기구 (Mechanical)</option>
+              <option value="vision">비전 (Vision)</option>
+              <option value="control">제어 (Control)</option>
+              <option value="electrical">전장 (Electrical)</option>
+              <option value="safety">안전 (Safety)</option>
+              <option value="manager">소장 (Manager)</option>
+            </select>
+
+            <input
+              type="text"
+              placeholder="프로젝트, 제조번호 검색..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+
+          <button className="mp-excel-btn" onClick={exportManpowerExcel}>
+            📥 공수 엑셀 다운로드 ({viewMode === "month" ? `${month + 1}월` : "지정기간"})
+          </button>
+        </div>
       </div>
 
       {/* KPI Summary Cards */}
       <div className="mp-kpi-grid">
         <div className="mp-kpi-card total">
-          <div className="mp-kpi-label"><span>📌</span> 당월 전사 총 투입 공수</div>
-          <div className="mp-kpi-val">{monthTotalManday.toLocaleString()} <span style={{ fontSize: "16px" }}>M/D</span></div>
-          <div className="mp-kpi-sub">{monthStr} 기준 전사 합산</div>
+          <div className="mp-kpi-label"><span>📌</span> 총 투입 공수 ({effectiveLabel})</div>
+          <div className="mp-kpi-val">{periodTotalManday.toLocaleString()} <span style={{ fontSize: "16px" }}>M/D</span></div>
+          <div className="mp-kpi-sub">{effectiveLabel} 기준 합산</div>
         </div>
 
         <div className="mp-kpi-card peak">
-          <div className="mp-kpi-label"><span>⚡</span> 당월 일일 피크 (최대 인원)</div>
-          <div className="mp-kpi-val" style={{ color: "#dc2626" }}>{monthDailyPeak} <span style={{ fontSize: "16px" }}>명</span></div>
+          <div className="mp-kpi-label"><span>⚡</span> 일일 피크 (최대 인원)</div>
+          <div className="mp-kpi-val" style={{ color: "#dc2626" }}>{periodDailyPeak} <span style={{ fontSize: "16px" }}>명</span></div>
           <div className="mp-kpi-sub">
             {peakDates.length > 0 ? `최대 투입일: ${peakDates.slice(0, 3).map(d => d.slice(5)).join(", ")}${peakDates.length > 3 ? ` 외 ${peakDates.length - 3}일` : ""}` : "투입 인원 없음"}
           </div>
         </div>
 
         <div className="mp-kpi-card projects">
-          <div className="mp-kpi-label"><span>🏢</span> 공수 등록 프로젝트</div>
+          <div className="mp-kpi-label"><span>🏢</span> 공수 운영 프로젝트</div>
           <div className="mp-kpi-val">{projectsWithManpower.length} <span style={{ fontSize: "16px" }}>개</span></div>
-          <div className="mp-kpi-sub">전체 {filteredProjects.length}개 프로젝트 중</div>
+          <div className="mp-kpi-sub">조회 대상 {filteredProjects.length}개 프로젝트 중</div>
         </div>
 
         <div className="mp-kpi-card depts">
@@ -464,17 +626,17 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
               return "-";
             })()}
           </div>
-          <div className="mp-kpi-sub">부서별 인력 배분 최적화</div>
+          <div className="mp-kpi-sub">부서별 인력 배분 현황</div>
         </div>
       </div>
 
       {/* Department Breakdown Banner */}
       <div className="mp-dept-banner">
-        <h3><span>📈</span> 당월 부서별 공수 투입 현황 ({year}년 {month + 1}월)</h3>
+        <h3><span>📈</span> 부서별 공수 투입 현황 ({effectiveLabel})</h3>
         <div className="mp-dept-tags">
           {DEPT_ORDER.map(deptKey => {
             const count = deptTotals[deptKey] || 0;
-            const pct = monthTotalManday > 0 ? Math.round((count / monthTotalManday) * 100) : 0;
+            const pct = periodTotalManday > 0 ? Math.round((count / periodTotalManday) * 100) : 0;
             return (
               <div className="mp-dept-tag" key={deptKey} style={{ borderLeft: `4px solid ${DEPT_COLORS[deptKey] || "#64748b"}` }}>
                 <div className="mp-dept-tag-name">{DEPT_LABELS[deptKey] || deptKey}</div>
@@ -490,8 +652,15 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       {/* Manpower Calendar View */}
       <div className="mp-calendar-section">
         <div className="mp-cal-head">
-          <h3>📅 일별 전사 인력 투입 달력 ({year}년 {month + 1}월)</h3>
-          <span style={{ fontSize: "12px", color: "#64748b" }}>* 날짜를 클릭하면 해당 일자의 프로젝트별 세부 투입 명단을 볼 수 있습니다.</span>
+          <div>
+            <h3 style={{ margin: "0 0 4px 0" }}>📅 일별 전사 인력 투입 달력 ({year}년 {month + 1}월)</h3>
+            <span style={{ fontSize: "12px", color: "#64748b" }}>
+              * 날짜를 클릭하면 해당 일자의 프로젝트별 세부 투입 명단을 볼 수 있습니다.
+              {viewMode === "range" && ` (전체 지정 기간: ${effectiveStartDate} ~ ${effectiveEndDate})`}
+            </span>
+          </div>
+          {/* Synchronized Month Navigator in Calendar */}
+          <MonthNavigator currentDate={currentDate} onPrev={prevMonth} onNext={nextMonth} onToday={goToToday} />
         </div>
 
         <div className="mp-cal-weekdays">
@@ -508,7 +677,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           {calendarCells.map((cell, idx) => {
             const isToday = cell.dateStr === todayStr;
             const hasData = cell.data && cell.data.total > 0;
-            const isPeak = hasData && cell.data.total === monthDailyPeak && monthDailyPeak > 0;
+            const isPeak = hasData && cell.data.total === periodDailyPeak && periodDailyPeak > 0;
 
             let badgeClass = "mp-headcount-badge";
             if (cell.data && cell.data.total >= 10) badgeClass += " high";
@@ -554,9 +723,15 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
       {/* Project Breakdown Table */}
       <div className="mp-table-section">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
-          <h3 style={{ margin: 0 }}>🏢 프로젝트별 월간 공수 현황 ({year}년 {month + 1}월)</h3>
-          <span style={{ fontSize: "12px", color: "#64748b" }}>* 상단 달력의 기준월({year}년 {month + 1}월)에 투입된 프로젝트별 공수 데이터입니다.</span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
+          <div>
+            <h3 style={{ margin: "0 0 4px 0" }}>🏢 프로젝트별 공수 현황 ({effectiveLabel})</h3>
+            <span style={{ fontSize: "12px", color: "#64748b" }}>
+              * {viewMode === "range" ? `지정 기간(${effectiveStartDate} ~ ${effectiveEndDate})` : `상단 달력의 기준월(${year}년 {month + 1}월)`}에 투입된 프로젝트별 공수 데이터입니다.
+            </span>
+          </div>
+          {/* Synchronized Month Navigator in Table Section */}
+          <MonthNavigator currentDate={currentDate} onPrev={prevMonth} onNext={nextMonth} onToday={goToToday} />
         </div>
         <div className="mp-table-wrapper">
           <table className="mp-table">
@@ -571,7 +746,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                 <th style={{ textAlign: "center" }}>전장</th>
                 <th style={{ textAlign: "center" }}>안전</th>
                 <th style={{ textAlign: "center" }}>소장</th>
-                <th style={{ textAlign: "center", color: "#1d4ed8" }}>{month + 1}월 투입 공수</th>
+                <th style={{ textAlign: "center", color: "#1d4ed8" }}>
+                  {viewMode === "range" ? "기간 투입 공수" : `${month + 1}월 투입 공수`}
+                </th>
                 <th style={{ textAlign: "center", background: "#f1f5f9", color: "#0f172a" }}>프로젝트 총 공수</th>
                 <th style={{ textAlign: "center" }}>상세</th>
               </tr>
@@ -579,33 +756,11 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             <tbody>
               {filteredProjects.map(p => {
                 const mp = p.manpower;
-                const pDepts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 };
-                let pMonthTotal = 0;
+                const { pDepts, pRangeTotal } = getProjectRangeData(p);
                 const pTotalManday = getProjectTotalManday(p);
 
-                if (mp?.departments) {
-                  Object.entries(mp.departments).forEach(([rawD, dData]) => {
-                    const k = normalizeDeptKey(rawD);
-                    if (dData?.daily) {
-                      Object.entries(dData.daily).forEach(([dateStr, count]) => {
-                        if (dateStr.startsWith(monthStr)) {
-                          const n = Number(count) || 0;
-                          pDepts[k] = (pDepts[k] || 0) + n;
-                          pMonthTotal += n;
-                        }
-                      });
-                    }
-                  });
-                } else if (mp?.dailyTotal) {
-                  Object.entries(mp.dailyTotal).forEach(([dateStr, count]) => {
-                    if (dateStr.startsWith(monthStr)) {
-                      pMonthTotal += (Number(count) || 0);
-                    }
-                  });
-                }
-
-                const effectiveTotal = pTotalManday > 0 ? pTotalManday : (pMonthTotal > 0 ? pMonthTotal : 0);
-                const progressRate = effectiveTotal > 0 && pMonthTotal > 0 ? Math.round((pMonthTotal / effectiveTotal) * 100) : 0;
+                const effectiveTotal = pTotalManday > 0 ? pTotalManday : (pRangeTotal > 0 ? pRangeTotal : 0);
+                const progressRate = effectiveTotal > 0 && pRangeTotal > 0 ? Math.round((pRangeTotal / effectiveTotal) * 100) : 0;
 
                 return (
                   <tr key={p.id}>
@@ -630,8 +785,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                     <td style={{ textAlign: "center" }}>{pDepts.safety ? `${pDepts.safety}명` : "-"}</td>
                     <td style={{ textAlign: "center" }}>{pDepts.manager ? `${pDepts.manager}명` : "-"}</td>
                     <td style={{ textAlign: "center" }}>
-                      <span style={{ fontWeight: "bold", color: pMonthTotal > 0 ? "#1d4ed8" : "#94a3b8", fontSize: "14px" }}>
-                        {pMonthTotal > 0 ? `${pMonthTotal.toLocaleString()} M/D` : "-"}
+                      <span style={{ fontWeight: "bold", color: pRangeTotal > 0 ? "#1d4ed8" : "#94a3b8", fontSize: "14px" }}>
+                        {pRangeTotal > 0 ? `${pRangeTotal.toLocaleString()} M/D` : "-"}
                       </span>
                     </td>
                     <td style={{ textAlign: "center", background: "#f8fafc" }}>
@@ -640,9 +795,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                           <span style={{ fontWeight: "800", color: "#0f172a", fontSize: "14px" }}>
                             {effectiveTotal.toLocaleString()} M/D
                           </span>
-                          {pMonthTotal > 0 && (
+                          {pRangeTotal > 0 && (
                             <div style={{ fontSize: "11px", color: "#059669", fontWeight: 600, marginTop: "1px" }}>
-                              당월 {progressRate}%
+                              {viewMode === "range" ? "기간" : "당월"} {progressRate}%
                             </div>
                           )}
                         </div>
@@ -674,7 +829,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             {filteredProjects.length > 0 && (
               <tfoot>
                 <tr style={{ background: "#f1f5f9", fontWeight: "bold", borderTop: "2px solid #cbd5e1" }}>
-                  <td colSpan={3} style={{ textAlign: "center", padding: "10px" }}>당월 합산</td>
+                  <td colSpan={3} style={{ textAlign: "center", padding: "10px" }}>
+                    {viewMode === "range" ? "지정 기간 합산" : "당월 합산"}
+                  </td>
                   <td style={{ textAlign: "center" }}>{deptTotals.mechanical > 0 ? `${deptTotals.mechanical} M/D` : "-"}</td>
                   <td style={{ textAlign: "center" }}>{deptTotals.vision > 0 ? `${deptTotals.vision} M/D` : "-"}</td>
                   <td style={{ textAlign: "center" }}>{deptTotals.control > 0 ? `${deptTotals.control} M/D` : "-"}</td>
@@ -682,7 +839,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                   <td style={{ textAlign: "center" }}>{deptTotals.safety > 0 ? `${deptTotals.safety} M/D` : "-"}</td>
                   <td style={{ textAlign: "center" }}>{deptTotals.manager > 0 ? `${deptTotals.manager} M/D` : "-"}</td>
                   <td style={{ textAlign: "center", color: "#1d4ed8", fontSize: "14px" }}>
-                    {monthTotalManday > 0 ? `${monthTotalManday.toLocaleString()} M/D` : "-"}
+                    {periodTotalManday > 0 ? `${periodTotalManday.toLocaleString()} M/D` : "-"}
                   </td>
                   <td style={{ textAlign: "center", color: "#0f172a", fontSize: "14px", background: "#e2e8f0" }}>
                     {filteredProjects.reduce((sum, p) => sum + getProjectTotalManday(p), 0).toLocaleString()} M/D

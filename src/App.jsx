@@ -204,10 +204,17 @@ function parseExcelMasterPlan(wb,context={}){
       const prefixPart=baseProjectName.slice(0,linesMatch.index).trim().replace(/[:\-_]+$/,'').trim();
       if(prefixPart)clientPrefix=prefixPart;
     }
-    const mfgMatch=baseProjectName.match(/(?:Line\s*:\s*|제조번호\s*[:：]\s*)([0-9,\s]+)/i);
-    if(mfgMatch){
-      const mfgs=mfgMatch[1].split(',').map(s=>s.trim()).filter(Boolean);
-      titleLines.forEach((ln,idx)=>{if(mfgs[idx])lineMfgMap[ln]=mfgs[idx];});
+    const mfgMatches=baseProjectName.match(/(E\d{4})/gi);
+    if(mfgMatches&&titleLines.length>0){
+      titleLines.forEach((ln,idx)=>{
+        if(mfgMatches[idx])lineMfgMap[ln]=mfgMatches[idx].toUpperCase();
+      });
+    }else{
+      const mfgMatch=baseProjectName.match(/(?:Line\s*:\s*|제조번호\s*[:：]\s*)([0-9,\s]+)/i);
+      if(mfgMatch){
+        const mfgs=mfgMatch[1].split(',').map(s=>s.trim()).filter(Boolean);
+        titleLines.forEach((ln,idx)=>{if(mfgs[idx])lineMfgMap[ln]=mfgs[idx];});
+      }
     }
   }
 
@@ -277,33 +284,47 @@ function parseExcelMasterPlan(wb,context={}){
     const itemRaw=row[colMap.item!==undefined?colMap.item:0];
     const eqRaw=row[colMap.equipment!==undefined?colMap.equipment:1];
     const actRaw=row[colMap.activity!==undefined?colMap.activity:2];
+    const lineRaw=colMap.line!==undefined?row[colMap.line]:undefined;
     const sRaw=row[colMap.start!==undefined?colMap.start:3];
     const eRaw=row[colMap.end!==undefined?colMap.end:4];
 
     const itemStr=String(itemRaw||"").trim();
     const eqStr=String(eqRaw||"").trim();
     const actStr=String(actRaw||"").trim();
+    const lineStr=String(lineRaw||"").trim();
+    const combinedLineStr=[itemStr,eqStr,actStr,lineStr].join(" ");
 
-    const lineMatch=itemStr.match(/(?:Line\s*|L|라인)\s*([0-9A-Za-z]+)|([0-9A-Za-z]+)\s*(?:Line|L|라인)/i);
-    if(itemStr&&lineMatch&&!/total|manpower|personnel/i.test(itemStr)){
-      currentLine=(lineMatch[1]||lineMatch[2]).trim();
+    if(lineStr){
+      const lm=lineStr.match(/([0-9A-Za-z]+)/);
+      if(lm)currentLine=lm[1];
+    }else{
+      const lineMatch=combinedLineStr.match(/(?:Line\s*|L|라인)\s*([0-9A-Za-z]+)|([0-9A-Za-z]+)\s*(?:Line|L|라인)/i);
+      if(lineMatch&&!/total|manpower|personnel/i.test(combinedLineStr)){
+        currentLine=(lineMatch[1]||lineMatch[2]).trim();
+      }
     }
-    const mfgMatch2=itemStr.match(/(E[0-9]{4})/i)||eqStr.match(/(E[0-9]{4})/i)||actStr.match(/(E[0-9]{4})/i);
-    if(mfgMatch2&&!/total|manpower/i.test(itemStr)){
+    const mfgMatch2=combinedLineStr.match(/(E[0-9]{4})/i);
+    if(mfgMatch2&&!/total|manpower/i.test(combinedLineStr)){
       currentMfgNo=mfgMatch2[1].toUpperCase();
+      for(let l in lineMfgMap){
+        if(lineMfgMap[l]===currentMfgNo){currentLine=l;break;}
+      }
+    }else{
+      if(lineMfgMap[currentLine])currentMfgNo=lineMfgMap[currentLine];
     }
+
     const mStart=excelDateToISO(sRaw);
     const mEnd=excelDateToISO(eRaw);
     const isDateRow=Boolean(mStart&&mEnd);
 
-    if(/manpower/i.test(eqStr)||/personnel|인원|인력/i.test(actStr)||(/total/i.test(String(sRaw))&&/peak/i.test(String(eRaw)))){
+    if(/manpower|personnel|인원|인력/i.test(combinedLineStr)||(/total/i.test(String(sRaw))&&/peak/i.test(String(eRaw)))){
       inManpowerSection=true;
       continue;
     }
 
-    const isDeptRow=inManpowerSection&&!isDateRow;
-    const isEqStart=eqStr&&!/^manpower$/i.test(eqStr)&&eqStr!=="0"&&!isDeptRow&&(
-      !currentProject||eqStr!==currentProject.equipment||currentLine!==currentProject._lineNum||inManpowerSection
+    const isDeptRow=inManpowerSection&&(!isDateRow||/total|기구|제어|전장|비전|mechanical|vision|control|electrical|sv|슈퍼바이저/i.test(combinedLineStr));
+    const isEqStart=eqStr&&!/manpower|personnel/i.test(eqStr)&&eqStr!=="0"&&!isDeptRow&&(
+      !currentProject||eqStr!==currentProject.equipment||currentLine!==currentProject._lineNum||(inManpowerSection&&!/total|기구|제어|전장|비전/i.test(combinedLineStr))
     );
 
     if(isEqStart){

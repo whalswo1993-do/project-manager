@@ -104,16 +104,16 @@ function renderProjectDetailCard(slide, p, yTop, C) {
 
   // Header Right Badges
   slide.addText(
-    `기간 투입: ${p.pRangeTotal.toLocaleString()} M/D  |  전체 총공수: ${p.pTotalManday > 0 ? p.pTotalManday.toLocaleString() + " M/D" : "-"}  |  진척률: ${p.ratio !== "-" ? p.ratio + "%" : "-"}`,
-    { x: 7.0, y: yTop + 0.08, w: 5.5, h: 0.3, align: "right", color: "F8FAFC", bold: true, fontSize: 9.5, margin: 0 }
+    `기간 계획 공수: ${p.pRangeTotal.toLocaleString()} M/D  |  마스터플랜 총공수: ${p.pTotalManday > 0 ? p.pTotalManday.toLocaleString() + " M/D" : "-"}  |  편성 비중: ${p.ratio !== "-" ? p.ratio + "%" : "-"}`,
+    { x: 6.8, y: yTop + 0.08, w: 5.7, h: 0.3, align: "right", color: "F8FAFC", bold: true, fontSize: 9.5, margin: 0 }
   );
 
   // Left Section: Mini KPI Stats
   const stats = [
-    { lbl: "투입 일정 범위", val: `${p.firstActiveDate} ~ ${p.lastActiveDate}` },
-    { lbl: "실 투입 일수", val: `${p.activeDaysCount}일간 투입 진행` },
-    { lbl: "일일 최고 피크", val: `${p.pPeak}명 (${p.pPeakDate || "-"})` },
-    { lbl: "주력 투입 부서", val: `${p.dominantDept} (${p.maxDeptVal} M/D, 비중 ${p.pRangeTotal > 0 ? ((p.maxDeptVal / p.pRangeTotal) * 100).toFixed(1) : 0}%)` }
+    { lbl: "공수 편성 일정", val: `${p.firstActiveDate} ~ ${p.lastActiveDate}` },
+    { lbl: "공수 편성 일수", val: `${p.activeDaysCount}일간 편성` },
+    { lbl: "일일 최대 계획", val: `${p.pPeak}명 (${p.pPeakDate || "-"})` },
+    { lbl: "주력 편성 부서", val: `${p.dominantDept} (${p.maxDeptVal} M/D, 비중 ${p.pRangeTotal > 0 ? ((p.maxDeptVal / p.pRangeTotal) * 100).toFixed(1) : 0}%)` }
   ];
 
   stats.forEach((st, i) => {
@@ -182,7 +182,7 @@ function renderProjectDetailCard(slide, p, yTop, C) {
     rectRadius: 0.06
   });
 
-  slide.addText("💡 공수 투입 상세 분석 코멘트", {
+  slide.addText("💡 마스터 플랜 공수 분석 코멘트", {
     x: 8.95,
     y: yTop + 0.64,
     w: 3.45,
@@ -195,18 +195,18 @@ function renderProjectDetailCard(slide, p, yTop, C) {
 
   let insight1 = "";
   if (p.pTotalManday > 0 && p.pRangeTotal >= p.pTotalManday) {
-    insight1 = `• 계획 공수(${p.pTotalManday} M/D) 대비 누적 100% 이상 투입 완료`;
+    insight1 = `• 마스터 플랜 계획 공수(${p.pTotalManday} M/D) 기준 기간 내 전량(100%) 편성`;
   } else if (p.pTotalManday > 0) {
-    insight1 = `• 전체 계획 공수(${p.pTotalManday} M/D) 중 본 기간 동안 ${p.ratio}% 투입 완료`;
+    insight1 = `• 마스터 플랜 전체 공수(${p.pTotalManday} M/D) 중 본 기간에 ${p.ratio}% 편성`;
   } else {
-    insight1 = `• 조회 기간 내 총 ${p.pRangeTotal} M/D 공수 투입 집계 완료`;
+    insight1 = `• 마스터 플랜 기준 본 기간 총 ${p.pRangeTotal} M/D 공수 계획 편성 완료`;
   }
 
-  let insight2 = `• 주력 공정: ${p.dominantDept} 기술 인력 집중 투입 (${p.maxDeptVal} M/D)`;
-  let insight3 = p.pPeak > 0 ? `• 일일 최대 투입은 ${p.pPeakDate}에 ${p.pPeak}명 투입 기록` : "• 일일 투입 안정화 구간 유지";
+  let insight2 = `• 주력 공정: ${p.dominantDept} 기술 인력 집중 편성 (${p.maxDeptVal} M/D)`;
+  let insight3 = p.pPeak > 0 ? `• 일일 최대 계획 인원은 ${p.pPeakDate}에 ${p.pPeak}명 편성` : "• 일일 공수 균등 편성 구간 유지";
 
   slide.addText(
-    `${insight1}\n${insight2}\n${insight3}\n• 마스터플랜 기준 공정 정상 전개 중`,
+    `${insight1}\n${insight2}\n${insight3}\n• 마스터 플랜 일정 기준 공수 계획 반영 완료`,
     {
       x: 8.95,
       y: yTop + 0.92,
@@ -882,8 +882,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           { text: "제조번호", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
           { text: "프로젝트명", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
           { text: "Site", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
-          { text: "기간 투입", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
-          { text: "진척률", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } }
+          { text: "기간 계획", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
+          { text: "편성 비중", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } }
         ]
       ];
 
@@ -899,7 +899,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
       if (displayActiveProjects.length === 0) {
         topPjtRows.push([
-          { text: "해당 기간 투입된 프로젝트가 없습니다.", options: { colspan: 5, align: "center", color: C.gray } }
+          { text: "해당 기간 공수 편성된 프로젝트가 없습니다.", options: { colspan: 5, align: "center", color: C.gray } }
         ]);
       }
 
@@ -963,7 +963,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
               fill: { color: C.navy },
               align: "center",
               valign: "middle",
-              fontSize: 9
+              fontSize: 8
             }
           }))
         );
@@ -997,15 +997,17 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                 else if (dData.total >= 5) cellFill = C.blueSoft;
                 else cellFill = C.blueLight;
 
+                // 1. Date & M/D: Text 7.5, M/D 8
                 textRuns.push({
-                  text: `${dNum}일  `,
-                  options: { fontSize: 8.5, bold: true, color: col === 0 ? C.red : col === 6 ? C.blue : C.navy }
+                  text: `${dNum}일 `,
+                  options: { fontSize: 7.5, bold: true, color: col === 0 ? C.red : col === 6 ? C.blue : C.navy }
                 });
                 textRuns.push({
                   text: `[${dData.total} M/D]\n`,
-                  options: { fontSize: 9.5, bold: true, color: isPeak ? C.red : C.blue }
+                  options: { fontSize: 8, bold: true, color: isPeak ? C.red : C.blue }
                 });
 
+                // 2. Department summary: Text 7.5
                 const deptsActive = [];
                 if (dData.departments.mechanical) deptsActive.push(`기${dData.departments.mechanical}`);
                 if (dData.departments.vision) deptsActive.push(`비${dData.departments.vision}`);
@@ -1017,24 +1019,25 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                 if (deptsActive.length > 0) {
                   textRuns.push({
                     text: `${deptsActive.slice(0, 3).join(" ")}\n`,
-                    options: { fontSize: 7, color: C.gray }
+                    options: { fontSize: 7.5, color: C.gray }
                   });
                 }
 
+                // 3. Project name summary: Text 7.5
                 const pList = dData.projectBreakdown || [];
                 if (pList.length > 0) {
                   const pName = pList[0].manufacturingNo || pList[0].name;
                   const pExtra = pList.length > 1 ? ` 외 ${pList.length - 1}건` : "";
                   textRuns.push({
                     text: `${pName}${pExtra}`,
-                    options: { fontSize: 6.5, color: C.slate }
+                    options: { fontSize: 7.5, color: C.slate }
                   });
                 }
               } else {
                 textRuns.push({
                   text: `${dNum}`,
                   options: {
-                    fontSize: 8.5,
+                    fontSize: 7.5,
                     bold: true,
                     color: !isInRange ? "CBD5E1" : col === 0 ? C.red : col === 6 ? C.blue : C.gray
                   }
@@ -1047,7 +1050,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                   fill: { color: cellFill },
                   valign: "top",
                   align: "left",
-                  margin: 0.05,
+                  margin: 0.02,
                   border: { type: "solid", pt: 0.5, color: C.borderLight }
                 }
               });
@@ -1059,19 +1062,20 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         }
 
         const colWidth = 12.13 / 7;
-        const availableHeight = 5.7;
-        const headerH = 0.32;
-        const rowH = (availableHeight - headerH) / totalWeeks;
+        const totalHeight = 5.45;
+        const headerH = 0.3;
+        const rowH = (totalHeight - headerH) / totalWeeks;
 
         sCal.addTable(calRows, {
           x: 0.6,
-          y: 1.2,
+          y: 1.25,
           w: 12.13,
-          h: availableHeight,
+          h: totalHeight,
           colW: [colWidth, colWidth, colWidth, colWidth, colWidth, colWidth, colWidth],
-          margin: 0.03,
+          margin: 0.02,
           rowH,
-          border: { type: "solid", pt: 0.5, color: C.borderLight }
+          border: { type: "solid", pt: 0.5, color: C.borderLight },
+          autoFit: false
         });
       });
 
@@ -1085,7 +1089,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
         addSlideHeader(
           sTbl,
-          `프로젝트별 공수 및 부서별 투입 현황 (${pIdx + 1}/${tablePagesCount})`,
+          `프로젝트별 마스터 플랜 공수 편성 현황 (${pIdx + 1}/${tablePagesCount})`,
           `조회 대상: ${effectiveLabel}  |  투입 단위: Man-Day (M/D)`,
           curPage++,
           totalSlides
@@ -1103,9 +1107,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             { text: "전장", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
             { text: "안전", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
             { text: "소장", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
-            { text: "기간 투입", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
-            { text: "전체 총공수", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
-            { text: "진척률", options: { bold: true, color: C.white, fill: { color: C.green }, align: "center" } }
+            { text: "기간 계획 공수", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
+            { text: "마스터플랜 총공수", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            { text: "편성 비중", options: { bold: true, color: C.white, fill: { color: C.green }, align: "center" } }
           ]
         ];
 
@@ -1172,8 +1176,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
         addSlideHeader(
           sDtl,
-          `주요 프로젝트별 공수 상세 분석 (${dIdx + 1}/${detailSlidesCount})`,
-          `프로젝트별 부서 투입 비중, 일정 추이, 일일 피크 및 공수 투입 특이사항 정밀 분석`,
+          `주요 프로젝트별 마스터 플랜 공수 상세 분석 (${dIdx + 1}/${detailSlidesCount})`,
+          `마스터 플랜 기준 부서별 공수 편성 비중, 일정 계획, 일일 최대 편성 인원 상세 분석`,
           curPage++,
           totalSlides
         );

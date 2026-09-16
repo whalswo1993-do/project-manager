@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import "./ManpowerManagement.css";
 import ExcelJS from "exceljs";
+import PptxGenJS from "pptxgenjs";
 
 export const DEPT_ORDER = ["mechanical", "vision", "control", "electrical", "safety", "manager"];
 
@@ -62,6 +63,161 @@ export function getProjectTotalManday(p) {
     if (sum > 0) return sum;
   }
   return 0;
+}
+
+// Helper to render Project Detail Card on PPT
+function renderProjectDetailCard(slide, p, yTop, C) {
+  const cardW = 12.13;
+  const cardH = 2.76;
+
+  // Background Box
+  slide.addShape("roundRect", {
+    x: 0.6,
+    y: yTop,
+    w: cardW,
+    h: cardH,
+    fill: { color: C.white },
+    line: { color: C.borderLight, width: 1 },
+    rectRadius: 0.08
+  });
+
+  // Header Banner
+  slide.addShape("roundRect", {
+    x: 0.6,
+    y: yTop,
+    w: cardW,
+    h: 0.42,
+    fill: { color: "0F172A" },
+    line: { color: "0F172A", width: 1 },
+    rectRadius: 0.08
+  });
+
+  // Project Header Text
+  slide.addText(
+    [
+      { text: `[${p.manufacturingNo || "제조번호 없음"}]  `, options: { bold: true, color: "93C5FD", fontSize: 11 } },
+      { text: `${p.name}  `, options: { bold: true, color: C.white, fontSize: 12 } },
+      { text: `(Site: ${p.site || "-"} | Line: ${p.line || "-"} | PM: ${p.pm || "-"})`, options: { color: "CBD5E1", fontSize: 9 } }
+    ],
+    { x: 0.8, y: yTop + 0.08, w: 7.2, h: 0.3, margin: 0 }
+  );
+
+  // Header Right Badges
+  slide.addText(
+    `기간 투입: ${p.pRangeTotal.toLocaleString()} M/D  |  전체 총공수: ${p.pTotalManday > 0 ? p.pTotalManday.toLocaleString() + " M/D" : "-"}  |  진척률: ${p.ratio !== "-" ? p.ratio + "%" : "-"}`,
+    { x: 7.0, y: yTop + 0.08, w: 5.5, h: 0.3, align: "right", color: "F8FAFC", bold: true, fontSize: 9.5, margin: 0 }
+  );
+
+  // Left Section: Mini KPI Stats
+  const stats = [
+    { lbl: "투입 일정 범위", val: `${p.firstActiveDate} ~ ${p.lastActiveDate}` },
+    { lbl: "실 투입 일수", val: `${p.activeDaysCount}일간 투입 진행` },
+    { lbl: "일일 최고 피크", val: `${p.pPeak}명 (${p.pPeakDate || "-"})` },
+    { lbl: "주력 투입 부서", val: `${p.dominantDept} (${p.maxDeptVal} M/D, 비중 ${p.pRangeTotal > 0 ? ((p.maxDeptVal / p.pRangeTotal) * 100).toFixed(1) : 0}%)` }
+  ];
+
+  stats.forEach((st, i) => {
+    const sy = yTop + 0.52 + i * 0.48;
+    slide.addText(st.lbl, { x: 0.8, y: sy, w: 1.15, h: 0.38, fontSize: 8, color: C.gray, bold: true, margin: 0 });
+    slide.addText(st.val, { x: 2.0, y: sy, w: 2.2, h: 0.38, fontSize: 8.5, color: C.navy, bold: true, margin: 0 });
+  });
+
+  // Middle Section: Dept Breakdown Mini Table
+  const deptHeader = ["부서", "기구", "비전", "제어", "전장", "안전", "소장"];
+  const deptVals = [
+    "공수",
+    `${p.pDepts.mechanical || 0}`,
+    `${p.pDepts.vision || 0}`,
+    `${p.pDepts.control || 0}`,
+    `${p.pDepts.electrical || 0}`,
+    `${p.pDepts.safety || 0}`,
+    `${p.pDepts.manager || 0}`
+  ];
+  const deptPcts = [
+    "비중",
+    p.pRangeTotal > 0 ? `${((p.pDepts.mechanical / p.pRangeTotal) * 100).toFixed(0)}%` : "0%",
+    p.pRangeTotal > 0 ? `${((p.pDepts.vision / p.pRangeTotal) * 100).toFixed(0)}%` : "0%",
+    p.pRangeTotal > 0 ? `${((p.pDepts.control / p.pRangeTotal) * 100).toFixed(0)}%` : "0%",
+    p.pRangeTotal > 0 ? `${((p.pDepts.electrical / p.pRangeTotal) * 100).toFixed(0)}%` : "0%",
+    p.pRangeTotal > 0 ? `${((p.pDepts.safety / p.pRangeTotal) * 100).toFixed(0)}%` : "0%",
+    p.pRangeTotal > 0 ? `${((p.pDepts.manager / p.pRangeTotal) * 100).toFixed(0)}%` : "0%"
+  ];
+
+  const deptTable = [
+    deptHeader.map((t, idx) => ({
+      text: t,
+      options: { bold: true, color: C.white, fill: { color: idx === 0 ? C.navy : C.blue }, align: "center" }
+    })),
+    deptVals.map((t, idx) => ({
+      text: t,
+      options: { bold: idx > 0, color: idx === 0 ? C.slate : C.navy, align: "center" }
+    })),
+    deptPcts.map((t, idx) => ({
+      text: t,
+      options: { color: C.gray, align: "center", fontSize: 7.5 }
+    }))
+  ];
+
+  slide.addTable(deptTable, {
+    x: 4.35,
+    y: yTop + 0.54,
+    w: 4.3,
+    h: 1.85,
+    colW: [0.7, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6],
+    border: { type: "solid", pt: 0.5, color: C.borderLight },
+    fontSize: 8,
+    margin: 0.02,
+    rowH: 0.52,
+    valign: "middle"
+  });
+
+  // Right Section: Analysis Insight Comment Box
+  slide.addShape("roundRect", {
+    x: 8.8,
+    y: yTop + 0.54,
+    w: 3.75,
+    h: 2.0,
+    fill: { color: "F1F5F9" },
+    line: { color: "CBD5E1", width: 1 },
+    rectRadius: 0.06
+  });
+
+  slide.addText("💡 공수 투입 상세 분석 코멘트", {
+    x: 8.95,
+    y: yTop + 0.64,
+    w: 3.45,
+    h: 0.22,
+    fontSize: 9,
+    bold: true,
+    color: C.navy,
+    margin: 0
+  });
+
+  let insight1 = "";
+  if (p.pTotalManday > 0 && p.pRangeTotal >= p.pTotalManday) {
+    insight1 = `• 계획 공수(${p.pTotalManday} M/D) 대비 누적 100% 이상 투입 완료`;
+  } else if (p.pTotalManday > 0) {
+    insight1 = `• 전체 계획 공수(${p.pTotalManday} M/D) 중 본 기간 동안 ${p.ratio}% 투입 완료`;
+  } else {
+    insight1 = `• 조회 기간 내 총 ${p.pRangeTotal} M/D 공수 투입 집계 완료`;
+  }
+
+  let insight2 = `• 주력 공정: ${p.dominantDept} 기술 인력 집중 투입 (${p.maxDeptVal} M/D)`;
+  let insight3 = p.pPeak > 0 ? `• 일일 최대 투입은 ${p.pPeakDate}에 ${p.pPeak}명 투입 기록` : "• 일일 투입 안정화 구간 유지";
+
+  slide.addText(
+    `${insight1}\n${insight2}\n${insight3}\n• 마스터플랜 기준 공정 정상 전개 중`,
+    {
+      x: 8.95,
+      y: yTop + 0.92,
+      w: 3.45,
+      h: 1.5,
+      fontSize: 8,
+      color: C.slate,
+      margin: 0,
+      lineSpacing: 15
+    }
+  );
 }
 
 // Reusable Synchronized Month Navigator Component
@@ -398,105 +554,645 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
   }, [year, month, dailyData]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
+  const [isExportingPPT, setIsExportingPPT] = useState(false);
 
-  // Excel Export based on effective range
-  const exportManpowerExcel = async () => {
+  // PPT Export Function for Executive Reporting
+  const exportManpowerPPT = async () => {
+    if (isExportingPPT) return;
+    setIsExportingPPT(true);
+
     try {
-      const wb = new ExcelJS.Workbook();
+      const pptx = new PptxGenJS();
+      pptx.layout = "LAYOUT_WIDE"; // 13.333 x 7.5 inch
+      pptx.author = "TW Project";
+      pptx.company = "TW";
+      pptx.title = `공수 통합 관리 보고서 (${effectiveLabel})`;
+      pptx.subject = "마스터 플랜 기반 부서별 일일 투입 인원 및 전사 공수 모니터링";
 
-      // Sheet 1: Daily Summary
-      const wsDaily = wb.addWorksheet(`일별 공수 집계`);
-      wsDaily.addRow([`TW Project - 공수 현황 (${effectiveLabel}, 총 ${periodTotalManday} M/D, Peak ${periodDailyPeak}명)`]);
-      wsDaily.addRow([]);
-      wsDaily.addRow(["날짜", "요일", "기구 (M/D)", "비전 (M/D)", "제어 (M/D)", "전장 (M/D)", "안전 (M/D)", "소장 (M/D)", "총 인원 (M/D)", "투입 프로젝트 목록"]);
+      const C = {
+        navy: "0F172A",
+        navyDark: "020617",
+        blue: "0969DA",
+        blueLight: "EFF6FF",
+        blueSoft: "DBEAFE",
+        slate: "334155",
+        gray: "64748B",
+        lightGray: "F8FAFC",
+        white: "FFFFFF",
+        border: "CBD5E1",
+        borderLight: "E2E8F0",
+        red: "DC2626",
+        redLight: "FEE2E2",
+        green: "16A34A",
+        greenLight: "DCFCE7",
+        amber: "D97706",
+        purple: "7C3AED"
+      };
 
-      const headerRow = wsDaily.getRow(3);
-      headerRow.height = 24;
-      headerRow.eachCell(c => {
-        c.font = { bold: true, color: { argb: "FFFFFFFF" } };
-        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F172A" } };
-        c.alignment = { horizontal: "center", vertical: "middle" };
-      });
+      // Helper to add Slide Header and Footer
+      const addSlideHeader = (slide, title, subtitle, pageNum, totalPages) => {
+        slide.background = { color: C.lightGray };
+        // Title
+        slide.addText(title, {
+          x: 0.6,
+          y: 0.3,
+          w: 9.8,
+          h: 0.42,
+          fontSize: 18,
+          bold: true,
+          color: C.navy,
+          margin: 0
+        });
+        // Subtitle
+        slide.addText(subtitle, {
+          x: 0.6,
+          y: 0.74,
+          w: 10.5,
+          h: 0.22,
+          fontSize: 9,
+          color: C.gray,
+          margin: 0
+        });
+        // Blue line divider
+        slide.addShape("line", {
+          x: 0.6,
+          y: 1.02,
+          w: 12.13,
+          h: 0,
+          line: { color: C.blue, width: 1.5 }
+        });
+        // Footer
+        slide.addText(
+          `TW 공수 통합 관리 시스템  |  보고서 생성일: ${new Date().toLocaleDateString("ko-KR")}  |  Page ${pageNum} / ${totalPages}`,
+          {
+            x: 0.6,
+            y: 7.15,
+            w: 12.13,
+            h: 0.2,
+            fontSize: 8,
+            color: "94A3B8",
+            align: "right",
+            margin: 0
+          }
+        );
+      };
 
-      const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
-      Object.entries(dailyData)
-        .filter(([dStr]) => dStr >= effectiveStartDate && dStr <= effectiveEndDate)
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .forEach(([, d]) => {
-          const dtObj = new Date(d.dateStr);
-          const dayOfWeek = dayNames[dtObj.getDay()];
-          const projs = d.projectBreakdown.map(x => `${x.manufacturingNo || x.name}(${x.total}명)`).join(", ");
-          const row = wsDaily.addRow([
-            d.dateStr,
-            dayOfWeek,
-            d.departments.mechanical || 0,
-            d.departments.vision || 0,
-            d.departments.control || 0,
-            d.departments.electrical || 0,
-            d.departments.safety || 0,
-            d.departments.manager || 0,
-            d.total,
-            projs || "-"
-          ]);
+      // 1. Calculate Target Months for Calendars
+      let targetMonths = [];
+      if (viewMode === "month") {
+        targetMonths = [{ y: year, m: month }];
+      } else {
+        const sD = new Date(effectiveStartDate);
+        const eD = new Date(effectiveEndDate);
+        let cur = new Date(sD.getFullYear(), sD.getMonth(), 1);
+        const endCur = new Date(eD.getFullYear(), eD.getMonth(), 1);
+        while (cur <= endCur) {
+          targetMonths.push({ y: cur.getFullYear(), m: cur.getMonth() });
+          cur.setMonth(cur.getMonth() + 1);
+        }
+      }
 
-          if (d.total === periodDailyPeak && periodDailyPeak > 0) {
-            row.getCell(9).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
-            row.getCell(9).font = { bold: true, color: { argb: "FFDC2626" } };
+      // 2. Project Analysis Data Preparation
+      const analyzedProjects = filteredProjects.map(p => {
+        const { pDepts, pRangeTotal } = getProjectRangeData(p);
+        const pTotalManday = getProjectTotalManday(p);
+        const ratio = pTotalManday > 0 ? ((pRangeTotal / pTotalManday) * 100).toFixed(1) : "-";
+
+        // Find peak and active days in this project
+        let pPeak = 0;
+        let pPeakDate = "-";
+        let activeDaysCount = 0;
+        let activeDates = [];
+        const mp = p.manpower;
+
+        if (mp?.departments) {
+          const datesSet = new Set();
+          Object.values(mp.departments).forEach(d => {
+            if (d?.daily) {
+              Object.keys(d.daily).forEach(dt => {
+                if (dt >= effectiveStartDate && dt <= effectiveEndDate) datesSet.add(dt);
+              });
+            }
+          });
+          datesSet.forEach(dt => {
+            let daySum = 0;
+            Object.values(mp.departments).forEach(d => {
+              if (d?.daily?.[dt]) daySum += Number(d.daily[dt]) || 0;
+            });
+            if (daySum > 0) {
+              activeDaysCount++;
+              activeDates.push(dt);
+              if (daySum > pPeak) {
+                pPeak = daySum;
+                pPeakDate = dt;
+              }
+            }
+          });
+        } else if (mp?.dailyTotal) {
+          Object.entries(mp.dailyTotal).forEach(([dt, val]) => {
+            const num = Number(val) || 0;
+            if (dt >= effectiveStartDate && dt <= effectiveEndDate && num > 0) {
+              activeDaysCount++;
+              activeDates.push(dt);
+              if (num > pPeak) {
+                pPeak = num;
+                pPeakDate = dt;
+              }
+            }
+          });
+        }
+
+        activeDates.sort();
+        const firstActiveDate = activeDates[0] || "-";
+        const lastActiveDate = activeDates[activeDates.length - 1] || "-";
+
+        // Dominant department
+        let dominantDept = "-";
+        let maxDeptVal = 0;
+        Object.entries(pDepts).forEach(([k, v]) => {
+          if (v > maxDeptVal) {
+            maxDeptVal = v;
+            dominantDept = DEPT_SHORT[k] || k;
           }
         });
 
-      wsDaily.columns.forEach(col => { col.width = 16; });
-      wsDaily.getColumn(1).width = 14;
-      wsDaily.getColumn(10).width = 45;
-
-      // Sheet 2: Project Breakdown
-      const wsProj = wb.addWorksheet("프로젝트별 공수");
-      wsProj.addRow([`프로젝트별 공수 투입 현황 (${effectiveLabel})`]);
-      wsProj.addRow([]);
-      wsProj.addRow(["제조번호", "Site", "Line", "프로젝트명", "기구 (M/D)", "비전 (M/D)", "제어 (M/D)", "전장 (M/D)", "안전 (M/D)", "소장 (M/D)", "기간 총합 (M/D)", "프로젝트 전체 총공수 (M/D)"]);
-
-      const pHeaderRow = wsProj.getRow(3);
-      pHeaderRow.height = 24;
-      pHeaderRow.eachCell(c => {
-        c.font = { bold: true, color: { argb: "FFFFFFFF" } };
-        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A8A" } };
-        c.alignment = { horizontal: "center", vertical: "middle" };
+        return {
+          ...p,
+          pDepts,
+          pRangeTotal,
+          pTotalManday,
+          ratio,
+          pPeak,
+          pPeakDate,
+          activeDaysCount,
+          firstActiveDate,
+          lastActiveDate,
+          dominantDept,
+          maxDeptVal
+        };
       });
 
-      filteredProjects.forEach(p => {
-        const { pDepts, pRangeTotal } = getProjectRangeData(p);
-        const pTotalManday = getProjectTotalManday(p);
+      // Active projects sorted by range total descending
+      const activeProjects = analyzedProjects
+        .filter(p => p.pRangeTotal > 0)
+        .sort((a, b) => b.pRangeTotal - a.pRangeTotal);
 
-        wsProj.addRow([
-          p.manufacturingNo || "-",
-          p.site || "-",
-          p.line || "-",
-          p.name,
-          pDepts.mechanical,
-          pDepts.vision,
-          pDepts.control,
-          pDepts.electrical,
-          pDepts.safety,
-          pDepts.manager,
-          pRangeTotal,
-          pTotalManday || pRangeTotal
+      const displayActiveProjects = activeProjects.length > 0 ? activeProjects : analyzedProjects.slice(0, 6);
+
+      // Pagination for Table Slide
+      const PJT_PER_PAGE = 10;
+      const tablePagesCount = Math.max(1, Math.ceil(filteredProjects.length / PJT_PER_PAGE));
+
+      // Detailed Analysis Projects: up to 6 top projects (2 per slide)
+      const detailPjtList = displayActiveProjects.slice(0, 6);
+      const detailSlidesCount = Math.max(1, Math.ceil(detailPjtList.length / 2));
+
+      // Total Slide Count Estimation
+      const totalSlides = 1 + targetMonths.length + tablePagesCount + detailSlidesCount;
+      let curPage = 1;
+
+      // ==========================================
+      // SLIDE 1: Executive Summary (종합 요약)
+      // ==========================================
+      const s1 = pptx.addSlide();
+      addSlideHeader(
+        s1,
+        "공수 통합 관리 종합 현황 (Executive Summary)",
+        `조회 대상: ${effectiveLabel}  |  Site 필터: ${siteFilter}  |  부서 필터: ${deptFilter}`,
+        curPage++,
+        totalSlides
+      );
+
+      // 4 KPI Cards
+      const daysDiff = Math.max(1, Math.round((new Date(effectiveEndDate) - new Date(effectiveStartDate)) / 86400000) + 1);
+      const dailyAvg = (periodTotalManday / daysDiff).toFixed(1);
+
+      const kpis = [
+        { title: "총 투입 공수", val: `${periodTotalManday.toLocaleString()} M/D`, desc: `조회 기간 누적 투입량`, color: C.blue },
+        { title: "일일 Peak 인원", val: `${periodDailyPeak} 명`, desc: peakDates.length > 0 ? peakDates.slice(0, 2).join(", ") : "피크 없음", color: C.red },
+        { title: "투입 프로젝트", val: `${projectsWithManpower.length} 개 PJT`, desc: `전체 ${filteredProjects.length}개 대상 프로젝트`, color: C.green },
+        { title: "일일 평균 투입", val: `${dailyAvg} M/D`, desc: `총 ${daysDiff}일간 일평균 인원`, color: C.purple }
+      ];
+
+      kpis.forEach((k, i) => {
+        const x = 0.6 + i * 3.12;
+        s1.addShape("roundRect", {
+          x,
+          y: 1.2,
+          w: 2.9,
+          h: 1.12,
+          fill: { color: C.white },
+          line: { color: C.borderLight, width: 1 },
+          rectRadius: 0.08
+        });
+        s1.addText(k.title, {
+          x: x + 0.18,
+          y: 1.32,
+          w: 2.54,
+          h: 0.22,
+          fontSize: 9.5,
+          color: C.gray,
+          bold: true,
+          margin: 0
+        });
+        s1.addText(k.val, {
+          x: x + 0.18,
+          y: 1.56,
+          w: 2.54,
+          h: 0.42,
+          fontSize: 19,
+          color: k.color,
+          bold: true,
+          margin: 0
+        });
+        s1.addText(k.desc, {
+          x: x + 0.18,
+          y: 2.02,
+          w: 2.54,
+          h: 0.2,
+          fontSize: 7.5,
+          color: "94A3B8",
+          margin: 0
+        });
+      });
+
+      // Split Section: Left - Department Breakdown Table
+      s1.addText("부서별 공수 투입 현황 및 비중", {
+        x: 0.6,
+        y: 2.52,
+        w: 5.85,
+        h: 0.28,
+        fontSize: 12,
+        bold: true,
+        color: C.navy,
+        margin: 0
+      });
+
+      const deptTableRows = [
+        [
+          { text: "부서명", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+          { text: "투입 공수 (M/D)", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+          { text: "비중 (%)", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } }
+        ]
+      ];
+
+      DEPT_ORDER.forEach(k => {
+        const val = deptTotals[k] || 0;
+        const pct = periodTotalManday > 0 ? ((val / periodTotalManday) * 100).toFixed(1) : "0.0";
+        deptTableRows.push([
+          { text: DEPT_LABELS[k], options: { bold: true, color: C.navy, align: "left" } },
+          { text: `${val.toLocaleString()} M/D`, options: { bold: true, color: C.blue, align: "right" } },
+          { text: `${pct}%`, options: { align: "right", color: C.gray } }
         ]);
       });
 
-      wsProj.columns.forEach(col => { col.width = 16; });
-      wsProj.getColumn(4).width = 32;
+      deptTableRows.push([
+        { text: "전체 합계", options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "left" } },
+        { text: `${periodTotalManday.toLocaleString()} M/D`, options: { bold: true, color: C.blue, fill: { color: "E2E8F0" }, align: "right" } },
+        { text: "100.0%", options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } }
+      ]);
 
-      const buffer = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const fileLabel = viewMode === "month" ? monthStr : `${effectiveStartDate}_${effectiveEndDate}`;
-      a.download = `TW_공수통합보고서_${fileLabel}.xlsx`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 500);
+      s1.addTable(deptTableRows, {
+        x: 0.6,
+        y: 2.88,
+        w: 5.85,
+        h: 4.0,
+        colW: [2.65, 1.8, 1.4],
+        border: { type: "solid", pt: 0.5, color: C.borderLight },
+        fontSize: 8.5,
+        margin: 0.04,
+        rowH: 0.35,
+        valign: "middle"
+      });
+
+      // Split Section: Right - Top Projects Overview
+      s1.addText("주요 투입 프로젝트 현황 (TOP 5)", {
+        x: 6.88,
+        y: 2.52,
+        w: 5.85,
+        h: 0.28,
+        fontSize: 12,
+        bold: true,
+        color: C.navy,
+        margin: 0
+      });
+
+      const topPjtRows = [
+        [
+          { text: "제조번호", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
+          { text: "프로젝트명", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
+          { text: "Site", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
+          { text: "기간 투입", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
+          { text: "진척률", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } }
+        ]
+      ];
+
+      displayActiveProjects.slice(0, 5).forEach(p => {
+        topPjtRows.push([
+          { text: p.manufacturingNo || "-", options: { align: "center", bold: true, color: C.slate } },
+          { text: p.name || "-", options: { align: "left", bold: true, color: C.navy } },
+          { text: p.site || "-", options: { align: "center", color: C.gray } },
+          { text: `${p.pRangeTotal.toLocaleString()} M/D`, options: { align: "right", bold: true, color: C.blue } },
+          { text: p.ratio !== "-" ? `${p.ratio}%` : "-", options: { align: "right", bold: true, color: C.green } }
+        ]);
+      });
+
+      if (displayActiveProjects.length === 0) {
+        topPjtRows.push([
+          { text: "해당 기간 투입된 프로젝트가 없습니다.", options: { colspan: 5, align: "center", color: C.gray } }
+        ]);
+      }
+
+      s1.addTable(topPjtRows, {
+        x: 6.88,
+        y: 2.88,
+        w: 5.85,
+        h: 4.0,
+        colW: [1.2, 2.25, 0.8, 1.0, 0.6],
+        border: { type: "solid", pt: 0.5, color: C.borderLight },
+        fontSize: 8.5,
+        margin: 0.04,
+        rowH: 0.45,
+        valign: "middle"
+      });
+
+      // ==========================================
+      // SLIDE 2+: Monthly Calendar Slides (월별 달력)
+      // ==========================================
+      targetMonths.forEach(({ y: curY, m: curM }) => {
+        const sCal = pptx.addSlide();
+
+        const daysInCurMonth = new Date(curY, curM + 1, 0).getDate();
+        let mTotal = 0;
+        let mPeak = 0;
+        let mPeakDate = "-";
+
+        for (let d = 1; d <= daysInCurMonth; d++) {
+          const dStr = `${curY}-${String(curM + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          const dData = dailyData[dStr];
+          if (dData && dData.total > 0) {
+            mTotal += dData.total;
+            if (dData.total > mPeak) {
+              mPeak = dData.total;
+              mPeakDate = dStr;
+            }
+          }
+        }
+
+        addSlideHeader(
+          sCal,
+          `${curY}년 ${curM + 1}월 공수 투입 달력`,
+          `월간 투입 공수: ${mTotal.toLocaleString()} M/D  |  일일 Peak: ${mPeak}명 (${mPeakDate || "-"})  |  전체 조회 기간: ${effectiveLabel}`,
+          curPage++,
+          totalSlides
+        );
+
+        const firstDayOfWeek = new Date(curY, curM, 1).getDay();
+        const totalWeeks = Math.ceil((firstDayOfWeek + daysInCurMonth) / 7);
+
+        const calRows = [];
+
+        // Weekday Header
+        const weekdays = ["일 (Sun)", "월 (Mon)", "화 (Tue)", "수 (Wed)", "목 (Thu)", "금 (Fri)", "토 (Sat)"];
+        calRows.push(
+          weekdays.map((w, idx) => ({
+            text: w,
+            options: {
+              bold: true,
+              color: idx === 0 ? "FCA5A5" : idx === 6 ? "93C5FD" : C.white,
+              fill: { color: C.navy },
+              align: "center",
+              valign: "middle",
+              fontSize: 9
+            }
+          }))
+        );
+
+        // Week Rows
+        let dayCounter = 1;
+        for (let w = 0; w < totalWeeks; w++) {
+          const rowCells = [];
+          for (let col = 0; col < 7; col++) {
+            const cellIndex = w * 7 + col;
+            if (cellIndex < firstDayOfWeek || dayCounter > daysInCurMonth) {
+              rowCells.push({
+                text: "",
+                options: {
+                  fill: { color: "F8FAFC" },
+                  border: { type: "solid", pt: 0.5, color: "E2E8F0" }
+                }
+              });
+            } else {
+              const dNum = dayCounter;
+              const dStr = `${curY}-${String(curM + 1).padStart(2, "0")}-${String(dNum).padStart(2, "0")}`;
+              const dData = dailyData[dStr];
+              const isInRange = dStr >= effectiveStartDate && dStr <= effectiveEndDate;
+
+              let cellFill = C.white;
+              let textRuns = [];
+
+              if (dData && dData.total > 0) {
+                const isPeak = dData.total === mPeak && mPeak > 0;
+                if (isPeak) cellFill = C.redLight;
+                else if (dData.total >= 5) cellFill = C.blueSoft;
+                else cellFill = C.blueLight;
+
+                textRuns.push({
+                  text: `${dNum}일  `,
+                  options: { fontSize: 8.5, bold: true, color: col === 0 ? C.red : col === 6 ? C.blue : C.navy }
+                });
+                textRuns.push({
+                  text: `[${dData.total} M/D]\n`,
+                  options: { fontSize: 9.5, bold: true, color: isPeak ? C.red : C.blue }
+                });
+
+                const deptsActive = [];
+                if (dData.departments.mechanical) deptsActive.push(`기${dData.departments.mechanical}`);
+                if (dData.departments.vision) deptsActive.push(`비${dData.departments.vision}`);
+                if (dData.departments.control) deptsActive.push(`제${dData.departments.control}`);
+                if (dData.departments.electrical) deptsActive.push(`전${dData.departments.electrical}`);
+                if (dData.departments.safety) deptsActive.push(`안${dData.departments.safety}`);
+                if (dData.departments.manager) deptsActive.push(`소${dData.departments.manager}`);
+
+                if (deptsActive.length > 0) {
+                  textRuns.push({
+                    text: `${deptsActive.slice(0, 3).join(" ")}\n`,
+                    options: { fontSize: 7, color: C.gray }
+                  });
+                }
+
+                const pList = dData.projectBreakdown || [];
+                if (pList.length > 0) {
+                  const pName = pList[0].manufacturingNo || pList[0].name;
+                  const pExtra = pList.length > 1 ? ` 외 ${pList.length - 1}건` : "";
+                  textRuns.push({
+                    text: `${pName}${pExtra}`,
+                    options: { fontSize: 6.5, color: C.slate }
+                  });
+                }
+              } else {
+                textRuns.push({
+                  text: `${dNum}`,
+                  options: {
+                    fontSize: 8.5,
+                    bold: true,
+                    color: !isInRange ? "CBD5E1" : col === 0 ? C.red : col === 6 ? C.blue : C.gray
+                  }
+                });
+              }
+
+              rowCells.push({
+                text: textRuns,
+                options: {
+                  fill: { color: cellFill },
+                  valign: "top",
+                  align: "left",
+                  margin: 0.05,
+                  border: { type: "solid", pt: 0.5, color: C.borderLight }
+                }
+              });
+
+              dayCounter++;
+            }
+          }
+          calRows.push(rowCells);
+        }
+
+        const colWidth = 12.13 / 7;
+        const availableHeight = 5.7;
+        const headerH = 0.32;
+        const rowH = (availableHeight - headerH) / totalWeeks;
+
+        sCal.addTable(calRows, {
+          x: 0.6,
+          y: 1.2,
+          w: 12.13,
+          h: availableHeight,
+          colW: [colWidth, colWidth, colWidth, colWidth, colWidth, colWidth, colWidth],
+          margin: 0.03,
+          rowH,
+          border: { type: "solid", pt: 0.5, color: C.borderLight }
+        });
+      });
+
+      // ==========================================
+      // SLIDE: Project Overview Tables (프로젝트별 현황 표)
+      // ==========================================
+      for (let pIdx = 0; pIdx < tablePagesCount; pIdx++) {
+        const sTbl = pptx.addSlide();
+        const start = pIdx * PJT_PER_PAGE;
+        const pagePjtSlice = filteredProjects.slice(start, start + PJT_PER_PAGE);
+
+        addSlideHeader(
+          sTbl,
+          `프로젝트별 공수 및 부서별 투입 현황 (${pIdx + 1}/${tablePagesCount})`,
+          `조회 대상: ${effectiveLabel}  |  투입 단위: Man-Day (M/D)`,
+          curPage++,
+          totalSlides
+        );
+
+        const tableRows = [
+          [
+            { text: "제조번호", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            { text: "Site", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            { text: "Line", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            { text: "프로젝트명", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            { text: "기구", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            { text: "비전", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            { text: "제어", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            { text: "전장", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            { text: "안전", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            { text: "소장", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            { text: "기간 투입", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
+            { text: "전체 총공수", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            { text: "진척률", options: { bold: true, color: C.white, fill: { color: C.green }, align: "center" } }
+          ]
+        ];
+
+        pagePjtSlice.forEach(p => {
+          const { pDepts, pRangeTotal } = getProjectRangeData(p);
+          const pTotalManday = getProjectTotalManday(p);
+          const ratio = pTotalManday > 0 ? ((pRangeTotal / pTotalManday) * 100).toFixed(1) + "%" : "-";
+
+          tableRows.push([
+            { text: p.manufacturingNo || "-", options: { align: "center", bold: true, color: C.slate } },
+            { text: p.site || "-", options: { align: "center", color: C.gray } },
+            { text: p.line || "-", options: { align: "center", color: C.gray } },
+            { text: p.name || "-", options: { align: "left", bold: true, color: C.navy } },
+            { text: pDepts.mechanical > 0 ? String(pDepts.mechanical) : "-", options: { align: "right" } },
+            { text: pDepts.vision > 0 ? String(pDepts.vision) : "-", options: { align: "right" } },
+            { text: pDepts.control > 0 ? String(pDepts.control) : "-", options: { align: "right" } },
+            { text: pDepts.electrical > 0 ? String(pDepts.electrical) : "-", options: { align: "right" } },
+            { text: pDepts.safety > 0 ? String(pDepts.safety) : "-", options: { align: "right" } },
+            { text: pDepts.manager > 0 ? String(pDepts.manager) : "-", options: { align: "right" } },
+            { text: pRangeTotal > 0 ? `${pRangeTotal} M/D` : "-", options: { align: "right", bold: true, color: C.blue } },
+            { text: pTotalManday > 0 ? `${pTotalManday} M/D` : "-", options: { align: "right", color: C.slate } },
+            { text: ratio, options: { align: "right", bold: true, color: ratio !== "-" ? C.green : C.gray } }
+          ]);
+        });
+
+        // Add summary row on the last page
+        if (pIdx === tablePagesCount - 1) {
+          const allTotalMandaySum = filteredProjects.reduce((acc, p) => acc + getProjectTotalManday(p), 0);
+          tableRows.push([
+            { text: "합계 (Total)", options: { colspan: 4, bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "center" } },
+            { text: String(deptTotals.mechanical), options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
+            { text: String(deptTotals.vision), options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
+            { text: String(deptTotals.control), options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
+            { text: String(deptTotals.electrical), options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
+            { text: String(deptTotals.safety), options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
+            { text: String(deptTotals.manager), options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
+            { text: `${periodTotalManday} M/D`, options: { bold: true, color: C.blue, fill: { color: "E2E8F0" }, align: "right" } },
+            { text: `${allTotalMandaySum} M/D`, options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
+            { text: allTotalMandaySum > 0 ? `${((periodTotalManday / allTotalMandaySum) * 100).toFixed(1)}%` : "-", options: { bold: true, color: C.green, fill: { color: "E2E8F0" }, align: "right" } }
+          ]);
+        }
+
+        sTbl.addTable(tableRows, {
+          x: 0.6,
+          y: 1.25,
+          w: 12.13,
+          h: 5.6,
+          colW: [1.2, 0.8, 0.8, 2.53, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 1.1, 1.2, 0.8],
+          border: { type: "solid", pt: 0.5, color: C.borderLight },
+          fontSize: 8,
+          margin: 0.04,
+          rowH: 0.35,
+          valign: "middle"
+        });
+      }
+
+      // ==========================================
+      // SLIDE: Project Deep Dive / Detailed Analysis (프로젝트별 상세 분석)
+      // ==========================================
+      for (let dIdx = 0; dIdx < detailSlidesCount; dIdx++) {
+        const sDtl = pptx.addSlide();
+        const p1 = detailPjtList[dIdx * 2];
+        const p2 = detailPjtList[dIdx * 2 + 1];
+
+        addSlideHeader(
+          sDtl,
+          `주요 프로젝트별 공수 상세 분석 (${dIdx + 1}/${detailSlidesCount})`,
+          `프로젝트별 부서 투입 비중, 일정 추이, 일일 피크 및 공수 투입 특이사항 정밀 분석`,
+          curPage++,
+          totalSlides
+        );
+
+        // Render Project 1 (Top Card)
+        if (p1) renderProjectDetailCard(sDtl, p1, 1.2, C);
+
+        // Render Project 2 (Bottom Card)
+        if (p2) renderProjectDetailCard(sDtl, p2, 4.2, C);
+      }
+
+      // Save PPT File
+      const fileLabel = viewMode === "month" ? `${year}년_${month + 1}월` : `${effectiveStartDate}_${effectiveEndDate}`;
+      await pptx.writeFile({ fileName: `TW_공수보고서_${fileLabel}.pptx` });
     } catch (err) {
-      alert("엑셀 다운로드 실패: " + err.message);
+      console.error("PPT 생성 실패:", err);
+      alert("PPT 생성 실패: " + err.message);
+    } finally {
+      setIsExportingPPT(false);
     }
   };
 
@@ -562,7 +1258,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           )}
         </div>
 
-        {/* Row 2: Filters & Excel Download */}
+        {/* Row 2: Filters & PPT Export Button */}
         <div className="mp-controls-row">
           <div className="mp-filter-group">
             <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>Site 필터:</label>
@@ -590,8 +1286,13 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             />
           </div>
 
-          <button className="mp-excel-btn" onClick={exportManpowerExcel}>
-            📥 공수 엑셀 다운로드 ({viewMode === "month" ? `${month + 1}월` : "지정기간"})
+          <button
+            className="mp-ppt-btn"
+            onClick={exportManpowerPPT}
+            disabled={isExportingPPT}
+            title="공수 현황 및 프로젝트 상세 분석 보고서 PPT 다운로드"
+          >
+            {isExportingPPT ? "⏳ PPT 보고서 생성 중..." : `📊 공수 보고서 PPT 다운로드 (${viewMode === "month" ? `${month + 1}월` : "지정기간"})`}
           </button>
         </div>
       </div>

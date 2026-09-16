@@ -449,7 +449,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
       {/* Department Breakdown Banner */}
       <div className="mp-dept-banner">
-        <h3><span>📈</span> 당월 부서별 공수 투입 현황</h3>
+        <h3><span>📈</span> 당월 부서별 공수 투입 현황 ({year}년 {month + 1}월)</h3>
         <div className="mp-dept-tags">
           {DEPT_ORDER.map(deptKey => {
             const count = deptTotals[deptKey] || 0;
@@ -533,7 +533,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
       {/* Project Breakdown Table */}
       <div className="mp-table-section">
-        <h3>🏢 프로젝트별 월간 공수 현황</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
+          <h3 style={{ margin: 0 }}>🏢 프로젝트별 월간 공수 현황 ({year}년 {month + 1}월)</h3>
+          <span style={{ fontSize: "12px", color: "#64748b" }}>* 상단 달력의 기준월({year}년 {month + 1}월)에 투입된 프로젝트별 공수 데이터입니다.</span>
+        </div>
         <div className="mp-table-wrapper">
           <table className="mp-table">
             <thead>
@@ -547,7 +550,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                 <th style={{ textAlign: "center" }}>전장</th>
                 <th style={{ textAlign: "center" }}>안전</th>
                 <th style={{ textAlign: "center" }}>소장</th>
-                <th style={{ textAlign: "center" }}>당월 합계</th>
+                <th style={{ textAlign: "center" }}>{month + 1}월 합계</th>
                 <th style={{ textAlign: "center" }}>전체 M/D</th>
                 <th style={{ textAlign: "center" }}>상세</th>
               </tr>

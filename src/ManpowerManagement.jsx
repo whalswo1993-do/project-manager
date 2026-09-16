@@ -2,33 +2,39 @@ import React, { useState, useMemo } from "react";
 import "./ManpowerManagement.css";
 import ExcelJS from "exceljs";
 
-const DEPT_LABELS = {
-  mechanical: "기구 기술 (Mechanical)",
-  vision: "비전 기술 (Vision)",
-  control: "제어 기술 (Control)",
-  electrical: "전장 기술 (Electrical)",
-  safety: "안전 관리 (Safety)"
+export const DEPT_ORDER = ["mechanical", "vision", "control", "electrical", "safety", "manager"];
+
+export const DEPT_LABELS = {
+  mechanical: "기구 (Mechanical)",
+  vision: "비전 (Vision)",
+  control: "제어 (Control)",
+  electrical: "전장 (Electrical)",
+  safety: "안전 (Safety)",
+  manager: "소장 (Manager)"
 };
 
-const DEPT_SHORT = {
+export const DEPT_SHORT = {
   mechanical: "기구",
   vision: "비전",
   control: "제어",
   electrical: "전장",
-  safety: "안전"
+  safety: "안전",
+  manager: "소장"
 };
 
-const DEPT_COLORS = {
+export const DEPT_COLORS = {
   mechanical: "#3b82f6",
   vision: "#8b5cf6",
   control: "#10b981",
   electrical: "#f59e0b",
-  safety: "#ef4444"
+  safety: "#ef4444",
+  manager: "#06b6d4"
 };
 
 export function normalizeDeptKey(key) {
   if (!key) return "other";
   const s = String(key).toLowerCase().trim();
+  if (s.includes("소장") || s.includes("manager") || s.includes("현장대리인") || s.includes("site mgr") || s.includes("field mgr")) return "manager";
   if (s.includes("mech") || s.includes("기구")) return "mechanical";
   if (s.includes("vis") || s.includes("비전")) return "vision";
   if (s.includes("cont") || s.includes("제어")) return "control";
@@ -91,7 +97,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
     let totalM = 0;
     let peakVal = 0;
     const peakD = [];
-    const depts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0 };
+    const depts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 };
     const pList = [];
 
     // Initialize all dates of the month
@@ -102,7 +108,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         dateStr: dStr,
         dayNum: d,
         total: 0,
-        departments: { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0 },
+        departments: { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 },
         projectBreakdown: []
       };
     }
@@ -249,7 +255,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       const wsDaily = wb.addWorksheet(`${year}년 ${month + 1}월 일별 공수 집계`);
       wsDaily.addRow([`TW Project - ${year}년 ${month + 1}월 전사 일별 공수 현황 (총 ${monthTotalManday} M/D, Peak ${monthDailyPeak}명)`]);
       wsDaily.addRow([]);
-      wsDaily.addRow(["날짜", "요일", "기구 (M/D)", "비전 (M/D)", "제어 (M/D)", "전장 (M/D)", "안전 (M/D)", "총 인원 (M/D)", "투입 프로젝트 목록"]);
+      wsDaily.addRow(["날짜", "요일", "기구 (M/D)", "비전 (M/D)", "제어 (M/D)", "전장 (M/D)", "안전 (M/D)", "소장 (M/D)", "총 인원 (M/D)", "투입 프로젝트 목록"]);
 
       const headerRow = wsDaily.getRow(3);
       headerRow.height = 24;
@@ -272,25 +278,26 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           d.departments.control || 0,
           d.departments.electrical || 0,
           d.departments.safety || 0,
+          d.departments.manager || 0,
           d.total,
           projs || "-"
         ]);
 
         if (d.total === monthDailyPeak && monthDailyPeak > 0) {
-          row.getCell(8).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
-          row.getCell(8).font = { bold: true, color: { argb: "FFDC2626" } };
+          row.getCell(9).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+          row.getCell(9).font = { bold: true, color: { argb: "FFDC2626" } };
         }
       });
 
       wsDaily.columns.forEach(col => { col.width = 16; });
       wsDaily.getColumn(1).width = 14;
-      wsDaily.getColumn(9).width = 45;
+      wsDaily.getColumn(10).width = 45;
 
       // Sheet 2: Project Breakdown
       const wsProj = wb.addWorksheet("프로젝트별 공수");
       wsProj.addRow([`${year}년 ${month + 1}월 프로젝트별 공수 투입 현황`]);
       wsProj.addRow([]);
-      wsProj.addRow(["제조번호", "Site", "Line", "프로젝트명", "기구 (M/D)", "비전 (M/D)", "제어 (M/D)", "전장 (M/D)", "안전 (M/D)", "당월 총합 (M/D)", "전체 총공수 (M/D)"]);
+      wsProj.addRow(["제조번호", "Site", "Line", "프로젝트명", "기구 (M/D)", "비전 (M/D)", "제어 (M/D)", "전장 (M/D)", "안전 (M/D)", "소장 (M/D)", "당월 총합 (M/D)", "전체 총공수 (M/D)"]);
 
       const pHeaderRow = wsProj.getRow(3);
       pHeaderRow.height = 24;
@@ -302,7 +309,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
       filteredProjects.forEach(p => {
         const mp = p.manpower;
-        const pDepts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0 };
+        const pDepts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 };
         let pMonthTotal = 0;
 
         if (mp?.departments) {
@@ -329,6 +336,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           pDepts.control,
           pDepts.electrical,
           pDepts.safety,
+          pDepts.manager,
           pMonthTotal,
           mp?.totalManday || pMonthTotal
         ]);
@@ -355,8 +363,11 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       {/* Top Header Card */}
       <div className="mp-header-card">
         <div className="mp-title-group">
-          <h2>📊 공수 통합 관리 시스템 (Manpower Management)</h2>
-          <p>마스터 플랜 기반 부서별 일일 투입 인원 및 전사 공수 종합 모니터링</p>
+          <div className="mp-logo-icon">📊</div>
+          <div className="mp-title-text">
+            <h2><span style={{ color: "#0969da" }}>공수</span> 통합 관리 시스템 (Manpower Management)</h2>
+            <p>마스터 플랜 기반 부서별 일일 투입 인원 및 전사 공수 종합 모니터링</p>
+          </div>
         </div>
         <div className="mp-month-navigator">
           <button className="mp-nav-btn" onClick={prevMonth} title="이전 달">‹</button>
@@ -378,11 +389,12 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>부서 필터:</label>
           <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}>
             <option value="전체">전체 부서</option>
-            <option value="mechanical">기구 기술 (Mechanical)</option>
-            <option value="vision">비전 기술 (Vision)</option>
-            <option value="control">제어 기술 (Control)</option>
-            <option value="electrical">전장 기술 (Electrical)</option>
-            <option value="safety">안전 관리 (Safety)</option>
+            <option value="mechanical">기구 (Mechanical)</option>
+            <option value="vision">비전 (Vision)</option>
+            <option value="control">제어 (Control)</option>
+            <option value="electrical">전장 (Electrical)</option>
+            <option value="safety">안전 (Safety)</option>
+            <option value="manager">소장 (Manager)</option>
           </select>
 
           <input
@@ -439,7 +451,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       <div className="mp-dept-banner">
         <h3><span>📈</span> 당월 부서별 공수 투입 현황</h3>
         <div className="mp-dept-tags">
-          {Object.entries(deptTotals).map(([deptKey, count]) => {
+          {DEPT_ORDER.map(deptKey => {
+            const count = deptTotals[deptKey] || 0;
             const pct = monthTotalManday > 0 ? Math.round((count / monthTotalManday) * 100) : 0;
             return (
               <div className="mp-dept-tag" key={deptKey} style={{ borderLeft: `4px solid ${DEPT_COLORS[deptKey] || "#64748b"}` }}>
@@ -533,6 +546,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                 <th style={{ textAlign: "center" }}>제어</th>
                 <th style={{ textAlign: "center" }}>전장</th>
                 <th style={{ textAlign: "center" }}>안전</th>
+                <th style={{ textAlign: "center" }}>소장</th>
                 <th style={{ textAlign: "center" }}>당월 합계</th>
                 <th style={{ textAlign: "center" }}>전체 M/D</th>
                 <th style={{ textAlign: "center" }}>상세</th>
@@ -541,7 +555,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             <tbody>
               {filteredProjects.map(p => {
                 const mp = p.manpower;
-                const pDepts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0 };
+                const pDepts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 };
                 let pMonthTotal = 0;
 
                 if (mp?.departments) {
@@ -577,6 +591,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                     <td style={{ textAlign: "center" }}>{pDepts.control ? `${pDepts.control}명` : "-"}</td>
                     <td style={{ textAlign: "center" }}>{pDepts.electrical ? `${pDepts.electrical}명` : "-"}</td>
                     <td style={{ textAlign: "center" }}>{pDepts.safety ? `${pDepts.safety}명` : "-"}</td>
+                    <td style={{ textAlign: "center" }}>{pDepts.manager ? `${pDepts.manager}명` : "-"}</td>
                     <td style={{ textAlign: "center", fontWeight: "bold", color: pMonthTotal > 0 ? "#1d4ed8" : "#94a3b8" }}>
                       {pMonthTotal > 0 ? `${pMonthTotal} M/D` : "-"}
                     </td>
@@ -643,12 +658,13 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                     <th style={{ textAlign: "center" }}>제어</th>
                     <th style={{ textAlign: "center" }}>전장</th>
                     <th style={{ textAlign: "center" }}>안전</th>
+                    <th style={{ textAlign: "center" }}>소장</th>
                     <th style={{ textAlign: "center" }}>당일 총원</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedDay.projectBreakdown.length === 0 ? (
-                    <tr><td colSpan={9} style={{ textAlign: "center", padding: "20px", color: "#94a3b8" }}>당일 투입된 프로젝트 공수가 없습니다.</td></tr>
+                    <tr><td colSpan={10} style={{ textAlign: "center", padding: "20px", color: "#94a3b8" }}>당일 투입된 프로젝트 공수가 없습니다.</td></tr>
                   ) : (
                     selectedDay.projectBreakdown.map((pb, pIdx) => (
                       <tr key={pIdx}>
@@ -660,6 +676,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                         <td style={{ textAlign: "center" }}>{pb.departments.control || "-"}</td>
                         <td style={{ textAlign: "center" }}>{pb.departments.electrical || "-"}</td>
                         <td style={{ textAlign: "center" }}>{pb.departments.safety || "-"}</td>
+                        <td style={{ textAlign: "center" }}>{pb.departments.manager || "-"}</td>
                         <td style={{ textAlign: "center", fontWeight: "bold", color: "#dc2626" }}>{pb.total}명</td>
                       </tr>
                     ))
@@ -776,6 +793,7 @@ export function ProjectManpowerModal({ project, onClose }) {
                         <th>제어</th>
                         <th>전장</th>
                         <th>안전</th>
+                        <th>소장</th>
                         <th>당일 합계</th>
                       </tr>
                     </thead>
@@ -786,7 +804,8 @@ export function ProjectManpowerModal({ project, onClose }) {
                         const ctrl = mp.departments?.control?.daily?.[dateStr] || mp.departments?.Control?.daily?.[dateStr] || 0;
                         const elec = mp.departments?.electrical?.daily?.[dateStr] || mp.departments?.Electrical?.daily?.[dateStr] || mp.departments?.Electronical?.daily?.[dateStr] || 0;
                         const safe = mp.departments?.safety?.daily?.[dateStr] || mp.departments?.Safety?.daily?.[dateStr] || mp.departments?.["Safety Manager"]?.daily?.[dateStr] || 0;
-                        const total = mp.dailyTotal?.[dateStr] || (mech + vis + ctrl + elec + safe);
+                        const mgr = mp.departments?.manager?.daily?.[dateStr] || mp.departments?.Manager?.daily?.[dateStr] || mp.departments?.["소장"]?.daily?.[dateStr] || 0;
+                        const total = mp.dailyTotal?.[dateStr] || (mech + vis + ctrl + elec + safe + mgr);
                         const isPeak = total === mp.dailyPeak && mp.dailyPeak > 0;
 
                         return (
@@ -797,6 +816,7 @@ export function ProjectManpowerModal({ project, onClose }) {
                             <td>{ctrl || "-"}</td>
                             <td>{elec || "-"}</td>
                             <td>{safe || "-"}</td>
+                            <td>{mgr || "-"}</td>
                             <td className={isPeak ? "mp-peak-cell" : ""} style={{ fontWeight: "bold" }}>
                               {total}명 {isPeak && "🔥"}
                             </td>

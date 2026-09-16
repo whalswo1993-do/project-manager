@@ -8,73 +8,98 @@
 }
 
 .mp-header-card {
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  color: #ffffff;
-  border-radius: 16px;
-  padding: 22px 26px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  color: #24292f;
+  border: 1px solid #d0d7de;
+  border-radius: 14px;
+  padding: 1rem 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.mp-title-group h2 {
-  margin: 0 0 6px 0;
-  font-size: 24px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+.mp-title-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0.85rem;
 }
 
-.mp-title-group p {
+.mp-logo-icon {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #0969da, #0284c7);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.25rem;
+  box-shadow: 0 2px 6px rgba(9, 105, 218, 0.25);
+}
+
+.mp-title-text h2 {
   margin: 0;
-  font-size: 13px;
-  color: #94a3b8;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, #24292f 0%, #57606a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.mp-title-text p {
+  margin: 3px 0 0 0;
+  font-size: 0.75rem;
+  color: #57606a;
 }
 
 .mp-month-navigator {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  padding: 6px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #f6f8fa;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid #d0d7de;
 }
 
 .mp-nav-btn {
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  background: #ffffff;
+  color: #24292f;
+  border: 1px solid #d0d7de;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
   cursor: pointer;
   font-weight: bold;
+  font-size: 14px;
   display: grid;
   place-items: center;
   transition: all 0.15s ease;
 }
 
 .mp-nav-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: translateY(-1px);
+  background: #f3f4f6;
+  border-color: #0969da;
+  color: #0969da;
 }
 
 .mp-month-text {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
-  min-width: 130px;
+  min-width: 120px;
   text-align: center;
+  color: #24292f;
   letter-spacing: -0.01em;
 }
 
 .mp-today-btn {
-  background: #3b82f6;
+  background: #0969da;
   color: white;
   padding: 5px 10px;
   border-radius: 6px;
@@ -82,6 +107,11 @@
   font-weight: 700;
   border: none;
   cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.mp-today-btn:hover {
+  background: #0858b9;
 }
 
 /* Controls bar */

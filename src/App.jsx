@@ -248,6 +248,7 @@ function parseExcelMasterPlan(wb,context={}){
   if(colMap.end===undefined)colMap.end=4;
 
   const refYear=baseStartDate?parseInt(baseStartDate.slice(0,4),10):new Date().getFullYear();
+  const mappedCols=new Set(Object.values(colMap));
   const dateCols=[];
   for(let r=0;r<Math.min(30,rows.length);r++){
     const row=rows[r]||[];
@@ -255,6 +256,7 @@ function parseExcelMasterPlan(wb,context={}){
     let curYear=refYear;
     let prevMonth=null;
     for(let c=0;c<row.length;c++){
+      if(mappedCols.has(c))continue;
       const iso=parseHeaderDate(row[c],curYear);
       if(iso&&/^\d{4}-\d{2}-\d{2}$/.test(iso)){
         const m=parseInt(iso.slice(5,7),10);
@@ -317,7 +319,19 @@ function parseExcelMasterPlan(wb,context={}){
     const mEnd=excelDateToISO(eRaw);
     const isDateRow=Boolean(mStart&&mEnd);
 
-    if(/manpower|personnel|인력|인원|공수|manday|m\/d/i.test(combinedLineStr)||(/total/i.test(String(sRaw))&&/peak/i.test(String(eRaw)))){
+    // Manpower section detection: "Manpower" can be in activity col (col[3]) or equipment col (col[2])
+    // Also detect by "Personnel" in start col (col[5]) + "Total" in end col (col[6]) + "Peak" in duration col
+    const durRaw=colMap.duration!==undefined?row[colMap.duration]:row[7];
+    
+    // Skip "Grand Total Manpower" rows - they aggregate across all projects
+    if(/grand\s*total/i.test(combinedLineStr)){
+      inManpowerSection=false;
+      continue;
+    }
+    
+    if(/manpower|인력|인원|공수|manday|m\/d/i.test(combinedLineStr)||
+       (String(sRaw||'').toLowerCase()==='personnel'&&/total/i.test(String(eRaw||'')))||
+       (/total/i.test(String(sRaw))&&/peak/i.test(String(eRaw)))){
       inManpowerSection=true;
       continue;
     }
@@ -352,15 +366,38 @@ function parseExcelMasterPlan(wb,context={}){
     }
 
     if(inManpowerSection&&currentProject){
-      const deptRaw=actStr||eqStr;
-      if(!deptRaw||deptRaw==="0")continue;
+      // In this Excel format, department data layout in Manpower section:
+      // col[colMap.start / 5] = Personnel name (department)
+      // col[colMap.end / 6] = Total manday
+      // col[colMap.duration / 7] = Peak
+      // col[8+] = daily manpower values
+      
+      // Try multiple columns to find the department name
+      const deptFromStart=String(sRaw||"").trim();
+      const deptFromAct=String(actStr||"").trim();
+      const deptFromEq=String(eqStr||"").trim();
+      const deptRaw=deptFromStart&&deptFromStart!=="0"&&!/^\d+$/.test(deptFromStart)&&!/personnel/i.test(deptFromStart)?deptFromStart:
+                    (deptFromAct&&deptFromAct!=="0"?deptFromAct:
+                    (deptFromEq&&deptFromEq!=="0"?deptFromEq:""));
+      if(!deptRaw)continue;
+      
       const deptName=normalizeDeptName(deptRaw);
-      const isTotalRow=deptName==="Total Manday"||/total\s*manday|총\s*공수|합계/i.test(deptRaw)||/total/i.test(String(sRaw));
+      const isTotalRow=deptName==="Total Manday"||/total\s*manday|총\s*공수|합계/i.test(deptRaw)||/^total$/i.test(deptRaw);
 
-      let rowTotal=Number(sRaw)||0;
-      let rowPeak=Number(eRaw)||0;
+      // Total and Peak can be in colMap.end(col 6) and colMap.duration(col 7) respectively
+      const totalVal=Number(eRaw)||0;
+      const peakVal=Number(durRaw)||0;
+      
+      // Also try the original sRaw/eRaw as fallback if they look like numbers
+      let rowTotal=totalVal;
+      let rowPeak=peakVal;
+      
+      // If the start column has a number (old format), use it as total
+      if(!rowTotal&&Number(sRaw)>0&&/^\d+(\.\d+)?$/.test(String(sRaw).trim())){
+        rowTotal=Number(sRaw);
+      }
+      
       const daily={};
-
       dateCols.forEach(({colIdx,dateStr})=>{
         const val=Number(row[colIdx])||0;
         if(val>0){
@@ -378,7 +415,7 @@ function parseExcelMasterPlan(wb,context={}){
         currentProject._totalMandayVal=rowTotal;
         currentProject._dailyPeakVal=rowPeak;
         inManpowerSection=false;
-      }else if(deptName){
+      }else if(deptName&&(rowTotal>0||rowPeak>0||dailySum>0)){
         currentProject._deptMap[deptName]={total:rowTotal,peak:rowPeak,daily};
       }
       continue;

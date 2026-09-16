@@ -272,12 +272,13 @@ function parseExcelMasterPlan(wb,context={}){
 
     const itemRaw=row[colMap.item!==undefined?colMap.item:0];
     const itemStr=String(itemRaw||"").trim();
-    if(itemStr&&/^[0-9]+[a-zA-Z가-힣]*$/.test(itemStr)&&!/total|manpower/i.test(itemStr)){
-      currentLine=itemStr.replace(/line|라인|L/i,'').trim();
+    const lineMatch=itemStr.match(/(?:Line\s*|L)?\s*([0-9]+)\s*(?:Line|L|라인)?/i);
+    if(itemStr&&lineMatch&&!/total|manpower|personnel/i.test(itemStr)){
+      currentLine=lineMatch[1].trim();
     }
 
     const eqRaw=row[colMap.equipment!==undefined?colMap.equipment:1];
-    const actRaw=row[colMap.activity!==undefined?row[colMap.activity]:row[2]];
+    const actRaw=row[colMap.activity!==undefined?colMap.activity:2];
     const sRaw=row[colMap.start!==undefined?colMap.start:3];
     const eRaw=row[colMap.end!==undefined?colMap.end:4];
 
@@ -398,6 +399,20 @@ function parseExcelMasterPlan(wb,context={}){
     if(maxD)p.endDate=maxD;
   });
 
+  const mfgCounts={};
+  projects.forEach(p=>{
+    if(p.manufacturingNo){
+      mfgCounts[p.manufacturingNo]=(mfgCounts[p.manufacturingNo]||0)+1;
+    }
+  });
+  const mfgSeen={};
+  projects.forEach(p=>{
+    if(p.manufacturingNo&&mfgCounts[p.manufacturingNo]>1){
+      mfgSeen[p.manufacturingNo]=(mfgSeen[p.manufacturingNo]||0)+1;
+      p.manufacturingNo=`${p.manufacturingNo}-${mfgSeen[p.manufacturingNo]}`;
+    }
+  });
+
   return projects.map(adjustProjectDates).filter(p=>p.milestones.length>0||p.manpower);
 }
 
@@ -405,11 +420,11 @@ async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
   if(!directProjects||directProjects.length===0)return false;
   if(editing){
     const curP=projects.find(pr=>pr.id===editing)||form;
-    let targetP=directProjects.find(p=>p.equipment&&p.line&&curP.name&&curP.name.toLowerCase().includes(p.equipment.toLowerCase())&&(curP.name.toLowerCase().includes(p.line.toLowerCase())||curP.line.toLowerCase().includes(p.line.toLowerCase())))||
+    let targetP=directProjects.find(p=>p.equipment&&p.line&&curP.name&&curP.name.toLowerCase().includes(p.equipment.toLowerCase())&&(curP.name.toLowerCase().includes((p.line||'').toLowerCase())||(curP.line||'').toLowerCase().includes((p.line||'').toLowerCase())))||
       directProjects.find(p=>p.equipment&&curP.name&&curP.name.toLowerCase().includes(p.equipment.toLowerCase()))||
       (form.name?directProjects.find(p=>p.equipment&&form.name.toLowerCase().includes(p.equipment.toLowerCase())):null)||
       directProjects.find(p=>p.projectName&&((curP.name&&p.projectName.toLowerCase()===curP.name.toLowerCase())||(form.name&&p.projectName.toLowerCase()===form.name.toLowerCase())))||
-      (curP.line?directProjects.find(p=>p.line&&p.line.toLowerCase()===curP.line.toLowerCase()):null)||
+      (curP.line?directProjects.find(p=>p.line&&(p.line||'').toLowerCase()===(curP.line||'').toLowerCase()):null)||
       directProjects[0];
 
     if(!targetP){setMsg("일치하는 마스터 플랜 일정을 찾을 수 없습니다.");return false;}
@@ -447,7 +462,7 @@ async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
         for(const otherP of directProjects){
           if(otherP===targetP)continue;
           const existingOther=projects.find(ep=>ep.id!==editing&&(
-            (otherP.equipment&&otherP.line&&ep.name&&ep.name.toLowerCase().includes(otherP.equipment.toLowerCase())&&(ep.name.toLowerCase().includes(otherP.line.toLowerCase())||ep.line.toLowerCase().includes(otherP.line.toLowerCase())))||
+            (otherP.equipment&&otherP.line&&ep.name&&ep.name.toLowerCase().includes(otherP.equipment.toLowerCase())&&(ep.name.toLowerCase().includes((otherP.line||'').toLowerCase())||(ep.line||'').toLowerCase().includes((otherP.line||'').toLowerCase())))||
             (otherP.equipment&&ep.name&&ep.name.toLowerCase().includes(otherP.equipment.toLowerCase())&&!otherP.line)||
             (ep.name&&otherP.projectName&&ep.name.toLowerCase()===otherP.projectName.toLowerCase())
           ));
@@ -480,8 +495,23 @@ async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
               status:otherAutoStat,autoStatus:true,isManualStatus:false,manualStatusBy:"",
               milestones:otherCleanMs,manpower:otherP.manpower||null
             };
-            await supabase.from("projects").insert(to(newOtherRow));
-            additionalCreated++;
+            let insertData=to(newOtherRow);
+            if(insertData.manufacturing_no){
+              let count=1;
+              const baseMfg=insertData.manufacturing_no;
+              while(projects.some(ep=>ep.manufacturingNo===insertData.manufacturing_no)){
+                insertData.manufacturing_no=`${baseMfg}-${count}`;
+                count++;
+              }
+            }
+            let{error:otherErr}=await supabase.from("projects").insert(insertData);
+            if(otherErr&&otherErr.code==="23505"){
+              insertData.manufacturing_no=`${insertData.manufacturing_no||'MFG'}-${uid().slice(-4)}`;
+              const retry=await supabase.from("projects").insert(insertData);
+              otherErr=retry.error;
+            }
+            if(otherErr){console.error("Auto-insert error for other project",otherP.projectName,otherErr);}
+            else additionalCreated++;
           }
         }
       }
@@ -505,7 +535,7 @@ async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
         if(matchedSite)siteVal=matchedSite.name;
       }
       const existing=projects.find(ep=>(
-        (p.equipment&&p.line&&ep.name&&ep.name.toLowerCase().includes(p.equipment.toLowerCase())&&(ep.name.toLowerCase().includes(p.line.toLowerCase())||ep.line.toLowerCase().includes(p.line.toLowerCase())))||
+        (p.equipment&&p.line&&ep.name&&ep.name.toLowerCase().includes(p.equipment.toLowerCase())&&(ep.name.toLowerCase().includes((p.line||'').toLowerCase())||(ep.line||'').toLowerCase().includes((p.line||'').toLowerCase())))||
         (ep.name&&projName&&ep.name.toLowerCase()===projName.toLowerCase())
       ));
       const cleanMs=p.milestones.map(m=>({...m,name:normalizeJVName(m.name),id:uid()}));
@@ -535,7 +565,21 @@ async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
           status:autoStat,autoStatus:true,isManualStatus:false,manualStatusBy:"",
           milestones:cleanMs,manpower:p.manpower||null
         };
-        const{error}=await supabase.from("projects").insert(to(newRow));
+        let insertData=to(newRow);
+        if(insertData.manufacturing_no){
+          let count=1;
+          const baseMfg=insertData.manufacturing_no;
+          while(projects.some(ep=>ep.manufacturingNo===insertData.manufacturing_no)){
+            insertData.manufacturing_no=`${baseMfg}-${count}`;
+            count++;
+          }
+        }
+        let{error}=await supabase.from("projects").insert(insertData);
+        if(error&&error.code==="23505"){
+          insertData.manufacturing_no=`${insertData.manufacturing_no||'MFG'}-${uid().slice(-4)}`;
+          const retry=await supabase.from("projects").insert(insertData);
+          error=retry.error;
+        }
         if(error){console.error("Auto-insert error for",p.projectName,error);errorLog.push(error.message);}
         else successCount++;
       }
@@ -576,7 +620,7 @@ async function handleMasterPlanUpload(input){
       try{
         let wb=null;
         const lines=input.split(/\r?\n/).map(l=>l.split('\t'));
-        if(lines.length>0&&lines[0].length>1){
+        if(lines.length>0&&(input.includes('\t')||lines.some(l=>l.length>1))){
           const ws=XLSX.utils.aoa_to_sheet(lines);
           wb={SheetNames:['Sheet1'],Sheets:{Sheet1:ws}};
         }

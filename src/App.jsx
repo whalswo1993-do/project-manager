@@ -191,22 +191,25 @@ function normalizeDeptName(raw){
   const isSub = /외주|sub|협력|outsourc|엘라이트/i.test(lower);
 
   if (isSub) {
-    if (/vision|비전|비젼|vis|엘라이트/i.test(lower)) return "Vision Sub";
-    if (/electrical|electronical|전장|전기|elec/i.test(lower)) return "Electrical Sub";
-    if (/mechanical|기구|mech/i.test(lower)) return "Mechanical Sub";
-    if (/control|제어|cont/i.test(lower)) return "Control Sub";
+    if (/vision|비전|비젼|vis|엘라이트/i.test(lower)) return "비전 외주";
+    if (/electrical|electronical|전장|전기|elec/i.test(lower)) return "전장 외주";
+    if (/mechanical|기구|mech/i.test(lower)) return "기구 외주";
+    if (/control|제어|cont/i.test(lower)) return "제어 외주";
     const base = s.replace(/\s*\([^)]*\)$/,'').replace(/외주|sub|협력사?/gi, '').trim();
     return base ? `${base} 외주` : "기타 외주";
   }
 
   // 2. Pure Internal departments (No 외주 keyword)
   if (/supervisor|슈퍼바이저|\bsv\b|해체\s*검수|장착\s*검수|해체\/장착\s*검수/i.test(lower)) return "Supervisor";
-  if (/mechanical|기구|mech/i.test(lower)) return "Mechanical";
-  if (/vision|비전|비젼/i.test(lower)) return "Vision";
-  if (/control|제어|cont/i.test(lower)) return "Control";
-  if (/electrical|electronical|전장|전기|elec/i.test(lower)) return "Electrical";
-  if (/safety|안전|safe/i.test(lower)) return "Safety";
-  if (/manager|소장|현장대리인/i.test(lower)) return "Manager";
+  if (/mechanical|기구|mech/i.test(lower)) return "기구";
+  if (/vision|비전|비젼/i.test(lower)) return "비전";
+  if (/control|제어|cont/i.test(lower)) return "제어";
+  if (/electrical|electronical|전장|전기|elec/i.test(lower)) return "전장";
+  if (/safety|안전|safe/i.test(lower)) return "안전";
+  if (/manager|소장|현장대리인/i.test(lower)) return "소장";
+  if (/^pm$/i.test(lower)) return "PM";
+  if (/설계|design/i.test(lower)) return "설계";
+  if (/설비기술|기술/i.test(lower)) return "설비기술";
 
   return s.replace(/\s*\([^)]*\)$/,'').trim() || s;
 }
@@ -600,7 +603,7 @@ function parseExcelMasterPlan(wb,context={}){
 
       const deptName=isTotalRow?"Total Manday":normalizeDeptName(deptRaw);
       if(!isTotalRow){
-        const isKnown=/mechanical|vision|control|electrical|safety|manager|supervisor|외주|sub/i.test(deptName);
+        const isKnown=/기구|비전|제어|전장|안전|소장|pm|supervisor|설계|설비기술|외주/i.test(deptName);
         if(!isKnown)continue;
       }
 

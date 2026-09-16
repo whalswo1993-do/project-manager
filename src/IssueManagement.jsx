@@ -5,8 +5,17 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as XLSX from 'xlsx';
 import pptxgen from 'pptxgenjs';
 
-export default function IssueManagement({ projects }) {
+export default function IssueManagement({ projects, role, onPermissionDenied }) {
     const [activeTab, setActiveTab] = useState('register'); // 'register' or 'analyze'
+    
+    const isGrade1 = role === 'grade1';
+    const notifyPermission = (feature) => {
+        if (onPermissionDenied) {
+            onPermissionDenied(feature);
+        } else {
+            alert(`[${feature}] 권한이 없습니다. 운영자에게 권한을 부여받으시기 바랍니다.`);
+        }
+    };
     
     // Register Tab States
     const [selectedProject, setSelectedProject] = useState('');
@@ -73,11 +82,19 @@ export default function IssueManagement({ projects }) {
     const handleDrop = async (e) => {
         e.preventDefault();
         setIsDragging(false);
+        if (isGrade1) {
+            notifyPermission('공사일보 파일 업로드');
+            return;
+        }
         const file = e.dataTransfer.files[0];
         if (file) await handleFileUpload(file);
     };
 
     const handleFileUpload = async (file) => {
+        if (isGrade1) {
+            notifyPermission('공사일보 파일 업로드');
+            return;
+        }
         if (!file) return;
         setMsg('엑셀 파일을 읽는 중...');
         setIsExtracting(true);
@@ -150,6 +167,7 @@ ${allText.substring(0, 30000)}
     };
 
     const saveReport = async () => {
+        if (isGrade1) return notifyPermission('공사일보 저장');
         if (!selectedProject) return setMsg('프로젝트를 먼저 선택해주세요.');
         const validReports = extractedReports.filter(r => r.date && r.work_details.trim());
         if (validReports.length === 0) return setMsg('저장할 작업(업무) 내용과 날짜가 없습니다.');
@@ -195,6 +213,7 @@ ${allText.substring(0, 30000)}
     };
 
     const removeReport = async (id) => {
+        if (isGrade1) return notifyPermission('일보 삭제');
         if (confirm('이 일보를 삭제하시겠습니까?')) {
             await supabase.from('daily_reports').delete().eq('id', id);
             loadReports(selectedProject);
@@ -206,6 +225,7 @@ ${allText.substring(0, 30000)}
     };
 
     const generatePPT = async () => {
+        if (isGrade1) return notifyPermission('AI 통합 분석 & PPT 보고서');
         if (startDate > endDate) return setAnalyzeMsg('시작일이 종료일보다 클 수 없습니다.');
         
         const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -359,10 +379,17 @@ ${compiledText.substring(0, 30000)}
                         일보 등록
                     </button>
                     <button 
-                        style={{padding: '0.5rem 1rem', border: 'none', borderRadius: '6px', background: activeTab==='analyze'?'#fff':'transparent', color: activeTab==='analyze'?'#0969da':'#57606a', fontWeight: 600, cursor: 'pointer', boxShadow: activeTab==='analyze'?'0 1px 3px rgba(0,0,0,0.1)':'none'}}
-                        onClick={() => setActiveTab('analyze')}
+                        style={{padding: '0.5rem 1rem', border: 'none', borderRadius: '6px', background: activeTab==='analyze'?'#fff':'transparent', color: activeTab==='analyze'?'#0969da':'#57606a', fontWeight: 600, cursor: 'pointer', boxShadow: activeTab==='analyze'?'0 1px 3px rgba(0,0,0,0.1)':'none', opacity: isGrade1 ? 0.85 : 1}}
+                        onClick={() => {
+                            if (isGrade1) {
+                                notifyPermission('AI 통합 분석 & PPT 보고서');
+                                return;
+                            }
+                            setActiveTab('analyze');
+                        }}
+                        title={isGrade1 ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : ""}
                     >
-                        AI 통합 분석 & PPT
+                        AI 통합 분석 & PPT {isGrade1 && "🔒"}
                     </button>
                 </div>
             </header>
@@ -372,6 +399,12 @@ ${compiledText.substring(0, 30000)}
             {activeTab === 'register' ? (
                 <div className="main-container">
                     <aside className="sidebar">
+                        {isGrade1 && (
+                            <div style={{background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px', fontSize: '12px', color: '#92400e', lineHeight: '1.4'}}>
+                                🔒 <b>Grade 1 (조회 전용)</b><br/>
+                                프로젝트 선택 후 등록된 일보 내역 조회만 가능하며, 일보 등록/삭제 및 AI 분석 기능은 제한됩니다.
+                            </div>
+                        )}
                         <div>
                             <div className="panel-title">프로젝트 및 날짜 *</div>
                             <select className="project-select" value={selectedProject} onChange={(e) => setSelectedProject(e.target.value)} style={{marginBottom: '0.5rem'}}>
@@ -384,10 +417,13 @@ ${compiledText.substring(0, 30000)}
 
                         <div style={{marginTop: '1rem', marginBottom: '1rem'}}>
                             <div className="panel-title">공사일보 원본 업로드</div>
-                            <div className={`dropzone ${isDragging ? 'dragover' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => fileInputRef.current.click()}>
+                            <div className={`dropzone ${isDragging ? 'dragover' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => {
+                                if (isGrade1) return notifyPermission('공사일보 파일 업로드');
+                                fileInputRef.current.click();
+                            }}>
                                 <div className="dropzone-icon">📁</div>
-                                <div style={{fontSize: '0.85rem', fontWeight: 500}}>엑셀 파일 업로드 (.xlsx)</div>
-                                <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>클릭하거나 드래그</div>
+                                <div style={{fontSize: '0.85rem', fontWeight: 500}}>엑셀 파일 업로드 (.xlsx) {isGrade1 && "🔒"}</div>
+                                <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>{isGrade1 ? "클릭 시 권한 안내" : "클릭하거나 드래그"}</div>
                             </div>
                         </div>
 
@@ -395,8 +431,14 @@ ${compiledText.substring(0, 30000)}
                             <div className="panel-title" style={{fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems:'center'}}>
                                 <span>공사일보 데이터 ({extractedReports.length}일치)</span>
                                 <div style={{display:'flex', gap:'8px'}}>
-                                    <span style={{color: 'var(--primary)', cursor: 'pointer'}} onClick={() => setExtractedReports([...extractedReports, {date: new Date().toISOString().slice(0,10), work_details:'', special_notes:'', personnel_count:0, pm_count:0, design_count:0, facility_count:0, control_count:0, vision_count:0}])}>+ 일자 추가</span>
-                                    <span style={{color: 'var(--danger)', cursor: 'pointer'}} onClick={()=>setExtractedReports([{date: new Date().toISOString().slice(0, 10), work_details: '', special_notes: '', personnel_count: 0, pm_count:0, design_count:0, facility_count:0, control_count:0, vision_count:0}])}>초기화</span>
+                                    <span style={{color: isGrade1 ? '#9ca3af' : 'var(--primary)', cursor: 'pointer'}} onClick={() => {
+                                        if (isGrade1) return notifyPermission('일보 등록 및 편집');
+                                        setExtractedReports([...extractedReports, {date: new Date().toISOString().slice(0,10), work_details:'', special_notes:'', personnel_count:0, pm_count:0, design_count:0, facility_count:0, control_count:0, vision_count:0}]);
+                                    }}>+ 일자 추가 {isGrade1 && "🔒"}</span>
+                                    <span style={{color: isGrade1 ? '#9ca3af' : 'var(--danger)', cursor: 'pointer'}} onClick={() => {
+                                        if (isGrade1) return notifyPermission('일보 등록 및 편집');
+                                        setExtractedReports([{date: new Date().toISOString().slice(0, 10), work_details: '', special_notes: '', personnel_count: 0, pm_count:0, design_count:0, facility_count:0, control_count:0, vision_count:0}]);
+                                    }}>초기화</span>
                                 </div>
                             </div>
                             
@@ -445,8 +487,11 @@ ${compiledText.substring(0, 30000)}
                                 ))}
                             </div>
 
-                            <button className="btn-analyze" onClick={saveReport} disabled={!selectedProject || isExtracting || extractedReports.every(r=>!r.work_details.trim())}>
-                                {isExtracting ? 'AI 추출 중...' : 'Save All'}
+                            <button className="btn-analyze" onClick={() => {
+                                if (isGrade1) return notifyPermission('공사일보 저장');
+                                saveReport();
+                            }} disabled={!selectedProject || isExtracting || extractedReports.every(r=>!r.work_details.trim())}>
+                                {isExtracting ? 'AI 추출 중...' : 'Save All' + (isGrade1 ? ' 🔒' : '')}
                             </button>
                             
                             {msg && (
@@ -481,7 +526,11 @@ ${compiledText.substring(0, 30000)}
                                         <div key={report.id} className="issue-card" style={{borderLeftColor: '#6e7781'}}>
                                             <div className="issue-meta" onClick={() => toggleReport(report.id)} style={{cursor: 'pointer'}}>
                                                 <span><b style={{color: '#24292f'}}>{report.report_date}</b> 일보 <span style={{fontSize:'0.8rem', color:'#6e7781', marginLeft:'5px'}}>{expandedReports[report.id] ? '▲' : '▼'}</span></span>
-                                                <button onClick={(e) => { e.stopPropagation(); removeReport(report.id); }} style={{background:'transparent', border:'none', color:'var(--danger)', cursor:'pointer', fontSize:'0.8rem'}}>삭제</button>
+                                                <button onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    if (isGrade1) return notifyPermission('일보 삭제');
+                                                    removeReport(report.id); 
+                                                }} style={{background:'transparent', border:'none', color:isGrade1 ? '#9ca3af' : 'var(--danger)', cursor:'pointer', fontSize:'0.8rem'}} title={isGrade1 ? "삭제 권한이 없습니다 (클릭 시 권한 안내)" : ""}>삭제 {isGrade1 && "🔒"}</button>
                                             </div>
                                             {expandedReports[report.id] && (
                                                 <div className="issue-content" style={{background: '#f6f8fa', padding: '1rem', borderRadius: '6px', fontSize: '0.85rem'}}>

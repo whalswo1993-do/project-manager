@@ -4,7 +4,15 @@ import { supabase } from './supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as XLSX from 'xlsx';
 
-export default function Quotations({ projects, session, role }) {
+export default function Quotations({ projects, session, role, onPermissionDenied }) {
+    const canManage = ['admin', 'grade3'].includes(role);
+    const notifyPermission = (feature) => {
+        if (onPermissionDenied) {
+            onPermissionDenied(feature);
+        } else {
+            alert(`[${feature}] 권한이 없습니다. 운영자에게 권한을 부여받으시기 바랍니다.`);
+        }
+    };
     const [isDragging, setIsDragging] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
     const [selectedProjectInput, setSelectedProjectInput] = useState('');
@@ -407,28 +415,43 @@ export default function Quotations({ projects, session, role }) {
     return (
         <>
             <section>
+                {!canManage && (
+                    <div style={{background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', fontSize: '12px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <span>ℹ️ <b>견적 조회 전용 모드 ({role?.toUpperCase() || 'GRADE2'})</b> : 견적 비용 집계 및 품목별 단가 검색만 가능하며, 견적서 등록 및 삭제 권한은 제한됩니다.</span>
+                    </div>
+                )}
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px'}}>
-                    <h2>새 견적서 등록</h2>
+                    <h2>새 견적서 등록 {!canManage && "🔒"}</h2>
                     <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
                         <input type="file" ref={fileInputRef} onChange={e=>handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, image/*, .pdf" style={{display:'none'}}/>
                         <textarea 
-                            placeholder="엑셀 표 붙여넣기 (Ctrl+V)"
+                            placeholder={canManage ? "엑셀 표 붙여넣기 (Ctrl+V)" : "등록 권한 없음 (클릭 시 안내)"}
                             disabled={isExtracting}
+                            onClick={() => {
+                                if (!canManage) notifyPermission('견적서 등록');
+                            }}
                             style={{
                                 height: '35px',
                                 width: '180px',
                                 padding: '8px 14px',
                                 borderRadius: '8px',
-                                border: '1px solid #10b981',
+                                border: canManage ? '1px solid #10b981' : '1px solid #d1d5da',
                                 outline: 'none',
                                 resize: 'none',
                                 overflow: 'hidden',
                                 whiteSpace: 'nowrap',
                                 boxSizing: 'border-box',
                                 fontSize: '13px',
-                                fontFamily: 'inherit'
+                                fontFamily: 'inherit',
+                                background: canManage ? '#fff' : '#f3f4f6',
+                                cursor: canManage ? 'text' : 'pointer'
                             }}
                             onPaste={(e) => {
+                                if (!canManage) {
+                                    e.preventDefault();
+                                    notifyPermission('견적서 등록');
+                                    return;
+                                }
                                 const items = e.clipboardData?.items;
                                 if (items) {
                                     for (let i = 0; i < items.length; i++) {
@@ -448,8 +471,27 @@ export default function Quotations({ projects, session, role }) {
                                 }
                             }}
                         />
-                        <button onClick={()=>fileInputRef.current.click()} disabled={isExtracting} style={{background:isExtracting?'#94a3b8':'linear-gradient(135deg, #10b981, #059669)',color:'#fff',padding:'8px 14px',borderRadius:'8px',fontWeight:'bold',border:'none',boxShadow:'0 2px 5px rgba(0,0,0,0.1)', height:'35px', whiteSpace:'nowrap'}}>
-                            {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel/이미지)"}
+                        <button 
+                            onClick={() => {
+                                if (!canManage) return notifyPermission('견적서 파일 업로드');
+                                fileInputRef.current.click();
+                            }} 
+                            disabled={isExtracting} 
+                            style={{
+                                background: !canManage ? '#9ca3af' : isExtracting ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #059669)',
+                                color: '#fff',
+                                padding: '8px 14px',
+                                borderRadius: '8px',
+                                fontWeight: 'bold',
+                                border: 'none',
+                                boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                                height: '35px',
+                                whiteSpace: 'nowrap',
+                                cursor: 'pointer'
+                            }}
+                            title={!canManage ? "등록 권한이 없습니다 (클릭 시 권한 안내)" : ""}
+                        >
+                            {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel/이미지)"} {!canManage && "🔒"}
                         </button>
                     </div>
                 </div>
@@ -576,9 +618,25 @@ export default function Quotations({ projects, session, role }) {
                                 <div className="pa-title">
                                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         {group.name}
-                                        {['admin', 'grade3'].includes(role) && (
-                                            <button onClick={(e) => handleDeleteProjectQuotations(e, group)} style={{ padding: '2px 8px', fontSize: '11px', color: 'white', background: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>전체 삭제</button>
-                                        )}
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (!canManage) return notifyPermission('프로젝트 견적 전체 삭제');
+                                                handleDeleteProjectQuotations(e, group);
+                                            }} 
+                                            style={{
+                                                padding: '2px 8px',
+                                                fontSize: '11px',
+                                                color: 'white',
+                                                background: canManage ? '#ef4444' : '#9ca3af',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer'
+                                            }}
+                                            title={!canManage ? "삭제 권한이 없습니다 (클릭 시 권한 안내)" : ""}
+                                        >
+                                            전체 삭제 {!canManage && "🔒"}
+                                        </button>
                                     </h3>
                                     <div className="pa-summary">
                                         <span className="pa-badge process">가공품: ₩{group.process_amount.toLocaleString()}</span>
@@ -597,9 +655,25 @@ export default function Quotations({ projects, session, role }) {
                                             <div key={quotation.id} className="pa-quotation">
                                                 <h4 className="pa-quotation-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                     <span>📄 {quotation.title} <small>({new Date(quotation.created_at).toLocaleDateString()})</small></span>
-                                                    {['admin', 'grade3'].includes(role) && (
-                                                        <button onClick={() => handleDeleteQuotation(quotation.id)} style={{ padding: '2px 8px', fontSize: '11px', color: 'white', background: '#ef4444', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>삭제</button>
-                                                    )}
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (!canManage) return notifyPermission('견적 삭제');
+                                                            handleDeleteQuotation(quotation.id);
+                                                        }} 
+                                                        style={{
+                                                            padding: '2px 8px',
+                                                            fontSize: '11px',
+                                                            color: 'white',
+                                                            background: canManage ? '#ef4444' : '#9ca3af',
+                                                            border: 'none',
+                                                            borderRadius: '4px',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                        title={!canManage ? "삭제 권한이 없습니다 (클릭 시 권한 안내)" : ""}
+                                                    >
+                                                        삭제 {!canManage && "🔒"}
+                                                    </button>
                                                 </h4>
                                                 <div style={{ overflowX: 'auto' }}>
                                                     <table className="data-table nested">

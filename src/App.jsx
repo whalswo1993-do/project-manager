@@ -251,6 +251,8 @@ function parseExcelMasterPlan(wb,context={}){
   const mappedCols=new Set(Object.values(colMap));
   const dateCols=[];
   for(let r=0;r<Math.min(30,rows.length);r++){
+    const rowInfo=sheet['!rows']?sheet['!rows'][r]:null;
+    if(rowInfo&&rowInfo.hidden)continue;
     const row=rows[r]||[];
     const curDates=[];
     let curYear=refYear;
@@ -280,6 +282,8 @@ function parseExcelMasterPlan(wb,context={}){
   const projects=[];
 
   for(let r=headerRowIdx+1;r<rows.length;r++){
+    const rowInfo=sheet['!rows']?sheet['!rows'][r]:null;
+    if(rowInfo&&rowInfo.hidden)continue;
     const row=rows[r];
     if(!row||!row.length)continue;
 
@@ -656,7 +660,7 @@ async function handleMasterPlanUpload(input){
 
     if(input.name&&input.name.match(/\.(xlsx|xls)$/i)){
       const data=await input.arrayBuffer();
-      const wb=XLSX.read(data,{cellDates:false});
+      const wb=XLSX.read(data,{cellDates:false,cellStyles:true});
       directProjects=parseExcelMasterPlan(wb,parseContext);
       sourceLabel="엑셀 파일";
     }else if(typeof input==="string"){
@@ -694,7 +698,7 @@ async function handleMasterPlanUpload(input){
       parts=[{text:`이것은 마스터 플랜의 클립보드 텍스트입니다:\n\n${input}`}];
     }else if(input.name&&input.name.match(/\.(xlsx|xls)$/i)){
       const data=await input.arrayBuffer();
-      const wb=XLSX.read(data,{cellDates:false});
+      const wb=XLSX.read(data,{cellDates:false,cellStyles:true});
       let sheetName=wb.SheetNames.find(n=>/planning|schedule|master|일정/i.test(n))||wb.SheetNames.find(n=>!/edit|설정|양식/i.test(n))||wb.SheetNames[0];
       const sheet=wb.Sheets[sheetName];
       const rawJson=XLSX.utils.sheet_to_json(sheet,{header:1});

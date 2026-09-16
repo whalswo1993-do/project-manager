@@ -1750,25 +1750,33 @@ export function ProjectManpowerModal({ project, onClose }) {
             </div>
 
             {/* Department Breakdown */}
-            {mp.departments && (
-              <div>
-                <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#334155" }}>부서별 투입 요약</h4>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px" }}>
-                  {Object.entries(mp.departments).map(([rawD, dData]) => {
-                    const norm = normalizeDeptKey(rawD);
-                    return (
-                      <div key={rawD} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderLeft: `4px solid ${getDeptColor(norm)}`, borderRadius: "8px", padding: "10px 14px" }}>
-                        <div style={{ fontSize: "11px", fontWeight: "bold", color: "#64748b" }}>{getDeptLabel(norm)}</div>
-                        <div style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", marginTop: "4px" }}>
-                          {dData.total || 0} <span style={{ fontSize: "12px", fontWeight: "normal" }}>M/D</span>
+            {mp.departments && (() => {
+              const sortedDepts = Object.entries(mp.departments).sort(([a], [b]) => {
+                const idxA = BASE_DEPT_ORDER.indexOf(normalizeDeptKey(a));
+                const idxB = BASE_DEPT_ORDER.indexOf(normalizeDeptKey(b));
+                return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+              });
+
+              return (
+                <div>
+                  <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#334155" }}>부서별 투입 요약</h4>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px" }}>
+                    {sortedDepts.map(([rawD, dData]) => {
+                      const norm = normalizeDeptKey(rawD);
+                      return (
+                        <div key={rawD} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderLeft: `4px solid ${getDeptColor(norm)}`, borderRadius: "8px", padding: "10px 14px" }}>
+                          <div style={{ fontSize: "11px", fontWeight: "bold", color: "#64748b" }}>{getDeptLabel(norm)}</div>
+                          <div style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", marginTop: "4px" }}>
+                            {dData.total || 0} <span style={{ fontSize: "12px", fontWeight: "normal" }}>M/D</span>
+                          </div>
+                          <div style={{ fontSize: "11px", color: "#dc2626" }}>Peak: {dData.peak || 0}명</div>
                         </div>
-                        <div style={{ fontSize: "11px", color: "#dc2626" }}>Peak: {dData.peak || 0}명</div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Timeline Table */}
             {dates.length > 0 && (
@@ -1776,22 +1784,29 @@ export function ProjectManpowerModal({ project, onClose }) {
                 <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#334155" }}>일자별 인력 투입 타임라인 ({dates[0]} ~ {dates[dates.length - 1]})</h4>
                 <div style={{ overflowX: "auto", maxHeight: "300px" }}>
                   {(() => {
-                    const deptNames = Object.keys(mp.departments || {});
+                    const sortedDepts = Object.entries(mp.departments || {}).sort(([a], [b]) => {
+                      const idxA = BASE_DEPT_ORDER.indexOf(normalizeDeptKey(a));
+                      const idxB = BASE_DEPT_ORDER.indexOf(normalizeDeptKey(b));
+                      return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+                    });
+                    const deptEntries = sortedDepts;
+
                     return (
                       <table className="mp-timeline-table">
                         <thead>
                           <tr>
                             <th>날짜</th>
-                            {deptNames.map(dName => (
-                              <th key={dName}>{getDeptShort(dName)}</th>
-                            ))}
+                            {deptEntries.map(([dName]) => {
+                              const norm = normalizeDeptKey(dName);
+                              return <th key={dName}>{getDeptShort(norm)}</th>;
+                            })}
                             <th>당일 합계</th>
                           </tr>
                         </thead>
                         <tbody>
                           {dates.map(dateStr => {
                             let daySum = 0;
-                            const cells = deptNames.map(dName => {
+                            const cells = deptEntries.map(([dName]) => {
                               const v = mp.departments?.[dName]?.daily?.[dateStr] || 0;
                               daySum += Number(v) || 0;
                               return v;

@@ -4,13 +4,16 @@ import ExcelJS from "exceljs";
 import PptxGenJS from "pptxgenjs";
 import { normalizeJVName } from "./utils";
 
-export const DEPT_ORDER = ["mechanical", "vision", "control", "electrical", "safety", "manager"];
+export const BASE_DEPT_ORDER = ["mechanical", "vision", "vision_sub", "control", "electrical", "supervisor", "safety", "manager"];
+export const DEPT_ORDER = BASE_DEPT_ORDER;
 
 export const DEPT_LABELS = {
   mechanical: "기구 (Mechanical)",
   vision: "비전 (Vision)",
+  vision_sub: "비전 외주 (Vision Sub)",
   control: "제어 (Control)",
   electrical: "전장 (Electrical)",
+  supervisor: "슈퍼바이저 (Supervisor)",
   safety: "안전 (Safety)",
   manager: "소장 (Manager)"
 };
@@ -18,8 +21,10 @@ export const DEPT_LABELS = {
 export const DEPT_SHORT = {
   mechanical: "기구",
   vision: "비전",
+  vision_sub: "외주",
   control: "제어",
   electrical: "전장",
+  supervisor: "SV",
   safety: "안전",
   manager: "소장"
 };
@@ -27,20 +32,45 @@ export const DEPT_SHORT = {
 export const DEPT_COLORS = {
   mechanical: "#3b82f6",
   vision: "#8b5cf6",
+  vision_sub: "#a855f7",
   control: "#10b981",
   electrical: "#f59e0b",
+  supervisor: "#0284c7",
   safety: "#ef4444",
   manager: "#06b6d4"
 };
+
+export function getDeptLabel(key) {
+  const norm = normalizeDeptKey(key);
+  if (DEPT_LABELS[norm]) return DEPT_LABELS[norm];
+  return key;
+}
+
+export function getDeptShort(key) {
+  const norm = normalizeDeptKey(key);
+  if (DEPT_SHORT[norm]) return DEPT_SHORT[norm];
+  return key.slice(0, 2);
+}
+
+const DYNAMIC_PALETTE = ["#ec4899", "#6366f1", "#14b8a6", "#84cc16", "#e11d48", "#f97316", "#8b5cf6", "#06b6d4"];
+export function getDeptColor(key) {
+  const norm = normalizeDeptKey(key);
+  if (DEPT_COLORS[norm]) return DEPT_COLORS[norm];
+  let hash = 0;
+  for (let i = 0; i < norm.length; i++) hash = norm.charCodeAt(i) + ((hash << 5) - hash);
+  return DYNAMIC_PALETTE[Math.abs(hash) % DYNAMIC_PALETTE.length];
+}
 
 export function normalizeDeptKey(key) {
   if (!key) return "other";
   const s = String(key).toLowerCase().trim();
   if (s.includes("소장") || s.includes("manager") || s.includes("현장대리인") || s.includes("site mgr") || s.includes("field mgr")) return "manager";
   if (s.includes("mech") || s.includes("기구")) return "mechanical";
+  if (s.includes("vision sub") || s.includes("program sub") || s.includes("비전외주") || s.includes("비전 외주") || s.includes("비전_외주") || s.includes("외주비전")) return "vision_sub";
   if (s.includes("vis") || s.includes("비전")) return "vision";
   if (s.includes("cont") || s.includes("제어")) return "control";
   if (s.includes("elec") || s.includes("전장") || s.includes("전기")) return "electrical";
+  if (s.includes("supervis") || s.includes("슈퍼바이저") || s.includes("sv")) return "supervisor";
   if (s.includes("safe") || s.includes("안전")) return "safety";
   return s;
 }
@@ -67,7 +97,7 @@ export function getProjectTotalManday(p) {
 }
 
 // Helper to render Project Detail Card on PPT
-function renderProjectDetailCard(slide, p, yTop, C) {
+function renderProjectDetailCard(slide, p, yTop, C, activeDeptKeys = BASE_DEPT_ORDER) {
   const cardW = 12.13;
   const cardH = 2.76;
 
@@ -123,26 +153,22 @@ function renderProjectDetailCard(slide, p, yTop, C) {
     slide.addText(st.val, { x: 2.0, y: sy, w: 2.2, h: 0.38, fontSize: 8.5, color: C.navy, bold: true, margin: 0 });
   });
 
-  // Middle Section: Dept Breakdown Mini Table
-  const deptHeader = ["부서", "기구", "비전", "제어", "전장", "안전", "소장"];
+  // Middle Section: Dept Breakdown Mini Table (Dynamic up to 7 depts)
+  const deptCols = (activeDeptKeys && activeDeptKeys.length > 0 ? activeDeptKeys : BASE_DEPT_ORDER).slice(0, 7);
+  const deptHeader = ["부서", ...deptCols.map(k => getDeptShort(k))];
   const deptVals = [
     "공수",
-    `${p.pDepts.mechanical || 0}`,
-    `${p.pDepts.vision || 0}`,
-    `${p.pDepts.control || 0}`,
-    `${p.pDepts.electrical || 0}`,
-    `${p.pDepts.safety || 0}`,
-    `${p.pDepts.manager || 0}`
+    ...deptCols.map(k => `${p.pDepts?.[k] || 0}`)
   ];
   const deptPcts = [
     "비중",
-    p.pRangeTotal > 0 ? `${((p.pDepts.mechanical / p.pRangeTotal) * 100).toFixed(0)}%` : "0%",
-    p.pRangeTotal > 0 ? `${((p.pDepts.vision / p.pRangeTotal) * 100).toFixed(0)}%` : "0%",
-    p.pRangeTotal > 0 ? `${((p.pDepts.control / p.pRangeTotal) * 100).toFixed(0)}%` : "0%",
-    p.pRangeTotal > 0 ? `${((p.pDepts.electrical / p.pRangeTotal) * 100).toFixed(0)}%` : "0%",
-    p.pRangeTotal > 0 ? `${((p.pDepts.safety / p.pRangeTotal) * 100).toFixed(0)}%` : "0%",
-    p.pRangeTotal > 0 ? `${((p.pDepts.manager / p.pRangeTotal) * 100).toFixed(0)}%` : "0%"
+    ...deptCols.map(k => p.pRangeTotal > 0 ? `${(((p.pDepts?.[k] || 0) / p.pRangeTotal) * 100).toFixed(0)}%` : "0%")
   ];
+
+  const colCount = deptHeader.length;
+  const colWFirst = 0.7;
+  const colWRemaining = Math.max(0.45, (4.3 - colWFirst) / (colCount - 1));
+  const colW = [colWFirst, ...Array(colCount - 1).fill(colWRemaining)];
 
   const deptTable = [
     deptHeader.map((t, idx) => ({
@@ -164,7 +190,7 @@ function renderProjectDetailCard(slide, p, yTop, C) {
     y: yTop + 0.54,
     w: 4.3,
     h: 1.85,
-    colW: [0.7, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6],
+    colW: colW,
     border: { type: "solid", pt: 0.5, color: C.borderLight },
     fontSize: 8,
     margin: 0.02,
@@ -269,6 +295,35 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedProjectForDetail, setSelectedProjectForDetail] = useState(null);
 
+  // Dynamic active departments computation: includes standard departments + any newly introduced departments from projects
+  const activeDeptKeys = useMemo(() => {
+    const presentDepts = new Set();
+    projects.forEach(p => {
+      if (p.manpower?.departments) {
+        Object.keys(p.manpower.departments).forEach(rawD => {
+          const norm = normalizeDeptKey(rawD);
+          if (norm && norm !== "other") presentDepts.add(norm);
+        });
+      }
+    });
+
+    const ordered = [];
+    BASE_DEPT_ORDER.forEach(k => {
+      // Always include if present, or if core technical dept
+      if (presentDepts.has(k) || ["mechanical", "vision", "control", "electrical"].includes(k)) {
+        ordered.push(k);
+      }
+    });
+    // Append any other dynamic departments that might not be in BASE_DEPT_ORDER
+    presentDepts.forEach(k => {
+      if (!ordered.includes(k)) {
+        ordered.push(k);
+      }
+    });
+
+    return ordered.length > 0 ? ordered : BASE_DEPT_ORDER;
+  }, [projects]);
+
   // Synchronized month navigation handlers (affect all 3 navigators)
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
@@ -356,8 +411,15 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
     let totalM = 0;
     let peakVal = 0;
     const peakD = [];
-    const depts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 };
+    const depts = {};
+    activeDeptKeys.forEach(k => { depts[k] = 0; });
     const pList = [];
+
+    const initDepts = () => {
+      const obj = {};
+      activeDeptKeys.forEach(k => { obj[k] = 0; });
+      return obj;
+    };
 
     // Ensure all days of the current visible month exist for the calendar
     const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
@@ -367,7 +429,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         dateStr: dStr,
         dayNum: d,
         total: 0,
-        departments: { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 },
+        departments: initDepts(),
         projectBreakdown: []
       };
     }
@@ -382,7 +444,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           dateStr: dStr,
           dayNum: cur.getDate(),
           total: 0,
-          departments: { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 },
+          departments: initDepts(),
           projectBreakdown: []
         };
       }
@@ -479,17 +541,19 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       deptTotals: depts,
       projectsWithManpower: pList
     };
-  }, [filteredProjects, effectiveStartDate, effectiveEndDate, year, month, deptFilter]);
+  }, [filteredProjects, effectiveStartDate, effectiveEndDate, year, month, deptFilter, activeDeptKeys]);
 
   // Helper: compute manpower breakdown for each project within effective range
   const getProjectRangeData = (p) => {
     const mp = p.manpower;
-    const pDepts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 };
+    const pDepts = {};
+    activeDeptKeys.forEach(k => { pDepts[k] = 0; });
     let pRangeTotal = 0;
 
     if (mp?.departments) {
       Object.entries(mp.departments).forEach(([rawD, dData]) => {
         const k = normalizeDeptKey(rawD);
+        if (pDepts[k] === undefined) pDepts[k] = 0;
         if (dData?.daily) {
           Object.entries(dData.daily).forEach(([dateStr, count]) => {
             if (dateStr >= effectiveStartDate && dateStr <= effectiveEndDate) {
@@ -841,11 +905,11 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         ]
       ];
 
-      DEPT_ORDER.forEach(k => {
+      activeDeptKeys.forEach(k => {
         const val = deptTotals[k] || 0;
         const pct = periodTotalManday > 0 ? ((val / periodTotalManday) * 100).toFixed(1) : "0.0";
         deptTableRows.push([
-          { text: DEPT_LABELS[k], options: { bold: true, color: C.navy, align: "left" } },
+          { text: getDeptLabel(k), options: { bold: true, color: C.navy, align: "left" } },
           { text: `${val.toLocaleString()} M/D`, options: { bold: true, color: C.blue, align: "right" } },
           { text: `${pct}%`, options: { align: "right", color: C.gray } }
         ]);
@@ -1015,12 +1079,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
                 // 2. Department summary: Text 7.5
                 const deptsActive = [];
-                if (dData.departments.mechanical) deptsActive.push(`기${dData.departments.mechanical}`);
-                if (dData.departments.vision) deptsActive.push(`비${dData.departments.vision}`);
-                if (dData.departments.control) deptsActive.push(`제${dData.departments.control}`);
-                if (dData.departments.electrical) deptsActive.push(`전${dData.departments.electrical}`);
-                if (dData.departments.safety) deptsActive.push(`안${dData.departments.safety}`);
-                if (dData.departments.manager) deptsActive.push(`소${dData.departments.manager}`);
+                Object.entries(dData.departments || {}).forEach(([dk, val]) => {
+                  if (val > 0) deptsActive.push(`${getDeptShort(dk)}${val}`);
+                });
 
                 if (deptsActive.length > 0) {
                   textRuns.push({
@@ -1108,12 +1169,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             { text: "Site", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
             { text: "Line", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
             { text: "프로젝트명", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
-            { text: "기구", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
-            { text: "비전", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
-            { text: "제어", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
-            { text: "전장", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
-            { text: "안전", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
-            { text: "소장", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
+            ...activeDeptKeys.map(k => ({
+              text: getDeptShort(k),
+              options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" }
+            })),
             { text: "기간 계획 공수", options: { bold: true, color: C.white, fill: { color: C.blue }, align: "center" } },
             { text: "마스터플랜 총공수", options: { bold: true, color: C.white, fill: { color: C.navy }, align: "center" } },
             { text: "편성 비중", options: { bold: true, color: C.white, fill: { color: C.green }, align: "center" } }
@@ -1130,12 +1189,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             { text: normalizeJVName(p.site) || "-", options: { align: "center", color: C.gray } },
             { text: normalizeJVName(p.line) || "-", options: { align: "center", color: C.gray } },
             { text: normalizeJVName(p.name) || "-", options: { align: "left", bold: true, color: C.navy } },
-            { text: pDepts.mechanical > 0 ? String(pDepts.mechanical) : "-", options: { align: "right" } },
-            { text: pDepts.vision > 0 ? String(pDepts.vision) : "-", options: { align: "right" } },
-            { text: pDepts.control > 0 ? String(pDepts.control) : "-", options: { align: "right" } },
-            { text: pDepts.electrical > 0 ? String(pDepts.electrical) : "-", options: { align: "right" } },
-            { text: pDepts.safety > 0 ? String(pDepts.safety) : "-", options: { align: "right" } },
-            { text: pDepts.manager > 0 ? String(pDepts.manager) : "-", options: { align: "right" } },
+            ...activeDeptKeys.map(k => ({
+              text: pDepts[k] > 0 ? String(pDepts[k]) : "-",
+              options: { align: "right" }
+            })),
             { text: pRangeTotal > 0 ? `${pRangeTotal} M/D` : "-", options: { align: "right", bold: true, color: C.blue } },
             { text: pTotalManday > 0 ? `${pTotalManday} M/D` : "-", options: { align: "right", color: C.slate } },
             { text: ratio, options: { align: "right", bold: true, color: ratio !== "-" ? C.green : C.gray } }
@@ -1147,24 +1204,28 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           const allTotalMandaySum = filteredProjects.reduce((acc, p) => acc + getProjectTotalManday(p), 0);
           tableRows.push([
             { text: "합계 (Total)", options: { colspan: 4, bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "center" } },
-            { text: String(deptTotals.mechanical), options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
-            { text: String(deptTotals.vision), options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
-            { text: String(deptTotals.control), options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
-            { text: String(deptTotals.electrical), options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
-            { text: String(deptTotals.safety), options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
-            { text: String(deptTotals.manager), options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
+            ...activeDeptKeys.map(k => ({
+              text: String(deptTotals[k] || 0),
+              options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" }
+            })),
             { text: `${periodTotalManday} M/D`, options: { bold: true, color: C.blue, fill: { color: "E2E8F0" }, align: "right" } },
             { text: `${allTotalMandaySum} M/D`, options: { bold: true, color: C.navy, fill: { color: "E2E8F0" }, align: "right" } },
             { text: allTotalMandaySum > 0 ? `${((periodTotalManday / allTotalMandaySum) * 100).toFixed(1)}%` : "-", options: { bold: true, color: C.green, fill: { color: "E2E8F0" }, align: "right" } }
           ]);
         }
 
+        const baseW = [1.2, 0.7, 0.7, 2.2];
+        const endW = [1.1, 1.1, 0.8];
+        const remainingW = 12.13 - (1.2 + 0.7 + 0.7 + 2.2 + 1.1 + 1.1 + 0.8);
+        const deptW = Math.max(0.4, remainingW / Math.max(1, activeDeptKeys.length));
+        const colW = [...baseW, ...Array(activeDeptKeys.length).fill(deptW), ...endW];
+
         sTbl.addTable(tableRows, {
           x: 0.6,
           y: 1.25,
           w: 12.13,
           h: 5.6,
-          colW: [1.2, 0.8, 0.8, 2.53, 0.65, 0.65, 0.65, 0.65, 0.65, 0.65, 1.1, 1.2, 0.8],
+          colW: colW,
           border: { type: "solid", pt: 0.5, color: C.borderLight },
           fontSize: 8,
           margin: 0.04,
@@ -1190,10 +1251,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         );
 
         // Render Project 1 (Top Card)
-        if (p1) renderProjectDetailCard(sDtl, p1, 1.2, C);
+        if (p1) renderProjectDetailCard(sDtl, p1, 1.2, C, activeDeptKeys);
 
         // Render Project 2 (Bottom Card)
-        if (p2) renderProjectDetailCard(sDtl, p2, 4.2, C);
+        if (p2) renderProjectDetailCard(sDtl, p2, 4.2, C, activeDeptKeys);
       }
 
       // Save PPT File
@@ -1281,12 +1342,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>부서 필터:</label>
             <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}>
               <option value="전체">전체 부서</option>
-              <option value="mechanical">기구 (Mechanical)</option>
-              <option value="vision">비전 (Vision)</option>
-              <option value="control">제어 (Control)</option>
-              <option value="electrical">전장 (Electrical)</option>
-              <option value="safety">안전 (Safety)</option>
-              <option value="manager">소장 (Manager)</option>
+              {activeDeptKeys.map(k => (
+                <option key={k} value={k}>{getDeptLabel(k)}</option>
+              ))}
             </select>
 
             <input
@@ -1349,12 +1407,12 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       <div className="mp-dept-banner">
         <h3><span>📈</span> 부서별 공수 투입 현황 ({effectiveLabel})</h3>
         <div className="mp-dept-tags">
-          {DEPT_ORDER.map(deptKey => {
+          {activeDeptKeys.map(deptKey => {
             const count = deptTotals[deptKey] || 0;
             const pct = periodTotalManday > 0 ? Math.round((count / periodTotalManday) * 100) : 0;
             return (
-              <div className="mp-dept-tag" key={deptKey} style={{ borderLeft: `4px solid ${DEPT_COLORS[deptKey] || "#64748b"}` }}>
-                <div className="mp-dept-tag-name">{DEPT_LABELS[deptKey] || deptKey}</div>
+              <div className="mp-dept-tag" key={deptKey} style={{ borderLeft: `4px solid ${getDeptColor(deptKey)}` }}>
+                <div className="mp-dept-tag-name">{getDeptLabel(deptKey)}</div>
                 <div className="mp-dept-tag-val">
                   {count.toLocaleString()} M/D <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "normal" }}>({pct}%)</span>
                 </div>
@@ -1419,8 +1477,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                       {Object.entries(cell.data.departments).map(([dKey, cnt]) => {
                         if (cnt <= 0) return null;
                         return (
-                          <span key={dKey} style={{ borderLeft: `2px solid ${DEPT_COLORS[dKey]}` }}>
-                            {DEPT_SHORT[dKey] || dKey} {cnt}
+                          <span key={dKey} style={{ borderLeft: `2px solid ${getDeptColor(dKey)}` }}>
+                            {getDeptShort(dKey)} {cnt}
                           </span>
                         );
                       })}
@@ -1455,12 +1513,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                 <th>제조번호</th>
                 <th>Site · Line</th>
                 <th>프로젝트명</th>
-                <th style={{ textAlign: "center" }}>기구</th>
-                <th style={{ textAlign: "center" }}>비전</th>
-                <th style={{ textAlign: "center" }}>제어</th>
-                <th style={{ textAlign: "center" }}>전장</th>
-                <th style={{ textAlign: "center" }}>안전</th>
-                <th style={{ textAlign: "center" }}>소장</th>
+                {activeDeptKeys.map(k => (
+                  <th key={k} style={{ textAlign: "center" }}>{getDeptShort(k)}</th>
+                ))}
                 <th style={{ textAlign: "center", color: "#1d4ed8" }}>
                   {viewMode === "range" ? "기간 투입 공수" : `${month + 1}월 투입 공수`}
                 </th>
@@ -1493,12 +1548,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                         </div>
                       )}
                     </td>
-                    <td style={{ textAlign: "center" }}>{pDepts.mechanical ? `${pDepts.mechanical}명` : "-"}</td>
-                    <td style={{ textAlign: "center" }}>{pDepts.vision ? `${pDepts.vision}명` : "-"}</td>
-                    <td style={{ textAlign: "center" }}>{pDepts.control ? `${pDepts.control}명` : "-"}</td>
-                    <td style={{ textAlign: "center" }}>{pDepts.electrical ? `${pDepts.electrical}명` : "-"}</td>
-                    <td style={{ textAlign: "center" }}>{pDepts.safety ? `${pDepts.safety}명` : "-"}</td>
-                    <td style={{ textAlign: "center" }}>{pDepts.manager ? `${pDepts.manager}명` : "-"}</td>
+                    {activeDeptKeys.map(k => (
+                      <td key={k} style={{ textAlign: "center" }}>{pDepts[k] ? `${pDepts[k]}명` : "-"}</td>
+                    ))}
                     <td style={{ textAlign: "center" }}>
                       <span style={{ fontWeight: "bold", color: pRangeTotal > 0 ? "#1d4ed8" : "#94a3b8", fontSize: "14px" }}>
                         {pRangeTotal > 0 ? `${pRangeTotal.toLocaleString()} M/D` : "-"}
@@ -1547,12 +1599,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                   <td colSpan={3} style={{ textAlign: "center", padding: "10px" }}>
                     {viewMode === "range" ? "지정 기간 합산" : "당월 합산"}
                   </td>
-                  <td style={{ textAlign: "center" }}>{deptTotals.mechanical > 0 ? `${deptTotals.mechanical} M/D` : "-"}</td>
-                  <td style={{ textAlign: "center" }}>{deptTotals.vision > 0 ? `${deptTotals.vision} M/D` : "-"}</td>
-                  <td style={{ textAlign: "center" }}>{deptTotals.control > 0 ? `${deptTotals.control} M/D` : "-"}</td>
-                  <td style={{ textAlign: "center" }}>{deptTotals.electrical > 0 ? `${deptTotals.electrical} M/D` : "-"}</td>
-                  <td style={{ textAlign: "center" }}>{deptTotals.safety > 0 ? `${deptTotals.safety} M/D` : "-"}</td>
-                  <td style={{ textAlign: "center" }}>{deptTotals.manager > 0 ? `${deptTotals.manager} M/D` : "-"}</td>
+                  {activeDeptKeys.map(k => (
+                    <td key={k} style={{ textAlign: "center" }}>{deptTotals[k] > 0 ? `${deptTotals[k]} M/D` : "-"}</td>
+                  ))}
                   <td style={{ textAlign: "center", color: "#1d4ed8", fontSize: "14px" }}>
                     {periodTotalManday > 0 ? `${periodTotalManday.toLocaleString()} M/D` : "-"}
                   </td>
@@ -1582,8 +1631,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             {/* Department mini cards for the day */}
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               {Object.entries(selectedDay.departments).map(([dKey, cnt]) => (
-                <div key={dKey} style={{ background: "#f8fafc", border: `1px solid #e2e8f0`, borderLeft: `4px solid ${DEPT_COLORS[dKey]}`, borderRadius: "8px", padding: "8px 14px", minWidth: "120px" }}>
-                  <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "bold" }}>{DEPT_LABELS[dKey]}</div>
+                <div key={dKey} style={{ background: "#f8fafc", border: `1px solid #e2e8f0`, borderLeft: `4px solid ${getDeptColor(dKey)}`, borderRadius: "8px", padding: "8px 14px", minWidth: "120px" }}>
+                  <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "bold" }}>{getDeptLabel(dKey)}</div>
                   <div style={{ fontSize: "16px", fontWeight: "bold", color: "#0f172a" }}>{cnt}명</div>
                 </div>
               ))}
@@ -1597,30 +1646,24 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                     <th>제조번호</th>
                     <th>Site / Line</th>
                     <th>프로젝트명</th>
-                    <th style={{ textAlign: "center" }}>기구</th>
-                    <th style={{ textAlign: "center" }}>비전</th>
-                    <th style={{ textAlign: "center" }}>제어</th>
-                    <th style={{ textAlign: "center" }}>전장</th>
-                    <th style={{ textAlign: "center" }}>안전</th>
-                    <th style={{ textAlign: "center" }}>소장</th>
+                    {activeDeptKeys.map(k => (
+                      <th key={k} style={{ textAlign: "center" }}>{getDeptShort(k)}</th>
+                    ))}
                     <th style={{ textAlign: "center" }}>당일 총원</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedDay.projectBreakdown.length === 0 ? (
-                    <tr><td colSpan={10} style={{ textAlign: "center", padding: "20px", color: "#94a3b8" }}>당일 투입된 프로젝트 공수가 없습니다.</td></tr>
+                    <tr><td colSpan={4 + activeDeptKeys.length} style={{ textAlign: "center", padding: "20px", color: "#94a3b8" }}>당일 투입된 프로젝트 공수가 없습니다.</td></tr>
                   ) : (
                     selectedDay.projectBreakdown.map((pb, pIdx) => (
                       <tr key={pIdx}>
                         <td><b>{normalizeJVName(pb.manufacturingNo) || "-"}</b></td>
                         <td>{normalizeJVName(pb.site) || "-"} · {normalizeJVName(pb.line) || "-"}</td>
                         <td><b style={{ color: "#0f172a" }}>{normalizeJVName(pb.name)}</b></td>
-                        <td style={{ textAlign: "center" }}>{pb.departments.mechanical || "-"}</td>
-                        <td style={{ textAlign: "center" }}>{pb.departments.vision || "-"}</td>
-                        <td style={{ textAlign: "center" }}>{pb.departments.control || "-"}</td>
-                        <td style={{ textAlign: "center" }}>{pb.departments.electrical || "-"}</td>
-                        <td style={{ textAlign: "center" }}>{pb.departments.safety || "-"}</td>
-                        <td style={{ textAlign: "center" }}>{pb.departments.manager || "-"}</td>
+                        {activeDeptKeys.map(k => (
+                          <td key={k} style={{ textAlign: "center" }}>{pb.departments?.[k] || "-"}</td>
+                        ))}
                         <td style={{ textAlign: "center", fontWeight: "bold", color: "#dc2626" }}>{pb.total}명</td>
                       </tr>
                     ))
@@ -1710,8 +1753,8 @@ export function ProjectManpowerModal({ project, onClose }) {
                   {Object.entries(mp.departments).map(([rawD, dData]) => {
                     const norm = normalizeDeptKey(rawD);
                     return (
-                      <div key={rawD} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderLeft: `4px solid ${DEPT_COLORS[norm] || "#64748b"}`, borderRadius: "8px", padding: "10px 14px" }}>
-                        <div style={{ fontSize: "11px", fontWeight: "bold", color: "#64748b" }}>{DEPT_LABELS[norm] || rawD}</div>
+                      <div key={rawD} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderLeft: `4px solid ${getDeptColor(norm)}`, borderRadius: "8px", padding: "10px 14px" }}>
+                        <div style={{ fontSize: "11px", fontWeight: "bold", color: "#64748b" }}>{getDeptLabel(norm)}</div>
                         <div style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", marginTop: "4px" }}>
                           {dData.total || 0} <span style={{ fontSize: "12px", fontWeight: "normal" }}>M/D</span>
                         </div>
@@ -1728,47 +1771,46 @@ export function ProjectManpowerModal({ project, onClose }) {
               <div>
                 <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#334155" }}>일자별 인력 투입 타임라인 ({dates[0]} ~ {dates[dates.length - 1]})</h4>
                 <div style={{ overflowX: "auto", maxHeight: "300px" }}>
-                  <table className="mp-timeline-table">
-                    <thead>
-                      <tr>
-                        <th>날짜</th>
-                        <th>기구</th>
-                        <th>비전</th>
-                        <th>제어</th>
-                        <th>전장</th>
-                        <th>안전</th>
-                        <th>소장</th>
-                        <th>당일 합계</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dates.map(dateStr => {
-                        const mech = mp.departments?.mechanical?.daily?.[dateStr] || mp.departments?.Mechanical?.daily?.[dateStr] || 0;
-                        const vis = mp.departments?.vision?.daily?.[dateStr] || mp.departments?.Vision?.daily?.[dateStr] || 0;
-                        const ctrl = mp.departments?.control?.daily?.[dateStr] || mp.departments?.Control?.daily?.[dateStr] || 0;
-                        const elec = mp.departments?.electrical?.daily?.[dateStr] || mp.departments?.Electrical?.daily?.[dateStr] || mp.departments?.Electronical?.daily?.[dateStr] || 0;
-                        const safe = mp.departments?.safety?.daily?.[dateStr] || mp.departments?.Safety?.daily?.[dateStr] || mp.departments?.["Safety Manager"]?.daily?.[dateStr] || 0;
-                        const mgr = mp.departments?.manager?.daily?.[dateStr] || mp.departments?.Manager?.daily?.[dateStr] || mp.departments?.["소장"]?.daily?.[dateStr] || 0;
-                        const total = mp.dailyTotal?.[dateStr] || (mech + vis + ctrl + elec + safe + mgr);
-                        const isPeak = total === mp.dailyPeak && mp.dailyPeak > 0;
-
-                        return (
-                          <tr key={dateStr}>
-                            <td style={{ fontWeight: 600, background: "#f8fafc" }}>{dateStr}</td>
-                            <td>{mech || "-"}</td>
-                            <td>{vis || "-"}</td>
-                            <td>{ctrl || "-"}</td>
-                            <td>{elec || "-"}</td>
-                            <td>{safe || "-"}</td>
-                            <td>{mgr || "-"}</td>
-                            <td className={isPeak ? "mp-peak-cell" : ""} style={{ fontWeight: "bold" }}>
-                              {total}명 {isPeak && "🔥"}
-                            </td>
+                  {(() => {
+                    const deptNames = Object.keys(mp.departments || {});
+                    return (
+                      <table className="mp-timeline-table">
+                        <thead>
+                          <tr>
+                            <th>날짜</th>
+                            {deptNames.map(dName => (
+                              <th key={dName}>{getDeptShort(dName)}</th>
+                            ))}
+                            <th>당일 합계</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {dates.map(dateStr => {
+                            let daySum = 0;
+                            const cells = deptNames.map(dName => {
+                              const v = mp.departments?.[dName]?.daily?.[dateStr] || 0;
+                              daySum += Number(v) || 0;
+                              return v;
+                            });
+                            const total = mp.dailyTotal?.[dateStr] || daySum;
+                            const isPeak = total === mp.dailyPeak && mp.dailyPeak > 0;
+
+                            return (
+                              <tr key={dateStr}>
+                                <td style={{ fontWeight: 600, background: "#f8fafc" }}>{dateStr}</td>
+                                {cells.map((v, cIdx) => (
+                                  <td key={cIdx}>{v || "-"}</td>
+                                ))}
+                                <td className={isPeak ? "mp-peak-cell" : ""} style={{ fontWeight: "bold" }}>
+                                  {total}명 {isPeak && "🔥"}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
                 </div>
               </div>
             )}

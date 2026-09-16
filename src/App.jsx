@@ -126,9 +126,556 @@ const monthsMap={jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',
 function parseHeaderDate(val,defaultYear){if(!val&&val!==0)return'';const yr=defaultYear||new Date().getFullYear();if(typeof val==='number'&&val>20000&&val<80000){const u=Math.floor(val-25569);return new Date(u*86400*1000).toISOString().slice(0,10);}const s=String(val).trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;let m=s.match(/^(\d{4})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);if(m)return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;m=s.match(/^(\d{2})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);if(m&&parseInt(m[1],10)>=20&&parseInt(m[1],10)<=40){return `20${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;}m=s.match(/^(\d{1,2})[-/ ]([a-zA-Z]{3,})[-/ ](\d{2,4})$/);if(m){const day=m[1].padStart(2,'0');const mon=monthsMap[m[2].slice(0,3).toLowerCase()];const yStr=m[3].length===2?'20'+m[3]:m[3];if(mon)return `${yStr}-${mon}-${day}`;}m=s.match(/^(\d{1,2})[-/ ]([a-zA-Z]{3,})$/);if(m){const day=m[1].padStart(2,'0');const mon=monthsMap[m[2].slice(0,3).toLowerCase()];if(mon)return `${yr}-${mon}-${day}`;}m=s.match(/^([a-zA-Z]{3,})[-/ ](\d{1,2})$/);if(m){const mon=monthsMap[m[1].slice(0,3).toLowerCase()];const day=m[2].padStart(2,'0');if(mon)return `${yr}-${mon}-${day}`;}m=s.match(/^(\d{1,2})[-/.](\d{1,2})$/);if(m&&parseInt(m[1],10)<=12&&parseInt(m[2],10)<=31){return `${yr}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;}return'';}
 function excelDateToISO(serial){if(!serial&&serial!==0)return"";if(serial instanceof Date)return serial.toISOString().slice(0,10);if(typeof serial==="number"&&serial>20000&&serial<80000){const u=Math.floor(serial-25569);return new Date(u*86400*1000).toISOString().slice(0,10);}if(typeof serial==="string"){const s=serial.trim();if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;let m=s.match(/^(\d{4})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);if(m)return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;m=s.match(/^(\d{2})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);if(m&&parseInt(m[1],10)>=20&&parseInt(m[1],10)<=40)return `20${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;m=s.match(/^(\d{1,2})[-/ ](\d{1,2})[-/ ](\d{2,4})$/);if(m&&parseInt(m[1],10)<=12&&parseInt(m[2],10)<=31){let yr=m[3].length===2?'20'+m[3]:m[3];return `${yr}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;}const dMatch=s.match(/^(\d{1,2})[-/ ]([a-zA-Z]{3,})[-/ ](\d{2,4})$/);if(dMatch){const day=dMatch[1].padStart(2,'0');const monStr=dMatch[2].slice(0,3).toLowerCase();const mon=monthsMap[monStr];let yr=dMatch[3].length===2?'20'+dMatch[3]:dMatch[3];if(mon)return `${yr}-${mon}-${day}`;}const koMatch=s.match(/^(\d{1,2})[-./월]\s*(\d{1,2})일?$/);if(koMatch&&parseInt(koMatch[1],10)<=12&&parseInt(koMatch[2],10)<=31){const yr=new Date().getFullYear();return `${yr}-${koMatch[1].padStart(2,'0')}-${koMatch[2].padStart(2,'0')}`;}const d=new Date(s);if(!isNaN(d.getTime()))return d.toISOString().slice(0,10);}return"";}
 function adjustProjectDates(project){if(!project)return project;const now=new Date();const uploadYear=now.getFullYear();const uploadMonth=now.getMonth()+1;const allDates=[];if(project.startDate)allDates.push(project.startDate);if(project.endDate)allDates.push(project.endDate);(project.milestones||[]).forEach(m=>{if(m.startDate)allDates.push(m.startDate);if(m.endDate)allDates.push(m.endDate);});if(project.manpower?.dailyTotal){Object.keys(project.manpower.dailyTotal).forEach(d=>allDates.push(d));}const parsed=allDates.map(d=>{const parts=String(d).match(/^(\d{4})-(\d{2})-(\d{2})$/);return parts?{str:d,year:parseInt(parts[1],10),month:parseInt(parts[2],10),day:parts[3]}:null;}).filter(Boolean);if(!parsed.length)return project;const origYears=[...new Set(parsed.map(p=>p.year))].sort((a,b)=>a-b);const minOrigYear=origYears[0]||uploadYear;const needYearShift=minOrigYear<uploadYear;let firstMonth=1;if(project.startDate){const m=project.startDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(m)firstMonth=parseInt(m[2],10);}else if(project.milestones&&project.milestones.length>0){for(const ms of project.milestones){if(ms.startDate){const m=ms.startDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(m){firstMonth=parseInt(m[2],10);break;}}}}let baseStartYear=uploadYear;if(uploadMonth>=10&&firstMonth<=4){baseStartYear=uploadYear+1;}else if(uploadMonth<=3&&firstMonth>=9){baseStartYear=uploadYear-1;}const convertDate=(dateStr)=>{if(!dateStr||typeof dateStr!=="string")return dateStr;const m=dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(!m)return dateStr;const origY=parseInt(m[1],10);const mo=parseInt(m[2],10);const da=m[3];if(!needYearShift&&origY>=uploadYear)return dateStr;let yearOffset=Math.max(0,origY-minOrigYear);if(firstMonth>=8&&mo<firstMonth){yearOffset=Math.max(yearOffset,1);}const targetYear=baseStartYear+yearOffset;return `${targetYear}-${String(mo).padStart(2,'0')}-${da}`;};const cleanMs=(project.milestones||[]).map(ms=>({...ms,startDate:convertDate(ms.startDate),endDate:convertDate(ms.endDate)}));let newStart=convertDate(project.startDate);let newEnd=convertDate(project.endDate);let minD="",maxD="";cleanMs.forEach(m=>{if(m.startDate&&(!minD||m.startDate<minD))minD=m.startDate;if(m.endDate&&(!maxD||m.endDate>maxD))maxD=m.endDate;});if(minD&&(!newStart||newStart>minD))newStart=minD;if(maxD&&(!newEnd||newEnd<maxD))newEnd=maxD;let newManpower=project.manpower;if(newManpower){const newDailyTotal={};if(newManpower.dailyTotal){Object.entries(newManpower.dailyTotal).forEach(([dStr,val])=>{newDailyTotal[convertDate(dStr)]=val;});}const newDepartments={};if(newManpower.departments){Object.entries(newManpower.departments).forEach(([deptKey,deptObj])=>{const newDaily={};if(deptObj.daily){Object.entries(deptObj.daily).forEach(([dStr,val])=>{newDaily[convertDate(dStr)]=val;});}newDepartments[deptKey]={...deptObj,daily:newDaily};});}newManpower={...newManpower,dailyTotal:newDailyTotal,departments:newDepartments};}return{...project,startDate:newStart,endDate:newEnd,milestones:cleanMs,manpower:newManpower};}
-function parseExcelMasterPlan(wb,context={}){let targetName=wb.SheetNames.find(n=>/planning|schedule|master|일정/i.test(n));if(!targetName){const nonEdit=wb.SheetNames.find(n=>!/edit|설정|양식/i.test(n));targetName=nonEdit||wb.SheetNames[0];}const sheet=wb.Sheets[targetName];if(!sheet)return null;const rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:true});if(!rows||!rows.length)return null;let baseProjectName="",baseStartDate="",baseEndDate="",manufacturingNo="",line="",headerRowIdx=-1,colMap={};for(let r=0;r<Math.min(25,rows.length);r++){const row=rows[r]||[];for(let c=0;c<row.length;c++){const val=String(row[c]||"").trim();if(!val)continue;const pMatch=val.match(/(?:project\s*name|프로젝트명)\s*[:：]\s*(.+)/i);if(pMatch&&pMatch[1].trim()){baseProjectName=normalizeJVName(pMatch[1].trim());}else if(/^(?:project\s*name|프로젝트명)$/i.test(val)){for(let next=1;next<=3;next++){if(row[c+next]&&String(row[c+next]).trim()){baseProjectName=normalizeJVName(String(row[c+next]).trim());break;}}}const sMatch=val.match(/(?:project\s*start\s*date|plan\s*start\s*date|시작일)\s*[:：]\s*(.+)/i);if(sMatch&&sMatch[1].trim()){const isoVal=excelDateToISO(sMatch[1].trim());if(isoVal)baseStartDate=isoVal;}else if(/^(?:project\s*start\s*date|plan\s*start\s*date|시작일)$/i.test(val)){for(let next=1;next<=3;next++){const isoVal=excelDateToISO(row[c+next]);if(isoVal){baseStartDate=isoVal;break;}}}if(/^(?:activity|작업|공정|task|내용)$/i.test(val)||/activity/i.test(val)){headerRowIdx=r;}}}if(!baseProjectName&&(context.formName||context.editingProjectName)){const fallback=context.formName||context.editingProjectName;baseProjectName=fallback.split(' - ')[0];}if(baseProjectName){const lineMatch=baseProjectName.match(/\b(\d+L|\d+Line|Line\s*\d+)\b/i);if(lineMatch)line=normalizeJVName(lineMatch[1]);}if(!line&&context.formLine){line=normalizeJVName(context.formLine);}if(headerRowIdx===-1){for(let r=0;r<Math.min(15,rows.length);r++){const row=rows[r]||[];const rowStr=row.map(x=>String(x||"").trim().toLowerCase()).join(" ");if(rowStr.includes("equipment")||rowStr.includes("설비")||rowStr.includes("장비")||rowStr.includes("activity")){headerRowIdx=r;break;}}}if(headerRowIdx===-1)headerRowIdx=0;const headerRow=rows[headerRowIdx]||[];headerRow.forEach((h,colIdx)=>{const colName=String(h||"").trim().toLowerCase();if(/^(activity|작업|공정|task|내용|항목)$/i.test(colName)||colName==="activity")colMap.activity=colIdx;else if(/^(equipment|설비|장비|호기|구분)$/i.test(colName)||colName==="equipment")colMap.equipment=colIdx;else if(/^(line|라인)$/i.test(colName)||colName==="line")colMap.line=colIdx;else if(/^(start|시작|착수|start\s*date|시작일)$/i.test(colName)||colName==="start")colMap.start=colIdx;else if(/^(end|종료|완료|end\s*date|종료일)$/i.test(colName)||colName==="end")colMap.end=colIdx;else if(/^(duration|기간|공수|일수)$/i.test(colName)||colName==="duration")colMap.duration=colIdx;else if(/^(no|번호|순번)$/i.test(colName))colMap.no=colIdx;});if(colMap.equipment===undefined)colMap.equipment=1;if(colMap.activity===undefined)colMap.activity=2;if(colMap.start===undefined)colMap.start=3;if(colMap.end===undefined)colMap.end=4;const refYear=baseStartDate?parseInt(baseStartDate.slice(0,4),10):new Date().getFullYear();const dateCols=[];for(let r=0;r<Math.min(30,rows.length);r++){const row=rows[r]||[];const curDates=[];let curYear=refYear;let prevMonth=null;for(let c=0;c<row.length;c++){const iso=parseHeaderDate(row[c],curYear);if(iso&&/^\d{4}-\d{2}-\d{2}$/.test(iso)){const m=parseInt(iso.slice(5,7),10);if(prevMonth!==null&&prevMonth===12&&m===1)curYear++;prevMonth=m;curDates.push({colIdx:c,dateStr:iso});}}if(curDates.length>=3){curDates.forEach(d=>{if(!dateCols.find(x=>x.colIdx===d.colIdx))dateCols.push(d);});break;}}const isDeptName=/^(mechanical(\s*\([^)]*\))?|vision(\s*\([^)]*\))?|control(\s*\([^)]*\))?|electrical(\s*\([^)]*\))?|safety(\s*\([^)]*\))?|manager(\s*\([^)]*\))?|site\s*manager(\s*\([^)]*\))?|total\s*manday(\s*\([^)]*\))?|total|합계|총\s*공수|기구|비전|제어|전장|안전|소장)$/i;let currentEqName="";let currentProject=null;const projects=[];for(let r=headerRowIdx+1;r<rows.length;r++){const row=rows[r];if(!row||!row.length)continue;const eqRaw=colMap.equipment!==undefined?row[colMap.equipment]:row[1];const actRaw=colMap.activity!==undefined?row[colMap.activity]:row[2];const sRaw=colMap.start!==undefined?row[colMap.start]:row[3];const eRaw=colMap.end!==undefined?row[colMap.end]:row[4];const eqStr=String(eqRaw||"").trim();const actStr=String(actRaw||"").trim();const mStart=excelDateToISO(sRaw);const mEnd=excelDateToISO(eRaw);const isDateRow=Boolean(mStart&&mEnd);const isManpower=!isDateRow&&(/manpower/i.test(eqStr)||isDeptName.test(actStr)||isDeptName.test(eqStr)||/total\s*manday/i.test(actStr)||/total\s*manday/i.test(eqStr));if(isManpower&&currentProject){let deptKey="";const targetStr=`${eqStr} ${actStr}`.toLowerCase();if(/mechanical|기구/i.test(targetStr))deptKey="Mechanical";else if(/vision|비전/i.test(targetStr))deptKey="Vision";else if(/control|제어/i.test(targetStr))deptKey="Control";else if(/electrical|electronical|전장|전기/i.test(targetStr))deptKey="Electrical";else if(/safety|안전/i.test(targetStr))deptKey="Safety";else if(/manager|소장/i.test(targetStr))deptKey="Manager";else if(/total\s*manday|총\s*공수|합계|total/i.test(targetStr))deptKey="Total Manday";if(deptKey){let rowTotal=0,rowPeak=0;const daily={};const firstDateCol=dateCols[0]?.colIdx??6;const numCols=[];for(let c=0;c<firstDateCol;c++){const val=Number(row[c]);if(!isNaN(val)&&val>0)numCols.push(val);}if(numCols.length>=2){rowTotal=numCols[0];rowPeak=numCols[1];}else if(numCols.length===1){rowTotal=numCols[0];}dateCols.forEach(({colIdx,dateStr})=>{const val=Number(row[colIdx])||0;if(val>0){daily[dateStr]=val;if(deptKey==="Total Manday"){currentProject._dailyTotalMap[dateStr]=val;}}});const dailySum=Object.values(daily).reduce((a,b)=>a+b,0);const dailyMax=Object.values(daily).reduce((a,b)=>Math.max(a,b),0);if(!rowTotal&&dailySum>0)rowTotal=dailySum;if(!rowPeak&&dailyMax>0)rowPeak=dailyMax;if(deptKey==="Total Manday"){currentProject._totalMandayVal=rowTotal;currentProject._dailyPeakVal=rowPeak;}else{currentProject._deptMap[deptKey]={total:rowTotal,peak:rowPeak,daily};}}continue;}if(eqStr&&!/^manpower$/i.test(eqStr)&&eqStr!=="0"&&!isDeptName.test(eqStr)){if(eqStr!==currentEqName){currentEqName=eqStr;currentProject={projectName:normalizeJVName(baseProjectName?`${baseProjectName} - ${currentEqName}`:currentEqName),equipment:currentEqName,startDate:baseStartDate,endDate:baseEndDate,manufacturingNo:"",line:normalizeJVName(line),milestones:[],_deptMap:{},_dailyTotalMap:{},_totalMandayVal:0,_dailyPeakVal:0,sheetName:targetName};projects.push(currentProject);}}if(!currentProject){currentProject={projectName:normalizeJVName(baseProjectName||"Project"),equipment:"",startDate:baseStartDate,endDate:baseEndDate,manufacturingNo:"",line:normalizeJVName(line),milestones:[],_deptMap:{},_dailyTotalMap:{},_totalMandayVal:0,_dailyPeakVal:0,sheetName:targetName};projects.push(currentProject);}if(colMap.line!==undefined&&row[colMap.line]&&!currentProject.line){currentProject.line=normalizeJVName(String(row[colMap.line]).trim());}if(actStr&&actStr!=="0"&&mStart&&mEnd){currentProject.milestones.push({name:normalizeJVName(actStr),startDate:mStart,endDate:mEnd});}}projects.forEach(p=>{if(Object.keys(p._deptMap).length>0||p._totalMandayVal>0){if(Object.keys(p._dailyTotalMap).length===0){dateCols.forEach(({dateStr})=>{let sum=0;Object.values(p._deptMap).forEach(d=>{if(d.daily&&d.daily[dateStr])sum+=d.daily[dateStr];});if(sum>0)p._dailyTotalMap[dateStr]=sum;});}if(!p._totalMandayVal){p._totalMandayVal=Object.values(p._deptMap).reduce((a,b)=>a+(b.total||0),0);}if(!p._dailyPeakVal){p._dailyPeakVal=Object.values(p._dailyTotalMap).reduce((a,b)=>Math.max(a,b),0);}p.manpower={totalManday:p._totalMandayVal,dailyPeak:p._dailyPeakVal,departments:p._deptMap,dailyTotal:p._dailyTotalMap};}delete p._deptMap;delete p._dailyTotalMap;delete p._totalMandayVal;delete p._dailyPeakVal;let minD="",maxD="";p.milestones.forEach(m=>{if(!minD||m.startDate<minD)minD=m.startDate;if(!maxD||m.endDate>maxD)maxD=m.endDate;});if(!p.startDate&&minD)p.startDate=minD;if(maxD)p.endDate=maxD;});return projects.map(adjustProjectDates).filter(p=>p.milestones.length>0||p.manpower);}
-async function saveDirectProjects(directProjects,sourceLabel="엑셀"){if(!directProjects||directProjects.length===0)return false;if(editing){const curP=projects.find(pr=>pr.id===editing)||form;let targetP=directProjects.find(p=>p.equipment&&curP.name&&curP.name.toLowerCase().includes(p.equipment.toLowerCase()))||(form.name?directProjects.find(p=>p.equipment&&form.name.toLowerCase().includes(p.equipment.toLowerCase())):null)||directProjects.find(p=>p.projectName&&((curP.name&&p.projectName.toLowerCase()===curP.name.toLowerCase())||(form.name&&p.projectName.toLowerCase()===form.name.toLowerCase())))||(curP.line?directProjects.find(p=>p.line&&p.line.toLowerCase()===curP.line.toLowerCase()):null)||(form.line?directProjects.find(p=>p.line&&p.line.toLowerCase()===form.line.toLowerCase()):null)||directProjects.find(p=>p.projectName&&curP.name&&(p.projectName.toLowerCase().includes(curP.name.toLowerCase())||curP.name.toLowerCase().includes(p.projectName.toLowerCase())))||directProjects[0];if(!targetP){setMsg("일치하는 마스터 플랜 일정을 찾을 수 없습니다.");return false;}const cleanMs=targetP.milestones.map(m=>({...m,name:normalizeJVName(m.name),id:uid()}));const autoStat=computeAutoStatus({startDate:targetP.startDate||form.startDate||iso(),endDate:targetP.endDate||form.endDate||iso(),milestones:cleanMs});let siteVal=form.site||curP.site;const projName=normalizeJVName(targetP.projectName||form.name||curP.name);if(!siteVal&&projName&&sites.length){const matchedSite=sites.find(s=>projName.toLowerCase().includes(s.name.toLowerCase()));if(matchedSite)siteVal=matchedSite.name;}const updatedRow={...curP,...form,id:editing,name:form.name||projName,startDate:targetP.startDate||form.startDate,endDate:targetP.endDate||form.endDate,line:normalizeJVName(targetP.line||form.line||curP.line||""),site:normalizeJVName(siteVal||form.site||curP.site||"선택 안됨"),status:autoStat,autoStatus:true,isManualStatus:false,manualStatusBy:"",milestones:cleanMs,manpower:targetP.manpower||curP.manpower||null};setForm(updatedRow);setMilestones(cleanMs.length>=5?cleanMs:[...cleanMs,...newMs().slice(0,5-cleanMs.length)]);const{error}=await supabase.from("projects").update(to(updatedRow)).eq("id",editing);if(error){console.error("Master plan update error:",error);setMsg(`마스터 플랜 최신화 실패: ${error.message}`);}else{const mpText=targetP.manpower?` (총 공수 ${targetP.manpower.totalManday} M/D 최신화)`:"";let additionalUpdated=0;if(directProjects.length>1){for(const otherP of directProjects){if(otherP===targetP)continue;const existingOther=projects.find(ep=>ep.id!==editing&&((otherP.equipment&&ep.name&&ep.name.toLowerCase().includes(otherP.equipment.toLowerCase()))||(ep.name&&otherP.projectName&&ep.name.toLowerCase()===otherP.projectName.toLowerCase())||(ep.line&&otherP.line&&ep.line.toLowerCase()===otherP.line.toLowerCase())));if(existingOther){const otherCleanMs=otherP.milestones.map(m=>({...m,name:normalizeJVName(m.name),id:uid()}));const otherAutoStat=computeAutoStatus({startDate:otherP.startDate,endDate:otherP.endDate,milestones:otherCleanMs});const updatedOther={...existingOther,startDate:otherP.startDate||existingOther.startDate,endDate:otherP.endDate||existingOther.endDate,status:otherAutoStat,autoStatus:true,isManualStatus:false,manualStatusBy:"",milestones:otherCleanMs,manpower:otherP.manpower||existingOther.manpower||null};await supabase.from("projects").update(to(updatedOther)).eq("id",existingOther.id);additionalUpdated++;}}}const addText=additionalUpdated>0?` 및 관련 프로젝트 ${additionalUpdated}건 함께 최신화`:"";setMsg(`'${updatedRow.name}' 프로젝트의 마스터 스케줄 및 공수가 최신 버전으로 업데이트되었습니다!${mpText}${addText}`);load("projects");}return true;}else{let successCount=0;let errorLog=[];for(const p of directProjects){let siteVal="";const projName=normalizeJVName(p.projectName);if(projName&&sites.length){const matchedSite=sites.find(s=>projName.toLowerCase().includes(s.name.toLowerCase()));if(matchedSite)siteVal=matchedSite.name;}const cleanMs=p.milestones.map(m=>({...m,name:normalizeJVName(m.name),id:uid()}));const autoStat=computeAutoStatus({startDate:p.startDate||iso(),endDate:p.endDate||iso(),milestones:cleanMs});const newRow={...blank(),id:uid(),name:projName,startDate:p.startDate||iso(),endDate:p.endDate||iso(),manufacturingNo:normalizeJVName(p.manufacturingNo||""),line:normalizeJVName(p.line||""),site:normalizeJVName(siteVal||"선택 안됨"),status:autoStat,autoStatus:true,isManualStatus:false,manualStatusBy:"",milestones:cleanMs,manpower:p.manpower||null};const{error}=await supabase.from("projects").insert(to(newRow));if(error){console.error("Auto-insert error for",p.projectName,error);errorLog.push(error.message);}else successCount++;}const totalMpSum=directProjects.reduce((acc,p)=>acc+(p.manpower?.totalManday||0),0);const mpSummaryText=totalMpSum>0?` 총 공수 ${totalMpSum} M/D 반영됨`:"";if(successCount===0&&errorLog.length>0)setMsg(`저장 실패: 데이터베이스 오류 발생 (${errorLog[0]})`);else setMsg(`${sourceLabel} 자동 등록 완료! (${directProjects[0].sheetName||'표 데이터'}에서 ${successCount}개의 라인/공정별 프로젝트가 개별 등록되었습니다.${mpSummaryText?` ${mpSummaryText}`:""})`);load("projects");return true;}}
-async function handleMasterPlanUpload(input){if(!editing&&!create)return showPermissionModal("마스터 플랜 등록");if(editing&&!edit)return showPermissionModal("프로젝트 수정");if(!input)return;setMsg("마스터 플랜 분석 중...");setIsExtracting(true);try{let directProjects=null;let sourceLabel="엑셀 파일";const parseContext={formName:form.name,formLine:form.line,formSite:form.site,editingProjectName:editing?projects.find(p=>p.id===editing)?.name:""};if(input.name&&input.name.match(/\.(xlsx|xls)$/i)){const data=await input.arrayBuffer();const wb=XLSX.read(data,{cellDates:false});directProjects=parseExcelMasterPlan(wb,parseContext);sourceLabel="엑셀 파일";}else if(typeof input==="string"){sourceLabel="엑셀 표 붙여넣기";try{let wb=null;try{wb=XLSX.read(input,{type:"string"});}catch(e){}const sName=wb?.SheetNames?.[0];const sRows=sName?XLSX.utils.sheet_to_json(wb.Sheets[sName],{header:1,raw:true}):[];if(!sRows||sRows.length<=1){const lines=input.split(/\r?\n/).map(l=>l.split('\t'));if(lines.length>0&&lines[0].length>1){const ws=XLSX.utils.aoa_to_sheet(lines);wb={SheetNames:['Sheet1'],Sheets:{Sheet1:ws}};}}if(wb&&wb.SheetNames&&wb.SheetNames.length>0){directProjects=parseExcelMasterPlan(wb,parseContext);}}catch(e){console.warn("Direct TSV parse failed, fallback to AI:",e);}}if(directProjects&&directProjects.length>0){await saveDirectProjects(directProjects,sourceLabel);return;}const apiKey=import.meta.env.VITE_GEMINI_API_KEY;if(!apiKey)throw new Error("엑셀 표 서식을 자동으로 판독하지 못했거나, AI 분석용 Gemini API 키가 설정되지 않았습니다.");const genAI=new GoogleGenerativeAI(apiKey);const model=genAI.getGenerativeModel({model:"gemini-3.6-flash"});let parts=[];if(typeof input==="string"){parts=[{text:`이것은 마스터 플랜의 클립보드 텍스트입니다:\n\n${input}`}];}else if(input.name&&input.name.match(/\.(xlsx|xls)$/i)){const data=await input.arrayBuffer();const wb=XLSX.read(data,{cellDates:false});let sheetName=wb.SheetNames.find(n=>/planning|schedule|master|일정/i.test(n))||wb.SheetNames.find(n=>!/edit|설정|양식/i.test(n))||wb.SheetNames[0];const sheet=wb.Sheets[sheetName];const rawJson=XLSX.utils.sheet_to_json(sheet,{header:1});const compactCsv=(rawJson||[]).slice(0,80).map(r=>(r||[]).slice(0,10).join(",")).filter(l=>l.replace(/,/g,"").trim().length>0).join("\n");parts=[{text:`이것은 마스터 플랜 엑셀(${sheetName} 시트)의 데이터입니다:\n\n${compactCsv}`}];}else if(input.type&&input.type.startsWith("image/")){const reader=new FileReader();const p=new Promise(res=>reader.onload=()=>res(reader.result));reader.readAsDataURL(input);const b64=await p;const b64d=b64.split(",")[1];parts=[{inlineData:{data:b64d,mimeType:input.type}}];}else{throw new Error("지원하지 않는 데이터 형식입니다. (Excel, 이미지, 또는 텍스트 복사)");}const prompt=`당신은 프로젝트 일정표(Master Plan) 및 공수(Manpower) 데이터를 분석하는 전문가입니다. 첨부된 데이터(이미지 또는 엑셀 텍스트)를 분석하여 아래 JSON 구조로만 데이터를 추출하세요.\n데이터에 여러 장비(Equipment) 또는 라인(Line)별 공정이 포함되어 있다면, 각각 개별 프로젝트로 분할하여 "projects" 배열에 넣어 반환하세요. 각 장비 바로 아래에 위치한 공수(Mechanical, Vision, Control, Electrical 등) 표는 해당 장비 프로젝트의 "manpower"에 각각 1:1로 정확히 할당해야 하며, 다른 장비의 공수와 섞이거나 모든 프로젝트에 동일한 공수가 들어가지 않도록 주의하세요.\n\nJSON 출력 예시:\n{\n "projects": [\n  {\n   "projectName": "SKOH2 9Line - 장비A",\n   "equipment": "장비A",\n   "line": "9Line",\n   "startDate": "2026-02-10",\n   "endDate": "2026-08-30",\n   "milestones": [\n    { "name": "기구 셋팅", "startDate": "2026-07-06", "endDate": "2026-07-19" }\n   ],\n   "manpower": {\n    "totalManday": 464,\n    "dailyPeak": 11,\n    "departments": {\n     "Mechanical": { "total": 254, "peak": 6, "daily": { "2026-05-15": 6 } }\n    },\n    "dailyTotal": { "2026-05-15": 9 }\n   }\n  }\n ]\n}\n\n주의: JSON 이외의 어떠한 설명이나 마크다운 백틱(\`\`\`)을 포함하지 말고 순수 JSON만 응답하세요.`;const result=await model.generateContent([...parts,prompt]);let responseText=result.response.text().trim();if(responseText.startsWith("\`\`\`json"))responseText=responseText.replace(/^\`\`\`json\s*/,"").replace(/\s*\`\`\`$/,"");else if(responseText.startsWith("\`\`\`"))responseText=responseText.replace(/^\`\`\`\s*/,"").replace(/\s*\`\`\`$/,"");const rawJson=JSON.parse(responseText);let rawList=[];if(rawJson.projects&&Array.isArray(rawJson.projects)&&rawJson.projects.length>0){rawList=rawJson.projects;}else{rawList=[rawJson];}const aiProjects=rawList.map(adjustProjectDates);await saveDirectProjects(aiProjects,"AI 분석");}catch(err){setMsg("분석 실패: "+err.message);}finally{setIsExtracting(false);if(masterPlanInput.current)masterPlanInput.current.value="";}}
+function normalizeDeptName(raw){
+  if(!raw)return"";
+  const s=String(raw).trim();
+  const lower=s.toLowerCase();
+  if(/total\s*manday|총\s*공수|합계/i.test(lower))return"Total Manday";
+  if(/vision\s*(program)?\s*sub|비전\s*외주|비전외주/i.test(lower))return"Vision Sub";
+  if(/supervisor|슈퍼바이저|\bsv\b/i.test(lower))return"Supervisor";
+  if(/mechanical|기구/i.test(lower))return"Mechanical";
+  if(/vision|비전/i.test(lower))return"Vision";
+  if(/control|제어/i.test(lower))return"Control";
+  if(/electrical|electronical|전장|전기/i.test(lower))return"Electrical";
+  if(/safety|안전/i.test(lower))return"Safety";
+  if(/manager|소장/i.test(lower))return"Manager";
+  return s.replace(/\s*\([^)]*\)$/,'').trim()||s;
+}
+
+function parseExcelMasterPlan(wb,context={}){
+  let targetName=wb.SheetNames.find(n=>/planning|schedule|master|일정/i.test(n));
+  if(!targetName){
+    const nonEdit=wb.SheetNames.find(n=>!/edit|설정|양식/i.test(n));
+    targetName=nonEdit||wb.SheetNames[0];
+  }
+  const sheet=wb.Sheets[targetName];
+  if(!sheet)return null;
+  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:true});
+  if(!rows||!rows.length)return null;
+
+  let baseProjectName="",baseStartDate="",headerRowIdx=-1,colMap={};
+  let lineMfgMap={};
+  let titleLines=[];
+
+  for(let r=0;r<Math.min(25,rows.length);r++){
+    const row=rows[r]||[];
+    for(let c=0;c<row.length;c++){
+      const val=String(row[c]||"").trim();
+      if(!val)continue;
+      const pMatch=val.match(/(?:project\s*name|프로젝트명)\s*[:：]\s*(.+)/i);
+      if(pMatch&&pMatch[1].trim()){
+        baseProjectName=normalizeJVName(pMatch[1].trim());
+      }else if(/^(?:project\s*name|프로젝트명)$/i.test(val)){
+        for(let next=1;next<=3;next++){
+          if(row[c+next]&&String(row[c+next]).trim()){
+            baseProjectName=normalizeJVName(String(row[c+next]).trim());
+            break;
+          }
+        }
+      }
+      const sMatch=val.match(/(?:project\s*start\s*date|plan\s*start\s*date|시작일)\s*[:：]\s*(.+)/i);
+      if(sMatch&&sMatch[1].trim()){
+        const isoVal=excelDateToISO(sMatch[1].trim());
+        if(isoVal)baseStartDate=isoVal;
+      }else if(/^(?:project\s*start\s*date|plan\s*start\s*date|시작일)$/i.test(val)){
+        for(let next=1;next<=3;next++){
+          const isoVal=excelDateToISO(row[c+next]);
+          if(isoVal){baseStartDate=isoVal;break;}
+        }
+      }
+      if(/^(?:activity|작업|공정|task|내용)$/i.test(val)||/activity/i.test(val)){
+        headerRowIdx=r;
+      }
+    }
+  }
+
+  if(!baseProjectName&&(context.formName||context.editingProjectName)){
+    baseProjectName=normalizeJVName(context.formName||context.editingProjectName);
+  }
+
+  let clientPrefix=baseProjectName?baseProjectName.split(' - ')[0].trim():"Project";
+  if(baseProjectName){
+    const linesMatch=baseProjectName.match(/([0-9,\s]+)\s*(?:Line|L|라인)/i);
+    if(linesMatch){
+      titleLines=linesMatch[1].split(',').map(s=>s.trim()).filter(Boolean);
+      const prefixPart=baseProjectName.slice(0,linesMatch.index).trim().replace(/[:\-_]+$/,'').trim();
+      if(prefixPart)clientPrefix=prefixPart;
+    }
+    const mfgMatch=baseProjectName.match(/(?:Line\s*:\s*|제조번호\s*[:：]\s*)([0-9,\s]+)/i);
+    if(mfgMatch){
+      const mfgs=mfgMatch[1].split(',').map(s=>s.trim()).filter(Boolean);
+      titleLines.forEach((ln,idx)=>{if(mfgs[idx])lineMfgMap[ln]=mfgs[idx];});
+    }
+  }
+
+  if(headerRowIdx===-1){
+    for(let r=0;r<Math.min(15,rows.length);r++){
+      const row=rows[r]||[];
+      const rowStr=row.map(x=>String(x||"").trim().toLowerCase()).join(" ");
+      if(rowStr.includes("equipment")||rowStr.includes("설비")||rowStr.includes("장비")||rowStr.includes("activity")){
+        headerRowIdx=r;break;
+      }
+    }
+  }
+  if(headerRowIdx===-1)headerRowIdx=0;
+
+  const headerRow=rows[headerRowIdx]||[];
+  headerRow.forEach((h,colIdx)=>{
+    const colName=String(h||"").trim().toLowerCase();
+    if(/^(activity|작업|공정|task|내용|항목)$/i.test(colName)||colName==="activity")colMap.activity=colIdx;
+    else if(/^(equipment|설비|장비|호기|구분)$/i.test(colName)||colName==="equipment")colMap.equipment=colIdx;
+    else if(/^(line|라인)$/i.test(colName)||colName==="line")colMap.line=colIdx;
+    else if(/^(item|no|순번|번호)$/i.test(colName))colMap.item=colIdx;
+    else if(/^(start|시작|착수|start\s*date|시작일)$/i.test(colName)||colName==="start")colMap.start=colIdx;
+    else if(/^(end|종료|완료|end\s*date|종료일)$/i.test(colName)||colName==="end")colMap.end=colIdx;
+    else if(/^(duration|기간|공수|일수)$/i.test(colName)||colName==="duration")colMap.duration=colIdx;
+  });
+
+  if(colMap.item===undefined)colMap.item=0;
+  if(colMap.equipment===undefined)colMap.equipment=1;
+  if(colMap.activity===undefined)colMap.activity=2;
+  if(colMap.start===undefined)colMap.start=3;
+  if(colMap.end===undefined)colMap.end=4;
+
+  const refYear=baseStartDate?parseInt(baseStartDate.slice(0,4),10):new Date().getFullYear();
+  const dateCols=[];
+  for(let r=0;r<Math.min(30,rows.length);r++){
+    const row=rows[r]||[];
+    const curDates=[];
+    let curYear=refYear;
+    let prevMonth=null;
+    for(let c=0;c<row.length;c++){
+      const iso=parseHeaderDate(row[c],curYear);
+      if(iso&&/^\d{4}-\d{2}-\d{2}$/.test(iso)){
+        const m=parseInt(iso.slice(5,7),10);
+        if(prevMonth!==null&&prevMonth===12&&m===1)curYear++;
+        prevMonth=m;
+        curDates.push({colIdx:c,dateStr:iso});
+      }
+    }
+    if(curDates.length>=3){
+      curDates.forEach(d=>{
+        if(!dateCols.find(x=>x.colIdx===d.colIdx))dateCols.push(d);
+      });
+      break;
+    }
+  }
+
+  let currentLine=titleLines[0]||context.formLine||"";
+  let currentProject=null;
+  let inManpowerSection=false;
+  const projects=[];
+
+  for(let r=headerRowIdx+1;r<rows.length;r++){
+    const row=rows[r];
+    if(!row||!row.length)continue;
+
+    const itemRaw=row[colMap.item!==undefined?colMap.item:0];
+    const itemStr=String(itemRaw||"").trim();
+    if(itemStr&&/^[0-9]+[a-zA-Z가-힣]*$/.test(itemStr)&&!/total|manpower/i.test(itemStr)){
+      currentLine=itemStr.replace(/line|라인|L/i,'').trim();
+    }
+
+    const eqRaw=row[colMap.equipment!==undefined?colMap.equipment:1];
+    const actRaw=row[colMap.activity!==undefined?row[colMap.activity]:row[2]];
+    const sRaw=row[colMap.start!==undefined?colMap.start:3];
+    const eRaw=row[colMap.end!==undefined?colMap.end:4];
+
+    const eqStr=String(eqRaw||"").trim();
+    const actStr=String(actRaw||"").trim();
+    const mStart=excelDateToISO(sRaw);
+    const mEnd=excelDateToISO(eRaw);
+    const isDateRow=Boolean(mStart&&mEnd);
+
+    if(/manpower/i.test(eqStr)||/personnel|인원|인력/i.test(actStr)||(/total/i.test(String(sRaw))&&/peak/i.test(String(eRaw)))){
+      inManpowerSection=true;
+      continue;
+    }
+
+    const isDeptRow=inManpowerSection&&!isDateRow;
+    const isEqStart=eqStr&&!/^manpower$/i.test(eqStr)&&eqStr!=="0"&&!isDeptRow&&(
+      !currentProject||eqStr!==currentProject.equipment||currentLine!==currentProject._lineNum||inManpowerSection
+    );
+
+    if(isEqStart){
+      inManpowerSection=false;
+      const lineLabel=currentLine?`${currentLine}Line`:"";
+      const mfgNo=lineMfgMap[currentLine]||"";
+      const projName=normalizeJVName([clientPrefix,lineLabel,eqStr].filter(Boolean).join(" - ").replace(" -  - "," - "));
+
+      currentProject={
+        projectName:projName,
+        equipment:eqStr,
+        startDate:baseStartDate,
+        endDate:"",
+        manufacturingNo:normalizeJVName(mfgNo),
+        line:normalizeJVName(lineLabel||currentLine),
+        _lineNum:currentLine,
+        milestones:[],
+        _deptMap:{},
+        _dailyTotalMap:{},
+        _totalMandayVal:0,
+        _dailyPeakVal:0,
+        sheetName:targetName
+      };
+      projects.push(currentProject);
+    }
+
+    if(inManpowerSection&&currentProject){
+      const deptRaw=actStr||eqStr;
+      if(!deptRaw||deptRaw==="0")continue;
+      const deptName=normalizeDeptName(deptRaw);
+      const isTotalRow=deptName==="Total Manday"||/total\s*manday|총\s*공수|합계/i.test(deptRaw);
+
+      let rowTotal=Number(sRaw)||0;
+      let rowPeak=Number(eRaw)||0;
+      const daily={};
+
+      dateCols.forEach(({colIdx,dateStr})=>{
+        const val=Number(row[colIdx])||0;
+        if(val>0){
+          daily[dateStr]=val;
+          if(isTotalRow)currentProject._dailyTotalMap[dateStr]=val;
+        }
+      });
+
+      const dailySum=Object.values(daily).reduce((a,b)=>a+b,0);
+      const dailyMax=Object.values(daily).reduce((a,b)=>Math.max(a,b),0);
+      if(!rowTotal&&dailySum>0)rowTotal=dailySum;
+      if(!rowPeak&&dailyMax>0)rowPeak=dailyMax;
+
+      if(isTotalRow){
+        currentProject._totalMandayVal=rowTotal;
+        currentProject._dailyPeakVal=rowPeak;
+        inManpowerSection=false;
+      }else if(deptName){
+        currentProject._deptMap[deptName]={total:rowTotal,peak:rowPeak,daily};
+      }
+      continue;
+    }
+
+    if(actStr&&actStr!=="0"&&mStart&&mEnd&&currentProject){
+      currentProject.milestones.push({name:normalizeJVName(actStr),startDate:mStart,endDate:mEnd});
+    }
+  }
+
+  projects.forEach(p=>{
+    delete p._lineNum;
+    if(Object.keys(p._deptMap).length>0||p._totalMandayVal>0){
+      if(Object.keys(p._dailyTotalMap).length===0){
+        dateCols.forEach(({dateStr})=>{
+          let sum=0;
+          Object.values(p._deptMap).forEach(d=>{
+            if(d.daily&&d.daily[dateStr])sum+=d.daily[dateStr];
+          });
+          if(sum>0)p._dailyTotalMap[dateStr]=sum;
+        });
+      }
+      if(!p._totalMandayVal){
+        p._totalMandayVal=Object.values(p._deptMap).reduce((a,b)=>a+(b.total||0),0);
+      }
+      if(!p._dailyPeakVal){
+        p._dailyPeakVal=Object.values(p._dailyTotalMap).reduce((a,b)=>Math.max(a,b),0);
+      }
+      p.manpower={
+        totalManday:p._totalMandayVal,
+        dailyPeak:p._dailyPeakVal,
+        departments:p._deptMap,
+        dailyTotal:p._dailyTotalMap
+      };
+    }
+    delete p._deptMap;
+    delete p._dailyTotalMap;
+    delete p._totalMandayVal;
+    delete p._dailyPeakVal;
+
+    let minD="",maxD="";
+    p.milestones.forEach(m=>{
+      if(!minD||m.startDate<minD)minD=m.startDate;
+      if(!maxD||m.endDate>maxD)maxD=m.endDate;
+    });
+    if(!p.startDate&&minD)p.startDate=minD;
+    if(maxD)p.endDate=maxD;
+  });
+
+  return projects.map(adjustProjectDates).filter(p=>p.milestones.length>0||p.manpower);
+}
+
+async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
+  if(!directProjects||directProjects.length===0)return false;
+  if(editing){
+    const curP=projects.find(pr=>pr.id===editing)||form;
+    let targetP=directProjects.find(p=>p.equipment&&p.line&&curP.name&&curP.name.toLowerCase().includes(p.equipment.toLowerCase())&&(curP.name.toLowerCase().includes(p.line.toLowerCase())||curP.line.toLowerCase().includes(p.line.toLowerCase())))||
+      directProjects.find(p=>p.equipment&&curP.name&&curP.name.toLowerCase().includes(p.equipment.toLowerCase()))||
+      (form.name?directProjects.find(p=>p.equipment&&form.name.toLowerCase().includes(p.equipment.toLowerCase())):null)||
+      directProjects.find(p=>p.projectName&&((curP.name&&p.projectName.toLowerCase()===curP.name.toLowerCase())||(form.name&&p.projectName.toLowerCase()===form.name.toLowerCase())))||
+      (curP.line?directProjects.find(p=>p.line&&p.line.toLowerCase()===curP.line.toLowerCase()):null)||
+      directProjects[0];
+
+    if(!targetP){setMsg("일치하는 마스터 플랜 일정을 찾을 수 없습니다.");return false;}
+
+    const cleanMs=targetP.milestones.map(m=>({...m,name:normalizeJVName(m.name),id:uid()}));
+    const autoStat=computeAutoStatus({startDate:targetP.startDate||form.startDate||iso(),endDate:targetP.endDate||form.endDate||iso(),milestones:cleanMs});
+    let siteVal=form.site||curP.site;
+    const projName=normalizeJVName(targetP.projectName||form.name||curP.name);
+    if(!siteVal&&projName&&sites.length){
+      const matchedSite=sites.find(s=>projName.toLowerCase().includes(s.name.toLowerCase()));
+      if(matchedSite)siteVal=matchedSite.name;
+    }
+    const updatedRow={
+      ...curP,...form,id:editing,
+      name:form.name||projName,
+      startDate:targetP.startDate||form.startDate,
+      endDate:targetP.endDate||form.endDate,
+      manufacturingNo:normalizeJVName(targetP.manufacturingNo||form.manufacturingNo||curP.manufacturingNo||""),
+      line:normalizeJVName(targetP.line||form.line||curP.line||""),
+      site:normalizeJVName(siteVal||form.site||curP.site||"선택 안됨"),
+      status:autoStat,autoStatus:true,isManualStatus:false,manualStatusBy:"",
+      milestones:cleanMs,manpower:targetP.manpower||curP.manpower||null
+    };
+    setForm(updatedRow);
+    setMilestones(cleanMs.length>=5?cleanMs:[...cleanMs,...newMs().slice(0,5-cleanMs.length)]);
+    const{error}=await supabase.from("projects").update(to(updatedRow)).eq("id",editing);
+    if(error){
+      console.error("Master plan update error:",error);
+      setMsg(`마스터 플랜 최신화 실패: ${error.message}`);
+    }else{
+      const mpText=targetP.manpower?` (총 공수 ${targetP.manpower.totalManday} M/D 최신화)`:"";
+      let additionalUpdated=0;
+      let additionalCreated=0;
+      if(directProjects.length>1){
+        for(const otherP of directProjects){
+          if(otherP===targetP)continue;
+          const existingOther=projects.find(ep=>ep.id!==editing&&(
+            (otherP.equipment&&otherP.line&&ep.name&&ep.name.toLowerCase().includes(otherP.equipment.toLowerCase())&&(ep.name.toLowerCase().includes(otherP.line.toLowerCase())||ep.line.toLowerCase().includes(otherP.line.toLowerCase())))||
+            (otherP.equipment&&ep.name&&ep.name.toLowerCase().includes(otherP.equipment.toLowerCase())&&!otherP.line)||
+            (ep.name&&otherP.projectName&&ep.name.toLowerCase()===otherP.projectName.toLowerCase())
+          ));
+          if(existingOther){
+            const otherCleanMs=otherP.milestones.map(m=>({...m,name:normalizeJVName(m.name),id:uid()}));
+            const otherAutoStat=computeAutoStatus({startDate:otherP.startDate,endDate:otherP.endDate,milestones:otherCleanMs});
+            const updatedOther={
+              ...existingOther,
+              startDate:otherP.startDate||existingOther.startDate,
+              endDate:otherP.endDate||existingOther.endDate,
+              manufacturingNo:normalizeJVName(otherP.manufacturingNo||existingOther.manufacturingNo||""),
+              line:normalizeJVName(otherP.line||existingOther.line||""),
+              status:otherAutoStat,autoStatus:true,isManualStatus:false,manualStatusBy:"",
+              milestones:otherCleanMs,manpower:otherP.manpower||existingOther.manpower||null
+            };
+            await supabase.from("projects").update(to(updatedOther)).eq("id",existingOther.id);
+            additionalUpdated++;
+          }else{
+            let otherSite=siteVal;
+            const otherCleanMs=otherP.milestones.map(m=>({...m,name:normalizeJVName(m.name),id:uid()}));
+            const otherAutoStat=computeAutoStatus({startDate:otherP.startDate||iso(),endDate:otherP.endDate||iso(),milestones:otherCleanMs});
+            const newOtherRow={
+              ...blank(),id:uid(),
+              name:normalizeJVName(otherP.projectName),
+              startDate:otherP.startDate||iso(),
+              endDate:otherP.endDate||iso(),
+              manufacturingNo:normalizeJVName(otherP.manufacturingNo||""),
+              line:normalizeJVName(otherP.line||""),
+              site:normalizeJVName(otherSite||"선택 안됨"),
+              status:otherAutoStat,autoStatus:true,isManualStatus:false,manualStatusBy:"",
+              milestones:otherCleanMs,manpower:otherP.manpower||null
+            };
+            await supabase.from("projects").insert(to(newOtherRow));
+            additionalCreated++;
+          }
+        }
+      }
+      const parts=[];
+      if(additionalUpdated>0)parts.push(`관련 프로젝트 ${additionalUpdated}건 최신화`);
+      if(additionalCreated>0)parts.push(`신규 설비 프로젝트 ${additionalCreated}건 등록`);
+      const addText=parts.length>0?` 및 ${parts.join(', ')}`: "";
+      setMsg(`'${updatedRow.name}' 프로젝트의 마스터 스케줄 및 공수가 최신 버전으로 업데이트되었습니다!${mpText}${addText}`);
+      load("projects");
+    }
+    return true;
+  }else{
+    let successCount=0;
+    let updateCount=0;
+    let errorLog=[];
+    for(const p of directProjects){
+      let siteVal=form.site;
+      const projName=normalizeJVName(p.projectName);
+      if(!siteVal&&projName&&sites.length){
+        const matchedSite=sites.find(s=>projName.toLowerCase().includes(s.name.toLowerCase()));
+        if(matchedSite)siteVal=matchedSite.name;
+      }
+      const existing=projects.find(ep=>(
+        (p.equipment&&p.line&&ep.name&&ep.name.toLowerCase().includes(p.equipment.toLowerCase())&&(ep.name.toLowerCase().includes(p.line.toLowerCase())||ep.line.toLowerCase().includes(p.line.toLowerCase())))||
+        (ep.name&&projName&&ep.name.toLowerCase()===projName.toLowerCase())
+      ));
+      const cleanMs=p.milestones.map(m=>({...m,name:normalizeJVName(m.name),id:uid()}));
+      const autoStat=computeAutoStatus({startDate:p.startDate||iso(),endDate:p.endDate||iso(),milestones:cleanMs});
+
+      if(existing){
+        const updatedExisting={
+          ...existing,
+          startDate:p.startDate||existing.startDate,
+          endDate:p.endDate||existing.endDate,
+          manufacturingNo:normalizeJVName(p.manufacturingNo||existing.manufacturingNo||""),
+          line:normalizeJVName(p.line||existing.line||""),
+          site:normalizeJVName(siteVal||existing.site||"선택 안됨"),
+          status:autoStat,autoStatus:true,isManualStatus:false,manualStatusBy:"",
+          milestones:cleanMs,manpower:p.manpower||existing.manpower||null
+        };
+        const{error}=await supabase.from("projects").update(to(updatedExisting)).eq("id",existing.id);
+        if(error){console.error("Auto-update error for",p.projectName,error);errorLog.push(error.message);}
+        else updateCount++;
+      }else{
+        const newRow={
+          ...blank(),id:uid(),name:projName,
+          startDate:p.startDate||iso(),endDate:p.endDate||iso(),
+          manufacturingNo:normalizeJVName(p.manufacturingNo||""),
+          line:normalizeJVName(p.line||""),
+          site:normalizeJVName(siteVal||"선택 안됨"),
+          status:autoStat,autoStatus:true,isManualStatus:false,manualStatusBy:"",
+          milestones:cleanMs,manpower:p.manpower||null
+        };
+        const{error}=await supabase.from("projects").insert(to(newRow));
+        if(error){console.error("Auto-insert error for",p.projectName,error);errorLog.push(error.message);}
+        else successCount++;
+      }
+    }
+    const totalMpSum=directProjects.reduce((acc,p)=>acc+(p.manpower?.totalManday||0),0);
+    const mpSummaryText=totalMpSum>0?` 총 공수 ${totalMpSum} M/D 반영됨`:"";
+    if(successCount===0&&updateCount===0&&errorLog.length>0){
+      setMsg(`저장 실패: 데이터베이스 오류 발생 (${errorLog[0]})`);
+    }else{
+      const resText=[];
+      if(successCount>0)resText.push(`${successCount}개 신규 등록`);
+      if(updateCount>0)resText.push(`${updateCount}개 최신화`);
+      setMsg(`${sourceLabel} 완료! (${directProjects[0].sheetName||'표 데이터'}에서 ${directProjects.length}개 설비 중 ${resText.join(', ')} 되었습니다.${mpSummaryText?` ${mpSummaryText}`:""})`);
+    }
+    load("projects");
+    return true;
+  }
+}
+
+async function handleMasterPlanUpload(input){
+  if(!editing&&!create)return showPermissionModal("마스터 플랜 등록");
+  if(editing&&!edit)return showPermissionModal("프로젝트 수정");
+  if(!input)return;
+  setMsg("마스터 플랜 분석 중...");
+  setIsExtracting(true);
+  try{
+    let directProjects=null;
+    let sourceLabel="엑셀 파일";
+    const parseContext={formName:form.name,formLine:form.line,formSite:form.site,editingProjectName:editing?projects.find(p=>p.id===editing)?.name:""};
+
+    if(input.name&&input.name.match(/\.(xlsx|xls)$/i)){
+      const data=await input.arrayBuffer();
+      const wb=XLSX.read(data,{cellDates:false});
+      directProjects=parseExcelMasterPlan(wb,parseContext);
+      sourceLabel="엑셀 파일";
+    }else if(typeof input==="string"){
+      sourceLabel="엑셀 표 붙여넣기";
+      try{
+        let wb=null;
+        const lines=input.split(/\r?\n/).map(l=>l.split('\t'));
+        if(lines.length>0&&lines[0].length>1){
+          const ws=XLSX.utils.aoa_to_sheet(lines);
+          wb={SheetNames:['Sheet1'],Sheets:{Sheet1:ws}};
+        }
+        if(!wb){
+          try{wb=XLSX.read(input,{type:"string"});}catch(e){}
+        }
+        if(wb&&wb.SheetNames&&wb.SheetNames.length>0){
+          directProjects=parseExcelMasterPlan(wb,parseContext);
+        }
+      }catch(e){
+        console.warn("Direct TSV parse failed, fallback to AI:",e);
+      }
+    }
+
+    if(directProjects&&directProjects.length>0){
+      await saveDirectProjects(directProjects,sourceLabel);
+      return;
+    }
+
+    const apiKey=import.meta.env.VITE_GEMINI_API_KEY;
+    if(!apiKey)throw new Error("엑셀 표 서식을 자동으로 판독하지 못했거나, AI 분석용 Gemini API 키가 설정되지 않았습니다.");
+    const genAI=new GoogleGenerativeAI(apiKey);
+    const model=genAI.getGenerativeModel({model:"gemini-3.6-flash"});
+    let parts=[];
+
+    if(typeof input==="string"){
+      parts=[{text:`이것은 마스터 플랜의 클립보드 텍스트입니다:\n\n${input}`}];
+    }else if(input.name&&input.name.match(/\.(xlsx|xls)$/i)){
+      const data=await input.arrayBuffer();
+      const wb=XLSX.read(data,{cellDates:false});
+      let sheetName=wb.SheetNames.find(n=>/planning|schedule|master|일정/i.test(n))||wb.SheetNames.find(n=>!/edit|설정|양식/i.test(n))||wb.SheetNames[0];
+      const sheet=wb.Sheets[sheetName];
+      const rawJson=XLSX.utils.sheet_to_json(sheet,{header:1});
+      const compactCsv=(rawJson||[]).slice(0,80).map(r=>(r||[]).slice(0,10).join(",")).filter(l=>l.replace(/,/g,"").trim().length>0).join("\n");
+      parts=[{text:`이것은 마스터 플랜 엑셀(${sheetName} 시트)의 데이터입니다:\n\n${compactCsv}`}];
+    }else if(input.type&&input.type.startsWith("image/")){
+      const reader=new FileReader();
+      const p=new Promise(res=>reader.onload=()=>res(reader.result));
+      reader.readAsDataURL(input);
+      const b64=await p;
+      const b64d=b64.split(",")[1];
+      parts=[{inlineData:{data:b64d,mimeType:input.type}}];
+    }else{
+      throw new Error("지원하지 않는 데이터 형식입니다. (Excel, 이미지, 또는 텍스트 복사)");
+    }
+
+    const prompt=`당신은 프로젝트 일정표(Master Plan) 및 공수(Manpower) 데이터를 분석하는 전문가입니다. 첨부된 데이터(이미지 또는 엑셀 텍스트)를 분석하여 아래 JSON 구조로만 데이터를 추출하세요.
+데이터에 여러 장비(Equipment) 또는 라인(Line)별 공정이 포함되어 있다면, 각각 개별 프로젝트로 분할하여 "projects" 배열에 넣어 반환하세요.
+각 장비 바로 아래에 위치한 공수(Mechanical, Vision, Vision Sub(비전 외주), Control, Electrical, Supervisor(슈퍼바이저) 등 시트에 기재된 모든 부서) 표는 해당 장비 프로젝트의 "manpower"에 각각 1:1로 정확히 할당해야 합니다.
+
+JSON 출력 예시:
+{
+ "projects": [
+  {
+   "projectName": "SKOH 10Line - Stacker 1호기",
+   "equipment": "Stacker 1호기",
+   "line": "10Line",
+   "manufacturingNo": "91144",
+   "startDate": "2026-02-10",
+   "endDate": "2026-08-30",
+   "milestones": [
+    { "name": "기구 셋팅", "startDate": "2026-07-06", "endDate": "2026-07-19" }
+   ],
+   "manpower": {
+    "totalManday": 464,
+    "dailyPeak": 11,
+    "departments": {
+     "Mechanical": { "total": 254, "peak": 6, "daily": { "2026-05-15": 6 } },
+     "Vision Sub": { "total": 25, "peak": 2, "daily": { "2026-05-15": 2 } },
+     "Supervisor": { "total": 30, "peak": 1, "daily": { "2026-05-15": 1 } }
+    },
+    "dailyTotal": { "2026-05-15": 9 }
+   }
+  }
+ ]
+}
+
+주의: JSON 이외의 어떠한 설명이나 마크다운 백틱(\`\`\`)을 포함하지 말고 순수 JSON만 응답하세요.`;
+
+    const result=await model.generateContent([...parts,prompt]);
+    let responseText=result.response.text().trim();
+    if(responseText.startsWith("\`\`\`json"))responseText=responseText.replace(/^\`\`\`json\s*/,"").replace(/\s*\`\`\`$/,"");
+    else if(responseText.startsWith("\`\`\`"))responseText=responseText.replace(/^\`\`\`\s*/,"").replace(/\s*\`\`\`$/,"");
+    const rawJson=JSON.parse(responseText);
+    let rawList=[];
+    if(rawJson.projects&&Array.isArray(rawJson.projects)&&rawJson.projects.length>0){
+      rawList=rawJson.projects;
+    }else{
+      rawList=[rawJson];
+    }
+    const aiProjects=rawList.map(adjustProjectDates);
+    await saveDirectProjects(aiProjects,"AI 분석");
+  }catch(err){
+    setMsg("분석 실패: "+err.message);
+  }finally{
+    setIsExtracting(false);
+    if(masterPlanInput.current)masterPlanInput.current.value="";
+  }
+}
 async function excel(){setMsg("Excel 보고서 생성 중...");try{await exportExcelReport(view,{filter,siteFilter,personFilter,search});setMsg("Excel 보고서를 완료했습니다.")}catch(error){setMsg("Excel 생성 실패: "+error.message)}}
 const gs=view.length?new Date(Math.min(...view.flatMap(p=>[dt(p.startDate).getTime(),...p.milestones.map(m=>dt(m.startDate).getTime())]))):dt(iso()),ge=view.length?new Date(Math.max(...view.flatMap(p=>[dt(p.endDate).getTime(),...p.milestones.map(m=>dt(m.endDate).getTime())]))):new Date(gs.getTime()+DAY),span=Math.max(DAY,ge-gs+DAY),pos=d=>Math.max(0,Math.min(100,(dt(d)-gs)/span*100)),barW=(s,e)=>Math.max(1,(dt(e)-dt(s)+DAY)/span*100),cells=monthCells(month),dayStats=d=>{const k=iso(d),active=view.filter(p=>k>=p.startDate&&k<=p.endDate),starts=active.filter(p=>p.startDate===k),ends=active.filter(p=>p.endDate===k);return{active,starts,ends}},monthProjects=view.filter(p=>p.startDate<=iso(new Date(month.getFullYear(),month.getMonth()+1,0))&&p.endDate>=iso(new Date(month.getFullYear(),month.getMonth(),1)));
 if(loading)return<div className="center">확인 중...</div>;if(!session)return<Login/>;if(!profile)return<div className="center">권한 확인 중... {msg}</div>;const P=({label,field,dept})=><label>{label}<input list={dept} value={form[field]} disabled={role==="grade2"} onChange={e=>setForm({...form,[field]:e.target.value})}/><datalist id={dept}>{people.filter(x=>x.department===dept).map(x=><option key={x.id} value={x.name}/>)}</datalist></label>;

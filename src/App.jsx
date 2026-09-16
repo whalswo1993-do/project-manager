@@ -322,9 +322,9 @@ function parseExcelMasterPlan(wb,context={}){
       continue;
     }
 
-    const isDeptRow=inManpowerSection&&(!isDateRow||/total|기구|제어|전장|비전|mechanical|vision|control|electrical|sv|슈퍼바이저/i.test(combinedLineStr));
-    const isEqStart=eqStr&&!/manpower|personnel/i.test(eqStr)&&eqStr!=="0"&&!isDeptRow&&(
-      !currentProject||eqStr!==currentProject.equipment||currentLine!==currentProject._lineNum||(inManpowerSection&&!/total|기구|제어|전장|비전/i.test(combinedLineStr))
+    const isDeptRow=inManpowerSection&&!isDateRow;
+    const isEqStart=eqStr&&!/manpower|personnel|인력|인원/i.test(combinedLineStr)&&eqStr!=="0"&&!isDeptRow&&(
+      !currentProject||eqStr!==currentProject.equipment||currentLine!==currentProject._lineNum||inManpowerSection
     );
 
     if(isEqStart){
@@ -428,19 +428,7 @@ function parseExcelMasterPlan(wb,context={}){
     if(maxD)p.endDate=maxD;
   });
 
-  const mfgCounts={};
-  projects.forEach(p=>{
-    if(p.manufacturingNo){
-      mfgCounts[p.manufacturingNo]=(mfgCounts[p.manufacturingNo]||0)+1;
-    }
-  });
-  const mfgSeen={};
-  projects.forEach(p=>{
-    if(p.manufacturingNo&&mfgCounts[p.manufacturingNo]>1){
-      mfgSeen[p.manufacturingNo]=(mfgSeen[p.manufacturingNo]||0)+1;
-      p.manufacturingNo=`${p.manufacturingNo}-${mfgSeen[p.manufacturingNo]}`;
-    }
-  });
+  // Removed duplicate appending logic to prevent E1540-1, E1540-2
 
   return projects.map(adjustProjectDates).filter(p=>p.milestones.length>0||p.manpower);
 }
@@ -526,12 +514,7 @@ async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
             };
             let insertData=to(newOtherRow);
             if(insertData.manufacturing_no){
-              let count=1;
-              const baseMfg=insertData.manufacturing_no;
-              while(projects.some(ep=>ep.manufacturingNo===insertData.manufacturing_no)){
-                insertData.manufacturing_no=`${baseMfg}-${count}`;
-                count++;
-              }
+            // Removed duplicate loop for manufacturing_no
             }
             let{error:otherErr}=await supabase.from("projects").insert(insertData);
             if(otherErr&&otherErr.code==="23505"){
@@ -596,12 +579,7 @@ async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
         };
         let insertData=to(newRow);
         if(insertData.manufacturing_no){
-          let count=1;
-          const baseMfg=insertData.manufacturing_no;
-          while(projects.some(ep=>ep.manufacturingNo===insertData.manufacturing_no)){
-            insertData.manufacturing_no=`${baseMfg}-${count}`;
-            count++;
-          }
+          // Removed duplicate loop for manufacturing_no
         }
         let{error}=await supabase.from("projects").insert(insertData);
         if(error&&error.code==="23505"){

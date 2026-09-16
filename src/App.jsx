@@ -480,10 +480,26 @@ function parseExcelMasterPlan(wb,context={}){
 
     const durRaw=colMap.duration!==undefined?row[colMap.duration]:row[7];
 
-    if(/manpower|인력|인원|공수|manday|m\/d/i.test(combinedLineStr)||
-       (String(sRaw||'').toLowerCase()==='personnel'&&/total/i.test(String(eRaw||'')))||
-       (/total/i.test(String(sRaw))&&/peak/i.test(String(eRaw)))){
+    // If this row has milestone dates, it CANNOT be in manpower section!
+    if(isDateRow){
+      inManpowerSection=false;
+    }
+
+    const isManpowerHeader=/manpower|인력|인원|공수|manday|m\/d/i.test(combinedLineStr)||
+       (row.some(x=>String(x||'').toLowerCase()==='personnel')&&row.some(x=>/total/i.test(String(x||''))))||
+       (/total/i.test(String(sRaw))&&/peak/i.test(String(eRaw)));
+
+    if(isManpowerHeader){
       inManpowerSection=true;
+      mpDeptCol=-1;
+      mpTotalCol=-1;
+      mpPeakCol=-1;
+      row.forEach((cell,idx)=>{
+        const str=String(cell||'').trim().toLowerCase();
+        if(/personnel|구분|직종|부서/i.test(str))mpDeptCol=idx;
+        else if(/^total$/i.test(str))mpTotalCol=idx;
+        else if(/^peak$/i.test(str))mpPeakCol=idx;
+      });
       continue;
     }
 
@@ -498,19 +514,34 @@ function parseExcelMasterPlan(wb,context={}){
       }
     }
 
-    const isEqStart=eqStr&&!/manpower|personnel|인력|인원|공수|manday|m\/d/i.test(combinedLineStr)&&eqStr!=="0"&&!isDeptRow&&(
-      !currentProject||eqStr!==currentProject.equipment||currentLine!==currentProject._lineNum||inManpowerSection
+    let effectiveEqStr=eqStr;
+    if(!effectiveEqStr&&currentProject&&Object.keys(currentProject._deptMap).length>0&&isDateRow){
+      for(let nr=r;nr<Math.min(r+20,rows.length);nr++){
+        const nextEqRaw=rows[nr]&&rows[nr][colMap.equipment!==undefined?colMap.equipment:1];
+        const nextEq=String(nextEqRaw||"").replace(/[\r\n]+/g," ").trim();
+        if(nextEq&&!/manpower|personnel|인력|인원|공수|manday|m\/d/i.test(nextEq)&&nextEq!=="0"){
+          effectiveEqStr=nextEq;
+          break;
+        }
+      }
+    }
+
+    const isEqStart=effectiveEqStr&&!/manpower|personnel|인력|인원|공수|manday|m\/d/i.test(combinedLineStr)&&effectiveEqStr!=="0"&&!isDeptRow&&(
+      !currentProject||effectiveEqStr!==currentProject.equipment||currentLine!==currentProject._lineNum||inManpowerSection
     );
 
     if(isEqStart){
       inManpowerSection=false;
+      mpDeptCol=-1;
+      mpTotalCol=-1;
+      mpPeakCol=-1;
       const lineLabel=currentLine?`${currentLine}Line`:"";
       const mfgNo=currentMfgNo||lineMfgMap[currentLine]||context.formMfg||"";
-      const projName=normalizeJVName([clientPrefix,lineLabel,eqStr].filter(Boolean).join(" - ").replace(" -  - "," - "));
+      const projName=normalizeJVName([clientPrefix,lineLabel,effectiveEqStr].filter(Boolean).join(" - ").replace(" -  - "," - "));
 
       currentProject={
         projectName:projName,
-        equipment:eqStr,
+        equipment:effectiveEqStr,
         startDate:baseStartDate,
         endDate:"",
         manufacturingNo:normalizeJVName(mfgNo),
@@ -526,74 +557,83 @@ function parseExcelMasterPlan(wb,context={}){
       projects.push(currentProject);
     }
 
-    if(inManpowerSection&&currentProject){
-      // In this Excel format, department data layout in Manpower section:
-      // col[colMap.start / 5] = Personnel name (department)
-      // col[colMap.end / 6] = Total manday
-      // col[colMap.duration / 7] = Peak
-      // col[8+] = daily manpower values
-      
-      // Try multiple columns to find the department name (do not exclude Total)
-      const deptFromStart=String(sRaw||"").trim();
-      const deptFromAct=String(actStr||"").trim();
-      const deptFromEq=String(eqStr||"").trim();
-      let deptRaw=deptFromStart&&deptFromStart!=="0"&&!/^\d+$/.test(deptFromStart)&&!/personnel|peak/i.test(deptFromStart)?deptFromStart:
-                    (deptFromAct&&deptFromAct!=="0"&&!/^\d+$/.test(deptFromAct)&&!/personnel|peak/i.test(deptFromAct)?deptFromAct:
-                    (deptFromEq&&deptFromEq!=="0"&&!/^\d+$/.test(deptFromEq)&&!/personnel|peak/i.test(deptFromEq)?deptFromEq:""));
-      if(!deptRaw){
-        for(let c=0;c<=Math.min(6,row.length-1);c++){
-          const val=String(row[c]||"").trim();
-          if(val&&val!=="0"&&!/^\d+$/.test(val)&&!/personnel|peak|activity|equipment|line/i.test(val)){
-            const testNorm=normalizeDeptName(val);
-            if(testNorm&&testNorm!==val){deptRaw=val;break;}
-            if(/기구|전장|비전|비젼|제어|안전|소장|외주|supervisor|total|합계/i.test(val)){deptRaw=val;break;}
+    if(inManpowerSection&&!isDateRow&&currentProject){
+      if(row.some(x=>String(x||'').toLowerCase()==='personnel')&&row.some(x=>/total/i.test(String(x||'')))){
+        row.forEach((cell,idx)=>{
+          const str=String(cell||'').trim().toLowerCase();
+          if(/personnel|구분|직종|부서/i.test(str))mpDeptCol=idx;
+          else if(/^total$/i.test(str))mpTotalCol=idx;
+          else if(/^peak$/i.test(str))mpPeakCol=idx;
+        });
+        continue;
+      }
+
+      let deptRaw="";
+      if(mpDeptCol!==-1&&row[mpDeptCol]&&!/^\d+$/.test(String(row[mpDeptCol]).trim())){
+        deptRaw=String(row[mpDeptCol]).trim();
+      }else{
+        const cand=[actStr,sRaw,eqStr];
+        for(const c of cand){
+          if(c&&c!=="0"&&!/^\d+$/.test(c)&&!/personnel|peak/i.test(c)){
+            deptRaw=c;break;
+          }
+        }
+        if(!deptRaw){
+          for(let c=0;c<=Math.min(6,row.length-1);c++){
+            const val=String(row[c]||"").trim();
+            if(val&&val!=="0"&&!/^\d+$/.test(val)&&!/personnel|peak|activity|equipment|line/i.test(val)){
+              const testNorm=normalizeDeptName(val);
+              if(testNorm&&testNorm!==val){deptRaw=val;break;}
+              if(/기구|전장|비전|비젼|제어|안전|소장|외주|supervisor|total|합계/i.test(val)){deptRaw=val;break;}
+            }
           }
         }
       }
       if(!deptRaw)continue;
-      
-      const isTotalRow=/^(total|total\s*manday|총\s*공수|합계)$/i.test(deptRaw)||
-                         row.some(x=>/^(total|total\s*manday|총\s*공수|합계)$/i.test(String(x||'').trim()))||
-                         /total/i.test(combinedLineStr);
 
-      if(isTotalRow&&!deptRaw){
-        deptRaw="Total Manday";
+      if(/^\d{1,2}[월\-\/\.]/i.test(deptRaw)||/^\d{4}[\-\/\.]/i.test(deptRaw)){
+        continue;
       }
-      const deptName=normalizeDeptName(deptRaw);
 
-      // Collect numeric values in metadata columns (before dateCols)
-      const numCols=[];
-      for(let c=0;c<=Math.min(7,row.length-1);c++){
-        if(dateCols.some(dc=>dc.colIdx===c))continue;
-        const v=Number(row[c]);
-        if(!isNaN(v)&&v>0){
-          numCols.push({col:c,val:v});
-        }
+      const isTotalRow=/^(total|total\s*manday|총\s*공수|합계)$/i.test(deptRaw)||
+                         row.some(x=>/^(total|total\s*manday|총\s*공수|합계)$/i.test(String(x||'').trim()));
+
+      const deptName=isTotalRow?"Total Manday":normalizeDeptName(deptRaw);
+      if(!isTotalRow){
+        const isKnown=/mechanical|vision|control|electrical|safety|manager|supervisor|외주|sub/i.test(deptName);
+        if(!isKnown)continue;
       }
 
       let rowTotal=0;
       let rowPeak=0;
 
-      if(numCols.length>=2){
-        const first=numCols[0].val;
-        const second=numCols[1].val;
-        if(first>=second){
-          rowTotal=first;
-          rowPeak=second;
-        }else{
-          rowTotal=second;
-          rowPeak=first;
+      if(mpTotalCol!==-1&&Number(row[mpTotalCol])>0){
+        rowTotal=Number(row[mpTotalCol]);
+        if(mpPeakCol!==-1&&Number(row[mpPeakCol])>0){
+          rowPeak=Number(row[mpPeakCol]);
         }
-      }else if(numCols.length===1){
-        rowTotal=numCols[0].val;
       }else{
-        const totalVal=Number(eRaw)||0;
-        const peakVal=Number(durRaw)||0;
-        rowTotal=totalVal;
-        rowPeak=peakVal;
-        if(!rowTotal&&Number(sRaw)>0)rowTotal=Number(sRaw);
+        const numCols=[];
+        for(let c=0;c<=Math.min(8,row.length-1);c++){
+          if(colMap.line!==undefined&&c===colMap.line)continue;
+          if(colMap.item!==undefined&&c===colMap.item)continue;
+          if(dateCols.some(dc=>dc.colIdx===c))continue;
+          const v=Number(row[c]);
+          if(!isNaN(v)&&v>0){
+            numCols.push({col:c,val:v});
+          }
+        }
+
+        if(numCols.length>=2){
+          const first=numCols[0].val;
+          const second=numCols[1].val;
+          rowTotal=Math.max(first,second);
+          rowPeak=Math.min(first,second);
+        }else if(numCols.length===1){
+          rowTotal=numCols[0].val;
+        }
       }
-      
+
       const daily={};
       dateCols.forEach(({colIdx,dateStr})=>{
         const val=Number(row[colIdx])||0;
@@ -619,6 +659,7 @@ function parseExcelMasterPlan(wb,context={}){
     }
 
     if(actStr&&actStr!=="0"&&mStart&&mEnd&&currentProject){
+      inManpowerSection=false;
       currentProject.milestones.push({name:normalizeJVName(actStr),startDate:mStart,endDate:mEnd});
     }
   }

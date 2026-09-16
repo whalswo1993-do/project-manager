@@ -1,7 +1,7 @@
 import{useEffect,useMemo,useState,useRef}from"react";import"./App.css";import{supabase}from"./supabase";import Login from"./Login";import{exportGanttReport,exportCalendarReport,exportExcelReport}from"./reportExports";import VisionSPC from "./VisionSPC";import IssueManagement from "./IssueManagement";import Quotations from "./Quotations";import ManpowerManagement, { ProjectManpowerModal } from "./ManpowerManagement";import{GoogleGenerativeAI}from"@google/generative-ai";import*as XLSX from"xlsx";import { ErrorBoundary } from "./ErrorBoundary";
 import { normalizeJVName } from "./utils";
 export { normalizeJVName };
-const DAY=86400000,STATUSES=["검토중","PO대기중","제작 및 운송중","진행중","완료"],DEPTS=["PM","설계","설비기술","제어","비전"],COLORS=["#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#d946ef","#f43f5e","#14b8a6","#84cc16","#6366f1","#a855f7","#10b981","#f59e0b"];
+const DAY=86400000,STATUSES=["검토중","PO대기중","제작 및 운송중","진행중","완료"],DEPTS=["PM","설계","설비기술","제어","비전","전장","비전 외주","전장 외주","Supervisor","안전","소장"],COLORS=["#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#d946ef","#f43f5e","#14b8a6","#84cc16","#6366f1","#a855f7","#10b981","#f59e0b"];
 const iso=(d=new Date())=>d.toISOString().slice(0,10),dt=s=>new Date(`${s}T00:00:00`),uid=()=>`${Date.now()}-${Math.random().toString(16).slice(2)}`,newMs=()=>Array.from({length:5},()=>({id:uid(),name:"",startDate:iso(),endDate:iso()}));
 export function computeAutoStatus(p, today = iso()){
   const end = p.endDate || p.end_date;
@@ -131,8 +131,9 @@ function normalizeDeptName(raw){
   const s=String(raw).trim();
   const lower=s.toLowerCase();
   if(/total\s*manday|총\s*공수|합계/i.test(lower))return"Total Manday";
-  if(/vision\s*(program)?\s*sub|비전\s*외주|비전외주/i.test(lower))return"Vision Sub";
-  if(/supervisor|슈퍼바이저|\bsv\b/i.test(lower))return"Supervisor";
+  if(/vision\s*(program)?\s*sub|비전\s*외주|비전외주|엘라이트/i.test(lower))return"Vision Sub";
+  if(/electrical\s*sub|전장\s*외주|전장외주|전기\s*외주|전기외주|electronical\s*sub/i.test(lower))return"Electrical Sub";
+  if(/supervisor|슈퍼바이저|\bsv\b|해체\s*검수|장착\s*검수|해체\/장착\s*검수/i.test(lower))return"Supervisor";
   if(/mechanical|기구/i.test(lower))return"Mechanical";
   if(/vision|비전/i.test(lower))return"Vision";
   if(/control|제어/i.test(lower))return"Control";
@@ -717,7 +718,7 @@ async function handleMasterPlanUpload(input){
 
     const prompt=`당신은 프로젝트 일정표(Master Plan) 및 공수(Manpower) 데이터를 분석하는 전문가입니다. 첨부된 데이터(이미지 또는 엑셀 텍스트)를 분석하여 아래 JSON 구조로만 데이터를 추출하세요.
 데이터에 여러 장비(Equipment) 또는 라인(Line)별 공정이 포함되어 있다면, 각각 개별 프로젝트로 분할하여 "projects" 배열에 넣어 반환하세요.
-각 장비 바로 아래에 위치한 공수(Mechanical, Vision, Vision Sub(비전 외주), Control, Electrical, Supervisor(슈퍼바이저) 등 시트에 기재된 모든 부서) 표는 해당 장비 프로젝트의 "manpower"에 각각 1:1로 정확히 할당해야 합니다.
+각 장비 바로 아래에 위치한 공수(Mechanical, Vision, Vision Sub(비전 외주), Control, Electrical, Electrical Sub(전장 외주), Supervisor(슈퍼바이저), Safety(안전) 등 시트에 기재된 모든 부서) 표는 해당 장비 프로젝트의 "manpower"에 각각 1:1로 정확히 할당해야 합니다. 특히 "비전 외주", "전장 외주", "Supervisor(슈퍼바이저)"는 일반 비전/전장과 합치지 말고 반드시 별도 부서로 독립 추출해야 합니다.
 
 JSON 출력 예시:
 {
@@ -733,12 +734,17 @@ JSON 출력 예시:
     { "name": "기구 셋팅", "startDate": "2026-07-06", "endDate": "2026-07-19" }
    ],
    "manpower": {
-    "totalManday": 464,
-    "dailyPeak": 11,
+    "totalManday": 507,
+    "dailyPeak": 21,
     "departments": {
-     "Mechanical": { "total": 254, "peak": 6, "daily": { "2026-05-15": 6 } },
+     "Mechanical": { "total": 240, "peak": 11, "daily": { "2026-05-15": 6 } },
+     "Vision": { "total": 94, "peak": 4, "daily": { "2026-05-15": 2 } },
      "Vision Sub": { "total": 25, "peak": 2, "daily": { "2026-05-15": 2 } },
-     "Supervisor": { "total": 30, "peak": 1, "daily": { "2026-05-15": 1 } }
+     "Control": { "total": 47, "peak": 2, "daily": { "2026-05-15": 2 } },
+     "Electrical": { "total": 61, "peak": 5, "daily": { "2026-05-15": 3 } },
+     "Electrical Sub": { "total": 20, "peak": 2, "daily": { "2026-05-15": 2 } },
+     "Supervisor": { "total": 11, "peak": 1, "daily": { "2026-05-15": 1 } },
+     "Safety": { "total": 54, "peak": 2, "daily": { "2026-05-15": 2 } }
     },
     "dailyTotal": { "2026-05-15": 9 }
    }

@@ -4,7 +4,7 @@ import ExcelJS from "exceljs";
 import PptxGenJS from "pptxgenjs";
 import { normalizeJVName } from "./utils";
 
-export const BASE_DEPT_ORDER = ["mechanical", "vision", "vision_sub", "control", "electrical", "supervisor", "safety", "manager"];
+export const BASE_DEPT_ORDER = ["mechanical", "vision", "vision_sub", "control", "electrical", "electrical_sub", "supervisor", "safety", "manager"];
 export const DEPT_ORDER = BASE_DEPT_ORDER;
 
 export const DEPT_LABELS = {
@@ -13,6 +13,7 @@ export const DEPT_LABELS = {
   vision_sub: "비전 외주 (Vision Sub)",
   control: "제어 (Control)",
   electrical: "전장 (Electrical)",
+  electrical_sub: "전장 외주 (Electrical Sub)",
   supervisor: "슈퍼바이저 (Supervisor)",
   safety: "안전 (Safety)",
   manager: "소장 (Manager)"
@@ -21,9 +22,10 @@ export const DEPT_LABELS = {
 export const DEPT_SHORT = {
   mechanical: "기구",
   vision: "비전",
-  vision_sub: "외주",
+  vision_sub: "비전외주",
   control: "제어",
   electrical: "전장",
+  electrical_sub: "전장외주",
   supervisor: "SV",
   safety: "안전",
   manager: "소장"
@@ -35,6 +37,7 @@ export const DEPT_COLORS = {
   vision_sub: "#a855f7",
   control: "#10b981",
   electrical: "#f59e0b",
+  electrical_sub: "#d97706",
   supervisor: "#0284c7",
   safety: "#ef4444",
   manager: "#06b6d4"
@@ -65,12 +68,13 @@ export function normalizeDeptKey(key) {
   if (!key) return "other";
   const s = String(key).toLowerCase().trim();
   if (s.includes("소장") || s.includes("manager") || s.includes("현장대리인") || s.includes("site mgr") || s.includes("field mgr")) return "manager";
+  if (s.includes("supervis") || s.includes("슈퍼바이저") || s.includes("sv") || s.includes("해체") || s.includes("장착") || s.includes("검수")) return "supervisor";
   if (s.includes("mech") || s.includes("기구")) return "mechanical";
-  if (s.includes("vision sub") || s.includes("program sub") || s.includes("비전외주") || s.includes("비전 외주") || s.includes("비전_외주") || s.includes("외주비전")) return "vision_sub";
+  if (s.includes("vision sub") || s.includes("program sub") || s.includes("비전외주") || s.includes("비전 외주") || s.includes("비전_외주") || s.includes("외주비전") || s.includes("엘라이트")) return "vision_sub";
   if (s.includes("vis") || s.includes("비전")) return "vision";
   if (s.includes("cont") || s.includes("제어")) return "control";
+  if (s.includes("electrical sub") || s.includes("전장외주") || s.includes("전장 외주") || s.includes("전기외주") || s.includes("전기 외주") || s.includes("전장_외주") || s.includes("외주전장") || s.includes("electronical sub")) return "electrical_sub";
   if (s.includes("elec") || s.includes("전장") || s.includes("전기")) return "electrical";
-  if (s.includes("supervis") || s.includes("슈퍼바이저") || s.includes("sv")) return "supervisor";
   if (s.includes("safe") || s.includes("안전")) return "safety";
   return s;
 }
@@ -153,8 +157,8 @@ function renderProjectDetailCard(slide, p, yTop, C, activeDeptKeys = BASE_DEPT_O
     slide.addText(st.val, { x: 2.0, y: sy, w: 2.2, h: 0.38, fontSize: 8.5, color: C.navy, bold: true, margin: 0 });
   });
 
-  // Middle Section: Dept Breakdown Mini Table (Dynamic up to 7 depts)
-  const deptCols = (activeDeptKeys && activeDeptKeys.length > 0 ? activeDeptKeys : BASE_DEPT_ORDER).slice(0, 7);
+  // Middle Section: Dept Breakdown Mini Table (Dynamic across all active depts)
+  const deptCols = (activeDeptKeys && activeDeptKeys.length > 0 ? activeDeptKeys : BASE_DEPT_ORDER);
   const deptHeader = ["부서", ...deptCols.map(k => getDeptShort(k))];
   const deptVals = [
     "공수",
@@ -166,8 +170,8 @@ function renderProjectDetailCard(slide, p, yTop, C, activeDeptKeys = BASE_DEPT_O
   ];
 
   const colCount = deptHeader.length;
-  const colWFirst = 0.7;
-  const colWRemaining = Math.max(0.45, (4.3 - colWFirst) / (colCount - 1));
+  const colWFirst = 0.65;
+  const colWRemaining = Math.max(0.35, (4.5 - colWFirst) / Math.max(1, colCount - 1));
   const colW = [colWFirst, ...Array(colCount - 1).fill(colWRemaining)];
 
   const deptTable = [
@@ -309,8 +313,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
     const ordered = [];
     BASE_DEPT_ORDER.forEach(k => {
-      // Always include if present, or if core technical dept
-      if (presentDepts.has(k) || ["mechanical", "vision", "control", "electrical"].includes(k)) {
+      // Always include core departments (including vision_sub, electrical_sub, supervisor) or any present department
+      if (presentDepts.has(k) || ["mechanical", "vision", "vision_sub", "control", "electrical", "electrical_sub", "supervisor"].includes(k)) {
         ordered.push(k);
       }
     });

@@ -1,0 +1,514 @@
+/* Manpower Management Dashboard Styles */
+
+.manpower-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.mp-header-card {
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 22px 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.3);
+}
+
+.mp-title-group h2 {
+  margin: 0 0 6px 0;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mp-title-group p {
+  margin: 0;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.mp-month-navigator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.mp-nav-btn {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  display: grid;
+  place-items: center;
+  transition: all 0.15s ease;
+}
+
+.mp-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.mp-month-text {
+  font-size: 17px;
+  font-weight: 700;
+  min-width: 130px;
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+.mp-today-btn {
+  background: #3b82f6;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+}
+
+/* Controls bar */
+.mp-controls-bar {
+  background: #ffffff;
+  border: 1px solid #d5e1eb;
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.mp-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mp-filter-group select,
+.mp-filter-group input {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  background: #f8fafc;
+}
+
+.mp-filter-group input {
+  width: 220px;
+}
+
+.mp-excel-btn {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+  transition: all 0.15s ease;
+}
+
+.mp-excel-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+}
+
+/* KPI Summary Cards */
+.mp-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.mp-kpi-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
+}
+
+.mp-kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.mp-kpi-card.total::before { background: #3b82f6; }
+.mp-kpi-card.peak::before { background: #ef4444; }
+.mp-kpi-card.projects::before { background: #10b981; }
+.mp-kpi-card.depts::before { background: #8b5cf6; }
+
+.mp-kpi-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mp-kpi-val {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.mp-kpi-sub {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Dept breakdown banner */
+.mp-dept-banner {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mp-dept-banner h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mp-dept-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mp-dept-tag {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 130px;
+}
+
+.mp-dept-tag-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.mp-dept-tag-val {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* Calendar View */
+.mp-calendar-section {
+  background: #ffffff;
+  border: 1px solid #d5e1eb;
+  border-radius: 16px;
+  padding: 20px;
+  overflow-x: auto;
+}
+
+.mp-cal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.mp-cal-head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.mp-cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.mp-cal-weekdays span {
+  padding: 6px;
+  color: #475569;
+}
+
+.mp-cal-weekdays span:first-child { color: #dc2626; }
+.mp-cal-weekdays span:last-child { color: #2563eb; }
+
+.mp-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mp-cal-day {
+  min-height: 105px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.mp-cal-day:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12);
+  transform: translateY(-1px);
+}
+
+.mp-cal-day.other-month {
+  background: #f8fafc;
+  color: #94a3b8;
+  opacity: 0.6;
+}
+
+.mp-cal-day.is-today {
+  border: 2px solid #3b82f6;
+  background: #f0f7ff;
+}
+
+.mp-cal-day.has-peak {
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+
+.mp-day-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mp-day-num {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mp-headcount-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 12px;
+  background: #dbeafe;
+  color: #1e40af;
+  white-space: nowrap;
+}
+
+.mp-headcount-badge.high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.mp-headcount-badge.mid {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.mp-day-depts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  font-size: 10px;
+  color: #475569;
+  line-height: 1.2;
+}
+
+.mp-day-depts span {
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.mp-day-projs {
+  margin-top: auto;
+  font-size: 10px;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Table Section */
+.mp-table-section {
+  background: #ffffff;
+  border: 1px solid #d5e1eb;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.mp-table-section h3 {
+  margin: 0 0 14px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.mp-table-wrapper {
+  overflow-x: auto;
+}
+
+.mp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.mp-table th {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-bottom: 2px solid #cbd5e1;
+  white-space: nowrap;
+}
+
+.mp-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.mp-table tr:hover {
+  background: #f8fafc;
+}
+
+/* Modal Styles */
+.mp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.mp-modal-card {
+  background: #ffffff;
+  border-radius: 18px;
+  width: min(900px, 95vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.mp-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 14px;
+}
+
+.mp-modal-head h3 {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.mp-modal-head p {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.mp-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #64748b;
+  padding: 4px;
+}
+
+.mp-timeline-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.mp-timeline-table th {
+  background: #f8fafc;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  font-weight: 700;
+  color: #475569;
+}
+
+.mp-timeline-table td {
+  padding: 7px 10px;
+  border: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.mp-timeline-table tr:hover td {
+  background: #f1f5f9;
+}
+
+.mp-peak-cell {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+  font-weight: 800;
+}

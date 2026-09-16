@@ -43,6 +43,27 @@ export function normalizeDeptKey(key) {
   return s;
 }
 
+export function getProjectTotalManday(p) {
+  const mp = p.manpower;
+  if (!mp) return 0;
+  if (mp.totalManday && Number(mp.totalManday) > 0) return Number(mp.totalManday);
+  if (mp.departments) {
+    let sum = 0;
+    Object.values(mp.departments).forEach(d => {
+      if (d?.total && Number(d.total) > 0) sum += Number(d.total);
+      else if (d?.daily) {
+        Object.values(d.daily).forEach(v => sum += Number(v) || 0);
+      }
+    });
+    if (sum > 0) return sum;
+  }
+  if (mp.dailyTotal) {
+    const sum = Object.values(mp.dailyTotal).reduce((a, b) => a + (Number(b) || 0), 0);
+    if (sum > 0) return sum;
+  }
+  return 0;
+}
+
 export default function ManpowerManagement({ projects = [], sites = [], onSelectProject }) {
   const [currentDate, setCurrentDate] = useState(() => {
     // If there are projects with manpower, default to the month of the first manpower data
@@ -550,8 +571,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                 <th style={{ textAlign: "center" }}>전장</th>
                 <th style={{ textAlign: "center" }}>안전</th>
                 <th style={{ textAlign: "center" }}>소장</th>
-                <th style={{ textAlign: "center" }}>{month + 1}월 합계</th>
-                <th style={{ textAlign: "center" }}>전체 M/D</th>
+                <th style={{ textAlign: "center", color: "#1d4ed8" }}>{month + 1}월 투입 공수</th>
+                <th style={{ textAlign: "center", background: "#f1f5f9", color: "#0f172a" }}>프로젝트 총 공수</th>
                 <th style={{ textAlign: "center" }}>상세</th>
               </tr>
             </thead>
@@ -560,6 +581,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                 const mp = p.manpower;
                 const pDepts = { mechanical: 0, vision: 0, control: 0, electrical: 0, safety: 0, manager: 0 };
                 let pMonthTotal = 0;
+                const pTotalManday = getProjectTotalManday(p);
 
                 if (mp?.departments) {
                   Object.entries(mp.departments).forEach(([rawD, dData]) => {
@@ -582,12 +604,24 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                   });
                 }
 
+                const effectiveTotal = pTotalManday > 0 ? pTotalManday : (pMonthTotal > 0 ? pMonthTotal : 0);
+                const progressRate = effectiveTotal > 0 && pMonthTotal > 0 ? Math.round((pMonthTotal / effectiveTotal) * 100) : 0;
+
                 return (
                   <tr key={p.id}>
                     <td><b>{p.manufacturingNo || "-"}</b></td>
                     <td>{p.site || "-"} {p.line ? `· Line ${p.line}` : ""}</td>
                     <td>
-                      <span style={{ fontWeight: 600, color: "#0f172a" }}>{p.name}</span>
+                      <div style={{ fontWeight: 600, color: "#0f172a" }}>{p.name}</div>
+                      {effectiveTotal > 0 ? (
+                        <div style={{ fontSize: "11px", color: "#475569", marginTop: "2px" }}>
+                          프로젝트 총 공수: <b style={{ color: "#059669" }}>{effectiveTotal.toLocaleString()} M/D</b>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
+                          공수 미등록
+                        </div>
+                      )}
                     </td>
                     <td style={{ textAlign: "center" }}>{pDepts.mechanical ? `${pDepts.mechanical}명` : "-"}</td>
                     <td style={{ textAlign: "center" }}>{pDepts.vision ? `${pDepts.vision}명` : "-"}</td>
@@ -595,11 +629,26 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                     <td style={{ textAlign: "center" }}>{pDepts.electrical ? `${pDepts.electrical}명` : "-"}</td>
                     <td style={{ textAlign: "center" }}>{pDepts.safety ? `${pDepts.safety}명` : "-"}</td>
                     <td style={{ textAlign: "center" }}>{pDepts.manager ? `${pDepts.manager}명` : "-"}</td>
-                    <td style={{ textAlign: "center", fontWeight: "bold", color: pMonthTotal > 0 ? "#1d4ed8" : "#94a3b8" }}>
-                      {pMonthTotal > 0 ? `${pMonthTotal} M/D` : "-"}
+                    <td style={{ textAlign: "center" }}>
+                      <span style={{ fontWeight: "bold", color: pMonthTotal > 0 ? "#1d4ed8" : "#94a3b8", fontSize: "14px" }}>
+                        {pMonthTotal > 0 ? `${pMonthTotal.toLocaleString()} M/D` : "-"}
+                      </span>
                     </td>
-                    <td style={{ textAlign: "center", fontWeight: "bold" }}>
-                      {mp?.totalManday ? `${mp.totalManday} M/D` : (pMonthTotal > 0 ? `${pMonthTotal} M/D` : "-")}
+                    <td style={{ textAlign: "center", background: "#f8fafc" }}>
+                      {effectiveTotal > 0 ? (
+                        <div>
+                          <span style={{ fontWeight: "800", color: "#0f172a", fontSize: "14px" }}>
+                            {effectiveTotal.toLocaleString()} M/D
+                          </span>
+                          {pMonthTotal > 0 && (
+                            <div style={{ fontSize: "11px", color: "#059669", fontWeight: 600, marginTop: "1px" }}>
+                              당월 {progressRate}%
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: "#94a3b8" }}>-</span>
+                      )}
                     </td>
                     <td style={{ textAlign: "center" }}>
                       <button
@@ -622,6 +671,26 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                 );
               })}
             </tbody>
+            {filteredProjects.length > 0 && (
+              <tfoot>
+                <tr style={{ background: "#f1f5f9", fontWeight: "bold", borderTop: "2px solid #cbd5e1" }}>
+                  <td colSpan={3} style={{ textAlign: "center", padding: "10px" }}>당월 합산</td>
+                  <td style={{ textAlign: "center" }}>{deptTotals.mechanical > 0 ? `${deptTotals.mechanical} M/D` : "-"}</td>
+                  <td style={{ textAlign: "center" }}>{deptTotals.vision > 0 ? `${deptTotals.vision} M/D` : "-"}</td>
+                  <td style={{ textAlign: "center" }}>{deptTotals.control > 0 ? `${deptTotals.control} M/D` : "-"}</td>
+                  <td style={{ textAlign: "center" }}>{deptTotals.electrical > 0 ? `${deptTotals.electrical} M/D` : "-"}</td>
+                  <td style={{ textAlign: "center" }}>{deptTotals.safety > 0 ? `${deptTotals.safety} M/D` : "-"}</td>
+                  <td style={{ textAlign: "center" }}>{deptTotals.manager > 0 ? `${deptTotals.manager} M/D` : "-"}</td>
+                  <td style={{ textAlign: "center", color: "#1d4ed8", fontSize: "14px" }}>
+                    {monthTotalManday > 0 ? `${monthTotalManday.toLocaleString()} M/D` : "-"}
+                  </td>
+                  <td style={{ textAlign: "center", color: "#0f172a", fontSize: "14px", background: "#e2e8f0" }}>
+                    {filteredProjects.reduce((sum, p) => sum + getProjectTotalManday(p), 0).toLocaleString()} M/D
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

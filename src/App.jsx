@@ -166,7 +166,7 @@ function excelDateToISO(serial,defaultYear){
     const koFull=s.match(/^(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일?$/);
     if(koFull)return `${koFull[1]}-${koFull[2].padStart(2,'0')}-${koFull[3].padStart(2,'0')}`;
     const koMatch=s.match(/^(\d{1,2})[-./월]\s*(\d{1,2})일?$/);
-    if(koMatch&&parseInt(koMatch[1],10)<=12&&parseInt(koMatch[2],10)<=31){
+    if(koMatch&&parseInt(koMatch[1],10)>=1&&parseInt(koMatch[1],10)<=12&&parseInt(koMatch[2],10)>=1&&parseInt(koMatch[2],10)<=31){
       return `${yr}-${koMatch[1].padStart(2,'0')}-${koMatch[2].padStart(2,'0')}`;
     }
     const d=new Date(s);
@@ -209,6 +209,55 @@ function normalizeDeptName(raw){
   if (/manager|소장|현장대리인/i.test(lower)) return "Manager";
 
   return s.replace(/\s*\([^)]*\)$/,'').trim() || s;
+}
+
+function parseTSVWithQuotes(text){
+  if(!text)return [];
+  const rows=[];
+  let row=[];
+  let cell='';
+  let inQuotes=false;
+
+  let tabCount=0,commaCount=0;
+  for(let i=0;i<Math.min(text.length,3000);i++){
+    if(text[i]==='"')inQuotes=!inQuotes;
+    if(!inQuotes){
+      if(text[i]==='\t')tabCount++;
+      if(text[i]===',')commaCount++;
+    }
+  }
+  inQuotes=false;
+  const delimiter=tabCount>=commaCount?'\t':',';
+
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    const nextCh=text[i+1];
+
+    if(ch==='"'){
+      if(inQuotes&&nextCh==='"'){
+        cell+='"';
+        i++;
+      }else{
+        inQuotes=!inQuotes;
+      }
+    }else if(ch===delimiter&&!inQuotes){
+      row.push(cell.trim());
+      cell='';
+    }else if((ch==='\r'||ch==='\n')&&!inQuotes){
+      if(ch==='\r'&&nextCh==='\n')i++;
+      row.push(cell.trim());
+      cell='';
+      if(row.some(c=>c!==''))rows.push(row);
+      row=[];
+    }else{
+      cell+=ch;
+    }
+  }
+  if(cell!==''||row.length>0){
+    row.push(cell.trim());
+    if(row.some(c=>c!==''))rows.push(row);
+  }
+  return rows;
 }
 
 function parseExcelMasterPlan(wb,context={}){
@@ -484,39 +533,65 @@ function parseExcelMasterPlan(wb,context={}){
       // col[colMap.duration / 7] = Peak
       // col[8+] = daily manpower values
       
-      // Try multiple columns to find the department name
+      // Try multiple columns to find the department name (do not exclude Total)
       const deptFromStart=String(sRaw||"").trim();
       const deptFromAct=String(actStr||"").trim();
       const deptFromEq=String(eqStr||"").trim();
-      let deptRaw=deptFromStart&&deptFromStart!=="0"&&!/^\d+$/.test(deptFromStart)&&!/personnel|total|peak/i.test(deptFromStart)?deptFromStart:
-                    (deptFromAct&&deptFromAct!=="0"&&!/^\d+$/.test(deptFromAct)&&!/personnel|total|peak/i.test(deptFromAct)?deptFromAct:
-                    (deptFromEq&&deptFromEq!=="0"&&!/^\d+$/.test(deptFromEq)&&!/personnel|total|peak/i.test(deptFromEq)?deptFromEq:""));
+      let deptRaw=deptFromStart&&deptFromStart!=="0"&&!/^\d+$/.test(deptFromStart)&&!/personnel|peak/i.test(deptFromStart)?deptFromStart:
+                    (deptFromAct&&deptFromAct!=="0"&&!/^\d+$/.test(deptFromAct)&&!/personnel|peak/i.test(deptFromAct)?deptFromAct:
+                    (deptFromEq&&deptFromEq!=="0"&&!/^\d+$/.test(deptFromEq)&&!/personnel|peak/i.test(deptFromEq)?deptFromEq:""));
       if(!deptRaw){
         for(let c=0;c<=Math.min(6,row.length-1);c++){
           const val=String(row[c]||"").trim();
-          if(val&&val!=="0"&&!/^\d+$/.test(val)&&!/personnel|total|peak|activity|equipment|line/i.test(val)){
+          if(val&&val!=="0"&&!/^\d+$/.test(val)&&!/personnel|peak|activity|equipment|line/i.test(val)){
             const testNorm=normalizeDeptName(val);
             if(testNorm&&testNorm!==val){deptRaw=val;break;}
-            if(/기구|전장|비전|비젼|제어|안전|소장|외주|supervisor/i.test(val)){deptRaw=val;break;}
+            if(/기구|전장|비전|비젼|제어|안전|소장|외주|supervisor|total|합계/i.test(val)){deptRaw=val;break;}
           }
         }
       }
       if(!deptRaw)continue;
       
-      const deptName=normalizeDeptName(deptRaw);
-      const isTotalRow=deptName==="Total Manday"||/total\s*manday|총\s*공수|합계/i.test(deptRaw)||/^total$/i.test(deptRaw)||/total/i.test(combinedLineStr);
+      const isTotalRow=/^(total|total\s*manday|총\s*공수|합계)$/i.test(deptRaw)||
+                         row.some(x=>/^(total|total\s*manday|총\s*공수|합계)$/i.test(String(x||'').trim()))||
+                         /total/i.test(combinedLineStr);
 
-      // Total and Peak can be in colMap.end(col 6) and colMap.duration(col 7) respectively
-      const totalVal=Number(eRaw)||0;
-      const peakVal=Number(durRaw)||0;
-      
-      // Also try the original sRaw/eRaw as fallback if they look like numbers
-      let rowTotal=totalVal;
-      let rowPeak=peakVal;
-      
-      // If the start column has a number (old format), use it as total
-      if(!rowTotal&&Number(sRaw)>0&&/^\d+(\.\d+)?$/.test(String(sRaw).trim())){
-        rowTotal=Number(sRaw);
+      if(isTotalRow&&!deptRaw){
+        deptRaw="Total Manday";
+      }
+      const deptName=normalizeDeptName(deptRaw);
+
+      // Collect numeric values in metadata columns (before dateCols)
+      const numCols=[];
+      for(let c=0;c<=Math.min(7,row.length-1);c++){
+        if(dateCols.some(dc=>dc.colIdx===c))continue;
+        const v=Number(row[c]);
+        if(!isNaN(v)&&v>0){
+          numCols.push({col:c,val:v});
+        }
+      }
+
+      let rowTotal=0;
+      let rowPeak=0;
+
+      if(numCols.length>=2){
+        const first=numCols[0].val;
+        const second=numCols[1].val;
+        if(first>=second){
+          rowTotal=first;
+          rowPeak=second;
+        }else{
+          rowTotal=second;
+          rowPeak=first;
+        }
+      }else if(numCols.length===1){
+        rowTotal=numCols[0].val;
+      }else{
+        const totalVal=Number(eRaw)||0;
+        const peakVal=Number(durRaw)||0;
+        rowTotal=totalVal;
+        rowPeak=peakVal;
+        if(!rowTotal&&Number(sRaw)>0)rowTotal=Number(sRaw);
       }
       
       const daily={};
@@ -883,15 +958,7 @@ async function handleMasterPlanUpload(input){
       sourceLabel="엑셀 표 붙여넣기";
       try{
         let wb=null;
-        const rawLines=input.split(/\r?\n/).map(l=>l.trimEnd()).filter(Boolean);
-        const delimiter=rawLines.some(l=>l.includes('\t'))?'\t':(rawLines.some(l=>l.includes(','))?',':'\t');
-        const lines=rawLines.map(l=>{
-          return l.split(delimiter).map(cell=>{
-            let c=cell.trim();
-            if(c.startsWith('"')&&c.endsWith('"'))c=c.slice(1,-1).replace(/""/g,'"').trim();
-            return c;
-          });
-        });
+        const lines=parseTSVWithQuotes(input);
         if(lines.length>0&&(input.includes('\t')||lines.some(l=>l.length>1))){
           const ws=XLSX.utils.aoa_to_sheet(lines);
           wb={SheetNames:['Sheet1'],Sheets:{Sheet1:ws}};

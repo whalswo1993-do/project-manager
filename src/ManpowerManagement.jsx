@@ -952,7 +952,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
         const calRows = [];
 
-        // Weekday Header
+        // Weekday Header (기존 대비 약 1/3 수준으로 슬림하게 축소)
         const weekdays = ["일 (Sun)", "월 (Mon)", "화 (Tue)", "수 (Wed)", "목 (Thu)", "금 (Fri)", "토 (Sat)"];
         calRows.push(
           weekdays.map((w, idx) => ({
@@ -963,7 +963,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
               fill: { color: C.navy },
               align: "center",
               valign: "middle",
-              fontSize: 8
+              fontSize: 7.5,
+              margin: 0
             }
           }))
         );
@@ -1063,8 +1064,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
         const colWidth = 12.13 / 7;
         const totalHeight = 5.45;
-        const headerH = 0.3;
-        const rowH = (totalHeight - headerH) / totalWeeks;
+        const headerH = 0.22; // 기존 0.8~1.0 대비 약 1/3 수준으로 축소
+        const weekRowH = (totalHeight - headerH) / totalWeeks;
+        const rowHeights = [headerH, ...Array(totalWeeks).fill(weekRowH)];
 
         sCal.addTable(calRows, {
           x: 0.6,
@@ -1073,7 +1075,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           h: totalHeight,
           colW: [colWidth, colWidth, colWidth, colWidth, colWidth, colWidth, colWidth],
           margin: 0.02,
-          rowH,
+          rowH: rowHeights,
           border: { type: "solid", pt: 0.5, color: C.borderLight },
           autoFit: false
         });

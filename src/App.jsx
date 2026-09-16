@@ -596,14 +596,44 @@ async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
   if(!directProjects||directProjects.length===0)return false;
   if(editing){
     const curP=projects.find(pr=>pr.id===editing)||form;
-    let targetP=directProjects.find(p=>p.equipment&&p.line&&curP.name&&curP.name.toLowerCase().includes(p.equipment.toLowerCase())&&(curP.name.toLowerCase().includes((p.line||'').toLowerCase())||(curP.line||'').toLowerCase().includes((p.line||'').toLowerCase())))||
-      directProjects.find(p=>p.equipment&&curP.name&&curP.name.toLowerCase().includes(p.equipment.toLowerCase()))||
-      (form.name?directProjects.find(p=>p.equipment&&form.name.toLowerCase().includes(p.equipment.toLowerCase())):null)||
-      directProjects.find(p=>p.projectName&&((curP.name&&p.projectName.toLowerCase()===curP.name.toLowerCase())||(form.name&&p.projectName.toLowerCase()===form.name.toLowerCase())))||
-      (curP.line?directProjects.find(p=>p.line&&(p.line||'').toLowerCase()===(curP.line||'').toLowerCase()):null)||
-      directProjects[0];
+    const curSite=(curP.site||'').trim().toLowerCase();
+    const curLine=(curP.line||'').replace(/line/i,'').trim().toLowerCase();
+    const curMfg=(curP.manufacturingNo||'').trim().toLowerCase();
+    const curName=(curP.name||'').trim().toLowerCase();
 
-    if(!targetP){setMsg("일치하는 마스터 플랜 일정을 찾을 수 없습니다.");return false;}
+    let targetP=directProjects.find(p=>{
+      const pMfg=(p.manufacturingNo||'').trim().toLowerCase();
+      const pSite=(p.projectName||'').toLowerCase();
+      const pLine=(p.line||'').replace(/line/i,'').trim().toLowerCase();
+      const pEq=(p.equipment||'').toLowerCase().replace(/\s*\(\d+대\)/,'').trim();
+      const pProj=(p.projectName||'').trim().toLowerCase();
+
+      // 1. Manufacturing number exact match
+      if(curMfg&&pMfg&&curMfg===pMfg){
+        if(pEq&&curName&&!curName.includes(pEq))return false;
+        return true;
+      }
+      // 2. Exact project name match
+      if(pProj&&curName&&pProj===curName)return true;
+
+      // 3. Equipment & line match, ensuring site does not conflict
+      if(curSite&&!pSite.includes(curSite)){
+        const isConflictSite=sites.some(s=>s.name&&s.name.trim().toLowerCase()!==curSite&&pSite.includes(s.name.trim().toLowerCase()));
+        if(isConflictSite)return false;
+      }
+      if(curLine&&pLine&&curLine!==pLine)return false;
+      if(pEq&&curName&&curName.includes(pEq)){
+        if(curLine&&pLine&&curLine===pLine)return true;
+        if(!curLine&&!pLine)return true;
+        if(curLine&&curName.includes(curLine))return true;
+      }
+      return false;
+    });
+
+    if(!targetP){
+      setMsg(`현재 수정 대상인 '${curP.name}'(Site: ${curP.site||'-'}, Line: ${curP.line||'-'})와 일치하는 프로젝트/설비 정보를 파일에서 찾을 수 없습니다. 신규 프로젝트로 등록하시려면 상단의 [수정 취소]를 누른 후 파일을 첨부해주세요.`);
+      return false;
+    }
 
     const cleanMs=targetP.milestones.map(m=>({...m,name:normalizeJVName(m.name),id:uid()}));
     const autoStat=computeAutoStatus({startDate:targetP.startDate||form.startDate||iso(),endDate:targetP.endDate||form.endDate||iso(),milestones:cleanMs});
@@ -637,8 +667,9 @@ async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
       if(directProjects.length>1){
         for(const otherP of directProjects){
           if(otherP===targetP)continue;
+          const otherProjName=otherP.projectName||"";
           const existingOther=projects.find(ep=>ep.id!==editing&&(
-            (otherP.manufacturingNo&&ep.manufacturingNo&&ep.manufacturingNo.toLowerCase()===otherP.manufacturingNo.toLowerCase())||
+            (otherP.manufacturingNo&&ep.manufacturingNo&&ep.manufacturingNo.toLowerCase()===otherP.manufacturingNo.toLowerCase()&&(otherP.equipment?ep.name.toLowerCase().includes(otherP.equipment.toLowerCase().replace(/\s*\(\d+대\)/,'').trim()):true))||
             (ep.name&&otherProjName&&ep.name.toLowerCase()===otherProjName.toLowerCase())||
             (otherP.equipment&&otherP.line&&ep.name&&ep.name.toLowerCase().includes(otherP.equipment.toLowerCase())&&(ep.name.toLowerCase().includes((otherP.line||'').toLowerCase())||(ep.line||'').toLowerCase().includes((otherP.line||'').toLowerCase()))&&(!curP.site||!ep.site||ep.site.toLowerCase()===(curP.site||'').toLowerCase()))
           ));
@@ -706,7 +737,7 @@ async function saveDirectProjects(directProjects,sourceLabel="엑셀"){
         if(matchedSite)siteVal=matchedSite.name;
       }
       const existing=projects.find(ep=>(
-        (p.manufacturingNo&&ep.manufacturingNo&&ep.manufacturingNo.trim().toLowerCase()===p.manufacturingNo.trim().toLowerCase())||
+        (p.manufacturingNo&&ep.manufacturingNo&&ep.manufacturingNo.trim().toLowerCase()===p.manufacturingNo.trim().toLowerCase()&&(p.equipment?ep.name.toLowerCase().includes(p.equipment.toLowerCase().replace(/\s*\(\d+대\)/,'').trim()):true))||
         (projName&&ep.name&&ep.name.trim().toLowerCase()===projName.trim().toLowerCase())
       ));
       const cleanMs=p.milestones.map(m=>({...m,name:normalizeJVName(m.name),id:uid()}));

@@ -688,7 +688,7 @@ export default function App() {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (!apiKey) throw new Error("엑셀 표 서식을 자동으로 판독하지 못했거나, AI 분석용 Gemini API 키가 설정되지 않았습니다.");
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3.8-pro" });
       let parts = [];
 
       if (typeof input === "string") {

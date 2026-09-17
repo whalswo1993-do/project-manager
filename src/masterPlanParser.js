@@ -413,6 +413,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
   const refYear = baseStartDate ? parseInt(baseStartDate.slice(0, 4), 10) : new Date().getFullYear();
   const mappedCols = new Set(Object.values(colMap));
   const dateCols = [];
+  let bestDateCols = [];
   for (let r = 0; r < Math.min(30, rows.length); r++) {
     const rowInfo = sheet['!rows'] ? sheet['!rows'][r] : null;
     if (rowInfo && rowInfo.hidden) continue;
@@ -430,12 +431,15 @@ export function parseExcelMasterPlan(wb, context = {}) {
         curDates.push({ colIdx: c, dateStr: iso });
       }
     }
-    if (curDates.length >= 3) {
-      curDates.forEach(d => {
-        if (!dateCols.find(x => x.colIdx === d.colIdx)) dateCols.push(d);
-      });
-      break;
+    if (curDates.length > bestDateCols.length) {
+      bestDateCols = curDates;
     }
+  }
+  
+  if (bestDateCols.length >= 3) {
+    bestDateCols.forEach(d => {
+      if (!dateCols.find(x => x.colIdx === d.colIdx)) dateCols.push(d);
+    });
   }
 
   let currentLine = titleLines[0] || context.formLine || "";

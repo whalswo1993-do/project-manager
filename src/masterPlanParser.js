@@ -232,14 +232,13 @@ export function normalizeDeptName(raw) {
   if (/supervisor|슈퍼바이저|\bsv\b|해체\s*검수|장착\s*검수|해체\/장착\s*검수/i.test(lower)) return "Supervisor";
   // "Safety Manager (소장)" must map to "소장" — check manager/소장 BEFORE generic safety
   if (/manager|소장|현장대리인/i.test(lower)) return "소장";
-  if (/mechanical|기구|mech/i.test(lower)) return "기구";
+  if (/mechanical|기구|mech|설비기술|기술/i.test(lower)) return "기구";
   if (/vision|비전|비젼/i.test(lower)) return "비전";
   if (/control|제어|cont/i.test(lower)) return "제어";
   if (/electrical|electronical|전장|전기|elec/i.test(lower)) return "전장";
   if (/safety|안전|safe/i.test(lower)) return "안전";
   if (/^pm$/i.test(lower)) return "PM";
   if (/설계|design/i.test(lower)) return "설계";
-  if (/설비기술|기술/i.test(lower)) return "설비기술";
 
   return s.replace(/\s*\([^)]*\)$/, '').trim() || s;
 }

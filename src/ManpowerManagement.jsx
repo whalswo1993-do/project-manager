@@ -1733,18 +1733,366 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 export function ProjectManpowerModal({ project, onClose }) {
   const mp = project.manpower;
 
-  // Extract all distinct dates in project manpower
-  const dates = useMemo(() => {
-    if (!mp) return [];
-    const set = new Set();
-    if (mp.dailyTotal) Object.keys(mp.dailyTotal).forEach(d => set.add(d));
-    if (mp.departments) {
-      Object.values(mp.departments).forEach(dData => {
-        if (dData?.daily) Object.keys(dData.daily).forEach(d => set.add(d));
-      });
+  // Calculate full continuous date range for the project & active manpower days
+  const { fullDates, activeDaysCount } = useMemo(() => {
+    let start = project.startDate || "";
+    let end = project.endDate || "";
+
+    // Include milestone dates if they extend the project range
+    (project.milestones || []).forEach(m => {
+      if (m.startDate && (!start || m.startDate < start)) start = m.startDate;
+      if (m.endDate && (!end || m.endDate > end)) end = m.endDate;
+    });
+
+    // Check manpower dates
+    const mpDateSet = new Set();
+    if (mp) {
+      if (mp.dailyTotal) {
+        Object.entries(mp.dailyTotal).forEach(([d, v]) => {
+          if (Number(v) > 0) mpDateSet.add(d);
+          if (!start || d < start) start = d;
+          if (!end || d > end) end = d;
+        });
+      }
+      if (mp.departments) {
+        Object.values(mp.departments).forEach(dData => {
+          if (dData?.daily) {
+            Object.entries(dData.daily).forEach(([d, v]) => {
+              if (Number(v) > 0) mpDateSet.add(d);
+              if (!start || d < start) start = d;
+              if (!end || d > end) end = d;
+            });
+          }
+        });
+      }
     }
-    return Array.from(set).sort();
+
+    const activeDays = mpDateSet.size;
+
+    if (!start || !end) {
+      const dates = Array.from(mpDateSet).sort();
+      return { fullDates: dates, activeDaysCount: activeDays };
+    }
+
+    const dates = [];
+    const cur = new Date(start + "T00:00:00");
+    const last = new Date(end + "T00:00:00");
+
+    if (isNaN(cur.getTime()) || isNaN(last.getTime()) || cur > last) {
+      return { fullDates: Array.from(mpDateSet).sort(), activeDaysCount: activeDays };
+    }
+
+    let count = 0;
+    while (cur <= last && count < 1000) {
+      const y = cur.getFullYear();
+      const m = String(cur.getMonth() + 1).padStart(2, "0");
+      const d = String(cur.getDate()).padStart(2, "0");
+      dates.push(`${y}-${m}-${d}`);
+      cur.setDate(cur.getDate() + 1);
+      count++;
+    }
+
+    return { fullDates: dates, activeDaysCount: activeDays };
+  }, [project.startDate, project.endDate, project.milestones, mp]);
+
+  // Sorted department list matching company standard order
+  const sortedDepts = useMemo(() => {
+    if (!mp?.departments) return [];
+    return Object.entries(mp.departments).sort(([a], [b]) => {
+      const idxA = BASE_DEPT_ORDER.indexOf(normalizeDeptKey(a));
+      const idxB = BASE_DEPT_ORDER.indexOf(normalizeDeptKey(b));
+      return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+    });
   }, [mp]);
+
+  // Export clean formatted Excel sheet matching the UI layout
+  const handleExportExcel = async () => {
+    if (!mp) return;
+
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "TW Project Manager";
+      wb.created = new Date();
+
+      const mfgNo = project.manufacturingNo ? normalizeJVName(project.manufacturingNo) : "";
+      const projName = normalizeJVName(project.name || project.equipment || "Project");
+      const sheetTitle = (mfgNo ? `${mfgNo}_` : "") + projName.slice(0, 20);
+
+      const ws = wb.addWorksheet(sheetTitle.replace(/[\\/*?:[\]]/g, "_"), {
+        views: [{ showGridLines: true }]
+      });
+
+      const totalCols = Math.max(8, sortedDepts.length + 2);
+
+      // 1. Title
+      ws.mergeCells(1, 1, 1, totalCols);
+      const titleCell = ws.getCell("A1");
+      titleCell.value = `📊 ${mfgNo ? `${mfgNo} · ` : ""}${projName} 공수 투입 현황`;
+      titleCell.font = { name: "Malgun Gothic", size: 15, bold: true, color: { argb: "FF0F172A" } };
+      titleCell.alignment = { vertical: "middle", horizontal: "left" };
+      ws.getRow(1).height = 32;
+
+      // 2. Subtitle
+      ws.mergeCells(2, 1, 2, totalCols);
+      const subCell = ws.getCell("A2");
+      const siteStr = normalizeJVName(project.site) || "-";
+      const lineStr = normalizeJVName(project.line) || "-";
+      const pStart = fullDates[0] || project.startDate || "-";
+      const pEnd = fullDates[fullDates.length - 1] || project.endDate || "-";
+      subCell.value = `${siteStr} · Line ${lineStr}  |  기간: ${pStart} ~ ${pEnd}`;
+      subCell.font = { name: "Malgun Gothic", size: 10, color: { argb: "FF64748B" } };
+      subCell.alignment = { vertical: "middle", horizontal: "left" };
+      ws.getRow(2).height = 20;
+
+      // Spacing
+      ws.getRow(3).height = 10;
+
+      const thinBorder = {
+        top: { style: "thin", color: { argb: "FFE2E8F0" } },
+        left: { style: "thin", color: { argb: "FFE2E8F0" } },
+        bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+        right: { style: "thin", color: { argb: "FFE2E8F0" } }
+      };
+
+      // 3. KPI Cards Section
+      // Card 1: 총 투입 공수 (Total Manday) - Cols A..B
+      ws.mergeCells(4, 1, 4, 2);
+      const k1Head = ws.getCell(4, 1);
+      k1Head.value = "총 투입 공수 (Total Manday)";
+      k1Head.font = { name: "Malgun Gothic", size: 9.5, bold: true, color: { argb: "FF166534" } };
+      k1Head.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDF4" } };
+      k1Head.alignment = { vertical: "middle", horizontal: "center" };
+
+      ws.mergeCells(5, 1, 5, 2);
+      const k1Val = ws.getCell(5, 1);
+      k1Val.value = `${mp.totalManday || 0} M/D`;
+      k1Val.font = { name: "Malgun Gothic", size: 15, bold: true, color: { argb: "FF15803D" } };
+      k1Val.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0FDF4" } };
+      k1Val.alignment = { vertical: "middle", horizontal: "center" };
+
+      // Card 2: 일일 피크 인원 (Daily Peak) - Cols C..D
+      ws.mergeCells(4, 3, 4, 4);
+      const k2Head = ws.getCell(4, 3);
+      k2Head.value = "일일 피크 인원 (Daily Peak)";
+      k2Head.font = { name: "Malgun Gothic", size: 9.5, bold: true, color: { argb: "FF991B1B" } };
+      k2Head.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF2F2" } };
+      k2Head.alignment = { vertical: "middle", horizontal: "center" };
+
+      ws.mergeCells(5, 3, 5, 4);
+      const k2Val = ws.getCell(5, 3);
+      k2Val.value = `${mp.dailyPeak || 0} 명`;
+      k2Val.font = { name: "Malgun Gothic", size: 15, bold: true, color: { argb: "FFDC2626" } };
+      k2Val.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF2F2" } };
+      k2Val.alignment = { vertical: "middle", horizontal: "center" };
+
+      // Card 3: 공수 투입 일수 - Cols E..F
+      ws.mergeCells(4, 5, 4, 6);
+      const k3Head = ws.getCell(4, 5);
+      k3Head.value = "공수 투입 일수";
+      k3Head.font = { name: "Malgun Gothic", size: 9.5, bold: true, color: { argb: "FF1E40AF" } };
+      k3Head.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
+      k3Head.alignment = { vertical: "middle", horizontal: "center" };
+
+      ws.mergeCells(5, 5, 5, 6);
+      const k3Val = ws.getCell(5, 5);
+      k3Val.value = `${activeDaysCount} 일`;
+      k3Val.font = { name: "Malgun Gothic", size: 15, bold: true, color: { argb: "FF2563EB" } };
+      k3Val.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEFF6FF" } };
+      k3Val.alignment = { vertical: "middle", horizontal: "center" };
+
+      for (let r = 4; r <= 5; r++) {
+        for (let c = 1; c <= 6; c++) {
+          ws.getCell(r, c).border = thinBorder;
+        }
+      }
+      ws.getRow(4).height = 22;
+      ws.getRow(5).height = 28;
+
+      // Spacing
+      ws.getRow(6).height = 12;
+
+      // 4. Department Summary
+      let curRow = 7;
+      ws.getCell(curRow, 1).value = "■ 부서별 투입 요약";
+      ws.getCell(curRow, 1).font = { name: "Malgun Gothic", size: 11, bold: true, color: { argb: "FF334155" } };
+      ws.getRow(curRow).height = 22;
+
+      curRow++;
+      const dHeaders = ["부서명 (Department)", "총 투입 공수 (Total)", "일일 피크 (Peak)"];
+      const dHeadRow = ws.getRow(curRow);
+      dHeaders.forEach((h, i) => {
+        const c = dHeadRow.getCell(i + 1);
+        c.value = h;
+        c.font = { name: "Malgun Gothic", size: 10, bold: true, color: { argb: "FF1E293B" } };
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+        c.alignment = { vertical: "middle", horizontal: "center" };
+        c.border = thinBorder;
+      });
+      dHeadRow.height = 22;
+
+      sortedDepts.forEach(([rawD, dData]) => {
+        curRow++;
+        const norm = normalizeDeptKey(rawD);
+        const r = ws.getRow(curRow);
+
+        const c1 = r.getCell(1);
+        c1.value = getDeptLabel(norm);
+        c1.font = { name: "Malgun Gothic", size: 9.5, color: { argb: "FF0F172A" } };
+        c1.alignment = { vertical: "middle", horizontal: "left" };
+        c1.border = thinBorder;
+
+        const c2 = r.getCell(2);
+        c2.value = `${dData.total || 0} M/D`;
+        c2.font = { name: "Malgun Gothic", size: 9.5, color: { argb: "FF0F172A" } };
+        c2.alignment = { vertical: "middle", horizontal: "center" };
+        c2.border = thinBorder;
+
+        const c3 = r.getCell(3);
+        c3.value = `${dData.peak || 0}명`;
+        c3.font = { name: "Malgun Gothic", size: 9.5, color: { argb: "FFDC2626" } };
+        c3.alignment = { vertical: "middle", horizontal: "center" };
+        c3.border = thinBorder;
+        r.height = 20;
+      });
+
+      // Summary Total Row
+      curRow++;
+      const totDRow = ws.getRow(curRow);
+      totDRow.getCell(1).value = "합계 (Total)";
+      totDRow.getCell(1).font = { name: "Malgun Gothic", size: 10, bold: true, color: { argb: "FF0F172A" } };
+      totDRow.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+      totDRow.getCell(1).alignment = { vertical: "middle", horizontal: "center" };
+      totDRow.getCell(1).border = thinBorder;
+
+      totDRow.getCell(2).value = `${mp.totalManday || 0} M/D`;
+      totDRow.getCell(2).font = { name: "Malgun Gothic", size: 10, bold: true, color: { argb: "FF15803D" } };
+      totDRow.getCell(2).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+      totDRow.getCell(2).alignment = { vertical: "middle", horizontal: "center" };
+      totDRow.getCell(2).border = thinBorder;
+
+      totDRow.getCell(3).value = `${mp.dailyPeak || 0}명`;
+      totDRow.getCell(3).font = { name: "Malgun Gothic", size: 10, bold: true, color: { argb: "FFDC2626" } };
+      totDRow.getCell(3).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+      totDRow.getCell(3).alignment = { vertical: "middle", horizontal: "center" };
+      totDRow.getCell(3).border = thinBorder;
+      totDRow.height = 22;
+
+      // Spacing
+      curRow++;
+      ws.getRow(curRow).height = 14;
+
+      // 5. Daily Timeline Section
+      curRow++;
+      ws.getCell(curRow, 1).value = `■ 일자별 인력 투입 타임라인 (${pStart} ~ ${pEnd})`;
+      ws.getCell(curRow, 1).font = { name: "Malgun Gothic", size: 11, bold: true, color: { argb: "FF334155" } };
+      ws.getRow(curRow).height = 22;
+
+      curRow++;
+      const tHeadRow = ws.getRow(curRow);
+      const timelineHeaders = ["날짜", ...sortedDepts.map(([dName]) => getDeptShort(normalizeDeptKey(dName))), "당일 합계"];
+      timelineHeaders.forEach((th, cIdx) => {
+        const c = tHeadRow.getCell(cIdx + 1);
+        c.value = th;
+        c.font = { name: "Malgun Gothic", size: 10, bold: true, color: { argb: "FFFFFFFF" } };
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E40AF" } };
+        c.alignment = { vertical: "middle", horizontal: "center" };
+        c.border = thinBorder;
+      });
+      tHeadRow.height = 24;
+
+      fullDates.forEach(dateStr => {
+        curRow++;
+        const r = ws.getRow(curRow);
+
+        const cDate = r.getCell(1);
+        cDate.value = dateStr;
+        cDate.font = { name: "Malgun Gothic", size: 9.5, color: { argb: "FF1E293B" } };
+        cDate.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+        cDate.alignment = { vertical: "middle", horizontal: "center" };
+        cDate.border = thinBorder;
+
+        let daySum = 0;
+        sortedDepts.forEach(([dName], dIdx) => {
+          const v = mp.departments?.[dName]?.daily?.[dateStr] || 0;
+          daySum += Number(v) || 0;
+          const c = r.getCell(dIdx + 2);
+          c.value = v > 0 ? v : "-";
+          c.font = { name: "Malgun Gothic", size: 9.5, color: { argb: v > 0 ? "FF0F172A" : "FF94A3B8" } };
+          c.alignment = { vertical: "middle", horizontal: "center" };
+          c.border = thinBorder;
+        });
+
+        const total = mp.dailyTotal?.[dateStr] !== undefined ? mp.dailyTotal[dateStr] : daySum;
+        const isPeak = total === mp.dailyPeak && mp.dailyPeak > 0;
+        const totCell = r.getCell(sortedDepts.length + 2);
+
+        if (total > 0) {
+          totCell.value = `${total}명${isPeak ? " (Peak)" : ""}`;
+          totCell.font = { name: "Malgun Gothic", size: 9.5, bold: true, color: { argb: isPeak ? "FFDC2626" : "FF0F172A" } };
+          if (isPeak) {
+            totCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF2F2" } };
+          }
+        } else {
+          totCell.value = "-";
+          totCell.font = { name: "Malgun Gothic", size: 9.5, color: { argb: "FF94A3B8" } };
+        }
+        totCell.alignment = { vertical: "middle", horizontal: "center" };
+        totCell.border = thinBorder;
+        r.height = 20;
+      });
+
+      // Bottom Total Row for Timeline
+      curRow++;
+      const bRow = ws.getRow(curRow);
+      const bDate = bRow.getCell(1);
+      bDate.value = "총 합계";
+      bDate.font = { name: "Malgun Gothic", size: 10, bold: true, color: { argb: "FF0F172A" } };
+      bDate.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+      bDate.alignment = { vertical: "middle", horizontal: "center" };
+      bDate.border = thinBorder;
+
+      sortedDepts.forEach(([dName, dData], dIdx) => {
+        const c = bRow.getCell(dIdx + 2);
+        c.value = `${dData.total || 0} M/D`;
+        c.font = { name: "Malgun Gothic", size: 9.5, bold: true, color: { argb: "FF0F172A" } };
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF1F5F9" } };
+        c.alignment = { vertical: "middle", horizontal: "center" };
+        c.border = thinBorder;
+      });
+
+      const bTot = bRow.getCell(sortedDepts.length + 2);
+      bTot.value = `${mp.totalManday || 0} M/D`;
+      bTot.font = { name: "Malgun Gothic", size: 10, bold: true, color: { argb: "FF15803D" } };
+      bTot.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCFCE7" } };
+      bTot.alignment = { vertical: "middle", horizontal: "center" };
+      bTot.border = thinBorder;
+      bRow.height = 24;
+
+      // Set Column Widths
+      const colWidths = [
+        { width: 16 }, // A: 날짜 / 부서명
+        ...sortedDepts.map(() => ({ width: 13 })),
+        { width: 16 }  // 당일 합계
+      ];
+      ws.columns = colWidths;
+
+      // Download file
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cleanFileName = `${mfgNo ? `${mfgNo}_` : ""}${projName}_공수투입현황.xlsx`.replace(/[\\/:*?"<>|]/g, "_");
+      a.download = cleanFileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 500);
+    } catch (err) {
+      console.error("Excel export error:", err);
+      alert("Excel 파일 생성 중 오류가 발생했습니다: " + (err.message || err));
+    }
+  };
 
   return (
     <div className="mp-modal-backdrop" onMouseDown={onClose}>
@@ -1752,9 +2100,34 @@ export function ProjectManpowerModal({ project, onClose }) {
         <div className="mp-modal-head">
           <div>
             <h3>📊 {project.manufacturingNo ? `${normalizeJVName(project.manufacturingNo)} · ` : ""}{normalizeJVName(project.name)} 공수 투입 현황</h3>
-            <p>{normalizeJVName(project.site) || "-"} · Line {normalizeJVName(project.line) || "-"} &nbsp;|&nbsp; 기간: {project.startDate} ~ {project.endDate}</p>
+            <p>{normalizeJVName(project.site) || "-"} · Line {normalizeJVName(project.line) || "-"} &nbsp;|&nbsp; 기간: {fullDates[0] || project.startDate || "-"} ~ {fullDates[fullDates.length - 1] || project.endDate || "-"}</p>
           </div>
-          <button className="mp-close-btn" onClick={onClose}>×</button>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {mp && (
+              <button
+                onClick={handleExportExcel}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "8px 14px",
+                  background: "#10b981",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "13px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                  transition: "background 0.2s"
+                }}
+                title="화면과 동일한 서식의 Excel 파일 다운로드"
+              >
+                <span>📥</span> Excel 다운로드
+              </button>
+            )}
+            <button className="mp-close-btn" onClick={onClose}>×</button>
+          </div>
         </div>
 
         {!mp ? (
@@ -1777,103 +2150,132 @@ export function ProjectManpowerModal({ project, onClose }) {
               </div>
               <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "10px", padding: "14px" }}>
                 <div style={{ fontSize: "12px", color: "#1e40af", fontWeight: "bold" }}>공수 투입 일수</div>
-                <div style={{ fontSize: "24px", fontWeight: "800", color: "#2563eb", marginTop: "4px" }}>{dates.length} 일</div>
+                <div style={{ fontSize: "24px", fontWeight: "800", color: "#2563eb", marginTop: "4px" }}>{activeDaysCount} 일</div>
               </div>
             </div>
 
             {/* Department Breakdown */}
-            {mp.departments && (() => {
-              const sortedDepts = Object.entries(mp.departments).sort(([a], [b]) => {
-                const idxA = BASE_DEPT_ORDER.indexOf(normalizeDeptKey(a));
-                const idxB = BASE_DEPT_ORDER.indexOf(normalizeDeptKey(b));
-                return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-              });
-
-              return (
-                <div>
-                  <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#334155" }}>부서별 투입 요약</h4>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px" }}>
-                    {sortedDepts.map(([rawD, dData]) => {
-                      const norm = normalizeDeptKey(rawD);
-                      return (
-                        <div key={rawD} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderLeft: `4px solid ${getDeptColor(norm)}`, borderRadius: "8px", padding: "10px 14px" }}>
-                          <div style={{ fontSize: "11px", fontWeight: "bold", color: "#64748b" }}>{getDeptLabel(norm)}</div>
-                          <div style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", marginTop: "4px" }}>
-                            {dData.total || 0} <span style={{ fontSize: "12px", fontWeight: "normal" }}>M/D</span>
-                          </div>
-                          <div style={{ fontSize: "11px", color: "#dc2626" }}>Peak: {dData.peak || 0}명</div>
+            {sortedDepts.length > 0 && (
+              <div>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#334155" }}>부서별 투입 요약</h4>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px" }}>
+                  {sortedDepts.map(([rawD, dData]) => {
+                    const norm = normalizeDeptKey(rawD);
+                    return (
+                      <div key={rawD} style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderLeft: `4px solid ${getDeptColor(norm)}`, borderRadius: "8px", padding: "10px 14px" }}>
+                        <div style={{ fontSize: "11px", fontWeight: "bold", color: "#64748b" }}>{getDeptLabel(norm)}</div>
+                        <div style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", marginTop: "4px" }}>
+                          {dData.total || 0} <span style={{ fontSize: "12px", fontWeight: "normal" }}>M/D</span>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div style={{ fontSize: "11px", color: "#dc2626" }}>Peak: {dData.peak || 0}명</div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })()}
+              </div>
+            )}
 
             {/* Timeline Table */}
-            {dates.length > 0 && (
+            {fullDates.length > 0 && (
               <div>
-                <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#334155" }}>일자별 인력 투입 타임라인 ({dates[0]} ~ {dates[dates.length - 1]})</h4>
-                <div style={{ overflowX: "auto", maxHeight: "300px" }}>
-                  {(() => {
-                    const sortedDepts = Object.entries(mp.departments || {}).sort(([a], [b]) => {
-                      const idxA = BASE_DEPT_ORDER.indexOf(normalizeDeptKey(a));
-                      const idxB = BASE_DEPT_ORDER.indexOf(normalizeDeptKey(b));
-                      return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-                    });
-                    const deptEntries = sortedDepts;
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 10px 0" }}>
+                  <h4 style={{ margin: 0, fontSize: "14px", color: "#334155" }}>
+                    일자별 인력 투입 타임라인 ({fullDates[0]} ~ {fullDates[fullDates.length - 1]})
+                  </h4>
+                  <span style={{ fontSize: "12px", color: "#64748b" }}>전체 {fullDates.length}일 (투입 {activeDaysCount}일)</span>
+                </div>
+                <div style={{ overflowX: "auto", maxHeight: "320px", border: "1px solid #e2e8f0", borderRadius: "8px" }}>
+                  <table className="mp-timeline-table">
+                    <thead>
+                      <tr>
+                        <th>날짜</th>
+                        {sortedDepts.map(([dName]) => {
+                          const norm = normalizeDeptKey(dName);
+                          return <th key={dName}>{getDeptShort(norm)}</th>;
+                        })}
+                        <th>당일 합계</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fullDates.map(dateStr => {
+                        let daySum = 0;
+                        const cells = sortedDepts.map(([dName]) => {
+                          const v = mp.departments?.[dName]?.daily?.[dateStr] || 0;
+                          daySum += Number(v) || 0;
+                          return v;
+                        });
+                        const total = mp.dailyTotal?.[dateStr] !== undefined ? mp.dailyTotal[dateStr] : daySum;
+                        const isPeak = total === mp.dailyPeak && mp.dailyPeak > 0;
+                        const hasManpower = total > 0;
 
-                    return (
-                      <table className="mp-timeline-table">
-                        <thead>
-                          <tr>
-                            <th>날짜</th>
-                            {deptEntries.map(([dName]) => {
-                              const norm = normalizeDeptKey(dName);
-                              return <th key={dName}>{getDeptShort(norm)}</th>;
-                            })}
-                            <th>당일 합계</th>
+                        return (
+                          <tr key={dateStr}>
+                            <td style={{ fontWeight: 600, background: "#f8fafc" }}>{dateStr}</td>
+                            {cells.map((v, cIdx) => (
+                              <td key={cIdx} style={{ color: v > 0 ? undefined : "#94a3b8" }}>
+                                {v > 0 ? v : "-"}
+                              </td>
+                            ))}
+                            <td
+                              className={isPeak ? "mp-peak-cell" : ""}
+                              style={{
+                                fontWeight: hasManpower ? "bold" : "normal",
+                                color: hasManpower ? (isPeak ? "#dc2626" : "#0f172a") : "#94a3b8"
+                              }}
+                            >
+                              {hasManpower ? `${total}명 ${isPeak ? "🔥" : ""}` : "-"}
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {dates.map(dateStr => {
-                            let daySum = 0;
-                            const cells = deptEntries.map(([dName]) => {
-                              const v = mp.departments?.[dName]?.daily?.[dateStr] || 0;
-                              daySum += Number(v) || 0;
-                              return v;
-                            });
-                            const total = mp.dailyTotal?.[dateStr] || daySum;
-                            const isPeak = total === mp.dailyPeak && mp.dailyPeak > 0;
-
-                            return (
-                              <tr key={dateStr}>
-                                <td style={{ fontWeight: 600, background: "#f8fafc" }}>{dateStr}</td>
-                                {cells.map((v, cIdx) => (
-                                  <td key={cIdx}>{v || "-"}</td>
-                                ))}
-                                <td className={isPeak ? "mp-peak-cell" : ""} style={{ fontWeight: "bold" }}>
-                                  {total}명 {isPeak && "🔥"}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    );
-                  })()}
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
           </>
         )}
 
-        <button
-          onClick={onClose}
-          style={{ width: "100%", padding: "12px", background: "linear-gradient(135deg, #1f6feb, #1152b3)", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "14px", marginTop: "10px" }}
-        >
-          확인
-        </button>
+        <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+          {mp && (
+            <button
+              onClick={handleExportExcel}
+              style={{
+                flex: 1,
+                padding: "12px",
+                background: "#10b981",
+                color: "#fff",
+                border: "none",
+                borderRadius: "8px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                fontSize: "14px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px"
+              }}
+            >
+              <span>📥</span> Excel 서식 다운로드
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1,
+              padding: "12px",
+              background: "linear-gradient(135deg, #1f6feb, #1152b3)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: "bold",
+              cursor: "pointer",
+              fontSize: "14px"
+            }}
+          >
+            확인
+          </button>
+        </div>
       </div>
     </div>
   );

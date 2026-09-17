@@ -436,7 +436,65 @@ export function parseExcelMasterPlan(wb, context = {}) {
     }
   }
   
-  if (bestDateCols.length >= 3) {
+  if (bestDateCols.length >= 2) {
+    bestDateCols.sort((a, b) => a.colIdx - b.colIdx);
+    
+    const extrapolated = [];
+    for (let i = 0; i < bestDateCols.length; i++) {
+      const cur = bestDateCols[i];
+      extrapolated.push(cur);
+      
+      if (i < bestDateCols.length - 1) {
+        const next = bestDateCols[i + 1];
+        const curDate = new Date(cur.dateStr);
+        const nextDate = new Date(next.dateStr);
+        const diffDays = Math.round((nextDate - curDate) / (1000 * 60 * 60 * 24));
+        const diffCols = next.colIdx - cur.colIdx;
+        
+        if (diffDays > 1 && diffDays === diffCols) {
+          for (let d = 1; d < diffDays; d++) {
+            const tempDate = new Date(curDate);
+            tempDate.setDate(tempDate.getDate() + d);
+            extrapolated.push({
+              colIdx: cur.colIdx + d,
+              dateStr: tempDate.toISOString().slice(0, 10)
+            });
+          }
+        }
+      }
+    }
+    
+    const firstDate = new Date(bestDateCols[0].dateStr);
+    const firstCol = bestDateCols[0].colIdx;
+    for (let d = 1; d <= 30; d++) {
+      const c = firstCol - d;
+      if (c <= Math.max(...Array.from(mappedCols))) break;
+      const tempDate = new Date(firstDate);
+      tempDate.setDate(tempDate.getDate() - d);
+      extrapolated.unshift({
+        colIdx: c,
+        dateStr: tempDate.toISOString().slice(0, 10)
+      });
+    }
+
+    const lastDate = new Date(bestDateCols[bestDateCols.length - 1].dateStr);
+    const lastCol = bestDateCols[bestDateCols.length - 1].colIdx;
+    const maxCol = Math.max(...rows.map(r => r ? r.length : 0));
+    for (let d = 1; d <= 60; d++) {
+      const c = lastCol + d;
+      if (c >= maxCol) break;
+      const tempDate = new Date(lastDate);
+      tempDate.setDate(tempDate.getDate() + d);
+      extrapolated.push({
+        colIdx: c,
+        dateStr: tempDate.toISOString().slice(0, 10)
+      });
+    }
+
+    extrapolated.forEach(d => {
+      if (!dateCols.find(x => x.colIdx === d.colIdx)) dateCols.push(d);
+    });
+  } else if (bestDateCols.length === 1) {
     bestDateCols.forEach(d => {
       if (!dateCols.find(x => x.colIdx === d.colIdx)) dateCols.push(d);
     });

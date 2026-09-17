@@ -526,7 +526,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
     const looksLikeTotalRow2 = row.some(x => /^(total\s*manday|총\s*공수|합계)$/i.test(String(x || '').trim()));
     const isManpowerHeader = !looksLikeTotalRow2 && (
        /manpower|인력|인원|공수|m\/d/i.test(combinedLineStr) ||
-       (row.some(x => String(x || '').toLowerCase() === 'personnel') && row.some(x => /total/i.test(String(x || '')))) ||
+       (row.some(x => /^(personnel|구분|직종|부서)$/i.test(String(x || '').trim())) && row.some(x => /total/i.test(String(x || '')))) ||
        (/total/i.test(String(sRaw)) && /peak/i.test(String(eRaw)))
     );
 
@@ -537,7 +537,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
       mpPeakCol = -1;
       row.forEach((cell, idx) => {
         const str = String(cell || '').trim().toLowerCase();
-        if (/personnel|구분|직종|부서/i.test(str)) mpDeptCol = idx;
+        if (/personnel|구분|직종|부서|인력|인원|공수/i.test(str)) mpDeptCol = idx;
         else if (/^total$/i.test(str)) mpTotalCol = idx;
         else if (/^peak$/i.test(str)) mpPeakCol = idx;
       });

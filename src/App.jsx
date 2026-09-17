@@ -781,8 +781,8 @@ JSON 출력 예시:
     }
   }
 
-  const gs = view.length ? new Date(Math.min(...view.flatMap(p => [dt(p.startDate).getTime(), ...p.milestones.map(m => dt(m.startDate).getTime())]))) : dt(iso());
-  const ge = view.length ? new Date(Math.max(...view.flatMap(p => [dt(p.endDate).getTime(), ...p.milestones.map(m => dt(m.endDate).getTime())]))) : new Date(gs.getTime() + DAY);
+  const gs = view.length ? new Date(Math.min(...view.flatMap(p => [dt(p.startDate).getTime(), ...(p.milestones || []).map(m => dt(m.startDate).getTime())]))) : dt(iso());
+  const ge = view.length ? new Date(Math.max(...view.flatMap(p => [dt(p.endDate).getTime(), ...(p.milestones || []).map(m => dt(m.endDate).getTime())]))) : new Date(gs.getTime() + DAY);
   const span = Math.max(DAY, ge - gs + DAY);
   const pos = d => Math.max(0, Math.min(100, (dt(d) - gs) / span * 100));
   const barW = (s, e) => Math.max(1, (dt(e) - dt(s) + DAY) / span * 100);

@@ -23,7 +23,7 @@ export function excelDateToISO(serial, defaultYear) {
   }
 
   if (typeof serial === "string") {
-    let s = serial.trim();
+    let s = serial.replace(/[\r\n]+/g, '').trim();
     s = s.replace(/\s*\([월화수목금토일MonTueWedThuFriSatSun]\)/gi, '');
     s = s.replace(/^[([<{'"\s]+|[)\]}>'"\s]+$/g, '').trim();
     s = s.replace(/\.+$/, '').trim();
@@ -652,10 +652,12 @@ export function parseExcelMasterPlan(wb, context = {}) {
       let rowTotal = 0;
       let rowPeak = 0;
 
-      if (mpTotalCol !== -1 && Number(row[mpTotalCol]) > 0) {
-        rowTotal = Number(row[mpTotalCol]);
-        if (mpPeakCol !== -1 && Number(row[mpPeakCol]) > 0) {
-          rowPeak = Number(row[mpPeakCol]);
+      if (mpTotalCol !== -1) {
+        rowTotal = Number(row[mpTotalCol]) || 0;
+        if (mpPeakCol !== -1) {
+          rowPeak = Number(row[mpPeakCol]) || 0;
+        } else {
+          rowPeak = Number(row[mpTotalCol + 1]) || 0;
         }
       } else {
         const numCols = [];

@@ -443,68 +443,6 @@ export function parseExcelMasterPlan(wb, context = {}) {
       bestDateCols = curDates;
     }
   }
-  // 1. Attempt to perfectly align dates using the Day of Week row if present
-  if (bestDateCols.length > 0) {
-    let dowOffsets = {};
-    for (let r = 0; r < Math.min(30, rows.length); r++) {
-      const row = rows[r] || [];
-      let dowCount = 0;
-      let tempOffsets = {};
-      for (let c = 0; c < row.length; c++) {
-        let val = String(row[c] || "").replace(/[()\s]/g, '').toLowerCase();
-        const dowMap = { '일': 0, 'sun': 0, '월': 1, 'mon': 1, '화': 2, 'tue': 2, '수': 3, 'wed': 3, '목': 4, 'thu': 4, '금': 5, 'fri': 5, '토': 6, 'sat': 6 };
-        if (dowMap[val] !== undefined) {
-          dowCount++;
-          tempOffsets[c] = dowMap[val];
-        }
-      }
-      if (dowCount >= 5) {
-        dowOffsets = tempOffsets;
-        break;
-      }
-    }
-
-    if (Object.keys(dowOffsets).length > 0) {
-      const testCol = bestDateCols.find(d => dowOffsets[d.colIdx] !== undefined);
-      if (testCol) {
-        const expectedDow = dowOffsets[testCol.colIdx];
-        const actualDow = new Date(testCol.dateStr).getDay();
-        let shiftDays = expectedDow - actualDow;
-        
-        if (shiftDays > 3) shiftDays -= 7;
-        if (shiftDays < -3) shiftDays += 7;
-        
-        if (shiftDays !== 0) {
-          bestDateCols.forEach(d => {
-            const dateObj = new Date(d.dateStr);
-            dateObj.setDate(dateObj.getDate() + shiftDays);
-            d.dateStr = dateObj.toISOString().slice(0, 10);
-          });
-        }
-      }
-    }
-  }
-
-  // 2. Align Date Header colIdx with Data Row colIdx to fix merged cell drift
-  let dataCalendarStart = Math.max(-1, ...Array.from(mappedCols));
-  const mpRow = rows.find(r => r.some(x => String(x||"").replace(/\s/g, '').toLowerCase().includes("manpower")));
-  if (mpRow) {
-    const mpTotalCol = mpRow.findIndex(x => /total|총계/i.test(String(x||"")));
-    const mpPeakCol = mpRow.findIndex(x => /peak|최대/i.test(String(x||"")));
-    if (mpTotalCol !== -1) dataCalendarStart = Math.max(dataCalendarStart, mpTotalCol);
-    if (mpPeakCol !== -1) dataCalendarStart = Math.max(dataCalendarStart, mpPeakCol);
-  }
-  dataCalendarStart += 1;
-
-  if (bestDateCols.length > 0) {
-    const headerCalendarStart = bestDateCols[0].colIdx;
-    if (dataCalendarStart > 0 && headerCalendarStart !== dataCalendarStart) {
-      const colIdxShift = dataCalendarStart - headerCalendarStart;
-      bestDateCols.forEach(d => {
-        d.colIdx += colIdxShift;
-      });
-    }
-  }
 
   if (bestDateCols.length >= 2) {
     bestDateCols.sort((a, b) => a.colIdx - b.colIdx);

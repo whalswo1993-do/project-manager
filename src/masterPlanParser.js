@@ -748,7 +748,15 @@ export function parseExcelMasterPlan(wb, context = {}) {
         currentProject._dailyPeakVal = rowPeak;
         inManpowerSection = false;
       } else if (deptName && (rowTotal > 0 || rowPeak > 0 || dailySum > 0)) {
-        currentProject._deptMap[deptName] = { total: rowTotal, peak: rowPeak, daily };
+        if (currentProject._deptMap[deptName]) {
+          currentProject._deptMap[deptName].total += rowTotal;
+          currentProject._deptMap[deptName].peak = Math.max(currentProject._deptMap[deptName].peak, rowPeak);
+          Object.entries(daily).forEach(([dStr, val]) => {
+            currentProject._deptMap[deptName].daily[dStr] = (currentProject._deptMap[deptName].daily[dStr] || 0) + val;
+          });
+        } else {
+          currentProject._deptMap[deptName] = { total: rowTotal, peak: rowPeak, daily };
+        }
       }
       continue;
     }

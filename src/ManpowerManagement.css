@@ -607,7 +607,7 @@
 .mp-modal-card {
   background: #ffffff;
   border-radius: 18px;
-  width: min(900px, 95vw);
+  width: min(980px, 96vw);
   max-height: 88vh;
   overflow-y: auto;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -623,19 +623,23 @@
   align-items: flex-start;
   border-bottom: 1px solid #e2e8f0;
   padding-bottom: 14px;
+  gap: 16px;
 }
 
 .mp-modal-head h3 {
-  margin: 0 0 4px 0;
-  font-size: 20px;
+  margin: 0 0 5px 0;
+  font-size: 18px;
   font-weight: 800;
   color: #0f172a;
+  white-space: nowrap;
+  letter-spacing: -0.3px;
 }
 
 .mp-modal-head p {
   margin: 0;
   font-size: 13px;
   color: #64748b;
+  white-space: nowrap;
 }
 
 .mp-close-btn {

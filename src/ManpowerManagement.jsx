@@ -2098,32 +2098,34 @@ export function ProjectManpowerModal({ project, onClose }) {
     <div className="mp-modal-backdrop" onMouseDown={onClose}>
       <div className="mp-modal-card" onMouseDown={e => e.stopPropagation()}>
         <div className="mp-modal-head">
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <h3>📊 {project.manufacturingNo ? `${normalizeJVName(project.manufacturingNo)} · ` : ""}{normalizeJVName(project.name)} 공수 투입 현황</h3>
             <p>{normalizeJVName(project.site) || "-"} · Line {normalizeJVName(project.line) || "-"} &nbsp;|&nbsp; 기간: {fullDates[0] || project.startDate || "-"} ~ {fullDates[fullDates.length - 1] || project.endDate || "-"}</p>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "5px", flexShrink: 0 }}>
             {mp && (
               <button
                 onClick={handleExportExcel}
                 style={{
-                  display: "flex",
+                  display: "inline-flex",
                   alignItems: "center",
-                  gap: "6px",
-                  padding: "8px 14px",
+                  gap: "4px",
+                  padding: "4px 9px",
+                  height: "26px",
                   background: "#10b981",
                   color: "#fff",
                   border: "none",
-                  borderRadius: "6px",
-                  fontSize: "13px",
-                  fontWeight: "bold",
+                  borderRadius: "5px",
+                  fontSize: "12px",
+                  fontWeight: "600",
                   cursor: "pointer",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                  transition: "background 0.2s"
+                  whiteSpace: "nowrap",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+                  transition: "background 0.15s"
                 }}
                 title="화면과 동일한 서식의 Excel 파일 다운로드"
               >
-                <span>📥</span> Excel 다운로드
+                <span style={{ fontSize: "11px" }}>📥</span> excel
               </button>
             )}
             <button className="mp-close-btn" onClick={onClose}>×</button>

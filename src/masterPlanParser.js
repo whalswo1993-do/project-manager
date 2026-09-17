@@ -431,7 +431,6 @@ export function parseExcelMasterPlan(wb, context = {}) {
     let curYear = refYear;
     let prevMonth = null;
     for (let c = 0; c < row.length; c++) {
-      if (mappedCols.has(c)) continue;
       const iso = parseHeaderDate(row[c], curYear);
       if (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
         const m = parseInt(iso.slice(5, 7), 10);
@@ -444,7 +443,27 @@ export function parseExcelMasterPlan(wb, context = {}) {
       bestDateCols = curDates;
     }
   }
-  
+  // Align Date Header colIdx with Data Row colIdx to fix merged cell drift
+  let dataCalendarStart = Math.max(-1, ...Array.from(mappedCols));
+  const mpRow = rows.find(r => r.some(x => String(x||"").replace(/\s/g, '').toLowerCase().includes("manpower")));
+  if (mpRow) {
+    const mpTotalCol = mpRow.findIndex(x => /total|총계/i.test(String(x||"")));
+    const mpPeakCol = mpRow.findIndex(x => /peak|최대/i.test(String(x||"")));
+    if (mpTotalCol !== -1) dataCalendarStart = Math.max(dataCalendarStart, mpTotalCol);
+    if (mpPeakCol !== -1) dataCalendarStart = Math.max(dataCalendarStart, mpPeakCol);
+  }
+  dataCalendarStart += 1;
+
+  if (bestDateCols.length > 0) {
+    const headerCalendarStart = bestDateCols[0].colIdx;
+    if (dataCalendarStart > 0 && headerCalendarStart !== dataCalendarStart) {
+      const colIdxShift = dataCalendarStart - headerCalendarStart;
+      bestDateCols.forEach(d => {
+        d.colIdx += colIdxShift;
+      });
+    }
+  }
+
   if (bestDateCols.length >= 2) {
     bestDateCols.sort((a, b) => a.colIdx - b.colIdx);
     
@@ -477,7 +496,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
     const firstCol = bestDateCols[0].colIdx;
     for (let d = 1; d <= 30; d++) {
       const c = firstCol - d;
-      if (c <= Math.max(...Array.from(mappedCols))) break;
+      if (c < dataCalendarStart) break;
       const tempDate = new Date(firstDate);
       tempDate.setDate(tempDate.getDate() - d);
       extrapolated.unshift({

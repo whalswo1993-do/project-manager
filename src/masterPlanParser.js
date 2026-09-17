@@ -220,12 +220,13 @@ export function normalizeDeptName(raw) {
 
   // 2. Pure Internal departments (No 외주 keyword)
   if (/supervisor|슈퍼바이저|\bsv\b|해체\s*검수|장착\s*검수|해체\/장착\s*검수/i.test(lower)) return "Supervisor";
+  // "Safety Manager (소장)" must map to "소장" — check manager/소장 BEFORE generic safety
+  if (/manager|소장|현장대리인/i.test(lower)) return "소장";
   if (/mechanical|기구|mech/i.test(lower)) return "기구";
   if (/vision|비전|비젼/i.test(lower)) return "비전";
   if (/control|제어|cont/i.test(lower)) return "제어";
   if (/electrical|electronical|전장|전기|elec/i.test(lower)) return "전장";
   if (/safety|안전|safe/i.test(lower)) return "안전";
-  if (/manager|소장|현장대리인/i.test(lower)) return "소장";
   if (/^pm$/i.test(lower)) return "PM";
   if (/설계|design/i.test(lower)) return "설계";
   if (/설비기술|기술/i.test(lower)) return "설비기술";
@@ -465,9 +466,20 @@ export function parseExcelMasterPlan(wb, context = {}) {
     }
     if (inGrandTotalSection) continue;
 
-    if (/manpower|인력|인원|공수|manday|m\/d/i.test(rawJoined) ||
-       (row.some(x => String(x || '').toLowerCase() === 'personnel') && row.some(x => /total/i.test(String(x || ''))))) {
+    // Detect manpower section start (even in hidden rows), but exclude "Total Manday" data rows
+    const looksLikeTotalDataRow = row.some(x => /^(total\s*manday|총\s*공수|합계)$/i.test(String(x || '').trim())) &&
+       row.some(x => { const v = Number(x); return !isNaN(v) && v > 10; });
+    if (!looksLikeTotalDataRow && (
+       /manpower|인력|인원|공수|m\/d/i.test(rawJoined) ||
+       (row.some(x => String(x || '').toLowerCase() === 'personnel') && row.some(x => /total/i.test(String(x || '')))))) {
       inManpowerSection = true;
+      // Also detect Personnel/Total/Peak column positions on this row
+      row.forEach((cell, idx) => {
+        const str = String(cell || '').trim().toLowerCase();
+        if (/personnel|구분|직종|부서/i.test(str)) mpDeptCol = idx;
+        else if (/^total$/i.test(str)) mpTotalCol = idx;
+        else if (/^peak$/i.test(str)) mpPeakCol = idx;
+      });
       continue;
     }
 
@@ -515,9 +527,13 @@ export function parseExcelMasterPlan(wb, context = {}) {
       inManpowerSection = false;
     }
 
-    const isManpowerHeader = /manpower|인력|인원|공수|manday|m\/d/i.test(combinedLineStr) ||
+    // Exclude "Total Manday" data rows from being treated as manpower headers
+    const looksLikeTotalRow2 = row.some(x => /^(total\s*manday|총\s*공수|합계)$/i.test(String(x || '').trim()));
+    const isManpowerHeader = !looksLikeTotalRow2 && (
+       /manpower|인력|인원|공수|m\/d/i.test(combinedLineStr) ||
        (row.some(x => String(x || '').toLowerCase() === 'personnel') && row.some(x => /total/i.test(String(x || '')))) ||
-       (/total/i.test(String(sRaw)) && /peak/i.test(String(eRaw)));
+       (/total/i.test(String(sRaw)) && /peak/i.test(String(eRaw)))
+    );
 
     if (isManpowerHeader) {
       inManpowerSection = true;

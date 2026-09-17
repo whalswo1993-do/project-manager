@@ -473,18 +473,9 @@ export function parseExcelMasterPlan(wb, context = {}) {
       }
     }
     
-    const firstDate = new Date(bestDateCols[0].dateStr);
-    const firstCol = bestDateCols[0].colIdx;
-    for (let d = 1; d <= 30; d++) {
-      const c = firstCol - d;
-      if (c < 0) break;
-      const tempDate = new Date(firstDate);
-      tempDate.setDate(tempDate.getDate() - d);
-      extrapolated.unshift({
-        colIdx: c,
-        dateStr: tempDate.toISOString().slice(0, 10)
-      });
-    }
+    // Do NOT extrapolate backward before the first detected date header.
+    // Columns before the first date are structural (Line, Equipment, Total, Peak etc.)
+    // and their numeric values must never be treated as daily manpower.
 
     const lastDate = new Date(bestDateCols[bestDateCols.length - 1].dateStr);
     const lastCol = bestDateCols[bestDateCols.length - 1].colIdx;
@@ -730,7 +721,13 @@ export function parseExcelMasterPlan(wb, context = {}) {
       }
 
       const daily = {};
+      // Determine the first actual calendar column to prevent Total/Peak columns from being read as daily data
+      const calendarStartCol = bestDateCols.length > 0 ? bestDateCols[0].colIdx : (mpPeakCol !== -1 ? mpPeakCol + 1 : mpTotalCol !== -1 ? mpTotalCol + 2 : 6);
       dateCols.forEach(({ colIdx, dateStr }) => {
+        // Skip any column at or before the known Total/Peak columns
+        if (colIdx < calendarStartCol) return;
+        if (mpTotalCol !== -1 && colIdx === mpTotalCol) return;
+        if (mpPeakCol !== -1 && colIdx === mpPeakCol) return;
         const val = parseNum(row[colIdx]) || 0;
         if (val > 0) {
           daily[dateStr] = val;

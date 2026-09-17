@@ -500,6 +500,47 @@ export function parseExcelMasterPlan(wb, context = {}) {
       });
     }
 
+    // Attempt to perfectly align dates using the Day of Week row if present (e.g., '월', '화', '수'...)
+    let dowOffsets = {};
+    for (let r = 0; r < Math.min(30, rows.length); r++) {
+      const row = rows[r] || [];
+      let dowCount = 0;
+      let tempOffsets = {};
+      for (let c = 0; c < row.length; c++) {
+        let val = String(row[c] || "").replace(/[()\s]/g, '').toLowerCase();
+        const dowMap = { '일': 0, 'sun': 0, '월': 1, 'mon': 1, '화': 2, 'tue': 2, '수': 3, 'wed': 3, '목': 4, 'thu': 4, '금': 5, 'fri': 5, '토': 6, 'sat': 6 };
+        if (dowMap[val] !== undefined) {
+          dowCount++;
+          tempOffsets[c] = dowMap[val];
+        }
+      }
+      if (dowCount >= 5) {
+        dowOffsets = tempOffsets;
+        break;
+      }
+    }
+
+    if (Object.keys(dowOffsets).length > 0) {
+      const testCol = extrapolated.find(d => dowOffsets[d.colIdx] !== undefined);
+      if (testCol) {
+        const expectedDow = dowOffsets[testCol.colIdx];
+        const actualDow = new Date(testCol.dateStr).getDay();
+        let shiftDays = expectedDow - actualDow;
+        
+        // Find the shortest shift (-3 to +3 days) to align to the correct day of week
+        if (shiftDays > 3) shiftDays -= 7;
+        if (shiftDays < -3) shiftDays += 7;
+        
+        if (shiftDays !== 0) {
+          extrapolated.forEach(d => {
+            const dateObj = new Date(d.dateStr);
+            dateObj.setDate(dateObj.getDate() + shiftDays);
+            d.dateStr = dateObj.toISOString().slice(0, 10);
+          });
+        }
+      }
+    }
+
     extrapolated.forEach(d => {
       if (!dateCols.find(x => x.colIdx === d.colIdx)) dateCols.push(d);
     });

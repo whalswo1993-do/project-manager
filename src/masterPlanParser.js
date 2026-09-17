@@ -458,7 +458,6 @@ export function parseExcelMasterPlan(wb, context = {}) {
         const next = bestDateCols[i + 1];
         const curDate = new Date(cur.dateStr);
         const nextDate = new Date(next.dateStr);
-        const diffDays = Math.round((nextDate - curDate) / (1000 * 60 * 60 * 24));
         const diffCols = next.colIdx - cur.colIdx;
         
         // Always assume 1 column = 1 sequential day, up to diffCols
@@ -490,10 +489,10 @@ export function parseExcelMasterPlan(wb, context = {}) {
 
     const lastDate = new Date(bestDateCols[bestDateCols.length - 1].dateStr);
     const lastCol = bestDateCols[bestDateCols.length - 1].colIdx;
-    const maxCol = Math.max(...rows.map(r => r ? r.length : 0));
-    for (let d = 1; d <= 60; d++) {
+    
+    // Remove maxCol limitation and just interpolate far enough to catch all possible trailing numbers
+    for (let d = 1; d <= 200; d++) {
       const c = lastCol + d;
-      if (c >= maxCol) break;
       const tempDate = new Date(lastDate);
       tempDate.setDate(tempDate.getDate() + d);
       extrapolated.push({

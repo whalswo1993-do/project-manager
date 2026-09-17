@@ -263,11 +263,11 @@ export default function Quotations({ projects, session, role, onPermissionDenied
             
         } catch (error) {
             console.error("Upload Error:", error);
-            let userFriendlyMsg = "견적서를 분석하거나 저장하는 도중 알 수 없는 오류가 발생했습니다.";
+            let userFriendlyMsg = "견적서를 분석하거나 저장하는 도중 알 수 없는 오류가 발생했습니다. 지속되면 담당자에게 문의해주세요.";
             if (error.message.includes("429")) {
-                userFriendlyMsg = "AI 분석 요청 횟수(무료 할당량)를 초과했습니다. 약 1분 후 다시 시도해주세요.";
+                userFriendlyMsg = "AI 분석 요청량이 폭주하여 일시적으로 제한되었습니다. 약 1~2분 뒤에 다시 시도해주시고, 계속 안 될 경우 담당자에게 문의해주세요.";
             } else if (error.message.includes("503")) {
-                userFriendlyMsg = "AI 분석 서버에 일시적인 과부하가 발생했습니다. 잠시 후 다시 시도해주세요.";
+                userFriendlyMsg = "AI 분석 서버에 일시적인 과부하가 발생했습니다. 잠시 후 다시 시도해주시고, 계속 안 될 경우 담당자에게 문의해주세요.";
             } else if (error.message.includes("지원하지 않는 파일") || error.message.includes("추출하지 못했습니다") || error.message.includes("API 키가")) {
                 userFriendlyMsg = error.message;
             }

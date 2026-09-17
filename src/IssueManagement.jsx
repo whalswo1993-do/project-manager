@@ -160,9 +160,9 @@ ${allText.substring(0, 30000)}
             setMsg(`AI가 ${parsed.length}일치의 일보 내용을 성공적으로 구조화했습니다. 저장 버튼을 눌러주세요.`);
         } catch (error) {
             console.error(error);
-            let userFriendlyMsg = "파일 분석 중 알 수 없는 오류가 발생했습니다.";
+            let userFriendlyMsg = "파일 분석 중 알 수 없는 오류가 발생했습니다. 지속되면 담당자에게 문의해주세요.";
             if (error.message.includes("429") || error.message.includes("quota")) {
-                userFriendlyMsg = "AI 할당량을 초과했습니다. 잠시 후 다시 시도해주세요. (무료 API 제한 초과)";
+                userFriendlyMsg = "AI 분석 요청량이 폭주하여 일시적으로 제한되었습니다. 약 1~2분 뒤에 다시 시도해주시고, 계속 안 될 경우 담당자에게 문의해주세요.";
             } else if (error.message.includes("403") || error.message.includes("API_KEY_INVALID")) {
                 userFriendlyMsg = "API Key가 유효하지 않습니다. 환경설정에서 Gemini API Key를 확인해주세요.";
             }

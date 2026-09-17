@@ -9,6 +9,16 @@ export const monthsMap = {
 };
 
 /**
+ * 문자열 내 쉼표 등 숫자가 아닌 문자를 제거하고 숫자로 파싱합니다.
+ */
+export function parseNum(val) {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  const cleaned = String(val).replace(/,/g, '').trim();
+  return Number(cleaned) || 0;
+}
+
+/**
  * 엑셀 시리얼 날짜(숫자) 또는 다양한 날짜 문자열(YYYY-MM-DD, MM/DD, DD-Mon, 한글 날짜 등)을
  * ISO 형식('YYYY-MM-DD')으로 정규화하여 반환합니다.
  */
@@ -451,8 +461,9 @@ export function parseExcelMasterPlan(wb, context = {}) {
         const diffDays = Math.round((nextDate - curDate) / (1000 * 60 * 60 * 24));
         const diffCols = next.colIdx - cur.colIdx;
         
-        if (diffDays > 1 && diffDays === diffCols) {
-          for (let d = 1; d < diffDays; d++) {
+        // Always assume 1 column = 1 sequential day, up to diffCols
+        if (diffCols > 1) {
+          for (let d = 1; d < diffCols; d++) {
             const tempDate = new Date(curDate);
             tempDate.setDate(tempDate.getDate() + d);
             extrapolated.push({
@@ -711,11 +722,11 @@ export function parseExcelMasterPlan(wb, context = {}) {
       let rowPeak = 0;
 
       if (mpTotalCol !== -1) {
-        rowTotal = Number(row[mpTotalCol]) || 0;
+        rowTotal = parseNum(row[mpTotalCol]) || 0;
         if (mpPeakCol !== -1) {
-          rowPeak = Number(row[mpPeakCol]) || 0;
+          rowPeak = parseNum(row[mpPeakCol]) || 0;
         } else {
-          rowPeak = Number(row[mpTotalCol + 1]) || 0;
+          rowPeak = parseNum(row[mpTotalCol + 1]) || 0;
         }
       } else {
         const numCols = [];
@@ -723,7 +734,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
           if (colMap.line !== undefined && c === colMap.line) continue;
           if (colMap.item !== undefined && c === colMap.item) continue;
           if (dateCols.some(dc => dc.colIdx === c)) continue;
-          const v = Number(row[c]);
+          const v = parseNum(row[c]);
           if (!isNaN(v) && v > 0) {
             numCols.push({ col: c, val: v });
           }
@@ -741,7 +752,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
 
       const daily = {};
       dateCols.forEach(({ colIdx, dateStr }) => {
-        const val = Number(row[colIdx]) || 0;
+        const val = parseNum(row[colIdx]) || 0;
         if (val > 0) {
           daily[dateStr] = val;
           if (isTotalRow) currentProject._dailyTotalMap[dateStr] = val;

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta name="theme-color" content="#075ca8" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="/project-manager/pwa-192.png" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <script>
+    // 브라우저의 구버전 Service Worker 캐시로 인한 화면 미갱신 강제 해제
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        for (var r of regs) { r.unregister(); }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(keys) {
+        for (var k of keys) { caches.delete(k); }
+      });
+    }
+  </script>
+
+  <title>Project 관리</title>
+  <script type="module" crossorigin src="/project-manager/assets/index-6EtEdLUM.js"></script>
+  <link rel="stylesheet" crossorigin href="/project-manager/assets/index-CtXzvkhz.css">
+<link rel="manifest" href="/project-manager/manifest.webmanifest"></head>
+
+<body>
+  <div id="root"></div>
+</body>
+
+</html>..

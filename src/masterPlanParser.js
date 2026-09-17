@@ -854,6 +854,18 @@ export function parseExcelMasterPlan(wb, context = {}) {
       if (!minD || m.startDate < minD) minD = m.startDate;
       if (!maxD || m.endDate > maxD) maxD = m.endDate;
     });
+    
+    // Extend project dates to include any manpower dates that extend beyond milestones
+    if (p.manpower && p.manpower.dailyTotal) {
+      const mpDates = Object.keys(p.manpower.dailyTotal);
+      if (mpDates.length > 0) {
+        const mpMin = mpDates.reduce((min, d) => d < min ? d : min, mpDates[0]);
+        const mpMax = mpDates.reduce((max, d) => d > max ? d : max, mpDates[0]);
+        if (!minD || mpMin < minD) minD = mpMin;
+        if (!maxD || mpMax > maxD) maxD = mpMax;
+      }
+    }
+
     if (!p.startDate && minD) p.startDate = minD;
     if (maxD) p.endDate = maxD;
   });

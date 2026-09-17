@@ -88,7 +88,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
                 if (!apiKey) throw new Error("AI 분석용 Gemini API 키가 설정되지 않았습니다.");
                 const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro" }); 
+                const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" }); 
                 
                 const prompt = `당신은 견적서(Quotation) 데이터를 분석하는 전문가입니다. 첨부된 엑셀 복사 데이터를 분석하여 아래 JSON 구조로만 데이터를 추출하세요.
 요구사항:
@@ -150,7 +150,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
                 if (!apiKey) throw new Error("AI 분석용 Gemini API 키가 설정되지 않았습니다.");
                 const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro" }); 
+                const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" }); 
                 
                 const reader = new FileReader();
                 const b64 = await new Promise(res => {

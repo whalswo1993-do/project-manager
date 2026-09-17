@@ -114,7 +114,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
             if (!apiKey) throw new Error('Gemini API 키가 설정되지 않았습니다.');
             
             const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro" });
+            const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
             const prompt = `
 다음은 현장 공사일보(엑셀)의 원본 텍스트입니다. 이 내용에서 일자별로 데이터를 분류하여 3가지 주요 정보(작업내용, 특이사항, 투입인원)를 추출해주세요.
 특히 투입인원은 부서별(PM, 설계, 설비기술, 제어, 비전)로 세분화하여 파악해주세요. 파악할 수 없는 인원은 기타(personnel_count)로 합산하세요.
@@ -283,7 +283,7 @@ ${allText.substring(0, 30000)}
 
             // 2. Call Gemini
             const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-3.1-pro" });
+            const model = genAI.getGenerativeModel({ model: "gemini-3.6-flash" });
 
             const prompt = `
 다음은 ${startDate}부터 ${endDate}까지 수집된 각 프로젝트들의 공사일보 내용입니다.

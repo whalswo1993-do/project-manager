@@ -728,26 +728,6 @@ export function parseExcelMasterPlan(wb, context = {}) {
         } else {
           rowPeak = parseNum(row[mpTotalCol + 1]) || 0;
         }
-      } else {
-        const numCols = [];
-        for (let c = 0; c <= Math.min(8, row.length - 1); c++) {
-          if (colMap.line !== undefined && c === colMap.line) continue;
-          if (colMap.item !== undefined && c === colMap.item) continue;
-          if (dateCols.some(dc => dc.colIdx === c)) continue;
-          const v = parseNum(row[c]);
-          if (!isNaN(v) && v > 0) {
-            numCols.push({ col: c, val: v });
-          }
-        }
-
-        if (numCols.length >= 2) {
-          const first = numCols[0].val;
-          const second = numCols[1].val;
-          rowTotal = Math.max(first, second);
-          rowPeak = Math.min(first, second);
-        } else if (numCols.length === 1) {
-          rowTotal = numCols[0].val;
-        }
       }
 
       const daily = {};

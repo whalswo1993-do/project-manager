@@ -3,6 +3,7 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  base: '/project-manager/',
   plugins: [
     react(),
     VitePWA({
@@ -12,8 +13,8 @@ export default defineConfig({
         name: 'Project 관리',
         short_name: 'Project 관리',
         description: 'TW 프로젝트 관리',
-        start_url: '/',
-        scope: '/',
+        start_url: '/project-manager/',
+        scope: '/project-manager/',
         display: 'standalone',
         background_color: '#eef3f8',
         theme_color: '#075ca8',
@@ -29,7 +30,7 @@ export default defineConfig({
         clientsClaim: true,
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         cleanupOutdatedCaches: true,
-        navigateFallback: '/index.html',
+        navigateFallback: '/project-manager/index.html',
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
         runtimeCaching: [
           {

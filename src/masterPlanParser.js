@@ -244,16 +244,11 @@ export function parseTSVWithQuotes(text) {
   let cell = '';
   let inQuotes = false;
 
-  let tabCount = 0, commaCount = 0;
+  let hasTab = false;
   for (let i = 0; i < Math.min(text.length, 3000); i++) {
-    if (text[i] === '"') inQuotes = !inQuotes;
-    if (!inQuotes) {
-      if (text[i] === '\t') tabCount++;
-      if (text[i] === ',') commaCount++;
-    }
+    if (text[i] === '\t') { hasTab = true; break; }
   }
-  inQuotes = false;
-  const delimiter = tabCount >= commaCount ? '\t' : ',';
+  const delimiter = hasTab ? '\t' : ',';
 
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
@@ -273,7 +268,7 @@ export function parseTSVWithQuotes(text) {
       if (ch === '\r' && nextCh === '\n') i++;
       row.push(cell.trim());
       cell = '';
-      if (row.some(c => c !== '')) rows.push(row);
+      rows.push(row);
       row = [];
     } else {
       cell += ch;
@@ -281,7 +276,7 @@ export function parseTSVWithQuotes(text) {
   }
   if (cell !== '' || row.length > 0) {
     row.push(cell.trim());
-    if (row.some(c => c !== '')) rows.push(row);
+    rows.push(row);
   }
   return rows;
 }

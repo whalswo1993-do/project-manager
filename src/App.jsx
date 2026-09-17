@@ -764,7 +764,21 @@ JSON 출력 예시:
       const aiProjects = rawList.map(adjustProjectDates);
       await saveDirectProjects(aiProjects, "AI 분석");
     } catch (err) {
-      setMsg("분석 실패: " + err.message);
+      let userFriendlyMsg = "분석 중 알 수 없는 오류가 발생했습니다.";
+      if (err.message.includes("429") || err.message.includes("quota")) {
+        userFriendlyMsg = "AI 할당량을 초과했습니다. 잠시 후 다시 시도해주세요. (무료 API 제한 초과)";
+      } else if (err.message.includes("403") || err.message.includes("API_KEY_INVALID")) {
+        userFriendlyMsg = "API Key가 유효하지 않습니다. 환경설정에서 Gemini API Key를 확인해주세요.";
+      }
+      
+      setMsg(
+        <span style={{ color: '#ef4444' }}>
+          분석 실패: {userFriendlyMsg}
+          <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal', marginTop: '4px' }}>
+            원인파악용 기술 정보: {err.message}
+          </div>
+        </span>
+      );
     } finally {
       setIsExtracting(false);
       if (masterPlanInput.current) masterPlanInput.current.value = "";

@@ -160,7 +160,21 @@ ${allText.substring(0, 30000)}
             setMsg(`AI가 ${parsed.length}일치의 일보 내용을 성공적으로 구조화했습니다. 저장 버튼을 눌러주세요.`);
         } catch (error) {
             console.error(error);
-            setMsg('파일 분석 실패: ' + error.message);
+            let userFriendlyMsg = "파일 분석 중 알 수 없는 오류가 발생했습니다.";
+            if (error.message.includes("429") || error.message.includes("quota")) {
+                userFriendlyMsg = "AI 할당량을 초과했습니다. 잠시 후 다시 시도해주세요. (무료 API 제한 초과)";
+            } else if (error.message.includes("403") || error.message.includes("API_KEY_INVALID")) {
+                userFriendlyMsg = "API Key가 유효하지 않습니다. 환경설정에서 Gemini API Key를 확인해주세요.";
+            }
+
+            setMsg(
+                <span style={{ color: '#ef4444' }}>
+                    파일 분석 실패: {userFriendlyMsg}
+                    <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal', marginTop: '4px' }}>
+                        원인파악용 기술 정보: {error.message}
+                    </div>
+                </span>
+            );
         } finally {
             setIsExtracting(false);
         }

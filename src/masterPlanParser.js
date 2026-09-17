@@ -448,27 +448,6 @@ export function parseExcelMasterPlan(wb, context = {}) {
   // In many Excel layouts, the date headers start at one column (e.g. col 6)
   // but the manpower daily data starts at a different column (e.g. col 7, after the Peak column).
   // This shift ensures the date-to-column mapping matches where the actual numbers are.
-  if (bestDateCols.length > 0) {
-    let dataCalendarStart = Math.max(-1, ...Array.from(mappedCols)) + 1;
-    for (let r = 0; r < rows.length; r++) {
-      const row = rows[r] || [];
-      const rowStr = row.map(x => String(x || "").trim().toLowerCase()).join(" ");
-      if (/manpower|인력|공수/.test(rowStr) || (rowStr.includes("total") && rowStr.includes("peak"))) {
-        const peakIdx = row.findIndex(x => /^peak$/i.test(String(x || "").trim()));
-        const totalIdx = row.findIndex(x => /^total$/i.test(String(x || "").trim()));
-        if (peakIdx !== -1) dataCalendarStart = Math.max(dataCalendarStart, peakIdx + 1);
-        else if (totalIdx !== -1) dataCalendarStart = Math.max(dataCalendarStart, totalIdx + 2);
-      }
-    }
-    if (dataCalendarStart > 0) {
-      const headerCalendarStart = bestDateCols[0].colIdx;
-      const colIdxShift = dataCalendarStart - headerCalendarStart;
-      if (colIdxShift !== 0 && Math.abs(colIdxShift) <= 3) {
-        bestDateCols.forEach(d => { d.colIdx += colIdxShift; });
-      }
-    }
-  }
-
   if (bestDateCols.length >= 2) {
     bestDateCols.sort((a, b) => a.colIdx - b.colIdx);
     

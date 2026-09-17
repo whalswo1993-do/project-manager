@@ -784,6 +784,18 @@ export function parseExcelMasterPlan(wb, context = {}) {
       if (!p._dailyPeakVal) {
         p._dailyPeakVal = Object.values(p._dailyTotalMap).reduce((a, b) => Math.max(a, b), 0);
       }
+      
+      // Recalculate department peaks based on actual daily timeline to prevent mismatches
+      // between the Peak column in Excel and the timeline data
+      Object.values(p._deptMap).forEach(d => {
+        if (d.daily && Object.keys(d.daily).length > 0) {
+          const calculatedPeak = Object.values(d.daily).reduce((max, val) => Math.max(max, val), 0);
+          if (calculatedPeak > 0) {
+            d.peak = calculatedPeak;
+          }
+        }
+      });
+
       p.manpower = {
         totalManday: p._totalMandayVal,
         dailyPeak: p._dailyPeakVal,

@@ -477,7 +477,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
     const firstCol = bestDateCols[0].colIdx;
     for (let d = 1; d <= 30; d++) {
       const c = firstCol - d;
-      if (c < dataCalendarStart) break;
+      if (c < 0) break;
       const tempDate = new Date(firstDate);
       tempDate.setDate(tempDate.getDate() - d);
       extrapolated.unshift({

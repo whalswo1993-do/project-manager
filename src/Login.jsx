@@ -221,7 +221,7 @@ export default function Login() {
                 : acc.role === "grade3"
                 ? { label: "PM 매니저 (Grade3)", color: "#1d4ed8", bg: "#eff6ff", icon: "📋" }
                 : acc.role === "grade2"
-                ? { label: "설계/담당 (Grade2)", color: "#7c3aed", bg: "#f5f3ff", icon: "📐" }
+                ? { label: "각 부서 담당자 (Grade2)", color: "#7c3aed", bg: "#f5f3ff", icon: "💼" }
                 : { label: "일반 사원 (Grade1)", color: "#047857", bg: "#ecfdf5", icon: "👤" };
 
               return (

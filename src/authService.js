@@ -31,10 +31,10 @@ export const DEFAULT_TEST_ACCOUNTS = [
     alias: "test2@twgroup.co.kr",
     password: "test1234!",
     name: "테스트2",
-    department: "설계팀",
+    department: "각 부서 담당자",
     role: "grade2",
     active: true,
-    description: "Grade2 (설계 / 프로젝트 수정 및 진행률 관리)",
+    description: "Grade2 (각 부서 담당자 / 프로젝트 수정 및 진행률 관리)",
   },
   {
     id: "test-user-3",

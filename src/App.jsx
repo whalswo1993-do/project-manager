@@ -1760,7 +1760,7 @@ JSON 출력 예시:
                         >
                           <option value="admin">관리자</option>
                           <option value="grade3">Grade3 (PM)</option>
-                          <option value="grade2">Grade2 (설계)</option>
+                          <option value="grade2">Grade2 (각 부서 담당자)</option>
                           <option value="grade1">Grade1 (일반)</option>
                         </select>
 

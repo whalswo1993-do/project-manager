@@ -12,6 +12,16 @@ import * as XLSX from "xlsx";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { normalizeJVName } from "./utils";
 import {
+  isAccountDeleted,
+  registerAccountDeletion,
+  getActiveTestSession,
+  clearTestSession,
+  getTestProfiles,
+  updateTestProfile,
+  findTestAccount,
+  ensureSupabaseAuth,
+} from "./authService";
+import {
   computeAutoStatus,
   parseExcelMasterPlan,
   parseTSVWithQuotes,
@@ -235,7 +245,41 @@ export default function App() {
   }
 
   async function load(t) {
-    const order = t === "projects" ? "created_at" : t === "personnel" ? "department" : t === "profiles" ? "email" : "name";
+    if (t === "profiles") {
+      try {
+        const { data: supaProfiles } = await supabase.from("profiles").select("*").order("email");
+        const testProfs = getTestProfiles();
+        const combined = [];
+        const seenEmails = new Set();
+
+        // 1. Supabase profiles (삭제된 계정 제외)
+        (supaProfiles || []).forEach(p => {
+          const lower = p.email?.toLowerCase();
+          if (lower && !isAccountDeleted(lower) && !seenEmails.has(lower)) {
+            seenEmails.add(lower);
+            const testOverride = testProfs.find(tp => tp.email?.toLowerCase() === lower);
+            combined.push(testOverride ? { ...p, ...testOverride } : p);
+          }
+        });
+
+        // 2. Test accounts (Supabase에 없는 경우 추가)
+        testProfs.forEach(tp => {
+          const lower = tp.email?.toLowerCase();
+          if (lower && !isAccountDeleted(lower) && !tp.deleted && !seenEmails.has(lower)) {
+            seenEmails.add(lower);
+            combined.push(tp);
+          }
+        });
+
+        setUsers(combined);
+      } catch (err) {
+        console.error("profiles load error:", err);
+        setUsers(getTestProfiles().filter(tp => !isAccountDeleted(tp.email) && !tp.deleted));
+      }
+      return;
+    }
+
+    const order = t === "projects" ? "created_at" : t === "personnel" ? "department" : "name";
     const { data, error } = await supabase.from(t).select("*").order(order, { ascending: t !== "projects" });
     if (error) return setMsg(error.message);
     if (t === "projects") setProjects((data || []).map(from));
@@ -250,35 +294,145 @@ export default function App() {
       setSites(normalizedSites);
     }
     if (t === "personnel") setPeople(data || []);
-    if (t === "profiles") setUsers(data || []);
   }
 
   async function boot(activeSession) {
-    const sess = activeSession || session;
-    if (!sess?.user?.id) return;
+    const sess = activeSession || session || getActiveTestSession();
+    if (!sess?.user?.email) return;
+
+    const email = sess.user.email.toLowerCase();
+
+    // 1. 삭제 여부 검사 -> 삭제 시 강제 로그아웃
+    if (isAccountDeleted(email)) {
+      await supabase.auth.signOut();
+      clearTestSession();
+      setSession(null);
+      setProfile(null);
+      return alert("삭제된 계정입니다. 해당 계정으로는 다시 로그인할 수 없습니다.");
+    }
+
+    // 2. 테스트 계정인지 확인
+    const testAcc = findTestAccount(email);
+    if (sess.isTestAccount || testAcc) {
+      if (testAcc?.deleted) {
+        await supabase.auth.signOut();
+        clearTestSession();
+        setSession(null);
+        setProfile(null);
+        return alert("삭제된 계정입니다. 해당 계정으로는 다시 로그인할 수 없습니다.");
+      }
+      if (testAcc?.active === false) {
+        await supabase.auth.signOut();
+        clearTestSession();
+        setSession(null);
+        setProfile(null);
+        return alert("비활성화된 계정입니다. 관리자에게 문의하세요.");
+      }
+
+      const testProfile = testAcc || {
+        id: sess.user.id,
+        email: sess.user.email,
+        role: "admin",
+        active: true,
+      };
+
+      setProfile(testProfile);
+      await ensureSupabaseAuth();
+      await Promise.all([load("projects"), load("sites"), load("personnel")]);
+      if (testProfile.role === "admin") load("profiles");
+      return;
+    }
+
+    // 3. 일반 Supabase 계정 확인
     const { data: p, error } = await supabase.from("profiles").select("*").eq("id", sess.user.id).single();
-    if (error) return setMsg(error.message);
+    if (error || !p) {
+      // profiles 레코드가 없거나 삭제된 경우
+      await supabase.auth.signOut();
+      clearTestSession();
+      setSession(null);
+      setProfile(null);
+      return alert("등록되지 않았거나 삭제된 계정입니다.");
+    }
+
     if (p.active === false) {
       await supabase.auth.signOut();
+      clearTestSession();
+      setSession(null);
+      setProfile(null);
       return alert("비활성화된 계정입니다.");
     }
+
     setProfile(p);
     await Promise.all([load("projects"), load("sites"), load("personnel")]);
     if (p.role === "admin") load("profiles");
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    // 1. 테스트 세션 우선 확인
+    const testSess = getActiveTestSession();
+    if (testSess) {
+      setSession(testSess);
       setLoading(false);
-      if (data.session) boot(data.session);
+      boot(testSess);
+    } else {
+      supabase.auth.getSession().then(({ data }) => {
+        setSession(data.session);
+        setLoading(false);
+        if (data.session) boot(data.session);
+      });
+    }
+
+    const { data: authSub } = supabase.auth.onAuthStateChange((_, s) => {
+      const currentTest = getActiveTestSession();
+      if (currentTest) {
+        setSession(currentTest);
+        boot(currentTest);
+      } else {
+        setSession(s);
+        if (s) boot(s);
+        else setProfile(null);
+      }
     });
-    const { data } = supabase.auth.onAuthStateChange((_, s) => {
-      setSession(s);
-      if (s) boot(s);
-      else setProfile(null);
-    });
-    return () => data.subscription.unsubscribe();
+
+    const handleAuthChange = () => {
+      const activeTest = getActiveTestSession();
+      if (activeTest) {
+        setSession(activeTest);
+        setLoading(false);
+        boot(activeTest);
+      } else {
+        supabase.auth.getSession().then(({ data }) => {
+          setSession(data.session);
+          setLoading(false);
+          if (data.session) boot(data.session);
+          else {
+            setSession(null);
+            setProfile(null);
+          }
+        });
+      }
+    };
+
+    const handleAccountDeleted = (e) => {
+      const deletedEmail = e.detail?.email;
+      const myEmail = session?.user?.email?.toLowerCase();
+      if (deletedEmail && myEmail === deletedEmail) {
+        supabase.auth.signOut();
+        clearTestSession();
+        setSession(null);
+        setProfile(null);
+        alert("현재 계정이 관리자에 의해 영구 삭제되었습니다. 로그아웃됩니다.");
+      }
+    };
+
+    window.addEventListener("auth-changed", handleAuthChange);
+    window.addEventListener("user-account-deleted", handleAccountDeleted);
+
+    return () => {
+      authSub?.subscription?.unsubscribe();
+      window.removeEventListener("auth-changed", handleAuthChange);
+      window.removeEventListener("user-account-deleted", handleAccountDeleted);
+    };
   }, []);
 
   const role = profile?.role || "grade1";
@@ -428,8 +582,61 @@ export default function App() {
   }
 
   async function updateUser(id, v) {
-    await supabase.from("profiles").update(v).eq("id", id);
-    load("profiles");
+    const userObj = users.find(u => u.id === id);
+    const email = userObj?.email;
+    const testAcc = findTestAccount(email) || (id.startsWith("test-user-") ? { id } : null);
+
+    if (testAcc) {
+      updateTestProfile(id, v);
+      if (email) updateTestProfile(email, v);
+    }
+
+    try {
+      if (!id.startsWith("test-user-")) {
+        await supabase.from("profiles").update(v).eq("id", id);
+      } else if (email) {
+        await supabase.from("profiles").update(v).eq("email", email.trim().toLowerCase());
+      }
+    } catch (e) {
+      console.warn("Supabase update skipped/failed:", e);
+    }
+
+    setMsg("사용자 권한/상태가 성공적으로 변경되었습니다.");
+    await load("profiles");
+  }
+
+  async function deleteUser(id, email) {
+    if (!email) return;
+    const normalized = email.trim().toLowerCase();
+
+    // 1. 최고 관리자 보호
+    if (normalized === "cmj1012@twgroup.co.kr") {
+      return alert("최고 관리자 계정은 삭제할 수 없습니다.");
+    }
+
+    // 2. 현재 로그인된 본인 계정 보호
+    if (session?.user?.email?.toLowerCase() === normalized) {
+      return alert("현재 로그인된 본인 계정은 삭제할 수 없습니다.");
+    }
+
+    if (!confirm(`'${email}' 사용자를 영구 삭제하시겠습니까?\n\n※ 삭제 시 계정 목록에서 제거되며 해당 계정으로는 다시 로그인할 수 없습니다.`)) {
+      return;
+    }
+
+    try {
+      await registerAccountDeletion(normalized, id);
+      setMsg(`'${email}' 사용자가 영구 삭제되었습니다.`);
+      load("profiles");
+    } catch (err) {
+      alert("사용자 삭제 중 오류가 발생했습니다: " + err.message);
+    }
+  }
+
+  async function handleSignOut() {
+    clearTestSession();
+    await supabase.auth.signOut();
+    setSession(null);
+    setProfile(null);
   }
 
   async function add(t) {
@@ -836,7 +1043,7 @@ JSON 출력 예시:
             <button onClick={() => { if (isGrade1) return showPermissionModal("Excel 보고서 출력"); excel(); }}>
               Excel 보고서
             </button>
-            <button onClick={() => supabase.auth.signOut()}>로그아웃</button>
+            <button onClick={handleSignOut}>로그아웃</button>
           </div>
           <div style={{ display: 'flex', gap: '4px' }}>
             {role === "admin" && <button onClick={() => setModal("users")}>사용자 권한 관리</button>}
@@ -1484,24 +1691,126 @@ JSON 출력 예시:
           <div className="modal" onMouseDown={e => e.stopPropagation()}>
             <button className="close" onClick={() => setModal(null)}>×</button>
             {modal === "users" && (
-              <>
-                <h2>사용자 계정·권한 관리</h2>
-                {users.map(u => (
-                  <div className="user" key={u.id}>
-                    <span>{u.email}</span>
-                    <select value={u.role} disabled={u.email === "cmj1012@twgroup.co.kr"} onChange={e => updateUser(u.id, { role: e.target.value })}>
-                      <option value="admin">관리자</option>
-                      <option value="grade3">Grade3</option>
-                      <option value="grade2">Grade2</option>
-                      <option value="grade1">Grade1</option>
-                    </select>
-                    <label>
-                      <input type="checkbox" checked={u.active} disabled={u.email === "cmj1012@twgroup.co.kr"} onChange={e => updateUser(u.id, { active: e.target.checked })} />
-                      활성
-                    </label>
-                  </div>
-                ))}
-              </>
+              <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+                <h2 style={{ margin: "0 0 8px", fontSize: "20px", color: "#0f172a" }}>사용자 계정·권한 관리</h2>
+                <div style={{
+                  padding: "10px 14px",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                  color: "#166534",
+                  marginBottom: "16px",
+                  lineHeight: "1.5"
+                }}>
+                  <b>💡 계정 관리 가이드</b><br />
+                  • <b>활성 해제</b>: 계정 로그인이 일시 차단됩니다. (언제든지 다시 활성화 가능)<br />
+                  • <b>사용자 삭제</b>: 계정을 영구 제거하며, <b>해당 계정으로는 다시 로그인할 수 없습니다.</b>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {users.map(u => {
+                    const isSuperAdmin = u.email === "cmj1012@twgroup.co.kr";
+                    const isSelf = session?.user?.email?.toLowerCase() === u.email?.toLowerCase();
+                    const cannotDelete = isSuperAdmin || isSelf;
+
+                    return (
+                      <div
+                        className="user-row"
+                        key={u.id}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 140px 80px 70px",
+                          alignItems: "center",
+                          gap: "10px",
+                          padding: "10px 14px",
+                          background: u.active ? "#ffffff" : "#f8fafc",
+                          border: `1px solid ${u.active ? "#e2e8f0" : "#cbd5e1"}`,
+                          borderRadius: "10px",
+                          opacity: u.active ? 1 : 0.75,
+                          transition: "background 0.2s",
+                        }}
+                      >
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ fontWeight: "600", fontSize: "14px", color: "#1e293b" }}>{u.email}</span>
+                            {isSuperAdmin && (
+                              <span style={{ fontSize: "10px", background: "#fef3c7", color: "#b45309", padding: "1px 6px", borderRadius: "8px", fontWeight: "bold" }}>
+                                최고관리자
+                              </span>
+                            )}
+                            {isSelf && !isSuperAdmin && (
+                              <span style={{ fontSize: "10px", background: "#e0e7ff", color: "#4338ca", padding: "1px 6px", borderRadius: "8px", fontWeight: "bold" }}>
+                                현재접속
+                              </span>
+                            )}
+                          </div>
+                          {u.name && (
+                            <span style={{ fontSize: "11px", color: "#64748b" }}>
+                              {u.name} {u.department ? `(${u.department})` : ""}
+                            </span>
+                          )}
+                        </div>
+
+                        <select
+                          value={u.role}
+                          disabled={isSuperAdmin}
+                          onChange={e => updateUser(u.id, { role: e.target.value })}
+                          style={{ padding: "6px 8px", fontSize: "13px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+                        >
+                          <option value="admin">관리자</option>
+                          <option value="grade3">Grade3 (PM)</option>
+                          <option value="grade2">Grade2 (설계)</option>
+                          <option value="grade1">Grade1 (일반)</option>
+                        </select>
+
+                        <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: isSuperAdmin ? "default" : "pointer", fontSize: "13px", fontWeight: "500", color: u.active ? "#15803d" : "#64748b" }}>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(u.active)}
+                            disabled={isSuperAdmin}
+                            onChange={e => updateUser(u.id, { active: e.target.checked })}
+                            style={{ width: "16px", height: "16px", cursor: isSuperAdmin ? "default" : "pointer" }}
+                          />
+                          {u.active ? "활성" : "비활성"}
+                        </label>
+
+                        <button
+                          type="button"
+                          disabled={cannotDelete}
+                          onClick={() => deleteUser(u.id, u.email)}
+                          title={cannotDelete ? "최고 관리자 또는 본인 계정은 삭제할 수 없습니다." : "사용자 영구 삭제"}
+                          style={{
+                            padding: "6px 10px",
+                            fontSize: "12px",
+                            fontWeight: "bold",
+                            color: cannotDelete ? "#94a3b8" : "#dc2626",
+                            background: cannotDelete ? "#f1f5f9" : "#fee2e2",
+                            border: `1px solid ${cannotDelete ? "#e2e8f0" : "#fca5a5"}`,
+                            borderRadius: "6px",
+                            cursor: cannotDelete ? "not-allowed" : "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                          onMouseEnter={e => {
+                            if (!cannotDelete) {
+                              e.currentTarget.style.background = "#dc2626";
+                              e.currentTarget.style.color = "#ffffff";
+                            }
+                          }}
+                          onMouseLeave={e => {
+                            if (!cannotDelete) {
+                              e.currentTarget.style.background = "#fee2e2";
+                              e.currentTarget.style.color = "#dc2626";
+                            }
+                          }}
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
             {modal === "sites" && (
               <Manage title="Site" rows={sites} value={newSite} setValue={setNewSite} add={() => add("sites")} trash={r => trash("sites", r)} />

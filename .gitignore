@@ -38,3 +38,5 @@ scratch/
 *.xls
 !public/*.xlsx
 !public/*.xls
+!*master-schedule-template.xlsx
+!*Master Schedule 양식.xlsx

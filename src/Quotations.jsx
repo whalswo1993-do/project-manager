@@ -21,17 +21,17 @@ export default function Quotations({ projects, session, role, onPermissionDenied
     
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearchFocused, setIsSearchFocused] = useState(false);
-    const [sortOrder, setSortOrder] = useState('recent'); // 'recent' or 'priceDesc'
+    const [sortOrder, setSortOrder] = useState('recent'); // 'recent', 'priceDesc', 'priceAsc', 'nameAsc'
     
-    const [filterCategory, setFilterCategory] = useState({
-        '가공품': true,
-        '구매품': true,
-        '용역/기타': true
-    });
+    // 다차원 연동 필터 상태 (공정, 프로젝트, 구분, 품목명, 유닛명)
+    const [filterProcess, setFilterProcess] = useState('전체'); // '전체' | 'Notching' | 'Stacking'
+    const [filterProject, setFilterProject] = useState('전체'); // '전체' | projectKey
+    const [filterCategory, setFilterCategory] = useState('전체'); // '전체' | '가공품' | '시장품' | '기타'
+    const [filterItemName, setFilterItemName] = useState('전체'); // '전체' | itemName
+    const [filterUnitName, setFilterUnitName] = useState('전체'); // '전체' | unitName
 
     const [msg, setMsg] = useState('');
     const [expandedProjects, setExpandedProjects] = useState({});
-    const [projectScopeFilter, setProjectScopeFilter] = useState("전체");
     
     const fileInputRef = useRef(null);
     const searchContainerRef = useRef(null);
@@ -324,8 +324,211 @@ export default function Quotations({ projects, session, role, onPermissionDenied
         }
     };
 
-    const handleCheckboxChange = (cat) => {
-        setFilterCategory(prev => ({ ...prev, [cat]: !prev[cat] }));
+    // 1. 모든 품목 데이터에 공정, 프로젝트, 정규화 구분 메타데이터 결합
+    const enrichedItems = useMemo(() => {
+        return quotationItems.map(item => {
+            const q = quotations.find(quot => quot.id === item.quotation_id);
+            let projectKey = "미지정 프로젝트";
+            let projectObj = null;
+            if (q) {
+                if (q.project_id) {
+                    projectObj = projects.find(p => p.id === q.project_id);
+                    if (projectObj) {
+                        projectKey = `${projectObj.manufacturing_no || ''} · ${projectObj.name || ''}`.replace(/^ ·\s*/, '');
+                    }
+                } else if (q.project_name) {
+                    projectKey = q.project_name;
+                }
+            }
+
+            // 공정 판별: Stacking(STK), Notching(NC)
+            const combinedText = [
+                projectKey,
+                projectObj?.name,
+                projectObj?.equipment,
+                projectObj?.line,
+                q?.title,
+                item.unit_name,
+                item.item_name
+            ].filter(Boolean).join(' ');
+
+            const isNC = /(?:notching|notcher|노칭|\bnc\b)/i.test(combinedText);
+            const isSTK = /(?:stacking|stacker|스택|스태킹|\bstk\b)/i.test(combinedText);
+
+            let processType = "기타";
+            if (isNC && !isSTK) processType = "Notching";
+            else if (isSTK && !isNC) processType = "Stacking";
+            else if (isNC && isSTK) processType = "Both";
+
+            // 구분 정규화: 가공품 / 시장품(구매품) / 기타
+            const rawCat = String(item.item_category || '').trim();
+            let normCategory = "기타";
+            if (/가공/i.test(rawCat)) normCategory = "가공품";
+            else if (/구매|시장|상용/i.test(rawCat)) normCategory = "시장품";
+            else normCategory = "기타";
+
+            return {
+                ...item,
+                projectKey,
+                quotationTitle: q?.title || '견적서',
+                processType,
+                normCategory,
+                unit_name: item.unit_name || '',
+                unit_price: Number(item.unit_price) || 0,
+                quantity: Number(item.quantity) || 1,
+                total_price: Number(item.total_price) || (Number(item.unit_price) || 0) * (Number(item.quantity) || 1)
+            };
+        });
+    }, [quotationItems, quotations, projects]);
+
+    // 2. [공정 필터]에 따른 유효 프로젝트 목록
+    const availableProjects = useMemo(() => {
+        const counts = {};
+        enrichedItems.forEach(item => {
+            if (filterProcess !== '전체') {
+                if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
+                if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
+            }
+            counts[item.projectKey] = (counts[item.projectKey] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [enrichedItems, filterProcess]);
+
+    // 3. [공정 + 프로젝트]에 따른 구분(가공품/시장품/기타) 건수
+    const availableCategories = useMemo(() => {
+        const counts = { '가공품': 0, '시장품': 0, '기타': 0 };
+        enrichedItems.forEach(item => {
+            if (filterProcess !== '전체') {
+                if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
+                if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
+            }
+            if (filterProject !== '전체' && item.projectKey !== filterProject) return;
+            if (counts[item.normCategory] !== undefined) counts[item.normCategory]++;
+            else counts['기타']++;
+        });
+        return counts;
+    }, [enrichedItems, filterProcess, filterProject]);
+
+    // 4. [공정 + 프로젝트 + 구분] 복합 조건에 따른 유효 품목 목록 (핵심 연동!)
+    const availableItemNames = useMemo(() => {
+        const itemMap = {};
+        enrichedItems.forEach(item => {
+            if (filterProcess !== '전체') {
+                if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
+                if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
+            }
+            if (filterProject !== '전체' && item.projectKey !== filterProject) return;
+            if (filterCategory !== '전체' && item.normCategory !== filterCategory) return;
+
+            if (!itemMap[item.item_name]) {
+                itemMap[item.item_name] = { count: 0, minPrice: item.unit_price, maxPrice: item.unit_price };
+            }
+            itemMap[item.item_name].count++;
+            itemMap[item.item_name].minPrice = Math.min(itemMap[item.item_name].minPrice, item.unit_price);
+            itemMap[item.item_name].maxPrice = Math.max(itemMap[item.item_name].maxPrice, item.unit_price);
+        });
+
+        return Object.entries(itemMap)
+            .map(([name, info]) => ({ name, ...info }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [enrichedItems, filterProcess, filterProject, filterCategory]);
+
+    // 5. [공정 + 프로젝트 + 구분 + 품목] 복합 조건에 따른 유효 유닛 목록
+    const availableUnitNames = useMemo(() => {
+        const unitSet = new Set();
+        enrichedItems.forEach(item => {
+            if (filterProcess !== '전체') {
+                if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
+                if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
+            }
+            if (filterProject !== '전체' && item.projectKey !== filterProject) return;
+            if (filterCategory !== '전체' && item.normCategory !== filterCategory) return;
+            if (filterItemName !== '전체' && item.item_name !== filterItemName) return;
+            if (searchQuery.trim() && !item.item_name.toLowerCase().includes(searchQuery.toLowerCase().trim())) return;
+
+            if (item.unit_name) unitSet.add(item.unit_name);
+        });
+        return [...unitSet].sort();
+    }, [enrichedItems, filterProcess, filterProject, filterCategory, filterItemName, searchQuery]);
+
+    // 필터 변경 시 종속 값 자동 정합화
+    useEffect(() => {
+        if (filterProject !== '전체' && !availableProjects.some(p => p.name === filterProject)) {
+            setFilterProject('전체');
+        }
+    }, [availableProjects, filterProject]);
+
+    useEffect(() => {
+        if (filterItemName !== '전체' && !availableItemNames.some(i => i.name === filterItemName)) {
+            setFilterItemName('전체');
+            setSearchQuery('');
+        }
+    }, [availableItemNames, filterItemName]);
+
+    useEffect(() => {
+        if (filterUnitName !== '전체' && !availableUnitNames.includes(filterUnitName)) {
+            setFilterUnitName('전체');
+        }
+    }, [availableUnitNames, filterUnitName]);
+
+    // 자동완성 추천 품목 (현재 조건의 availableItemNames 중에서만 검색!)
+    const suggestedItems = useMemo(() => {
+        if (!searchQuery.trim()) return [];
+        const q = searchQuery.toLowerCase().trim();
+        return availableItemNames.filter(item => item.name.toLowerCase().includes(q));
+    }, [availableItemNames, searchQuery]);
+
+    // 6. 최종 검색 결과 필터링
+    const filteredResults = useMemo(() => {
+        const list = enrichedItems.filter(item => {
+            if (filterProcess !== '전체') {
+                if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return false;
+                if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return false;
+            }
+            if (filterProject !== '전체' && item.projectKey !== filterProject) return false;
+            if (filterCategory !== '전체' && item.normCategory !== filterCategory) return false;
+            if (filterItemName !== '전체' && item.item_name !== filterItemName) return false;
+            if (filterUnitName !== '전체' && item.unit_name !== filterUnitName) return false;
+
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase().trim();
+                const matchName = item.item_name.toLowerCase().includes(q);
+                const matchUnit = item.unit_name && item.unit_name.toLowerCase().includes(q);
+                if (!matchName && !matchUnit) return false;
+            }
+
+            return true;
+        });
+
+        if (sortOrder === 'priceDesc') list.sort((a, b) => b.unit_price - a.unit_price);
+        else if (sortOrder === 'priceAsc') list.sort((a, b) => a.unit_price - b.unit_price);
+        else if (sortOrder === 'nameAsc') list.sort((a, b) => a.item_name.localeCompare(b.item_name));
+        else list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        return list;
+    }, [enrichedItems, filterProcess, filterProject, filterCategory, filterItemName, filterUnitName, searchQuery, sortOrder]);
+
+    // 단가 통계 계산
+    const { statMinPrice, statMaxPrice, statAvgPrice, statTotalPrice } = useMemo(() => {
+        if (filteredResults.length === 0) return { statMinPrice: 0, statMaxPrice: 0, statAvgPrice: 0, statTotalPrice: 0 };
+        const prices = filteredResults.map(i => i.unit_price);
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        const total = filteredResults.reduce((sum, i) => sum + i.total_price, 0);
+        const avg = Math.round(prices.reduce((sum, p) => sum + p, 0) / prices.length);
+        return { statMinPrice: min, statMaxPrice: max, statAvgPrice: avg, statTotalPrice: total };
+    }, [filteredResults]);
+
+    const handleResetFilters = () => {
+        setFilterProcess('전체');
+        setFilterProject('전체');
+        setFilterCategory('전체');
+        setFilterItemName('전체');
+        setFilterUnitName('전체');
+        setSearchQuery('');
+        setSortOrder('recent');
     };
 
     const groupedQuotations = {};
@@ -354,59 +557,10 @@ export default function Quotations({ projects, session, role, onPermissionDenied
         const qItems = quotationItems.filter(item => item.quotation_id === q.id);
         qItems.forEach(item => {
             if (item.item_category === '가공품') groupedQuotations[key].process_amount += Number(item.total_price);
-            else if (item.item_category === '구매품') groupedQuotations[key].purchase_amount += Number(item.total_price);
+            else if (item.item_category === '구매품' || item.item_category === '시장품') groupedQuotations[key].purchase_amount += Number(item.total_price);
             else groupedQuotations[key].other_amount += Number(item.total_price);
         });
     });
-
-    const itemToProjectKey = {};
-    Object.values(groupedQuotations).forEach(group => {
-        group.quotations.forEach(q => {
-            itemToProjectKey[q.id] = group.name;
-        });
-    });
-
-    const uniqueItemNames = [...new Set(quotationItems.map(item => item.item_name))].sort();
-    const suggestedItems = uniqueItemNames.filter(name => 
-        name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    let searchResults = quotationItems.filter(item => {
-        if (!searchQuery) return false;
-        
-        const matchName = item.item_name.toLowerCase() === searchQuery.toLowerCase() || 
-                          item.item_name.toLowerCase().includes(searchQuery.toLowerCase());
-        
-        let matchCategory = false;
-        if (item.item_category === '가공품' && filterCategory['가공품']) matchCategory = true;
-        if (item.item_category === '구매품' && filterCategory['구매품']) matchCategory = true;
-        if (item.item_category === '용역/기타' && filterCategory['용역/기타']) matchCategory = true;
-        
-        let matchScope = true;
-        if (projectScopeFilter !== "전체") {
-            const projectKey = itemToProjectKey[item.quotation_id] || "";
-            if (projectScopeFilter === "Notching") {
-                matchScope = projectKey.toLowerCase().includes("notching") || projectKey.toLowerCase().includes("노칭");
-            } else if (projectScopeFilter === "Stacking") {
-                matchScope = projectKey.toLowerCase().includes("stacking") || projectKey.toLowerCase().includes("스태킹");
-            } else {
-                matchScope = projectKey === projectScopeFilter;
-            }
-        }
-        
-        return matchName && matchCategory && matchScope;
-    });
-
-    if (sortOrder === 'priceDesc') {
-        searchResults.sort((a, b) => b.unit_price - a.unit_price);
-    } else {
-        searchResults.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    }
-
-    const selectSuggestion = (name) => {
-        setSearchQuery(name);
-        setIsSearchFocused(false);
-    };
 
     const toggleProject = (name) => {
         setExpandedProjects(prev => ({ ...prev, [name]: !prev[name] }));
@@ -512,96 +666,342 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                         </datalist>
                     </label>
                 </div>
-                
 
                 {msg && <p className="notice" style={{marginTop:'10px',fontWeight:'bold',color:'#059669'}}>{msg}</p>}
             </section>
 
+            {/* 품목별 단가 검색 및 다차원 연동 필터 섹션 */}
             <section>
-                <div className="filterbar" style={{ flexWrap: 'wrap', gap: '10px' }}>
-                    <h2>품목별 단가 검색</h2>
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginLeft: 'auto', flexWrap: 'nowrap' }}>
-                        <div className="category-checkboxes" style={{ flexWrap: 'nowrap' }}>
-                            <label><input type="checkbox" checked={filterCategory['가공품']} onChange={() => handleCheckboxChange('가공품')} /> 가공품</label>
-                            <label><input type="checkbox" checked={filterCategory['구매품']} onChange={() => handleCheckboxChange('구매품')} /> 구매품</label>
-                            <label><input type="checkbox" checked={filterCategory['용역/기타']} onChange={() => handleCheckboxChange('용역/기타')} /> 개발/이설/기타</label>
-                        </div>
-                        <select value={sortOrder} onChange={e => setSortOrder(e.target.value)} style={{maxWidth: '150px'}}>
-                            <option value="recent">최신순</option>
-                            <option value="priceDesc">단가 높은 순</option>
-                        </select>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
+                    <div>
+                        <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            품목별 견적 단가 조회 및 비교
+                        </h2>
+                        <span style={{ fontSize: '12px', color: '#64748b' }}>
+                            공정(NC/STK), 프로젝트, 구분(가공품/시장품/기타), 품목을 선택하면 조건에 맞는 품목들만 드롭다운에 실시간 연동되어 표출됩니다.
+                        </span>
                     </div>
-                    <div style={{ width: '100%', display: 'flex', marginTop: '5px' }}>
-                        <select 
-                            value={projectScopeFilter} 
-                            onChange={e => setProjectScopeFilter(e.target.value)}
-                            style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #d1d5da', outline: 'none', width: '250px', fontSize: '13px' }}
-                        >
-                            <option value="전체">모든 견적서에서 검색</option>
-                            <option value="Notching">Notching 관련 견적서만 검색</option>
-                            <option value="Stacking">Stacking 관련 견적서만 검색</option>
-                            <optgroup label="개별 프로젝트 견적">
-                                {Object.keys(groupedQuotations).map(key => (
-                                    <option key={key} value={key}>{key}</option>
+                    <button 
+                        onClick={handleResetFilters}
+                        style={{
+                            background: '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            fontSize: '12.5px',
+                            fontWeight: '600',
+                            color: '#475569',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                        }}
+                    >
+                        🔄 필터 초기화
+                    </button>
+                </div>
+
+                {/* 다차원 연동 필터 카드 */}
+                <div className="quote-filter-card">
+                    {/* 행 1: 공정 / 프로젝트 / 구분(가공품/시장품/기타) */}
+                    <div className="quote-filter-row">
+                        {/* 1. 공정 필터 */}
+                        <div className="quote-filter-group">
+                            <label className="quote-filter-label">
+                                ⚙️ 공정 선택 (Notching / Stacking)
+                            </label>
+                            <div className="quote-pill-group">
+                                <button 
+                                    type="button" 
+                                    className={`quote-pill-btn ${filterProcess === '전체' ? 'active' : ''}`}
+                                    onClick={() => setFilterProcess('전체')}
+                                >
+                                    전체 공정
+                                </button>
+                                <button 
+                                    type="button" 
+                                    className={`quote-pill-btn ${filterProcess === 'Notching' ? 'active-nc' : ''}`}
+                                    onClick={() => setFilterProcess('Notching')}
+                                >
+                                    ⚡ Notching (NC)
+                                </button>
+                                <button 
+                                    type="button" 
+                                    className={`quote-pill-btn ${filterProcess === 'Stacking' ? 'active-stk' : ''}`}
+                                    onClick={() => setFilterProcess('Stacking')}
+                                >
+                                    📦 Stacking (STK)
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 2. 프로젝트 필터 (공정에 맞춰 연동) */}
+                        <div className="quote-filter-group" style={{ flex: '1 1 240px' }}>
+                            <label className="quote-filter-label">
+                                📁 프로젝트 선택 ({availableProjects.length}개 프로젝트)
+                            </label>
+                            <select 
+                                className="quote-select"
+                                style={{ width: '100%' }}
+                                value={filterProject}
+                                onChange={e => setFilterProject(e.target.value)}
+                            >
+                                <option value="전체">모든 프로젝트 ({enrichedItems.length}건)</option>
+                                {availableProjects.map(p => (
+                                    <option key={p.name} value={p.name}>
+                                        {p.name} ({p.count}건)
+                                    </option>
                                 ))}
-                            </optgroup>
-                        </select>
+                            </select>
+                        </div>
+
+                        {/* 3. 품목 구분 필터 (가공품 / 시장품 / 기타) */}
+                        <div className="quote-filter-group">
+                            <label className="quote-filter-label">
+                                🏷️ 품목 구분
+                            </label>
+                            <div className="quote-pill-group">
+                                <button 
+                                    type="button"
+                                    className={`quote-pill-btn ${filterCategory === '전체' ? 'active' : ''}`}
+                                    onClick={() => setFilterCategory('전체')}
+                                >
+                                    전체
+                                </button>
+                                <button 
+                                    type="button"
+                                    className={`quote-pill-btn ${filterCategory === '가공품' ? 'active' : ''}`}
+                                    onClick={() => setFilterCategory('가공품')}
+                                >
+                                    🛠️ 가공품 ({availableCategories['가공품'] || 0})
+                                </button>
+                                <button 
+                                    type="button"
+                                    className={`quote-pill-btn ${filterCategory === '시장품' ? 'active' : ''}`}
+                                    onClick={() => setFilterCategory('시장품')}
+                                >
+                                    🛒 시장품 ({availableCategories['시장품'] || 0})
+                                </button>
+                                <button 
+                                    type="button"
+                                    className={`quote-pill-btn ${filterCategory === '기타' ? 'active' : ''}`}
+                                    onClick={() => setFilterCategory('기타')}
+                                >
+                                    ⚙️ 기타 ({availableCategories['기타'] || 0})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 행 2: 복합 조건 연동 품목 드롭다운 / 직접 검색창 / 유닛 드롭다운 / 정렬 */}
+                    <div className="quote-filter-row">
+                        {/* 4. 복합 연동 품목 드롭다운 */}
+                        <div className="quote-filter-group" style={{ flex: '1 1 240px' }}>
+                            <label className="quote-filter-label">
+                                🔍 품목 선택 (조건 만족: {availableItemNames.length}개 품목)
+                            </label>
+                            <select 
+                                className="quote-select"
+                                style={{ width: '100%' }}
+                                value={filterItemName}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    setFilterItemName(val);
+                                    if (val !== '전체') setSearchQuery(val);
+                                    else setSearchQuery('');
+                                }}
+                            >
+                                <option value="전체">
+                                    {filterProcess !== '전체' || filterProject !== '전체' || filterCategory !== '전체' 
+                                        ? `선택 조건 전체 품목 (${availableItemNames.length}개 품목)`
+                                        : `전체 품목 선택 (${availableItemNames.length}개 품목)`}
+                                </option>
+                                {availableItemNames.map(item => (
+                                    <option key={item.name} value={item.name}>
+                                        {item.name} ({item.count}건 · ₩{item.minPrice.toLocaleString()})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* 5. 직접 검색창 (실시간 타이핑 자동완성) */}
+                        <div className="quote-filter-group" style={{ flex: '1 1 200px', position: 'relative' }} ref={searchContainerRef}>
+                            <label className="quote-filter-label">
+                                ⌨️ 직접 검색
+                            </label>
+                            <input 
+                                type="text"
+                                placeholder="품목명 직접 입력..."
+                                value={searchQuery}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    setSearchQuery(val);
+                                    setIsSearchFocused(true);
+                                    const match = availableItemNames.find(i => i.name.toLowerCase() === val.toLowerCase());
+                                    if (match) setFilterItemName(match.name);
+                                    else if (!val) setFilterItemName('전체');
+                                }}
+                                onFocus={() => setIsSearchFocused(true)}
+                                style={{
+                                    padding: '7px 12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #cbd5e1',
+                                    fontSize: '13px',
+                                    outline: 'none',
+                                    width: '100%',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                            {isSearchFocused && suggestedItems.length > 0 && (
+                                <ul className="autocomplete-dropdown" style={{ top: '100%', left: 0, right: 0 }}>
+                                    {suggestedItems.slice(0, 50).map((item, idx) => (
+                                        <li key={idx} onMouseDown={() => {
+                                            setSearchQuery(item.name);
+                                            setFilterItemName(item.name);
+                                            setIsSearchFocused(false);
+                                        }}>
+                                            <span style={{ fontWeight: 600 }}>{item.name}</span>
+                                            <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '6px' }}>({item.count}건)</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+
+                        {/* 6. 유닛명 드롭다운 (선택 조건에 해당하는 유닛만) */}
+                        {availableUnitNames.length > 0 && (
+                            <div className="quote-filter-group" style={{ flex: '0 1 180px' }}>
+                                <label className="quote-filter-label">
+                                    🧩 유닛/파트
+                                </label>
+                                <select 
+                                    className="quote-select"
+                                    style={{ width: '100%' }}
+                                    value={filterUnitName}
+                                    onChange={e => setFilterUnitName(e.target.value)}
+                                >
+                                    <option value="전체">모든 유닛 ({availableUnitNames.length}개)</option>
+                                    {availableUnitNames.map(u => (
+                                        <option key={u} value={u}>{u}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        {/* 7. 정렬 */}
+                        <div className="quote-filter-group" style={{ flex: '0 0 140px' }}>
+                            <label className="quote-filter-label">
+                                ↕️ 정렬
+                            </label>
+                            <select 
+                                className="quote-select"
+                                style={{ width: '100%' }}
+                                value={sortOrder}
+                                onChange={e => setSortOrder(e.target.value)}
+                            >
+                                <option value="recent">최신순</option>
+                                <option value="priceDesc">단가 높은 순</option>
+                                <option value="priceAsc">단가 낮은 순</option>
+                                <option value="nameAsc">품목명 가나다순</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div className="search-bar" ref={searchContainerRef} style={{ position: 'relative', marginTop: '10px' }}>
-                    <input 
-                        type="text" 
-                        placeholder="품목명을 검색하세요 (예: 렌즈, 서버, 모터)"
-                        value={searchQuery}
-                        onChange={(e) => {
-                            setSearchQuery(e.target.value);
-                            setIsSearchFocused(true);
-                        }}
-                        onFocus={() => setIsSearchFocused(true)}
-                        style={{ width: '100%', fontSize: '15px' }}
-                    />
-                    
-                    {isSearchFocused && suggestedItems.length > 0 && (
-                        <ul className="autocomplete-dropdown">
-                            {suggestedItems.slice(0, 100).map((name, idx) => (
-                                <li key={idx} onMouseDown={() => selectSuggestion(name)}>
-                                    {name}
-                                </li>
-                            ))}
-                        </ul>
+
+                {/* 통계 요약 칩 바 */}
+                <div className="quote-stat-bar">
+                    <div className="quote-stat-chip highlight">
+                        <span>조회된 품목:</span> <b>{filteredResults.length}건</b>
+                    </div>
+                    {filteredResults.length > 0 && (
+                        <>
+                            <div className="quote-stat-chip">
+                                <span>최저 단가:</span> <b style={{ color: '#16a34a' }}>₩{statMinPrice.toLocaleString()}</b>
+                            </div>
+                            <div className="quote-stat-chip">
+                                <span>최고 단가:</span> <b style={{ color: '#dc2626' }}>₩{statMaxPrice.toLocaleString()}</b>
+                            </div>
+                            <div className="quote-stat-chip">
+                                <span>평균 단가:</span> <b style={{ color: '#2563eb' }}>₩{statAvgPrice.toLocaleString()}</b>
+                            </div>
+                            <div className="quote-stat-chip">
+                                <span>합계 금액:</span> <b>₩{statTotalPrice.toLocaleString()}</b>
+                            </div>
+                        </>
                     )}
                 </div>
 
-                {searchQuery && (
-                    <div style={{ marginTop: '15px', overflowX: 'auto' }}>
-                        <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th>구분</th>
-                                    <th>유닛명</th>
-                                    <th>품목명</th>
-                                    <th className="money-cell">단가 (₩)</th>
-                                    <th>등록일</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {searchResults.length > 0 ? (
-                                    searchResults.map(item => (
+                {/* 결과 테이블 */}
+                <div style={{ overflowX: 'auto', border: '1px solid #dce5ed', borderRadius: '8px' }}>
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th style={{ width: '80px', textAlign: 'center' }}>공정</th>
+                                <th style={{ width: '90px', textAlign: 'center' }}>구분</th>
+                                <th>프로젝트명</th>
+                                <th>유닛명</th>
+                                <th>품목명</th>
+                                <th style={{ width: '70px', textAlign: 'center' }}>수량</th>
+                                <th className="money-cell">단가 (₩)</th>
+                                <th className="money-cell">총액 (₩)</th>
+                                <th style={{ width: '95px', textAlign: 'center' }}>등록일</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredResults.length > 0 ? (
+                                filteredResults.map(item => {
+                                    const procBadgeClass = item.processType === 'Notching' ? 'nc' : item.processType === 'Stacking' ? 'stk' : item.processType === 'Both' ? 'both' : 'other';
+                                    const procBadgeText = item.processType === 'Notching' ? 'NC' : item.processType === 'Stacking' ? 'STK' : item.processType === 'Both' ? 'NC+STK' : '-';
+                                    const catClass = item.normCategory === '가공품' ? 'process' : item.normCategory === '시장품' ? 'purchase' : 'other';
+                                    
+                                    return (
                                         <tr key={item.id}>
-                                            <td><span className={`badge-category cat-${item.item_category === '가공품' ? 'process' : item.item_category === '구매품' ? 'purchase' : 'other'}`}>{item.item_category}</span></td>
-                                            <td>{item.unit_name || '-'}</td>
-                                            <td>{item.item_name}</td>
-                                            <td className="money-cell">{Number(item.unit_price).toLocaleString()}</td>
-                                            <td>{new Date(item.created_at).toLocaleDateString()}</td>
+                                            <td style={{ textAlign: 'center' }}>
+                                                <span className={`badge-process ${procBadgeClass}`}>
+                                                    {procBadgeText}
+                                                </span>
+                                            </td>
+                                            <td style={{ textAlign: 'center' }}>
+                                                <span className={`badge-category cat-${catClass}`}>
+                                                    {item.normCategory}
+                                                </span>
+                                            </td>
+                                            <td style={{ fontWeight: 600, color: '#1e293b' }}>
+                                                {item.projectKey}
+                                            </td>
+                                            <td style={{ color: item.unit_name ? '#334155' : '#94a3b8' }}>
+                                                {item.unit_name || '-'}
+                                            </td>
+                                            <td style={{ fontWeight: 600, color: '#0f172a' }}>
+                                                {item.item_name}
+                                            </td>
+                                            <td style={{ textAlign: 'center' }}>
+                                                {item.quantity}
+                                            </td>
+                                            <td className="money-cell" style={{ fontWeight: 700, color: '#1e40af' }}>
+                                                {item.unit_price.toLocaleString()}
+                                            </td>
+                                            <td className="money-cell">
+                                                {item.total_price.toLocaleString()}
+                                            </td>
+                                            <td style={{ color: '#64748b', fontSize: '12px', textAlign: 'center' }}>
+                                                {new Date(item.created_at).toLocaleDateString()}
+                                            </td>
                                         </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="5" style={{ textAlign: 'center', color: '#57606a', padding: '20px' }}>검색 결과가 없습니다. 체크박스 필터를 확인해주세요.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                    );
+                                })
+                            ) : (
+                                <tr>
+                                    <td colSpan="9" style={{ textAlign: 'center', color: '#64748b', padding: '36px 20px' }}>
+                                        <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔍</div>
+                                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>선택하신 조건에 해당하는 견적 품목이 없습니다.</div>
+                                        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>공정, 프로젝트 또는 구분 조건을 변경하거나 초기화해 보세요.</div>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <section>

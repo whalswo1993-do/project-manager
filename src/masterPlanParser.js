@@ -584,9 +584,8 @@ export function parseExcelMasterPlan(wb, context = {}) {
     }
   }
 
-  const singleMfg = (mfgMatches && mfgMatches.length === 1) ? mfgMatches[0].toUpperCase() : "";
   let currentLine = titleLines[0] || context.formLine || "";
-  let currentMfgNo = singleMfg || context.formMfg || "";
+  let currentMfgNo = context.formMfg || "";
   let currentProject = null;
   let inManpowerSection = false;
   let inGrandTotalSection = false;
@@ -737,7 +736,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
       mpTotalCol = -1;
       mpPeakCol = -1;
       const lineLabel = currentLine ? (currentLine.toLowerCase().includes('line') ? currentLine : `${currentLine}Line`) : (context.formLine || "");
-      const mfgNo = currentMfgNo || lineMfgMap[currentLine] || context.formMfg || "";
+      const mfgNo = context.formMfg || "";
       const projName = normalizeJVName([clientPrefix, lineLabel, effectiveEqStr].filter(Boolean).join(" - ").replace(" -  - ", " - "));
 
       currentProject = {
@@ -759,7 +758,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
       projects.push(currentProject);
     } else if (!currentProject && isDateRow) {
       const lineLabel = currentLine ? (currentLine.toLowerCase().includes('line') ? currentLine : `${currentLine}Line`) : (context.formLine || "");
-      const mfgNo = currentMfgNo || context.formMfg || "";
+      const mfgNo = context.formMfg || "";
       const fallbackEq = context.editingProjectName || context.formName || "Main Equipment";
       const projName = normalizeJVName([clientPrefix, lineLabel, fallbackEq].filter(Boolean).join(" - ").replace(" -  - ", " - "));
       currentProject = {

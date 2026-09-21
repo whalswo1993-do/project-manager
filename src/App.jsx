@@ -119,7 +119,7 @@ const to = p => {
 
   return {
     id: p.id,
-    manufacturing_no: normalizeJVName((p.manufacturingNo || "").trim()),
+    manufacturing_no: normalizeJVName((p.manufacturingNo || "").trim()) || null,
     site: normalizeJVName(p.site),
     line: normalizeJVName((p.line || "").trim()),
     name: normalizeJVName((p.name || "").trim()),
@@ -1538,9 +1538,11 @@ JSON 출력 예시:
                       {ganttExpanded[p.id] ? "▾" : "▸"}
                     </button>
                     <div className="glabel">
-                      <b style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
-                        {p.manufacturingNo?.replace(/-[a-f0-9]{4}$/i, '')}
-                      </b>
+                      {p.manufacturingNo ? (
+                        <b style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
+                          {p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')}
+                        </b>
+                      ) : null}
                       <b style={{ marginTop: '1px', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
                         {p.name}
                       </b>
@@ -1663,9 +1665,9 @@ JSON 출력 예시:
                             starts: p.startDate >= weekStart && p.startDate <= weekEnd ? [p] : [],
                             ends: p.endDate >= weekStart && p.endDate <= weekEnd ? [p] : []
                           })}
-                          title={`${p.manufacturingNo?.replace(/-[a-f0-9]{4}$/i, '')} · ${p.name} · ${p.startDate}~${p.endDate}`}
+                          title={`${p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}${p.name} · ${p.startDate}~${p.endDate}`}
                         >
-                          <span>{p.manufacturingNo?.replace(/-[a-f0-9]{4}$/i, '')} · {p.name}</span>
+                          <span>{p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}</span>
                         </button>
                       ))}
                     </div>
@@ -1702,7 +1704,7 @@ JSON 출력 예시:
                 <div>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <input type="checkbox" checked={selectedProjects.has(p.id)} onChange={() => toggleSelect(p.id)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
-                    {p.manufacturingNo?.replace(/-[a-f0-9]{4}$/i, '')} · {p.name}
+                    {p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}
                   </h3>
                   <p>
                     {p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} &nbsp;|&nbsp; PM {p.pm || "-"} · 설계 {p.design || "-"} · 설비 {p.facilityTechnology || "-"} · 제어 {p.control || "-"} · 비전 {p.vision || "-"} &nbsp;|&nbsp; {p.startDate} ~ {p.endDate} · <b style={{ color: p.isManualStatus ? (p.status === "PO대기중" ? '#dc2626' : '#d97706') : 'inherit' }}>{p.status}</b>
@@ -1769,7 +1771,7 @@ JSON 출력 예시:
                 {selectedDay.active.map(p => (
                   <div className="dayevent" key={p.id}>
                     <i style={{ background: p.projectColor }} />
-                    <b>{p.manufacturingNo?.replace(/-[a-f0-9]{4}$/i, '')} · {p.name}</b>
+                    <b>{p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}</b>
                     <span>{p.site} · {p.line || "Line 미입력"}</span>
                     <span>{p.startDate} ~ {p.endDate}</span>
                   </div>

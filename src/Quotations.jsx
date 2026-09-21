@@ -525,7 +525,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
         let key = "미지정 프로젝트";
         if (q.project_id) {
             const p = projects.find(proj => proj.id === q.project_id);
-            if (p) key = `${p.manufacturing_no} · ${p.name}`;
+            if (p) key = p.manufacturing_no ? `${p.manufacturing_no} · ${p.name}` : p.name;
         } else if (q.project_name) {
             key = q.project_name;
         }
@@ -650,7 +650,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                         />
                         <datalist id="project-list">
                             {projects.map(p => (
-                                <option key={p.id} value={p.name}>{p.manufacturing_no} · {p.name}</option>
+                                <option key={p.id} value={p.name}>{p.manufacturing_no ? `${p.manufacturing_no} · ` : ''}{p.name}</option>
                             ))}
                         </datalist>
                     </label>

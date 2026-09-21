@@ -268,7 +268,7 @@ ${allText.substring(0, 30000)}
             reports.forEach(r => {
                 const p = projects.find(x => x.id === r.project_id);
                 if (!p) return;
-                const pName = `${p.manufacturingNo} ${p.name}`;
+                const pName = p.manufacturingNo ? `${p.manufacturingNo} ${p.name}` : p.name;
                 if (!grouped[pName]) grouped[pName] = [];
                 // Use structured data for PPT gen
                 const details = `작업내용: ${r.work_details || ''}\n특이/이슈사항: ${r.special_notes || r.issues || ''}\n투입인원: ${r.personnel_count || 0}명`;
@@ -424,7 +424,7 @@ ${compiledText.substring(0, 30000)}
                             <select className="project-select" value={selectedProject} onChange={(e) => setSelectedProject(e.target.value)} style={{marginBottom: '0.5rem'}}>
                                 <option value="">프로젝트를 선택하세요</option>
                                 {projectOptions.map(p => (
-                                    <option key={p.id} value={p.id}>{p.manufacturingNo} · {p.name}</option>
+                                    <option key={p.id} value={p.id}>{p.manufacturingNo ? `${p.manufacturingNo} · ` : ''}{p.name}</option>
                                 ))}
                             </select>
                         </div>

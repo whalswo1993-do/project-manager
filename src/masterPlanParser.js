@@ -26,61 +26,65 @@ export function excelDateToISO(serial, defaultYear) {
   if (!serial && serial !== 0) return "";
   if (serial instanceof Date) return serial.toISOString().slice(0, 10);
 
-  const numVal = Number(serial);
-  if (!isNaN(numVal) && typeof serial !== "boolean" && numVal > 20000 && numVal < 80000) {
-    const u = Math.floor(numVal - 25569);
-    return new Date(u * 86400 * 1000).toISOString().slice(0, 10);
+  const str = String(serial).trim();
+  const numVal = Number(str);
+  if (!isNaN(numVal) && typeof serial !== "boolean") {
+    if (numVal >= 25000 && numVal < 80000) {
+      const u = Math.floor(numVal - 25569);
+      return new Date(u * 86400 * 1000).toISOString().slice(0, 10);
+    }
+    return "";
   }
 
-  if (typeof serial === "string") {
-    let s = serial.replace(/[\r\n]+/g, '').trim();
-    s = s.replace(/\s*\([월화수목금토일MonTueWedThuFriSatSun]\)/gi, '');
-    s = s.replace(/^[([<{'"\s]+|[)\]}>'"\s]+$/g, '').trim();
-    s = s.replace(/\.+$/, '').trim();
+  let s = str.replace(/[\r\n]+/g, '').trim();
+  s = s.replace(/\s*\([월화수목금토일MonTueWedThuFriSatSun]\)/gi, '');
+  s = s.replace(/^[([<{'"\s]+|[)\]}>'"\s]+$/g, '').trim();
+  s = s.replace(/\.+$/, '').trim();
 
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
-    const yr = defaultYear || new Date().getFullYear();
-    let m = s.match(/^(\d{4})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);
-    if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  const yr = defaultYear || new Date().getFullYear();
+  let m = s.match(/^(\d{4})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
 
-    m = s.match(/^(\d{2})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);
-    if (m && parseInt(m[1], 10) >= 20 && parseInt(m[1], 10) <= 40) {
-      return `20${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
-    }
+  m = s.match(/^(\d{2})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);
+  if (m && parseInt(m[1], 10) >= 20 && parseInt(m[1], 10) <= 40) {
+    return `20${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  }
 
-    m = s.match(/^(\d{1,2})[-/ ](\d{1,2})[-/ ](\d{2,4})$/);
-    if (m && parseInt(m[1], 10) <= 12 && parseInt(m[2], 10) <= 31) {
-      let yStr = m[3].length === 2 ? '20' + m[3] : m[3];
-      return `${yStr}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
-    }
+  m = s.match(/^(\d{1,2})[-/ ](\d{1,2})[-/ ](\d{2,4})$/);
+  if (m && parseInt(m[1], 10) <= 12 && parseInt(m[2], 10) <= 31) {
+    let yStr = m[3].length === 2 ? '20' + m[3] : m[3];
+    return `${yStr}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+  }
 
-    const dMatch = s.match(/^(\d{1,2})[-/ ]([a-zA-Z]{3,})(?:[-/ ](\d{2,4}))?$/);
-    if (dMatch) {
-      const day = dMatch[1].padStart(2, '0');
-      const monStr = dMatch[2].slice(0, 3).toLowerCase();
-      const mon = monthsMap[monStr];
-      let yStr = dMatch[3] ? (dMatch[3].length === 2 ? '20' + dMatch[3] : dMatch[3]) : String(yr);
-      if (mon) return `${yStr}-${mon}-${day}`;
-    }
+  const dMatch = s.match(/^(\d{1,2})[-/ ]([a-zA-Z]{3,})(?:[-/ ](\d{2,4}))?$/);
+  if (dMatch) {
+    const day = dMatch[1].padStart(2, '0');
+    const monStr = dMatch[2].slice(0, 3).toLowerCase();
+    const mon = monthsMap[monStr];
+    let yStr = dMatch[3] ? (dMatch[3].length === 2 ? '20' + dMatch[3] : dMatch[3]) : String(yr);
+    if (mon) return `${yStr}-${mon}-${day}`;
+  }
 
-    const engRev = s.match(/^([a-zA-Z]{3,})[-/ ](\d{1,2})(?:[-/ ](\d{2,4}))?$/);
-    if (engRev) {
-      const monStr = engRev[1].slice(0, 3).toLowerCase();
-      const mon = monthsMap[monStr];
-      const day = engRev[2].padStart(2, '0');
-      let yStr = engRev[3] ? (engRev[3].length === 2 ? '20' + engRev[3] : engRev[3]) : String(yr);
-      if (mon) return `${yStr}-${mon}-${day}`;
-    }
+  const engRev = s.match(/^([a-zA-Z]{3,})[-/ ](\d{1,2})(?:[-/ ](\d{2,4}))?$/);
+  if (engRev) {
+    const monStr = engRev[1].slice(0, 3).toLowerCase();
+    const mon = monthsMap[monStr];
+    const day = engRev[2].padStart(2, '0');
+    let yStr = engRev[3] ? (engRev[3].length === 2 ? '20' + engRev[3] : engRev[3]) : String(yr);
+    if (mon) return `${yStr}-${mon}-${day}`;
+  }
 
-    const koFull = s.match(/^(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일?$/);
-    if (koFull) return `${koFull[1]}-${koFull[2].padStart(2, '0')}-${koFull[3].padStart(2, '0')}`;
+  const koFull = s.match(/^(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일?$/);
+  if (koFull) return `${koFull[1]}-${koFull[2].padStart(2, '0')}-${koFull[3].padStart(2, '0')}`;
 
-    const koMatch = s.match(/^(\d{1,2})[-./월]\s*(\d{1,2})일?$/);
-    if (koMatch && parseInt(koMatch[1], 10) >= 1 && parseInt(koMatch[1], 10) <= 12 && parseInt(koMatch[2], 10) >= 1 && parseInt(koMatch[2], 10) <= 31) {
-      return `${yr}-${koMatch[1].padStart(2, '0')}-${koMatch[2].padStart(2, '0')}`;
-    }
+  const koMatch = s.match(/^(\d{1,2})[-./월]\s*(\d{1,2})일?$/);
+  if (koMatch && parseInt(koMatch[1], 10) >= 1 && parseInt(koMatch[1], 10) <= 12 && parseInt(koMatch[2], 10) >= 1 && parseInt(koMatch[2], 10) <= 31) {
+    return `${yr}-${koMatch[1].padStart(2, '0')}-${koMatch[2].padStart(2, '0')}`;
+  }
 
+  if (/[-./]/.test(s)) {
     const d = new Date(s);
     if (!isNaN(d.getTime())) {
       const y = d.getFullYear();
@@ -383,57 +387,122 @@ export function parseExcelMasterPlan(wb, context = {}) {
     }
   }
 
-  if (headerRowIdx === -1) {
-    for (let r = 0; r < Math.min(25, rows.length); r++) {
-      const row = rows[r] || [];
-      const rowStr = row.map(x => String(x || "").trim().toLowerCase()).join(" ");
-      if ((rowStr.includes("activity") || rowStr.includes("공정") || rowStr.includes("작업") || rowStr.includes("task")) &&
-          (rowStr.includes("start") || rowStr.includes("end") || rowStr.includes("시작") || rowStr.includes("종료") || rowStr.includes("equipment") || rowStr.includes("설비") || rowStr.includes("장비"))) {
-        headerRowIdx = r; break;
-      }
+  for (let r = 0; r < Math.min(25, rows.length); r++) {
+    const row = rows[r] || [];
+    const rowStr = row.map(x => String(x || "").trim().toLowerCase()).join(" ");
+    if ((rowStr.includes("activity") || rowStr.includes("공정") || rowStr.includes("작업") || rowStr.includes("task")) &&
+        (rowStr.includes("start") || rowStr.includes("end") || rowStr.includes("시작") || rowStr.includes("종료") || rowStr.includes("equipment") || rowStr.includes("설비") || rowStr.includes("장비"))) {
+      headerRowIdx = r; break;
     }
   }
-  if (headerRowIdx === -1) {
-    for (let r = 0; r < Math.min(15, rows.length); r++) {
-      const row = rows[r] || [];
-      const rowStr = row.map(x => String(x || "").trim().toLowerCase()).join(" ");
-      if (rowStr.includes("equipment") || rowStr.includes("설비") || rowStr.includes("장비") || rowStr.includes("activity") || rowStr.includes("공정")) {
-        headerRowIdx = r; break;
-      }
-    }
-  }
-  if (headerRowIdx === -1) headerRowIdx = 0;
 
-  const headerRow = rows[headerRowIdx] || [];
-  headerRow.forEach((h, colIdx) => {
-    const colName = String(h || "").trim().toLowerCase();
-    if (/activity|작업|공정|task|내용|항목|업무|마일스톤|milestone/i.test(colName)) {
-      if (colMap.activity === undefined) colMap.activity = colIdx;
-    } else if (/equipment|설비|장비|호기|machine/i.test(colName)) {
-      if (colMap.equipment === undefined) colMap.equipment = colIdx;
-    } else if (/^구분$/i.test(colName)) {
-      if (colMap.equipment === undefined) colMap.equipment = colIdx;
-    } else if (/^line|라인/i.test(colName)) {
-      if (colMap.line === undefined) colMap.line = colIdx;
-    } else if (/^(item|no|순번|번호|id)$/i.test(colName)) {
-      if (colMap.item === undefined) colMap.item = colIdx;
-    } else if (/start|시작|착수|착공|to\b/i.test(colName)) {
-      if (colMap.start === undefined) colMap.start = colIdx;
-    } else if (/end|종료|완료|완공|마감/i.test(colName)) {
-      if (colMap.end === undefined) colMap.end = colIdx;
-    } else if (/duration|기간|일수|days/i.test(colName)) {
-      if (colMap.duration === undefined) colMap.duration = colIdx;
+  if (headerRowIdx !== -1) {
+    const headerRow = rows[headerRowIdx] || [];
+    headerRow.forEach((h, colIdx) => {
+      const colName = String(h || "").trim().toLowerCase();
+      if (/activity|작업|공정|task|내용|항목|업무|마일스톤|milestone/i.test(colName)) {
+        if (colMap.activity === undefined) colMap.activity = colIdx;
+      } else if (/equipment|설비|장비|호기|machine/i.test(colName)) {
+        if (colMap.equipment === undefined) colMap.equipment = colIdx;
+      } else if (/^구분$/i.test(colName)) {
+        if (colMap.equipment === undefined) colMap.equipment = colIdx;
+      } else if (/^line|라인/i.test(colName)) {
+        if (colMap.line === undefined) colMap.line = colIdx;
+      } else if (/^(item|no|순번|번호|id)$/i.test(colName)) {
+        if (colMap.item === undefined) colMap.item = colIdx;
+      } else if (/start|시작|착수|착공|to\b/i.test(colName)) {
+        if (colMap.start === undefined) colMap.start = colIdx;
+      } else if (/end|종료|완료|완공|마감/i.test(colName)) {
+        if (colMap.end === undefined) colMap.end = colIdx;
+      } else if (/duration|기간|일수|days/i.test(colName)) {
+        if (colMap.duration === undefined) colMap.duration = colIdx;
+      }
+    });
+  }
+
+  const refYear = baseStartDate ? parseInt(baseStartDate.slice(0, 4), 10) : new Date().getFullYear();
+  if (colMap.start === undefined || colMap.end === undefined || colMap.activity === undefined) {
+    const colStats = {};
+    for (let r = 0; r < Math.min(60, rows.length); r++) {
+      const row = rows[r] || [];
+      for (let c = 0; c < Math.min(20, row.length); c++) {
+        if (!colStats[c]) colStats[c] = { dates: 0, texts: 0, nums: 0, lines: 0, eqs: 0 };
+        const val = row[c];
+        if (val === undefined || val === null || val === '') continue;
+        const str = String(val).trim();
+        const iso = excelDateToISO(val, refYear);
+        if (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+          colStats[c].dates++;
+        } else if (typeof val === 'number' || /^\d+$/.test(str)) {
+          colStats[c].nums++;
+          if (parseInt(str, 10) >= 1 && parseInt(str, 10) <= 20) colStats[c].lines++;
+        } else {
+          colStats[c].texts++;
+          if (/notcher|stacker|노칭|스택|호기/i.test(str)) colStats[c].eqs++;
+        }
+      }
     }
-  });
+
+    let bestStart = -1, bestEnd = -1, maxDateCount = 0;
+    const colIndices = Object.keys(colStats).map(Number).sort((a, b) => a - b);
+    for (let i = 0; i < colIndices.length - 1; i++) {
+      const c1 = colIndices[i];
+      const c2 = colIndices[i + 1];
+      const d1 = colStats[c1]?.dates || 0;
+      const d2 = colStats[c2]?.dates || 0;
+      if (d1 >= 2 && d2 >= 2 && (d1 + d2) > maxDateCount) {
+        maxDateCount = d1 + d2;
+        bestStart = c1;
+        bestEnd = c2;
+      }
+    }
+
+    if (bestStart !== -1 && bestEnd !== -1) {
+      if (colMap.start === undefined) colMap.start = bestStart;
+      if (colMap.end === undefined) colMap.end = bestEnd;
+      if (colMap.duration === undefined && colStats[bestEnd + 1]?.nums >= 2) {
+        colMap.duration = bestEnd + 1;
+      }
+    }
+
+    if (colMap.activity === undefined) {
+      let cand = -1;
+      const limit = colMap.start !== undefined ? colMap.start : 4;
+      for (let c = limit - 1; c >= 0; c--) {
+        if ((colStats[c]?.texts || 0) >= 2) {
+          cand = c; break;
+        }
+      }
+      colMap.activity = cand !== -1 ? cand : 2;
+    }
+
+    if (colMap.equipment === undefined) {
+      let cand = -1;
+      for (let c = 0; c < colMap.activity; c++) {
+        if ((colStats[c]?.eqs || 0) > 0 || ((colStats[c]?.texts || 0) >= 1 && c !== colMap.activity)) {
+          cand = c; break;
+        }
+      }
+      colMap.equipment = cand !== -1 ? cand : Math.max(0, colMap.activity - 1);
+    }
+
+    if (colMap.line === undefined) {
+      for (let c = 0; c < colMap.equipment; c++) {
+        if ((colStats[c]?.lines || 0) >= 1) {
+          colMap.line = c; break;
+        }
+      }
+    }
+  }
 
   if (colMap.item === undefined) colMap.item = 0;
   if (colMap.equipment === undefined) colMap.equipment = 1;
   if (colMap.activity === undefined) colMap.activity = 2;
-  if (colMap.start === undefined) colMap.start = 3;
-  if (colMap.end === undefined) colMap.end = 4;
+  if (colMap.start === undefined) colMap.start = 5;
+  if (colMap.end === undefined) colMap.end = 6;
+  if (colMap.duration === undefined) colMap.duration = 7;
 
-  const refYear = baseStartDate ? parseInt(baseStartDate.slice(0, 4), 10) : new Date().getFullYear();
-  const mappedCols = new Set(Object.values(colMap));
+  // 4. Date headers detection across top rows (Must have at least 5 consecutive dates)
   const dateCols = [];
   let bestDateCols = [];
   for (let r = 0; r < Math.min(30, rows.length); r++) {
@@ -452,31 +521,21 @@ export function parseExcelMasterPlan(wb, context = {}) {
         curDates.push({ colIdx: c, dateStr: iso });
       }
     }
-    if (curDates.length > bestDateCols.length) {
+    if (curDates.length >= 5 && curDates.length > bestDateCols.length) {
       bestDateCols = curDates;
     }
   }
 
-  // Align date header column positions with data row column positions.
-  // In many Excel layouts, the date headers start at one column (e.g. col 6)
-  // but the manpower daily data starts at a different column (e.g. col 7, after the Peak column).
-  // This shift ensures the date-to-column mapping matches where the actual numbers are.
   if (bestDateCols.length >= 2) {
     bestDateCols.sort((a, b) => a.colIdx - b.colIdx);
-    
     const extrapolated = [];
     for (let i = 0; i < bestDateCols.length; i++) {
       const cur = bestDateCols[i];
       extrapolated.push(cur);
-      
       if (i < bestDateCols.length - 1) {
         const next = bestDateCols[i + 1];
         const curDate = new Date(cur.dateStr);
-        const nextDate = new Date(next.dateStr);
         const diffCols = next.colIdx - cur.colIdx;
-        
-
-        // Always assume 1 column = 1 sequential day, up to diffCols
         if (diffCols > 1) {
           for (let d = 1; d < diffCols; d++) {
             const tempDate = new Date(curDate);
@@ -489,33 +548,40 @@ export function parseExcelMasterPlan(wb, context = {}) {
         }
       }
     }
-    
-    // Do NOT extrapolate backward before the first detected date header.
-    // Columns before the first date are structural (Line, Equipment, Total, Peak etc.)
-    // and their numeric values must never be treated as daily manpower.
-
     const lastDate = new Date(bestDateCols[bestDateCols.length - 1].dateStr);
     const lastCol = bestDateCols[bestDateCols.length - 1].colIdx;
-    
-    // Remove maxCol limitation and just interpolate far enough to catch all possible trailing numbers
-    for (let d = 1; d <= 200; d++) {
-      const c = lastCol + d;
+    for (let d = 1; d <= 250; d++) {
       const tempDate = new Date(lastDate);
       tempDate.setDate(tempDate.getDate() + d);
       extrapolated.push({
-        colIdx: c,
+        colIdx: lastCol + d,
         dateStr: tempDate.toISOString().slice(0, 10)
       });
     }
-
-
     extrapolated.forEach(d => {
       if (!dateCols.find(x => x.colIdx === d.colIdx)) dateCols.push(d);
     });
-  } else if (bestDateCols.length === 1) {
-    bestDateCols.forEach(d => {
-      if (!dateCols.find(x => x.colIdx === d.colIdx)) dateCols.push(d);
-    });
+  } else {
+    let firstMsDate = "";
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r] || [];
+      const sRaw = row[colMap.start];
+      const sIso = excelDateToISO(sRaw, refYear);
+      if (sIso && (!firstMsDate || sIso < firstMsDate)) {
+        firstMsDate = sIso;
+      }
+    }
+    const baseDateStr = baseStartDate || firstMsDate || context.formStartDate || new Date().toISOString().slice(0, 10);
+    const calStart = (colMap.duration !== undefined ? colMap.duration + 1 : 8);
+    const startDateObj = new Date(baseDateStr);
+    for (let d = 0; d <= 300; d++) {
+      const tempDate = new Date(startDateObj);
+      tempDate.setDate(tempDate.getDate() + d);
+      dateCols.push({
+        colIdx: calStart + d,
+        dateStr: tempDate.toISOString().slice(0, 10)
+      });
+    }
   }
 
   const singleMfg = (mfgMatches && mfgMatches.length === 1) ? mfgMatches[0].toUpperCase() : "";
@@ -529,7 +595,9 @@ export function parseExcelMasterPlan(wb, context = {}) {
   let mpPeakCol = -1;
   const projects = [];
 
-  for (let r = headerRowIdx + 1; r < rows.length; r++) {
+  const startLoopRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
+
+  for (let r = startLoopRow; r < rows.length; r++) {
     const row = rows[r];
     if (!row || !row.length) continue;
     const rowInfo = sheet['!rows'] ? sheet['!rows'][r] : null;
@@ -542,14 +610,12 @@ export function parseExcelMasterPlan(wb, context = {}) {
     }
     if (inGrandTotalSection) continue;
 
-    // Detect manpower section start (even in hidden rows), but exclude "Total Manday" data rows
     const looksLikeTotalDataRow = row.some(x => /^(total\s*manday|총\s*공수|합계)$/i.test(String(x || '').trim())) &&
        row.some(x => { const v = Number(x); return !isNaN(v) && v > 10; });
     if (!looksLikeTotalDataRow && (
        /manpower|인력|인원|공수|m\/d/i.test(rawJoined) ||
        (row.some(x => String(x || '').toLowerCase() === 'personnel') && row.some(x => /total/i.test(String(x || '')))))) {
       inManpowerSection = true;
-      // Also detect Personnel/Total/Peak column positions on this row
       row.forEach((cell, idx) => {
         const str = String(cell || '').trim().toLowerCase();
         if (/personnel|구분|직종|부서/i.test(str)) mpDeptCol = idx;
@@ -602,14 +668,12 @@ export function parseExcelMasterPlan(wb, context = {}) {
     const mStart = excelDateToISO(sRaw, refYear);
     const mEnd = excelDateToISO(eRaw, refYear);
     const isDateRow = Boolean(mStart && mEnd);
-
     const durRaw = colMap.duration !== undefined ? row[colMap.duration] : row[7];
 
     if (isDateRow) {
       inManpowerSection = false;
     }
 
-    // Exclude "Total Manday" data rows from being treated as manpower headers
     const looksLikeTotalRow2 = row.some(x => /^(total\s*manday|총\s*공수|합계)$/i.test(String(x || '').trim()));
     const isManpowerHeader = !looksLikeTotalRow2 && (
        /manpower|인력|인원|공수|m\/d/i.test(combinedLineStr) ||
@@ -663,13 +727,35 @@ export function parseExcelMasterPlan(wb, context = {}) {
       mpDeptCol = -1;
       mpTotalCol = -1;
       mpPeakCol = -1;
-      const lineLabel = currentLine ? `${currentLine}Line` : "";
+      const lineLabel = currentLine ? (currentLine.toLowerCase().includes('line') ? currentLine : `${currentLine}Line`) : (context.formLine || "");
       const mfgNo = currentMfgNo || lineMfgMap[currentLine] || context.formMfg || "";
       const projName = normalizeJVName([clientPrefix, lineLabel, effectiveEqStr].filter(Boolean).join(" - ").replace(" -  - ", " - "));
 
       currentProject = {
         projectName: projName,
         equipment: effectiveEqStr,
+        site: clientPrefix || context.formSite || "",
+        startDate: baseStartDate,
+        endDate: "",
+        manufacturingNo: normalizeJVName(mfgNo),
+        line: normalizeJVName(lineLabel || currentLine),
+        _lineNum: currentLine,
+        milestones: [],
+        _deptMap: {},
+        _dailyTotalMap: {},
+        _totalMandayVal: 0,
+        _dailyPeakVal: 0,
+        sheetName: targetName
+      };
+      projects.push(currentProject);
+    } else if (!currentProject && isDateRow) {
+      const lineLabel = currentLine ? (currentLine.toLowerCase().includes('line') ? currentLine : `${currentLine}Line`) : (context.formLine || "");
+      const mfgNo = currentMfgNo || context.formMfg || "";
+      const fallbackEq = context.editingProjectName || context.formName || "Main Equipment";
+      const projName = normalizeJVName([clientPrefix, lineLabel, fallbackEq].filter(Boolean).join(" - ").replace(" -  - ", " - "));
+      currentProject = {
+        projectName: projName,
+        equipment: fallbackEq,
         site: clientPrefix || context.formSite || "",
         startDate: baseStartDate,
         endDate: "",
@@ -708,7 +794,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
           }
         }
         if (!deptRaw) {
-          for (let c = 0; c <= Math.min(6, row.length - 1); c++) {
+          for (let c = 0; c <= Math.min(8, row.length - 1); c++) {
             const val = String(row[c] || "").trim();
             if (val && val !== "0" && !/^\d+$/.test(val) && !/personnel|peak|activity|equipment|line/i.test(val)) {
               const testNorm = normalizeDeptName(val);
@@ -719,10 +805,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
         }
       }
       if (!deptRaw) continue;
-
-      if (/^\d{1,2}[월\-/. ]/i.test(deptRaw) || /^\d{4}[-/. ]/i.test(deptRaw)) {
-        continue;
-      }
+      if (/^\d{1,2}[월\-/. ]/i.test(deptRaw) || /^\d{4}[-/. ]/i.test(deptRaw)) continue;
 
       const isTotalRow = /^(total|total\s*manday|총\s*공수|합계)$/i.test(deptRaw) ||
                          row.some(x => /^(total|total\s*manday|총\s*공수|합계)$/i.test(String(x || '').trim()));
@@ -735,7 +818,6 @@ export function parseExcelMasterPlan(wb, context = {}) {
 
       let rowTotal = 0;
       let rowPeak = 0;
-
       if (mpTotalCol !== -1) {
         rowTotal = parseNum(row[mpTotalCol]) || 0;
         if (mpPeakCol !== -1) {
@@ -743,13 +825,26 @@ export function parseExcelMasterPlan(wb, context = {}) {
         } else {
           rowPeak = parseNum(row[mpTotalCol + 1]) || 0;
         }
+      } else {
+        const numIndices = [];
+        for (let c = 0; c < Math.min(12, row.length); c++) {
+          const v = parseNum(row[c]);
+          if (v > 0 && c > (colMap.activity || 2)) numIndices.push({ c, v });
+        }
+        if (numIndices.length >= 1) {
+          mpTotalCol = numIndices[0].c;
+          rowTotal = numIndices[0].v;
+          if (numIndices.length >= 2) {
+            mpPeakCol = numIndices[1].c;
+            rowPeak = numIndices[1].v;
+          }
+        }
       }
 
       const daily = {};
-      // Determine the first actual calendar column to prevent Total/Peak columns from being read as daily data
-      const calendarStartCol = bestDateCols.length > 0 ? bestDateCols[0].colIdx : (mpPeakCol !== -1 ? mpPeakCol + 1 : mpTotalCol !== -1 ? mpTotalCol + 2 : 6);
+      const calendarStartCol = dateCols.length > 0 ? dateCols[0].colIdx : (mpPeakCol !== -1 ? mpPeakCol + 1 : mpTotalCol !== -1 ? mpTotalCol + 2 : 8);
+
       dateCols.forEach(({ colIdx, dateStr }) => {
-        // Skip any column at or before the known Total/Peak columns
         if (colIdx < calendarStartCol) return;
         if (mpTotalCol !== -1 && colIdx === mpTotalCol) return;
         if (mpPeakCol !== -1 && colIdx === mpPeakCol) return;
@@ -808,8 +903,6 @@ export function parseExcelMasterPlan(wb, context = {}) {
         p._dailyPeakVal = Object.values(p._dailyTotalMap).reduce((a, b) => Math.max(a, b), 0);
       }
       
-      // Recalculate department peaks based on actual daily timeline to prevent mismatches
-      // between the Peak column in Excel and the timeline data
       Object.values(p._deptMap).forEach(d => {
         if (d.daily && Object.keys(d.daily).length > 0) {
           const calculatedPeak = Object.values(d.daily).reduce((max, val) => Math.max(max, val), 0);
@@ -838,7 +931,6 @@ export function parseExcelMasterPlan(wb, context = {}) {
       if (!maxD || m.endDate > maxD) maxD = m.endDate;
     });
     
-    // Extend project dates to include any manpower dates that extend beyond milestones
     if (p.manpower && p.manpower.dailyTotal) {
       const mpDates = Object.keys(p.manpower.dailyTotal);
       if (mpDates.length > 0) {

@@ -853,37 +853,60 @@ export default function App() {
     try {
       let directProjects = null;
       let sourceLabel = "엑셀 파일";
+      const curEditingP = editing ? projects.find(p => p.id === editing) : null;
       const parseContext = {
-        formName: form.name,
-        formLine: form.line,
-        formSite: form.site,
-        formMfg: form.manufacturingNo,
-        editingProjectName: editing ? projects.find(p => p.id === editing)?.name : "",
-        fileName: input.name ? input.name.replace(/\.[^/.]+$/, "") : ""
+        formName: form.name || curEditingP?.name || "",
+        formLine: form.line || curEditingP?.line || "",
+        formSite: form.site || curEditingP?.site || "",
+        formMfg: form.manufacturingNo || curEditingP?.manufacturing_no || "",
+        formStartDate: form.startDate || curEditingP?.startDate || "",
+        editingProjectName: curEditingP?.name || "",
+        fileName: (input && input.name) ? input.name.replace(/\.[^/.]+$/, "") : ""
       };
 
-      if (input.name && input.name.match(/\.(xlsx|xls)$/i)) {
+      if (input && input.name && input.name.match(/\.(xlsx|xls)$/i)) {
         const data = await input.arrayBuffer();
         const wb = XLSX.read(data, { cellDates: false, cellStyles: true });
         directProjects = parseExcelMasterPlan(wb, parseContext);
         sourceLabel = "엑셀 파일";
-      } else if (typeof input === "string") {
+      } else if (typeof input === "string" || (typeof input === "object" && (input.text || input.html))) {
         sourceLabel = "엑셀 표 붙여넣기";
-        try {
-          let wb = null;
-          const lines = parseTSVWithQuotes(input);
-          if (lines.length > 0 && (input.includes('\t') || lines.some(l => l.length > 1))) {
-            const ws = XLSX.utils.aoa_to_sheet(lines);
-            wb = { SheetNames: ['Sheet1'], Sheets: { Sheet1: ws } };
+        const pasteText = typeof input === "string" ? input : (input.text || "");
+        const pasteHtml = typeof input === "object" ? (input.html || "") : "";
+
+        // 1. If HTML table exists (Excel copy-paste preserves merged cells and table layout in HTML)
+        if (pasteHtml && pasteHtml.includes("<table")) {
+          try {
+            const htmlWb = XLSX.read(pasteHtml, { type: "string" });
+            if (htmlWb && htmlWb.SheetNames && htmlWb.SheetNames.length > 0) {
+              const htmlProjects = parseExcelMasterPlan(htmlWb, parseContext);
+              if (htmlProjects && htmlProjects.length > 0) {
+                directProjects = htmlProjects;
+              }
+            }
+          } catch (e) {
+            console.warn("HTML table parse failed, fallback to TSV:", e);
           }
-          if (!wb) {
-            try { wb = XLSX.read(input, { type: "string" }); } catch { /* ignore fallback */ }
+        }
+
+        // 2. If TSV text exists or HTML fallback needed
+        if ((!directProjects || directProjects.length === 0) && pasteText) {
+          try {
+            let wb = null;
+            const lines = parseTSVWithQuotes(pasteText);
+            if (lines.length > 0 && (pasteText.includes('\t') || lines.some(l => l.length > 1))) {
+              const ws = XLSX.utils.aoa_to_sheet(lines);
+              wb = { SheetNames: ['Sheet1'], Sheets: { Sheet1: ws } };
+            }
+            if (!wb) {
+              try { wb = XLSX.read(pasteText, { type: "string" }); } catch { /* ignore fallback */ }
+            }
+            if (wb && wb.SheetNames && wb.SheetNames.length > 0) {
+              directProjects = parseExcelMasterPlan(wb, parseContext);
+            }
+          } catch (e) {
+            console.warn("Direct TSV parse failed:", e);
           }
-          if (wb && wb.SheetNames && wb.SheetNames.length > 0) {
-            directProjects = parseExcelMasterPlan(wb, parseContext);
-          }
-        } catch (e) {
-          console.warn("Direct TSV parse failed, fallback to AI:", e);
         }
       }
 
@@ -1313,11 +1336,12 @@ JSON 출력 예시:
                               }
                             }
                           }
-                          const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text");
-                          if (text && text.trim().length > 5) {
+                          const html = e.clipboardData?.getData("text/html") || "";
+                          const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text") || "";
+                          if ((text && text.trim().length > 5) || (html && html.includes("<table"))) {
                             e.preventDefault();
                             e.target.value = "";
-                            handleMasterPlanUpload(text);
+                            handleMasterPlanUpload({ text, html });
                           }
                         }}
                       />

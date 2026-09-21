@@ -86,27 +86,36 @@ export function normalizeDeptKey(key) {
   if (!key) return "other";
   const s = String(key).toLowerCase().trim();
 
-  // 0. Manager check
-  if (s.includes("소장") || s.includes("manager") || s.includes("현장대리인") || s.includes("site mgr") || s.includes("field mgr")) return "manager";
-
   // 1. Check if it's an outsourced (외주) department
-  const isSub = s.includes("외주") || s.includes("sub") || s.includes("협력") || s.includes("outsourc") || s.includes("엘라이트");
-
+  const isSub = /외주|sub|협력|outsourc|엘라이트/i.test(s);
   if (isSub) {
-    if (s.includes("vision") || s.includes("비전") || s.includes("비젼") || s.includes("vis") || s.includes("엘라이트")) return "vision_sub";
-    if (s.includes("elec") || s.includes("전장") || s.includes("전기")) return "electrical_sub";
-    if (s.includes("mech") || s.includes("기구")) return "mechanical_sub";
-    if (s.includes("cont") || s.includes("제어")) return "control_sub";
+    if (/vision|비전|비젼|vis|엘라이트/i.test(s)) return "vision_sub";
+    if (/electrical|electronical|전장|전기|elec/i.test(s)) return "electrical_sub";
+    if (/mechanical|기구|mech/i.test(s)) return "mechanical_sub";
+    if (/control|제어|cont/i.test(s)) return "control_sub";
     return "other_sub";
   }
 
   // 2. Pure internal departments (No 외주 keyword)
-  if (s.includes("supervis") || s.includes("슈퍼바이저") || s.includes("sv") || s.includes("해체") || s.includes("장착") || s.includes("검수")) return "supervisor";
-  if (s.includes("mech") || s.includes("기구")) return "mechanical";
-  if (s.includes("vision") || s.includes("비전") || s.includes("비젼") || s.includes("vis")) return "vision";
-  if (s.includes("cont") || s.includes("제어")) return "control";
-  if (s.includes("elec") || s.includes("전장") || s.includes("전기")) return "electrical";
-  if (s.includes("safe") || s.includes("안전")) return "safety";
+  // Mechanical / 설비기술 must be checked BEFORE generic manager/소장 because strings often have "(소장포함)"
+  if (/설비기술/i.test(s)) return "mechanical";
+  if (/mechanical|기구|mech/i.test(s)) return "mechanical";
+
+  // Supervisor
+  if (/supervis|슈퍼바이저|\bsv\b|해체\s*검수|장착\s*검수|해체\/장착\s*검수/i.test(s)) return "supervisor";
+
+  // Safety vs 소장 distinction:
+  // "Safety Manager (소장)" -> manager
+  // "Safety Manager(안전)" -> safety
+  if (/safety.*소장|소장.*safety/i.test(s)) return "manager";
+  if (/safety|안전|safe/i.test(s)) return "safety";
+  if (/manager|소장|현장대리인|site mgr|field mgr/i.test(s)) return "manager";
+
+  if (/vision|비전|비젼|vis/i.test(s)) return "vision";
+  if (/control|제어|cont/i.test(s)) return "control";
+  if (/electrical|electronical|전장|전기|elec/i.test(s)) return "electrical";
+  if (/^pm$/i.test(s)) return "pm";
+  if (/설계|design/i.test(s)) return "design";
 
   return s;
 }
@@ -345,8 +354,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
     const ordered = [];
     BASE_DEPT_ORDER.forEach(k => {
-      // Always include core departments (including vision_sub, electrical_sub, supervisor) or any present department
-      if (presentDepts.has(k) || ["mechanical", "vision", "vision_sub", "control", "electrical", "electrical_sub", "supervisor"].includes(k)) {
+      // Always include core departments (including vision_sub, electrical_sub, supervisor, safety, manager) or any present department
+      if (presentDepts.has(k) || ["mechanical", "vision", "vision_sub", "control", "electrical", "electrical_sub", "supervisor", "safety", "manager"].includes(k)) {
         ordered.push(k);
       }
     });

@@ -864,21 +864,25 @@ export default function App() {
         fileName: (input && input.name) ? input.name.replace(/\.[^/.]+$/, "") : ""
       };
 
-      if (input && input.name && input.name.match(/\.(xlsx|xls)$/i)) {
+      const isFile = (typeof File !== "undefined" && input instanceof File) ||
+                     (typeof Blob !== "undefined" && input instanceof Blob) ||
+                     (input && typeof input === "object" && typeof input.arrayBuffer === "function" && Boolean(input.name));
+
+      if (isFile && input.name && input.name.match(/\.(xlsx|xls|xlsm|csv)$/i)) {
         const data = await input.arrayBuffer();
         const wb = XLSX.read(data, { cellDates: false, cellStyles: true });
         directProjects = parseExcelMasterPlan(wb, parseContext);
         sourceLabel = "엑셀 파일";
-      } else if (typeof input === "string" || (typeof input === "object" && (input.text || input.html))) {
+      } else if (!isFile && (typeof input === "string" || (input && typeof input === "object" && (typeof input.text === "string" || typeof input.html === "string")))) {
         sourceLabel = "엑셀 표 붙여넣기";
-        const pasteText = typeof input === "string" ? input : (input.text || "");
-        const pasteHtml = typeof input === "object" ? (input.html || "") : "";
+        const pasteText = typeof input === "string" ? input : (typeof input.text === "string" ? input.text : "");
+        const pasteHtml = (typeof input === "object" && typeof input.html === "string") ? input.html : "";
 
         let tsvProjects = null;
         let htmlProjects = null;
 
         // 1. Primary: TSV text parsing (Excel copies continuous full 2D grid in text/plain)
-        if (pasteText && pasteText.trim().length > 5) {
+        if (pasteText && typeof pasteText === "string" && pasteText.trim().length > 5) {
           try {
             const cleanText = pasteText.replace(/^\uFEFF/, '').replace(/\0/g, '');
             const lines = parseTSVWithQuotes(cleanText);
@@ -893,7 +897,7 @@ export default function App() {
         }
 
         // 2. Secondary: HTML table parsing
-        if (pasteHtml && pasteHtml.includes("<table")) {
+        if (pasteHtml && typeof pasteHtml === "string" && pasteHtml.includes("<table")) {
           try {
             const startIdx = pasteHtml.indexOf('<html');
             const cleanHtml = startIdx !== -1 ? pasteHtml.slice(startIdx) : pasteHtml;
@@ -943,7 +947,9 @@ export default function App() {
 
       if (typeof input === "string") {
         parts = [{ text: `이것은 마스터 플랜의 클립보드 텍스트입니다:\n\n${input}` }];
-      } else if (input.name && input.name.match(/\.(xlsx|xls)$/i)) {
+      } else if (!isFile && input && typeof input === "object" && typeof input.text === "string") {
+        parts = [{ text: `이것은 마스터 플랜의 클립보드 텍스트입니다:\n\n${input.text}` }];
+      } else if (isFile && input.name && input.name.match(/\.(xlsx|xls|xlsm|csv)$/i)) {
         const data = await input.arrayBuffer();
         const wb = XLSX.read(data, { cellDates: false, cellStyles: true });
         let sheetName = wb.SheetNames.find(n => /planning|schedule|master|일정/i.test(n)) || wb.SheetNames.find(n => !/edit|설정|양식/i.test(n)) || wb.SheetNames[0];
@@ -951,7 +957,7 @@ export default function App() {
         const rawJson = XLSX.utils.sheet_to_json(sheet, { header: 1 });
         const compactCsv = (rawJson || []).slice(0, 80).map(r => (r || []).slice(0, 10).join(",")).filter(l => l.replace(/,/g, "").trim().length > 0).join("\n");
         parts = [{ text: `이것은 마스터 플랜 엑셀(${sheetName} 시트)의 데이터입니다:\n\n${compactCsv}` }];
-      } else if (input.type && input.type.startsWith("image/")) {
+      } else if (isFile && input.type && input.type.startsWith("image/")) {
         const reader = new FileReader();
         const p = new Promise(res => reader.onload = () => res(reader.result));
         reader.readAsDataURL(input);
@@ -1342,6 +1348,18 @@ JSON 출력 예시:
                           background: '#fff'
                         }}
                         onPaste={(e) => {
+                          const html = e.clipboardData?.getData("text/html") || "";
+                          const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text") || "";
+                          
+                          // 1. If tabular text or HTML table exists in clipboard (Excel copy always contains text/plain with tabs or HTML table)
+                          if ((text && text.includes('\t')) || (html && html.includes('<table'))) {
+                            e.preventDefault();
+                            e.target.value = "";
+                            handleMasterPlanUpload({ text, html });
+                            return;
+                          }
+
+                          // 2. Only if NO tabular text/html, check for standalone image paste
                           const items = e.clipboardData?.items;
                           if (items) {
                             for (let i = 0; i < items.length; i++) {
@@ -1356,9 +1374,9 @@ JSON 출력 예시:
                               }
                             }
                           }
-                          const html = e.clipboardData?.getData("text/html") || "";
-                          const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text") || "";
-                          if ((text && text.trim().length > 5) || (html && html.includes("<table"))) {
+
+                          // 3. Fallback for general text
+                          if (text && text.trim().length > 5) {
                             e.preventDefault();
                             e.target.value = "";
                             handleMasterPlanUpload({ text, html });

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import './Quotations.css';
 import { supabase } from './supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -116,7 +116,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                 ]);
                 
                 let responseText = result.response.text().trim();
-                responseText = responseText.replace(/^\`\`\`json\s*/, "").replace(/\s*\`\`\`$/, "");
+                responseText = responseText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
                 const json = JSON.parse(responseText);
                 
                 extractedData.title = json.title || '클립보드 데이터';
@@ -186,7 +186,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                 ]);
                 
                 let responseText = result.response.text().trim();
-                responseText = responseText.replace(/^\`\`\`json\s*/, "").replace(/\s*\`\`\`$/, "");
+                responseText = responseText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
                 const json = JSON.parse(responseText);
                 
                 extractedData.title = json.title || fileOrText.name;
@@ -365,7 +365,6 @@ export default function Quotations({ projects, session, role, onPermissionDenied
             let normCategory = "기타";
             if (/가공/i.test(rawCat)) normCategory = "가공품";
             else if (/구매|시장|상용/i.test(rawCat)) normCategory = "시장품";
-            else normCategory = "기타";
 
             return {
                 ...item,
@@ -396,6 +395,9 @@ export default function Quotations({ projects, session, role, onPermissionDenied
             .sort((a, b) => a.name.localeCompare(b.name));
     }, [enrichedItems, filterProcess]);
 
+    // 유효한 선택 프로젝트 결정 (파생 상태)
+    const effectiveProject = (filterProject !== '전체' && availableProjects.some(p => p.name === filterProject)) ? filterProject : '전체';
+
     // 3. [공정 + 프로젝트]에 따른 구분(가공품/시장품/기타) 건수
     const availableCategories = useMemo(() => {
         const counts = { '가공품': 0, '시장품': 0, '기타': 0 };
@@ -404,12 +406,12 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
             }
-            if (filterProject !== '전체' && item.projectKey !== filterProject) return;
+            if (effectiveProject !== '전체' && item.projectKey !== effectiveProject) return;
             if (counts[item.normCategory] !== undefined) counts[item.normCategory]++;
             else counts['기타']++;
         });
         return counts;
-    }, [enrichedItems, filterProcess, filterProject]);
+    }, [enrichedItems, filterProcess, effectiveProject]);
 
     // 4. [공정 + 프로젝트 + 구분] 복합 조건에 따른 유효 품목 목록 (핵심 연동!)
     const availableItemNames = useMemo(() => {
@@ -419,7 +421,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
             }
-            if (filterProject !== '전체' && item.projectKey !== filterProject) return;
+            if (effectiveProject !== '전체' && item.projectKey !== effectiveProject) return;
             if (filterCategory !== '전체' && item.normCategory !== filterCategory) return;
 
             if (!itemMap[item.item_name]) {
@@ -433,7 +435,10 @@ export default function Quotations({ projects, session, role, onPermissionDenied
         return Object.entries(itemMap)
             .map(([name, info]) => ({ name, ...info }))
             .sort((a, b) => a.name.localeCompare(b.name));
-    }, [enrichedItems, filterProcess, filterProject, filterCategory]);
+    }, [enrichedItems, filterProcess, effectiveProject, filterCategory]);
+
+    // 유효한 선택 품목명 결정 (파생 상태)
+    const effectiveItemName = (filterItemName !== '전체' && availableItemNames.some(i => i.name === filterItemName)) ? filterItemName : '전체';
 
     // 5. [공정 + 프로젝트 + 구분 + 품목] 복합 조건에 따른 유효 유닛 목록
     const availableUnitNames = useMemo(() => {
@@ -443,35 +448,18 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
             }
-            if (filterProject !== '전체' && item.projectKey !== filterProject) return;
+            if (effectiveProject !== '전체' && item.projectKey !== effectiveProject) return;
             if (filterCategory !== '전체' && item.normCategory !== filterCategory) return;
-            if (filterItemName !== '전체' && item.item_name !== filterItemName) return;
+            if (effectiveItemName !== '전체' && item.item_name !== effectiveItemName) return;
             if (searchQuery.trim() && !item.item_name.toLowerCase().includes(searchQuery.toLowerCase().trim())) return;
 
             if (item.unit_name) unitSet.add(item.unit_name);
         });
         return [...unitSet].sort();
-    }, [enrichedItems, filterProcess, filterProject, filterCategory, filterItemName, searchQuery]);
+    }, [enrichedItems, filterProcess, effectiveProject, filterCategory, effectiveItemName, searchQuery]);
 
-    // 필터 변경 시 종속 값 자동 정합화
-    useEffect(() => {
-        if (filterProject !== '전체' && !availableProjects.some(p => p.name === filterProject)) {
-            setFilterProject('전체');
-        }
-    }, [availableProjects, filterProject]);
-
-    useEffect(() => {
-        if (filterItemName !== '전체' && !availableItemNames.some(i => i.name === filterItemName)) {
-            setFilterItemName('전체');
-            setSearchQuery('');
-        }
-    }, [availableItemNames, filterItemName]);
-
-    useEffect(() => {
-        if (filterUnitName !== '전체' && !availableUnitNames.includes(filterUnitName)) {
-            setFilterUnitName('전체');
-        }
-    }, [availableUnitNames, filterUnitName]);
+    // 유효한 선택 유닛명 결정 (파생 상태)
+    const effectiveUnitName = (filterUnitName !== '전체' && availableUnitNames.includes(filterUnitName)) ? filterUnitName : '전체';
 
     // 자동완성 추천 품목 (현재 조건의 availableItemNames 중에서만 검색!)
     const suggestedItems = useMemo(() => {
@@ -487,10 +475,10 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return false;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return false;
             }
-            if (filterProject !== '전체' && item.projectKey !== filterProject) return false;
+            if (effectiveProject !== '전체' && item.projectKey !== effectiveProject) return false;
             if (filterCategory !== '전체' && item.normCategory !== filterCategory) return false;
-            if (filterItemName !== '전체' && item.item_name !== filterItemName) return false;
-            if (filterUnitName !== '전체' && item.unit_name !== filterUnitName) return false;
+            if (effectiveItemName !== '전체' && item.item_name !== effectiveItemName) return false;
+            if (effectiveUnitName !== '전체' && item.unit_name !== effectiveUnitName) return false;
 
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase().trim();
@@ -508,7 +496,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
         else list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         return list;
-    }, [enrichedItems, filterProcess, filterProject, filterCategory, filterItemName, filterUnitName, searchQuery, sortOrder]);
+    }, [enrichedItems, filterProcess, effectiveProject, filterCategory, effectiveItemName, effectiveUnitName, searchQuery, sortOrder]);
 
     // 단가 통계 계산
     const { statMinPrice, statMaxPrice, statAvgPrice, statTotalPrice } = useMemo(() => {
@@ -743,7 +731,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                             <select 
                                 className="quote-select"
                                 style={{ width: '100%' }}
-                                value={filterProject}
+                                value={effectiveProject}
                                 onChange={e => setFilterProject(e.target.value)}
                             >
                                 <option value="전체">모든 프로젝트 ({enrichedItems.length}건)</option>
@@ -803,7 +791,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                             <select 
                                 className="quote-select"
                                 style={{ width: '100%' }}
-                                value={filterItemName}
+                                value={effectiveItemName}
                                 onChange={e => {
                                     const val = e.target.value;
                                     setFilterItemName(val);
@@ -877,7 +865,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                                 <select 
                                     className="quote-select"
                                     style={{ width: '100%' }}
-                                    value={filterUnitName}
+                                    value={effectiveUnitName}
                                     onChange={e => setFilterUnitName(e.target.value)}
                                 >
                                     <option value="전체">모든 유닛 ({availableUnitNames.length}개)</option>

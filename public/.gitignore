@@ -1,0 +1,2 @@
+# gh-pages deployment: do not ignore anything in dist
+!*

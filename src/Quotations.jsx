@@ -29,6 +29,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
     const [filterCategory, setFilterCategory] = useState('전체'); // '전체' | '가공품' | '시장품' | '기타'
     const [filterItemName, setFilterItemName] = useState('전체'); // '전체' | itemName
     const [filterUnitName, setFilterUnitName] = useState('전체'); // '전체' | unitName
+    const [isListCollapsed, setIsListCollapsed] = useState(false);
 
     const [msg, setMsg] = useState('');
     const [expandedProjects, setExpandedProjects] = useState({});
@@ -711,14 +712,14 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                                     className={`quote-pill-btn ${filterProcess === 'Notching' ? 'active-nc' : ''}`}
                                     onClick={() => setFilterProcess('Notching')}
                                 >
-                                    ⚡ Notching (NC)
+                                    Notching (NC)
                                 </button>
                                 <button 
                                     type="button" 
                                     className={`quote-pill-btn ${filterProcess === 'Stacking' ? 'active-stk' : ''}`}
                                     onClick={() => setFilterProcess('Stacking')}
                                 >
-                                    📦 Stacking (STK)
+                                    Stacking (STK)
                                 </button>
                             </div>
                         </div>
@@ -896,100 +897,141 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                     </div>
                 </div>
 
-                {/* 통계 요약 칩 바 */}
-                <div className="quote-stat-bar">
-                    <div className="quote-stat-chip highlight">
-                        <span>조회된 품목:</span> <b>{filteredResults.length}건</b>
+                {/* 통계 요약 칩 바 및 접기/펼치기 토글 */}
+                <div className="quote-stat-bar" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
+                        <div className="quote-stat-chip highlight">
+                            <span>조회된 품목:</span> <b>{filteredResults.length}건</b>
+                        </div>
+                        {filteredResults.length > 0 && (
+                            <>
+                                <div className="quote-stat-chip">
+                                    <span>최저 단가:</span> <b style={{ color: '#16a34a' }}>₩{statMinPrice.toLocaleString()}</b>
+                                </div>
+                                <div className="quote-stat-chip">
+                                    <span>최고 단가:</span> <b style={{ color: '#dc2626' }}>₩{statMaxPrice.toLocaleString()}</b>
+                                </div>
+                                <div className="quote-stat-chip">
+                                    <span>평균 단가:</span> <b style={{ color: '#2563eb' }}>₩{statAvgPrice.toLocaleString()}</b>
+                                </div>
+                                <div className="quote-stat-chip">
+                                    <span>합계 금액:</span> <b>₩{statTotalPrice.toLocaleString()}</b>
+                                </div>
+                            </>
+                        )}
                     </div>
                     {filteredResults.length > 0 && (
-                        <>
-                            <div className="quote-stat-chip">
-                                <span>최저 단가:</span> <b style={{ color: '#16a34a' }}>₩{statMinPrice.toLocaleString()}</b>
-                            </div>
-                            <div className="quote-stat-chip">
-                                <span>최고 단가:</span> <b style={{ color: '#dc2626' }}>₩{statMaxPrice.toLocaleString()}</b>
-                            </div>
-                            <div className="quote-stat-chip">
-                                <span>평균 단가:</span> <b style={{ color: '#2563eb' }}>₩{statAvgPrice.toLocaleString()}</b>
-                            </div>
-                            <div className="quote-stat-chip">
-                                <span>합계 금액:</span> <b>₩{statTotalPrice.toLocaleString()}</b>
-                            </div>
-                        </>
+                        <button
+                            type="button"
+                            className="quote-collapse-toggle-btn"
+                            onClick={() => setIsListCollapsed(prev => !prev)}
+                        >
+                            {isListCollapsed ? '▾ 결과 목록 펼치기' : '▴ 결과 목록 접기'}
+                        </button>
                     )}
                 </div>
 
-                {/* 결과 테이블 */}
-                <div style={{ overflowX: 'auto', border: '1px solid #dce5ed', borderRadius: '8px' }}>
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th style={{ width: '80px', textAlign: 'center' }}>공정</th>
-                                <th style={{ width: '90px', textAlign: 'center' }}>구분</th>
-                                <th>프로젝트명</th>
-                                <th>유닛명</th>
-                                <th>품목명</th>
-                                <th style={{ width: '70px', textAlign: 'center' }}>수량</th>
-                                <th className="money-cell">단가 (₩)</th>
-                                <th className="money-cell">총액 (₩)</th>
-                                <th style={{ width: '95px', textAlign: 'center' }}>등록일</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredResults.length > 0 ? (
-                                filteredResults.map(item => {
-                                    const procBadgeClass = item.processType === 'Notching' ? 'nc' : item.processType === 'Stacking' ? 'stk' : item.processType === 'Both' ? 'both' : 'other';
-                                    const procBadgeText = item.processType === 'Notching' ? 'NC' : item.processType === 'Stacking' ? 'STK' : item.processType === 'Both' ? 'NC+STK' : '-';
-                                    const catClass = item.normCategory === '가공품' ? 'process' : item.normCategory === '시장품' ? 'purchase' : 'other';
-                                    
-                                    return (
-                                        <tr key={item.id}>
-                                            <td style={{ textAlign: 'center' }}>
-                                                <span className={`badge-process ${procBadgeClass}`}>
-                                                    {procBadgeText}
-                                                </span>
-                                            </td>
-                                            <td style={{ textAlign: 'center' }}>
-                                                <span className={`badge-category cat-${catClass}`}>
-                                                    {item.normCategory}
-                                                </span>
-                                            </td>
-                                            <td style={{ fontWeight: 600, color: '#1e293b' }}>
-                                                {item.projectKey}
-                                            </td>
-                                            <td style={{ color: item.unit_name ? '#334155' : '#94a3b8' }}>
-                                                {item.unit_name || '-'}
-                                            </td>
-                                            <td style={{ fontWeight: 600, color: '#0f172a' }}>
-                                                {item.item_name}
-                                            </td>
-                                            <td style={{ textAlign: 'center' }}>
-                                                {item.quantity}
-                                            </td>
-                                            <td className="money-cell" style={{ fontWeight: 700, color: '#1e40af' }}>
-                                                {item.unit_price.toLocaleString()}
-                                            </td>
-                                            <td className="money-cell">
-                                                {item.total_price.toLocaleString()}
-                                            </td>
-                                            <td style={{ color: '#64748b', fontSize: '12px', textAlign: 'center' }}>
-                                                {new Date(item.created_at).toLocaleDateString()}
+                {/* 접힘 상태 안내 배너 또는 결과 테이블 */}
+                {isListCollapsed && filteredResults.length > 0 ? (
+                    <div 
+                        className="quote-collapsed-banner"
+                        onClick={() => setIsListCollapsed(false)}
+                    >
+                        <span>📋 조회된 품목 <b>{filteredResults.length}건</b>의 목록이 접혀 있습니다.</span>
+                        <span className="expand-link">클릭하여 펼쳐보기 ▾</span>
+                    </div>
+                ) : (
+                    <>
+                        <div className="quote-table-container">
+                            <table className="data-table sticky-header">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '80px', textAlign: 'center' }}>공정</th>
+                                        <th style={{ width: '90px', textAlign: 'center' }}>구분</th>
+                                        <th>프로젝트명</th>
+                                        <th>유닛명</th>
+                                        <th>품목명</th>
+                                        <th style={{ width: '70px', textAlign: 'center' }}>수량</th>
+                                        <th className="money-cell">단가 (₩)</th>
+                                        <th className="money-cell">총액 (₩)</th>
+                                        <th style={{ width: '95px', textAlign: 'center' }}>등록일</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredResults.length > 0 ? (
+                                        filteredResults.map(item => {
+                                            const procBadgeClass = item.processType === 'Notching' ? 'nc' : item.processType === 'Stacking' ? 'stk' : item.processType === 'Both' ? 'both' : 'other';
+                                            const procBadgeText = item.processType === 'Notching' ? 'NC' : item.processType === 'Stacking' ? 'STK' : item.processType === 'Both' ? 'NC+STK' : '-';
+                                            const catClass = item.normCategory === '가공품' ? 'process' : item.normCategory === '시장품' ? 'purchase' : 'other';
+                                            
+                                            return (
+                                                <tr key={item.id}>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        <span className={`badge-process ${procBadgeClass}`}>
+                                                            {procBadgeText}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        <span className={`badge-category cat-${catClass}`}>
+                                                            {item.normCategory}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ fontWeight: 600, color: '#1e293b' }}>
+                                                        {item.projectKey}
+                                                    </td>
+                                                    <td style={{ color: item.unit_name ? '#334155' : '#94a3b8' }}>
+                                                        {item.unit_name || '-'}
+                                                    </td>
+                                                    <td style={{ fontWeight: 600, color: '#0f172a' }}>
+                                                        {item.item_name}
+                                                    </td>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        {item.quantity}
+                                                    </td>
+                                                    <td className="money-cell" style={{ fontWeight: 700, color: '#1e40af' }}>
+                                                        {item.unit_price.toLocaleString()}
+                                                    </td>
+                                                    <td className="money-cell">
+                                                        {item.total_price.toLocaleString()}
+                                                    </td>
+                                                    <td style={{ color: '#64748b', fontSize: '12px', textAlign: 'center' }}>
+                                                        {new Date(item.created_at).toLocaleDateString()}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="9" style={{ textAlign: 'center', color: '#64748b', padding: '36px 20px' }}>
+                                                <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔍</div>
+                                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>선택하신 조건에 해당하는 견적 품목이 없습니다.</div>
+                                                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>공정, 프로젝트 또는 구분 조건을 변경하거나 초기화해 보세요.</div>
                                             </td>
                                         </tr>
-                                    );
-                                })
-                            ) : (
-                                <tr>
-                                    <td colSpan="9" style={{ textAlign: 'center', color: '#64748b', padding: '36px 20px' }}>
-                                        <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔍</div>
-                                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>선택하신 조건에 해당하는 견적 품목이 없습니다.</div>
-                                        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>공정, 프로젝트 또는 구분 조건을 변경하거나 초기화해 보세요.</div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        {filteredResults.length > 8 && (
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsListCollapsed(true)}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#64748b',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        padding: '4px 8px'
+                                    }}
+                                >
+                                    ▴ 목록 접기
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
             </section>
 
             <section>

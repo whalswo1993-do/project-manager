@@ -374,3 +374,74 @@
     border: 1px solid #e2e8f0;
 }
 
+/* 목록 접기/펼치기 토글 버튼 */
+.quote-collapse-toggle-btn {
+    padding: 6px 14px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    white-space: nowrap;
+}
+
+.quote-collapse-toggle-btn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+/* 접힘 상태 안내 배너 */
+.quote-collapsed-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #475569;
+    font-size: 13.5px;
+}
+
+.quote-collapsed-banner:hover {
+    background: #f1f5f9;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+}
+
+.quote-collapsed-banner .expand-link {
+    font-weight: 600;
+    color: #2563eb;
+    font-size: 12.5px;
+}
+
+/* 테이블 컨테이너 및 고정 헤더 */
+.quote-table-container {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 540px;
+    border: 1px solid #dce5ed;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.data-table.sticky-header thead th {
+    position: sticky;
+    top: 0;
+    background: #f8fafc;
+    z-index: 2;
+    box-shadow: 0 1px 0 #e2e8f0;
+}
+

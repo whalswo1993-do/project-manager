@@ -36,3 +36,5 @@ scratch/
 # Local raw excel files
 *.xlsx
 *.xls
+!public/*.xlsx
+!public/*.xls

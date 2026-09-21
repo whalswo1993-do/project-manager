@@ -1212,74 +1212,134 @@ JSON 출력 예시:
                     </div>
                   )}
                 </div>
-                <div style={{ border: '2px solid #38bdf8', borderRadius: '12px', padding: '6px 12px', background: '#f0f9ff', boxShadow: '0 1px 4px rgba(56, 189, 248, 0.15)' }}>
-                  <div style={{ textAlign: 'center', marginBottom: '6px', fontSize: '13px' }}>
-                    <b style={{ color: '#0f172a' }}>{editing ? "최신 Master Schedule 등록 (최신화)" : "Master Schedule 등록"}</b>{" "}
-                    <span style={{ color: '#2563eb', fontWeight: 600, fontSize: '12px' }}>
-                      {editing ? "※마스터 스케줄 첨부 시 일정 및 공수 데이터가 최신 버전으로 즉시 갱신됩니다" : "※공수 포함 등록시 공수 통합 관리 자동 반영"}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <input type="file" ref={masterPlanInput} onChange={e => handleMasterPlanUpload(e.target.files[0])} accept=".xlsx, .xls, image/*" style={{ display: 'none' }} />
-                    <textarea
-                      placeholder="엑셀 표 붙여넣기 (Ctrl+V)"
-                      disabled={isExtracting}
-                      style={{
-                        height: '35px',
-                        width: '180px',
-                        padding: '8px 14px',
-                        borderRadius: '8px',
-                        border: '1.5px solid #10b981',
-                        outline: 'none',
-                        resize: 'none',
-                        overflow: 'hidden',
-                        whiteSpace: 'nowrap',
-                        boxSizing: 'border-box',
-                        fontSize: '13px',
-                        fontFamily: 'inherit',
-                        background: '#fff'
-                      }}
-                      onPaste={(e) => {
-                        const items = e.clipboardData?.items;
-                        if (items) {
-                          for (let i = 0; i < items.length; i++) {
-                            const item = items[i];
-                            if (item.type.indexOf("image") !== -1) {
-                              e.preventDefault();
-                              const file = item.getAsFile();
-                              if (file) {
-                                handleMasterPlanUpload(file);
-                                return;
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <a
+                    href={`${import.meta.env.BASE_URL || '/'}master-schedule-template.xlsx`.replace('//', '/')}
+                    download="Master Schedule 양식.xlsx"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '8px 14px',
+                      height: '66px',
+                      background: '#ffffff',
+                      border: '2px solid #10b981',
+                      borderRadius: '12px',
+                      color: '#065f46',
+                      textDecoration: 'none',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 5px rgba(16, 185, 129, 0.15)',
+                      boxSizing: 'border-box',
+                      transition: 'all 0.2s ease',
+                      flexShrink: 0
+                    }}
+                    onMouseOver={e => {
+                      e.currentTarget.style.background = '#f0fdf4';
+                      e.currentTarget.style.borderColor = '#059669';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(16, 185, 129, 0.25)';
+                    }}
+                    onMouseOut={e => {
+                      e.currentTarget.style.background = '#ffffff';
+                      e.currentTarget.style.borderColor = '#10b981';
+                      e.currentTarget.style.transform = 'none';
+                      e.currentTarget.style.boxShadow = '0 2px 5px rgba(16, 185, 129, 0.15)';
+                    }}
+                    title="클릭 시 'Master Schedule 양식.xlsx' 파일이 다운로드됩니다."
+                  >
+                    <div style={{
+                      width: '38px',
+                      height: '38px',
+                      borderRadius: '8px',
+                      background: 'linear-gradient(135deg, #10b981, #059669)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '20px',
+                      boxShadow: '0 2px 4px rgba(5, 150, 105, 0.3)'
+                    }}>
+                      📥
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <b style={{ fontSize: '13px', color: '#0f172a' }}>Master Schedule 양식</b>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', background: '#dcfce7', color: '#15803d', padding: '1px 5px', borderRadius: '4px', border: '1px solid #bbf7d0' }}>Excel</span>
+                      </div>
+                      <span style={{ fontSize: '11px', color: '#059669', fontWeight: '600', marginTop: '3px' }}>
+                        양식 다운로드 받기 ⇩
+                      </span>
+                    </div>
+                  </a>
+                  <div style={{ border: '2px solid #38bdf8', borderRadius: '12px', padding: '6px 12px', background: '#f0f9ff', boxShadow: '0 1px 4px rgba(56, 189, 248, 0.15)' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '6px', fontSize: '13px' }}>
+                      <b style={{ color: '#0f172a' }}>{editing ? "최신 Master Schedule 등록 (최신화)" : "Master Schedule 등록"}</b>{" "}
+                      <span style={{ color: '#2563eb', fontWeight: 600, fontSize: '12px' }}>
+                        {editing ? "※마스터 스케줄 첨부 시 일정 및 공수 데이터가 최신 버전으로 즉시 갱신됩니다" : "※공수 포함 등록시 공수 통합 관리 자동 반영"}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input type="file" ref={masterPlanInput} onChange={e => handleMasterPlanUpload(e.target.files[0])} accept=".xlsx, .xls, image/*" style={{ display: 'none' }} />
+                      <textarea
+                        placeholder="엑셀 표 붙여넣기 (Ctrl+V)"
+                        disabled={isExtracting}
+                        style={{
+                          height: '35px',
+                          width: '180px',
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          border: '1.5px solid #10b981',
+                          outline: 'none',
+                          resize: 'none',
+                          overflow: 'hidden',
+                          whiteSpace: 'nowrap',
+                          boxSizing: 'border-box',
+                          fontSize: '13px',
+                          fontFamily: 'inherit',
+                          background: '#fff'
+                        }}
+                        onPaste={(e) => {
+                          const items = e.clipboardData?.items;
+                          if (items) {
+                            for (let i = 0; i < items.length; i++) {
+                              const item = items[i];
+                              if (item.type.indexOf("image") !== -1) {
+                                e.preventDefault();
+                                const file = item.getAsFile();
+                                if (file) {
+                                  handleMasterPlanUpload(file);
+                                  return;
+                                }
                               }
                             }
                           }
-                        }
-                        const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text");
-                        if (text && text.trim().length > 5) {
-                          e.preventDefault();
-                          e.target.value = "";
-                          handleMasterPlanUpload(text);
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={() => masterPlanInput.current.click()}
-                      disabled={isExtracting}
-                      style={{
-                        background: isExtracting ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #059669)',
-                        color: '#fff',
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        fontWeight: 'bold',
-                        border: 'none',
-                        boxShadow: '0 2px 5px rgba(16, 185, 129, 0.25)',
-                        height: '35px',
-                        whiteSpace: 'nowrap',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel/이미지)"}
-                    </button>
+                          const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text");
+                          if (text && text.trim().length > 5) {
+                            e.preventDefault();
+                            e.target.value = "";
+                            handleMasterPlanUpload(text);
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => masterPlanInput.current.click()}
+                        disabled={isExtracting}
+                        style={{
+                          background: isExtracting ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #059669)',
+                          color: '#fff',
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          fontWeight: 'bold',
+                          border: 'none',
+                          boxShadow: '0 2px 5px rgba(16, 185, 129, 0.25)',
+                          height: '35px',
+                          whiteSpace: 'nowrap',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel/이미지)"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

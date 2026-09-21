@@ -229,14 +229,23 @@ export function normalizeDeptName(raw) {
   }
 
   // 2. Pure Internal departments (No 외주 keyword)
+  // Mechanical / 설비기술 must be checked BEFORE manager/소장 because strings often have "(소장포함)"
+  if (/설비기술/i.test(lower)) return "설비기술";
+  if (/mechanical|기구|mech/i.test(lower)) return "기구";
+
   if (/supervisor|슈퍼바이저|\bsv\b|해체\s*검수|장착\s*검수|해체\/장착\s*검수/i.test(lower)) return "Supervisor";
-  // "Safety Manager (소장)" must map to "소장" — check manager/소장 BEFORE generic safety
+
+  // Safety vs 소장 distinction:
+  // "Safety Manager (소장)" -> 소장
+  // "Safety Manager(안전)" -> 안전
+  if (/safety.*소장|소장.*safety/i.test(lower)) return "소장";
+  if (/safety|안전|safe/i.test(lower)) return "안전";
   if (/manager|소장|현장대리인/i.test(lower)) return "소장";
-  if (/mechanical|기구|mech|설비기술|기술/i.test(lower)) return "기구";
+
+  if (/mechanical|기구|mech|기술/i.test(lower)) return "기구";
   if (/vision|비전|비젼/i.test(lower)) return "비전";
   if (/control|제어|cont/i.test(lower)) return "제어";
   if (/electrical|electronical|전장|전기|elec/i.test(lower)) return "전장";
-  if (/safety|안전|safe/i.test(lower)) return "안전";
   if (/^pm$/i.test(lower)) return "PM";
   if (/설계|design/i.test(lower)) return "설계";
 
@@ -291,10 +300,157 @@ export function parseTSVWithQuotes(text) {
 }
 
 /**
+ * 라인별 일정 매트릭스(일별 간트 달력형) 서식을 감지하고 라인별 프로젝트 목록으로 파싱합니다.
+ * (예: 260908 OJ STK 순회검사 삭제 Master Schedule.xlsx)
+ */
+export function parseMatrixSchedule(wb, context = {}) {
+  if (!wb || !wb.SheetNames || wb.SheetNames.length === 0) return null;
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+  if (!rows || rows.length < 5) return null;
+
+  let headerRowIdx = -1;
+  let siteCol = -1, lineCol = -1, modelCol = -1;
+
+  for (let r = 0; r < Math.min(10, rows.length); r++) {
+    const row = rows[r] || [];
+    row.forEach((cell, cIdx) => {
+      const s = String(cell || '').trim().toLowerCase();
+      if (s === 'site' || s === '사이트') siteCol = cIdx;
+      if (s === 'line' || s === '라인') lineCol = cIdx;
+      if (s === 'model' || s === '모델') modelCol = cIdx;
+    });
+    if (lineCol !== -1 && (siteCol !== -1 || modelCol !== -1)) {
+      headerRowIdx = r;
+      break;
+    }
+  }
+
+  if (headerRowIdx === -1) return null;
+
+  let mainTitle = "Stack Vision 순회검사 대체";
+  const r0Text = String(rows[0]?.[0] || '');
+  const titleM = r0Text.match(/■?\s*\[STK\]\s*([^(\r\n]+)/i);
+  if (titleM) {
+    mainTitle = titleM[1].trim();
+  } else if (context.fileName) {
+    mainTitle = context.fileName;
+  }
+
+  let dayRowIdx = -1;
+  let maxDayCount = 0;
+  for (let r = headerRowIdx + 1; r < Math.min(headerRowIdx + 5, rows.length); r++) {
+    const row = rows[r] || [];
+    let count = 0;
+    for (let c = 0; c < row.length; c++) {
+      const v = parseInt(row[c], 10);
+      if (!isNaN(v) && v >= 1 && v <= 31) count++;
+    }
+    if (count > maxDayCount) {
+      maxDayCount = count;
+      dayRowIdx = r;
+    }
+  }
+
+  if (dayRowIdx === -1 || maxDayCount < 5) return null;
+
+  const colDateMap = {};
+  let currentYear = String(new Date().getFullYear());
+  let currentMonth = "09";
+
+  const monthRow = rows[headerRowIdx] || [];
+  const dayRow = rows[dayRowIdx] || [];
+
+  for (let c = Math.max(siteCol, lineCol, modelCol) + 1; c < Math.max(monthRow.length, dayRow.length); c++) {
+    const mVal = String(monthRow[c] || '').trim();
+    if (mVal) {
+      const ym = mVal.match(/(\d{2})\.(\d{1,2})월?/);
+      if (ym) {
+        currentYear = `20${ym[1]}`;
+        currentMonth = ym[2].padStart(2, '0');
+      }
+    }
+    const dayVal = parseInt(dayRow[c], 10);
+    if (!isNaN(dayVal) && dayVal >= 1 && dayVal <= 31) {
+      if (dayVal === 1 && currentMonth === "09") {
+        currentMonth = "10";
+      }
+      colDateMap[c] = `${currentYear}-${currentMonth}-${String(dayVal).padStart(2, '0')}`;
+    }
+  }
+
+  const projects = [];
+  let currentSite = context.formSite || "OJ1";
+
+  for (let r = dayRowIdx + 1; r < rows.length; r++) {
+    const row = rows[r] || [];
+    if (!row.length) continue;
+
+    const rowSite = siteCol !== -1 ? String(row[siteCol] || '').trim() : '';
+    if (rowSite) currentSite = rowSite;
+
+    const rowLine = lineCol !== -1 ? String(row[lineCol] || '').trim() : '';
+    if (!rowLine || isNaN(parseInt(rowLine, 10))) continue;
+
+    const lineNum = parseInt(rowLine, 10);
+    const lineStr = `${lineNum}Line`;
+    const model = modelCol !== -1 ? String(row[modelCol] || '').trim() : '';
+
+    const acts = [];
+    for (let c = 0; c < row.length; c++) {
+      const dateStr = colDateMap[c];
+      const val = String(row[c] || '').trim().replace(/[\r\n]+/g, ' ');
+      if (dateStr && val && val !== '●' && val !== '-' && val !== '2hr') {
+        acts.push({ date: dateStr, text: val.replace(/\([^)]*语言[^)]*\)/g, '').replace(/（[^）]*）/g, '').trim() });
+      }
+    }
+
+    if (acts.length === 0) continue;
+    acts.sort((a, b) => a.date.localeCompare(b.date));
+
+    const milestones = [];
+    for (let i = 0; i < acts.length; i++) {
+      const cur = acts[i];
+      milestones.push({
+        id: `ms-${Date.now()}-${i}-${Math.random().toString(16).slice(2, 6)}`,
+        name: cur.text,
+        startDate: cur.date,
+        endDate: cur.date
+      });
+    }
+
+    const startDate = acts[0].date;
+    const endDate = acts[acts.length - 1].date;
+    const projName = `${currentSite} - ${lineStr} - ${mainTitle}${model ? ` (${model})` : ''}`;
+
+    projects.push({
+      projectName: projName,
+      equipment: `${mainTitle}${model ? ` (${model})` : ''}`,
+      site: currentSite,
+      line: lineStr,
+      manufacturingNo: model,
+      startDate: startDate,
+      endDate: endDate,
+      milestones: milestones,
+      manpower: null,
+      sheetName: wb.SheetNames[0]
+    });
+  }
+
+  return projects.length > 0 ? projects : null;
+}
+
+/**
  * 엑셀 워크북(XLSX Workbook) 또는 붙여넣은 표 데이터를 분석하여
  * 각 설비(Equipment)별 프로젝트 일정, 마일스톤, 공수(Manpower) 정보를 추출합니다.
  */
 export function parseExcelMasterPlan(wb, context = {}) {
+  // 1. Check for Matrix Schedule layout first (e.g. OJ STK 순회검사 대체)
+  const matrixProjects = parseMatrixSchedule(wb, context);
+  if (matrixProjects && matrixProjects.length > 0) {
+    return matrixProjects;
+  }
+
   let targetName = wb.SheetNames.find(n => /planning|schedule|master|일정/i.test(n));
   if (!targetName) {
     const nonEdit = wb.SheetNames.find(n => !/edit|설정|양식/i.test(n));
@@ -308,6 +464,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
   let baseProjectName = "", baseStartDate = "", headerRowIdx = -1, colMap = {};
   let lineMfgMap = {};
   let titleLines = [];
+  let mfgMatches = [];
 
   for (let r = 0; r < Math.min(25, rows.length); r++) {
     const row = rows[r] || [];
@@ -350,13 +507,16 @@ export function parseExcelMasterPlan(wb, context = {}) {
 
   let clientPrefix = baseProjectName ? baseProjectName.split(' - ')[0].trim() : (context.formSite || "Project");
   if (baseProjectName) {
+    const siteMatch = baseProjectName.match(/(SKOY|SKOJ|SKOH2|SKOH|SKBA|SKON|OJ1|OJ2-1F|OJ2|OJ|TW)/i);
+    if (siteMatch) clientPrefix = siteMatch[1].toUpperCase();
+
     const linesMatch = baseProjectName.match(/(?:^|[\s\-_])([0-9,\s]+)\s*(?:Line|L|라인)/i);
     if (linesMatch) {
       titleLines = linesMatch[1].split(',').map(s => s.trim()).filter(Boolean);
       const prefixPart = baseProjectName.slice(0, linesMatch.index).trim().replace(/[:\-_]+$/, '').trim();
-      if (prefixPart) clientPrefix = prefixPart;
+      if (prefixPart && !siteMatch) clientPrefix = prefixPart;
     }
-    const mfgMatches = baseProjectName.match(/(E\d{4})/gi);
+    mfgMatches = baseProjectName.match(/([EH]\d{3,4})/gi) || [];
     if (mfgMatches && titleLines.length > 0) {
       titleLines.forEach((ln, idx) => {
         if (mfgMatches[idx]) lineMfgMap[ln] = mfgMatches[idx].toUpperCase();
@@ -505,8 +665,9 @@ export function parseExcelMasterPlan(wb, context = {}) {
     });
   }
 
+  const singleMfg = (mfgMatches && mfgMatches.length === 1) ? mfgMatches[0].toUpperCase() : "";
   let currentLine = titleLines[0] || context.formLine || "";
-  let currentMfgNo = context.formMfg || "";
+  let currentMfgNo = singleMfg || context.formMfg || "";
   let currentProject = null;
   let inManpowerSection = false;
   let inGrandTotalSection = false;
@@ -562,7 +723,13 @@ export function parseExcelMasterPlan(wb, context = {}) {
 
     if (lineStr) {
       const lm = lineStr.match(/([0-9A-Za-z]+)/);
-      if (lm) currentLine = lm[1];
+      if (lm) {
+        if (titleLines.length === 1 && lm[1] === "1" && titleLines[0] !== "1") {
+          currentLine = titleLines[0];
+        } else {
+          currentLine = lm[1];
+        }
+      }
     } else {
       const lineMatch = combinedLineStr.match(/(?:Line\s*|L|라인)\s*([0-9A-Za-z]+)|([0-9A-Za-z]+)\s*(?:Line|L|라인)/i);
       if (lineMatch && !/total|manpower|personnel/i.test(combinedLineStr)) {
@@ -650,6 +817,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
       currentProject = {
         projectName: projName,
         equipment: effectiveEqStr,
+        site: clientPrefix || context.formSite || "",
         startDate: baseStartDate,
         endDate: "",
         manufacturingNo: normalizeJVName(mfgNo),
@@ -802,6 +970,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
         totalManday: p._totalMandayVal,
         dailyPeak: p._dailyPeakVal,
         departments: p._deptMap,
+        byDepartment: Object.fromEntries(Object.entries(p._deptMap).map(([k, v]) => [k, v.total])),
         dailyTotal: p._dailyTotalMap
       };
     }

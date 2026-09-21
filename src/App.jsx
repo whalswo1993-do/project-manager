@@ -679,7 +679,7 @@ export default function App() {
         milestones: cleanMs
       });
 
-      let siteVal = form.site || curP.site;
+      let siteVal = targetP.site || form.site || curP.site;
       const projName = normalizeJVName(targetP.projectName || form.name || curP.name);
       if (!siteVal && projName && sites.length) {
         const matchedSite = sites.find(s => projName.toLowerCase().includes(s.name.toLowerCase()));
@@ -772,7 +772,7 @@ export default function App() {
       let errorLog = [];
 
       for (const p of directProjects) {
-        let siteVal = form.site;
+        let siteVal = p.site || form.site;
         const projName = normalizeJVName(p.projectName);
         if (!siteVal && projName && sites.length) {
           const matchedSite = sites.find(s => projName.toLowerCase().includes(s.name.toLowerCase()));

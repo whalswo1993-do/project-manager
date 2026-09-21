@@ -662,15 +662,10 @@ export default function App() {
   async function saveDirectProjects(directProjects, sourceLabel = "엑셀") {
     if (!directProjects || directProjects.length === 0) return false;
 
-    if (editing) {
+    // A. Single project upload while in edit mode: update currently editing project
+    if (directProjects.length === 1 && editing) {
       const curP = projects.find(pr => pr.id === editing) || form;
-      let targetP = directProjects.find(p => isSameProjectIdentity(curP, p, sites));
-
-      if (!targetP) {
-        const curType = (/j\/?c|형교환/i.test(curP.name) || (curP.milestones && curP.milestones.some(m => /j\/?c|형교환/i.test(m.name)))) ? "형교환(J/C)" : "일반/셋업";
-        setMsg(`현재 수정 대상인 '${curP.name}'(${curType}, Site: ${curP.site || '-'}, Line: ${curP.line || '-'})와 일치하는 프로젝트/설비 정보를 첨부 파일에서 찾을 수 없습니다. 동일 사이트/라인의 별도 프로젝트(형교환 또는 신규)로 등록하시려면 상단의 [수정 취소]를 누른 후 파일을 첨부해주세요.`);
-        return false;
-      }
+      const targetP = directProjects[0];
 
       const cleanMs = targetP.milestones.map(m => ({ ...m, name: normalizeJVName(m.name), id: uid() }));
       const autoStat = computeAutoStatus({
@@ -705,141 +700,116 @@ export default function App() {
       if (error) {
         console.error("Master plan update error:", error);
         setMsg(`마스터 플랜 최신화 실패: ${error.message}`);
-      } else {
-        const mpText = targetP.manpower ? ` (총 공수 ${targetP.manpower.totalManday} M/D 최신화)` : "";
-        let additionalUpdated = 0;
-        let additionalCreated = 0;
-
-        if (directProjects.length > 1) {
-          for (const otherP of directProjects) {
-            if (otherP === targetP) continue;
-            const existingOther = projects.find(ep => ep.id !== editing && isSameProjectIdentity(ep, otherP, sites));
-            if (existingOther) {
-              const otherCleanMs = otherP.milestones.map(m => ({ ...m, name: normalizeJVName(m.name), id: uid() }));
-              const otherAutoStat = computeAutoStatus({ startDate: otherP.startDate, endDate: otherP.endDate, milestones: otherCleanMs });
-              const updatedOther = {
-                ...existingOther,
-                startDate: otherP.startDate || existingOther.startDate,
-                endDate: otherP.endDate || existingOther.endDate,
-                manufacturingNo: normalizeJVName(otherP.manufacturingNo || existingOther.manufacturingNo || ""),
-                line: normalizeJVName(otherP.line || existingOther.line || ""),
-                status: otherAutoStat, autoStatus: true, isManualStatus: false, manualStatusBy: "",
-                milestones: otherCleanMs, manpower: otherP.manpower || existingOther.manpower || null
-              };
-              await supabase.from("projects").update(to(updatedOther)).eq("id", existingOther.id);
-              additionalUpdated++;
-            } else {
-              let otherSite = siteVal;
-              const otherCleanMs = otherP.milestones.map(m => ({ ...m, name: normalizeJVName(m.name), id: uid() }));
-              const otherAutoStat = computeAutoStatus({ startDate: otherP.startDate || iso(), endDate: otherP.endDate || iso(), milestones: otherCleanMs });
-              const newOtherRow = {
-                ...blank(), id: uid(),
-                name: normalizeJVName(otherP.projectName),
-                startDate: otherP.startDate || iso(),
-                endDate: otherP.endDate || iso(),
-                manufacturingNo: normalizeJVName(otherP.manufacturingNo || ""),
-                line: normalizeJVName(otherP.line || ""),
-                site: normalizeJVName(otherSite || "선택 안됨"),
-                status: otherAutoStat, autoStatus: true, isManualStatus: false, manualStatusBy: "",
-                milestones: otherCleanMs, manpower: otherP.manpower || null
-              };
-              let insertData = to(newOtherRow);
-              let { error: otherErr } = await supabase.from("projects").insert(insertData);
-              if (otherErr && otherErr.code === "23505") {
-                insertData.manufacturing_no = `${insertData.manufacturing_no || 'MFG'}-${uid().slice(-4)}`;
-                const retry = await supabase.from("projects").insert(insertData);
-                otherErr = retry.error;
-              }
-              if (otherErr) {
-                console.error("Auto-insert error for other project", otherP.projectName, otherErr);
-              } else {
-                additionalCreated++;
-              }
-            }
-          }
-        }
-        const parts = [];
-        if (additionalUpdated > 0) parts.push(`관련 프로젝트 ${additionalUpdated}건 최신화`);
-        if (additionalCreated > 0) parts.push(`신규 설비 프로젝트 ${additionalCreated}건 등록`);
-        const addText = parts.length > 0 ? ` 및 ${parts.join(', ')}` : "";
-        setMsg(`'${updatedRow.name}' 프로젝트의 마스터 스케줄 및 공수가 최신 버전으로 업데이트되었습니다!${mpText}${addText}`);
-        load("projects");
-      }
-      return true;
-    } else {
-      let successCount = 0;
-      let updateCount = 0;
-      let errorLog = [];
-
-      for (const p of directProjects) {
-        let siteVal = p.site || form.site;
-        const projName = normalizeJVName(p.projectName);
-        if (!siteVal && projName && sites.length) {
-          const matchedSite = sites.find(s => projName.toLowerCase().includes(s.name.toLowerCase()));
-          if (matchedSite) siteVal = matchedSite.name;
-        }
-        const existing = projects.find(ep => isSameProjectIdentity(ep, p, sites));
-        const cleanMs = p.milestones.map(m => ({ ...m, name: normalizeJVName(m.name), id: uid() }));
-        const autoStat = computeAutoStatus({ startDate: p.startDate || iso(), endDate: p.endDate || iso(), milestones: cleanMs });
-
-        if (existing) {
-          const updatedExisting = {
-            ...existing,
-            startDate: p.startDate || existing.startDate,
-            endDate: p.endDate || existing.endDate,
-            manufacturingNo: normalizeJVName(p.manufacturingNo || existing.manufacturingNo || ""),
-            line: normalizeJVName(p.line || existing.line || ""),
-            site: normalizeJVName(siteVal || existing.site || "선택 안됨"),
-            status: autoStat, autoStatus: true, isManualStatus: false, manualStatusBy: "",
-            milestones: cleanMs, manpower: p.manpower || existing.manpower || null
-          };
-          const { error } = await supabase.from("projects").update(to(updatedExisting)).eq("id", existing.id);
-          if (error) {
-            console.error("Auto-update error for", p.projectName, error);
-            errorLog.push(error.message);
-          } else {
-            updateCount++;
-          }
-        } else {
-          const newRow = {
-            ...blank(), id: uid(), name: projName,
-            startDate: p.startDate || iso(), endDate: p.endDate || iso(),
-            manufacturingNo: normalizeJVName(p.manufacturingNo || form.manufacturingNo || ""),
-            line: normalizeJVName(p.line || form.line || ""),
-            site: normalizeJVName(siteVal || form.site || "선택 안됨"),
-            status: autoStat, autoStatus: true, isManualStatus: false, manualStatusBy: "",
-            milestones: cleanMs, manpower: p.manpower || null
-          };
-          let insertData = to(newRow);
-          let { error } = await supabase.from("projects").insert(insertData);
-          if (error && error.code === "23505") {
-            insertData.manufacturing_no = `${insertData.manufacturing_no || 'MFG'}-${uid().slice(-4)}`;
-            const retry = await supabase.from("projects").insert(insertData);
-            error = retry.error;
-          }
-          if (error) {
-            console.error("Auto-insert error for", p.projectName, error);
-            errorLog.push(error.message);
-          } else {
-            successCount++;
-          }
-        }
+        return false;
       }
 
-      const totalMpSum = directProjects.reduce((acc, p) => acc + (p.manpower?.totalManday || 0), 0);
-      const mpSummaryText = totalMpSum > 0 ? ` 총 공수 ${totalMpSum} M/D 반영됨` : "";
-
-      if (successCount === 0 && updateCount === 0 && errorLog.length > 0) {
-        setMsg(`저장 실패: 데이터베이스 오류 발생 (${errorLog[0]})`);
-      } else {
-        const resText = [];
-        if (successCount > 0) resText.push(`${successCount}개 신규 등록`);
-        if (updateCount > 0) resText.push(`${updateCount}개 최신화`);
-        setMsg(`${sourceLabel} 완료! (${directProjects[0].sheetName || '표 데이터'}에서 ${directProjects.length}개 설비 중 ${resText.join(', ')} 되었습니다.${mpSummaryText ? ` ${mpSummaryText}` : ""})`);
-      }
+      const mpText = targetP.manpower ? ` (총 공수 ${targetP.manpower.totalManday} M/D 최신화)` : "";
+      setMsg(`'${updatedRow.name}' 프로젝트의 마스터 스케줄 및 공수가 최신 버전으로 업데이트되었습니다!${mpText}`);
       load("projects");
       return true;
     }
+
+    // B. Multi-project (e.g. 4 equipments) OR new registration mode:
+    // Process ALL projects in directProjects sequentially with duplicate resolution
+    const processedProjects = [...projects];
+    let createdCount = 0;
+    let updatedCount = 0;
+    const projectResults = [];
+    const errorLogs = [];
+
+    for (const p of directProjects) {
+      let siteVal = p.site || form.site;
+      const projName = normalizeJVName(p.projectName);
+      if (!siteVal && projName && sites.length) {
+        const matchedSite = sites.find(s => projName.toLowerCase().includes(s.name.toLowerCase()));
+        if (matchedSite) siteVal = matchedSite.name;
+      }
+
+      // Check against current DB list + already processed in this batch
+      const existing = processedProjects.find(ep => isSameProjectIdentity(ep, p, sites));
+      const cleanMs = p.milestones.map(m => ({ ...m, name: normalizeJVName(m.name), id: uid() }));
+      const autoStat = computeAutoStatus({ startDate: p.startDate || iso(), endDate: p.endDate || iso(), milestones: cleanMs });
+
+      if (existing) {
+        const updatedExisting = {
+          ...existing,
+          startDate: p.startDate || existing.startDate,
+          endDate: p.endDate || existing.endDate,
+          manufacturingNo: normalizeJVName(p.manufacturingNo || existing.manufacturingNo || ""),
+          line: normalizeJVName(p.line || existing.line || ""),
+          site: normalizeJVName(siteVal || existing.site || "선택 안됨"),
+          status: autoStat, autoStatus: true, isManualStatus: false, manualStatusBy: "",
+          milestones: cleanMs, manpower: p.manpower || existing.manpower || null
+        };
+        const { error } = await supabase.from("projects").update(to(updatedExisting)).eq("id", existing.id);
+        if (error) {
+          console.error("Auto-update error for", p.projectName, error);
+          errorLogs.push(`${p.projectName}: ${error.message}`);
+        } else {
+          updatedCount++;
+          projectResults.push({ name: projName, status: "최신화", manday: p.manpower?.totalManday || 0, line: p.line });
+          const idx = processedProjects.findIndex(x => x.id === existing.id);
+          if (idx !== -1) processedProjects[idx] = updatedExisting;
+        }
+      } else {
+        const newRow = {
+          ...blank(), id: uid(), name: projName,
+          startDate: p.startDate || iso(), endDate: p.endDate || iso(),
+          manufacturingNo: normalizeJVName(p.manufacturingNo || form.manufacturingNo || ""),
+          line: normalizeJVName(p.line || form.line || ""),
+          site: normalizeJVName(siteVal || form.site || "선택 안됨"),
+          status: autoStat, autoStatus: true, isManualStatus: false, manualStatusBy: "",
+          milestones: cleanMs, manpower: p.manpower || null
+        };
+
+        let insertData = to(newRow);
+        let { error } = await supabase.from("projects").insert(insertData);
+
+        // If duplicate key error (manufacturing_no collision), append equipment suffix or random tag and retry
+        if (error && (error.code === "23505" || String(error.message).includes("unique") || String(error.message).includes("duplicate"))) {
+          const eqTag = /notcher|노칭/i.test(projName) ? "NC" : (/stacker|스택/i.test(projName) ? "ST" : "EQ");
+          insertData.manufacturing_no = `${insertData.manufacturing_no || 'MFG'}-${eqTag}-${uid().slice(-3)}`;
+          const retry = await supabase.from("projects").insert(insertData);
+          error = retry.error;
+        }
+
+        if (error) {
+          console.error("Auto-insert error for", p.projectName, error);
+          errorLogs.push(`${p.projectName}: ${error.message}`);
+        } else {
+          createdCount++;
+          projectResults.push({ name: projName, status: "신규 등록", manday: p.manpower?.totalManday || 0, line: p.line });
+          processedProjects.push(newRow);
+        }
+      }
+    }
+
+    // Reset editing state so user is not stuck on a single project view
+    if (editing) {
+      setEditing(null);
+      setForm(blank());
+      setMilestones(newMs());
+    }
+
+    const totalMpSum = directProjects.reduce((acc, p) => acc + (p.manpower?.totalManday || 0), 0);
+    const summaryHeader = `[${sourceLabel} 완료] 총 ${directProjects.length}개 설비 프로젝트 중 ${createdCount > 0 ? `${createdCount}개 신규 등록` : ""}${createdCount > 0 && updatedCount > 0 ? ", " : ""}${updatedCount > 0 ? `${updatedCount}개 최신화` : ""} (총 공수 ${totalMpSum} M/D)`;
+
+    if (createdCount === 0 && updatedCount === 0 && errorLogs.length > 0) {
+      setMsg(`저장 실패: 데이터베이스 오류 발생 (${errorLogs[0]})`);
+    } else {
+      const detailLines = projectResults.map(r => `• ${r.name} (${r.status}, 공수: ${r.manday} M/D)`).join('\n');
+      setMsg(
+        <div>
+          <b>{summaryHeader}</b>
+          <div style={{ fontSize: '12px', marginTop: '4px', lineHeight: '1.5', whiteSpace: 'pre-line', color: '#1e293b' }}>
+            {detailLines}
+          </div>
+        </div>
+      );
+    }
+
+    load("projects");
+    return true;
   }
 
   async function handleMasterPlanUpload(input) {
@@ -911,10 +881,12 @@ export default function App() {
         }
 
         // 3. Quality comparison & Best selection:
-        // Compare milestone completeness, total manday, and daily manpower dates count
+        // Priority 1: Total projects count (Multi-equipment extraction completeness is paramount)
+        // Priority 2: Milestone completeness, total manday, and daily manpower dates count
         const score = (pList) => {
           if (!pList || !pList.length) return -1;
-          return pList.reduce((acc, p) => {
+          const countWeight = (pList.length || 0) * 10000;
+          return countWeight + pList.reduce((acc, p) => {
             const msScore = (p.milestones?.length || 0) * 10;
             const mpScore = (p.manpower?.totalManday || 0) > 0 ? 50 : 0;
             const dailyScore = Object.keys(p.manpower?.dailyTotal || {}).length * 2;

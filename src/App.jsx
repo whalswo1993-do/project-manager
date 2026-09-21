@@ -874,39 +874,59 @@ export default function App() {
         const pasteText = typeof input === "string" ? input : (input.text || "");
         const pasteHtml = typeof input === "object" ? (input.html || "") : "";
 
-        // 1. If HTML table exists (Excel copy-paste preserves merged cells and table layout in HTML)
-        if (pasteHtml && pasteHtml.includes("<table")) {
+        let tsvProjects = null;
+        let htmlProjects = null;
+
+        // 1. Primary: TSV text parsing (Excel copies continuous full 2D grid in text/plain)
+        if (pasteText && pasteText.trim().length > 5) {
           try {
-            const htmlWb = XLSX.read(pasteHtml, { type: "string" });
-            if (htmlWb && htmlWb.SheetNames && htmlWb.SheetNames.length > 0) {
-              const htmlProjects = parseExcelMasterPlan(htmlWb, parseContext);
-              if (htmlProjects && htmlProjects.length > 0) {
-                directProjects = htmlProjects;
-              }
+            const cleanText = pasteText.replace(/^\uFEFF/, '').replace(/\0/g, '');
+            const lines = parseTSVWithQuotes(cleanText);
+            if (lines.length > 0 && (cleanText.includes('\t') || lines.some(l => l.length > 1))) {
+              const ws = XLSX.utils.aoa_to_sheet(lines);
+              const wb = { SheetNames: ['Sheet1'], Sheets: { Sheet1: ws } };
+              tsvProjects = parseExcelMasterPlan(wb, parseContext);
             }
           } catch (e) {
-            console.warn("HTML table parse failed, fallback to TSV:", e);
+            console.warn("TSV parse failed:", e);
           }
         }
 
-        // 2. If TSV text exists or HTML fallback needed
-        if ((!directProjects || directProjects.length === 0) && pasteText) {
+        // 2. Secondary: HTML table parsing
+        if (pasteHtml && pasteHtml.includes("<table")) {
           try {
-            let wb = null;
-            const lines = parseTSVWithQuotes(pasteText);
-            if (lines.length > 0 && (pasteText.includes('\t') || lines.some(l => l.length > 1))) {
-              const ws = XLSX.utils.aoa_to_sheet(lines);
-              wb = { SheetNames: ['Sheet1'], Sheets: { Sheet1: ws } };
-            }
-            if (!wb) {
-              try { wb = XLSX.read(pasteText, { type: "string" }); } catch { /* ignore fallback */ }
-            }
-            if (wb && wb.SheetNames && wb.SheetNames.length > 0) {
-              directProjects = parseExcelMasterPlan(wb, parseContext);
+            const startIdx = pasteHtml.indexOf('<html');
+            const cleanHtml = startIdx !== -1 ? pasteHtml.slice(startIdx) : pasteHtml;
+            const htmlWb = XLSX.read(cleanHtml, { type: "string" });
+            if (htmlWb && htmlWb.SheetNames && htmlWb.SheetNames.length > 0) {
+              htmlProjects = parseExcelMasterPlan(htmlWb, parseContext);
             }
           } catch (e) {
-            console.warn("Direct TSV parse failed:", e);
+            console.warn("HTML table parse failed:", e);
           }
+        }
+
+        // 3. Quality comparison & Best selection:
+        // Compare milestone completeness, total manday, and daily manpower dates count
+        const score = (pList) => {
+          if (!pList || !pList.length) return -1;
+          return pList.reduce((acc, p) => {
+            const msScore = (p.milestones?.length || 0) * 10;
+            const mpScore = (p.manpower?.totalManday || 0) > 0 ? 50 : 0;
+            const dailyScore = Object.keys(p.manpower?.dailyTotal || {}).length * 2;
+            return acc + msScore + mpScore + dailyScore;
+          }, 0);
+        };
+
+        const tsvScore = score(tsvProjects);
+        const htmlScore = score(htmlProjects);
+
+        if (tsvScore >= htmlScore && tsvScore > 0) {
+          directProjects = tsvProjects;
+        } else if (htmlScore > 0) {
+          directProjects = htmlProjects;
+        } else {
+          directProjects = tsvProjects || htmlProjects;
         }
       }
 

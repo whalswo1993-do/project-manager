@@ -364,7 +364,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
 
   let clientPrefix = baseProjectName ? baseProjectName.split(' - ')[0].trim() : (context.formSite || "Project");
   if (baseProjectName) {
-    const siteMatch = baseProjectName.match(/(SKOY|SKOJ|SKOH2|SKOH|SKBA|SKON|OJ1|OJ2-1F|OJ2|OJ|TW)/i);
+    const siteMatch = baseProjectName.match(/(SKBM|SKOY|SKOJ|SKOH2|SKOH|SKBA|SKON|SKB|HSBMA|HMB|OJ1|OJ2-1F|OJ2|OJ|TW|SDI|LGES)/i);
     if (siteMatch) clientPrefix = siteMatch[1].toUpperCase();
 
     const linesMatch = baseProjectName.match(/(?:^|[\s\-_])([0-9,\s]+)\s*(?:Line|L|라인)/i);
@@ -645,6 +645,11 @@ export function parseExcelMasterPlan(wb, context = {}) {
       if (lm) {
         if (titleLines.length === 1 && lm[1] === "1" && titleLines[0] !== "1") {
           currentLine = titleLines[0];
+        } else if (titleLines.length > 0 && !titleLines.includes(lm[1])) {
+          const forwardMatch = (currentLine && Math.abs(parseInt(currentLine, 10) - parseInt(lm[1], 10)) <= 1)
+            ? currentLine
+            : titleLines.slice().reverse().find(tl => Math.abs(parseInt(tl, 10) - parseInt(lm[1], 10)) <= 1);
+          currentLine = forwardMatch || lm[1];
         } else {
           currentLine = lm[1];
         }
@@ -653,6 +658,10 @@ export function parseExcelMasterPlan(wb, context = {}) {
       const lineMatch = combinedLineStr.match(/(?:Line\s*|L|라인)\s*([0-9A-Za-z]+)|([0-9A-Za-z]+)\s*(?:Line|L|라인)/i);
       if (lineMatch && !/total|manpower|personnel/i.test(combinedLineStr)) {
         currentLine = (lineMatch[1] || lineMatch[2]).trim();
+        if (titleLines.length > 0 && !titleLines.includes(currentLine)) {
+          const matchedTitleLine = titleLines.find(tl => Math.abs(parseInt(tl, 10) - parseInt(currentLine, 10)) <= 1);
+          if (matchedTitleLine) currentLine = matchedTitleLine;
+        }
       }
     }
     const mfgMatch2 = combinedLineStr.match(/(E[0-9]{4})/i);
@@ -898,6 +907,46 @@ export function parseExcelMasterPlan(wb, context = {}) {
       }
       if (!p._totalMandayVal) {
         p._totalMandayVal = Object.values(p._deptMap).reduce((a, b) => a + (b.total || 0), 0);
+      }
+
+      // If user copied partial table without rightmost calendar columns, but department totals exist:
+      // Distribute manpower across active milestone dates so timeline is never empty!
+      if (Object.keys(p._dailyTotalMap).length === 0 && p._totalMandayVal > 0 && p.milestones.length > 0) {
+        const setupMs = p.milestones.filter(m => /세팅|조립|인증|대응|셋업|설치|작업|sample/i.test(m.name));
+        const targetMsList = setupMs.length > 0 ? setupMs : p.milestones;
+        let sMin = targetMsList[0].startDate;
+        let eMax = targetMsList[0].endDate;
+        targetMsList.forEach(m => {
+          if (m.startDate && m.startDate < sMin) sMin = m.startDate;
+          if (m.endDate && m.endDate > eMax) eMax = m.endDate;
+        });
+        if (sMin && eMax) {
+          const curD = new Date(sMin);
+          const endD = new Date(eMax);
+          const activeDates = [];
+          while (curD <= endD && activeDates.length < 200) {
+            const dayOfWeek = curD.getDay();
+            if (dayOfWeek !== 0) { // Monday-Saturday
+              activeDates.push(curD.toISOString().slice(0, 10));
+            }
+            curD.setDate(curD.getDate() + 1);
+          }
+          if (activeDates.length > 0) {
+            Object.entries(p._deptMap).forEach(([dName, dData]) => {
+              if (dData.total > 0 && Object.keys(dData.daily).length === 0) {
+                const perDay = Math.max(1, Math.min(dData.peak || dData.total, Math.ceil(dData.total / activeDates.length)));
+                let rem = dData.total;
+                for (const dStr of activeDates) {
+                  if (rem <= 0) break;
+                  const alloc = Math.min(rem, perDay);
+                  dData.daily[dStr] = alloc;
+                  p._dailyTotalMap[dStr] = (p._dailyTotalMap[dStr] || 0) + alloc;
+                  rem -= alloc;
+                }
+              }
+            });
+          }
+        }
       }
       if (!p._dailyPeakVal) {
         p._dailyPeakVal = Object.values(p._dailyTotalMap).reduce((a, b) => Math.max(a, b), 0);

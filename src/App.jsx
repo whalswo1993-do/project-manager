@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
 import Login from "./Login";
-import { exportGanttReport, exportCalendarReport, exportExcelReport } from "./reportExports";
+import { exportGanttReport, exportCalendarReport } from "./reportExports";
 import VisionSPC from "./VisionSPC";
 import IssueManagement from "./IssueManagement";
 import Quotations from "./Quotations";
@@ -1029,16 +1029,6 @@ JSON 출력 예시:
     }
   }
 
-  async function excel() {
-    setMsg("Excel 보고서 생성 중...");
-    try {
-      await exportExcelReport(view, { filter, siteFilter, personFilter, search });
-      setMsg("Excel 보고서를 완료했습니다.");
-    } catch (error) {
-      setMsg("Excel 생성 실패: " + error.message);
-    }
-  }
-
   const gs = view.length ? new Date(Math.min(...view.flatMap(p => [dt(p.startDate).getTime(), ...(p.milestones || []).map(m => dt(m.startDate).getTime())]))) : dt(iso());
   const ge = view.length ? new Date(Math.max(...view.flatMap(p => [dt(p.endDate).getTime(), ...(p.milestones || []).map(m => dt(m.endDate).getTime())]))) : new Date(gs.getTime() + DAY);
   const span = Math.max(DAY, ge - gs + DAY);
@@ -1107,9 +1097,6 @@ JSON 출력 예시:
               title="현재 로그인된 계정의 비밀번호를 변경합니다"
             >
               🔑 비밀번호 변경
-            </button>
-            <button onClick={() => { if (isGrade1) return showPermissionModal("Excel 보고서 출력"); excel(); }}>
-              Excel 보고서
             </button>
             <button onClick={handleSignOut}>로그아웃</button>
           </div>

@@ -337,3 +337,109 @@ export async function authenticateTestAccount(email, password) {
     },
   };
 }
+
+// 비밀번호 재설정 이메일 요청
+export async function requestPasswordReset(email) {
+  if (!email) {
+    return { success: false, error: "이메일을 입력해 주세요." };
+  }
+  const normalized = email.trim().toLowerCase();
+
+  if (!normalized.endsWith("@twgroup.co.kr")) {
+    return { success: false, error: "TW Group 임직원 이메일(@twgroup.co.kr)만 이용 가능합니다." };
+  }
+
+  // 삭제된 계정인지 확인
+  if (isAccountDeleted(normalized)) {
+    return { success: false, error: "삭제된 계정입니다. 해당 계정으로는 비밀번호를 재설정할 수 없습니다." };
+  }
+
+  // 테스트 계정인지 확인
+  const testAcc = findTestAccount(normalized);
+  if (testAcc) {
+    if (testAcc.deleted) {
+      return { success: false, error: "삭제된 계정입니다. 해당 계정으로는 비밀번호를 재설정할 수 없습니다." };
+    }
+    return {
+      success: true,
+      isTestAccount: true,
+      account: testAcc,
+      message: "테스트 계정은 사내 가상 계정입니다. 즉시 새 비밀번호를 설정할 수 있습니다.",
+    };
+  }
+
+  // 일반 Supabase 계정: 이메일 링크 발송
+  try {
+    const redirectUrl = window.location.origin + window.location.pathname;
+    const { error } = await supabase.auth.resetPasswordForEmail(normalized, {
+      redirectTo: redirectUrl,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      isTestAccount: false,
+      message: "비밀번호 재설정 링크가 이메일로 발송되었습니다. 회사 메일함을 확인하여 비밀번호를 재설정해 주세요.",
+    };
+  } catch (err) {
+    return { success: false, error: err.message || "비밀번호 재설정 메일 발송 중 오류가 발생했습니다." };
+  }
+}
+
+// 비밀번호 변경 또는 복구 후 재설정
+export async function updateUserPassword(newPassword, targetEmail = null) {
+  if (!newPassword || newPassword.length < 6) {
+    return { success: false, error: "비밀번호는 최소 6자 이상이어야 합니다." };
+  }
+
+  const activeTest = getActiveTestSession();
+  const testAcc = (targetEmail && findTestAccount(targetEmail)) || (activeTest ? findTestAccount(activeTest.user?.email) : null);
+
+  // 테스트 계정인 경우
+  if (testAcc) {
+    updateTestProfile(testAcc.id || testAcc.email, { password: newPassword });
+    if (activeTest && (activeTest.user.id === testAcc.id || activeTest.user.email.toLowerCase() === testAcc.email.toLowerCase())) {
+      activeTest.password = newPassword;
+      setActiveTestSession(activeTest);
+    }
+    return {
+      success: true,
+      message: "비밀번호가 성공적으로 변경되었습니다.",
+    };
+  }
+
+  // 일반 Supabase 계정
+  try {
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      message: "비밀번호가 성공적으로 변경되었습니다.",
+    };
+  } catch (err) {
+    return { success: false, error: err.message || "비밀번호 변경 중 오류가 발생했습니다." };
+  }
+}
+
+// 테스트 계정 비밀번호 직접 변경
+export function updateTestAccountPassword(email, newPassword) {
+  if (!email || !newPassword || newPassword.length < 6) {
+    return { success: false, error: "이메일과 6자 이상의 비밀번호를 입력해 주세요." };
+  }
+  const testAcc = findTestAccount(email);
+  if (!testAcc) {
+    return { success: false, error: "해당 테스트 계정을 찾을 수 없습니다." };
+  }
+  updateTestProfile(testAcc.id || testAcc.email, { password: newPassword });
+  return { success: true, message: "테스트 계정 비밀번호가 성공적으로 재설정되었습니다." };
+}
+

@@ -7,6 +7,7 @@ import VisionSPC from "./VisionSPC";
 import IssueManagement from "./IssueManagement";
 import Quotations from "./Quotations";
 import ManpowerManagement, { ProjectManpowerModal } from "./ManpowerManagement";
+import PasswordChangeModal from "./PasswordChangeModal";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as XLSX from "xlsx";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -196,6 +197,8 @@ export default function App() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [selectedManpowerProject, setSelectedManpowerProject] = useState(null);
   const [selectedProjects, setSelectedProjects] = useState(new Set());
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const masterPlanInput = useRef(null);
 
   const currentUserName = useMemo(() => {
@@ -368,6 +371,14 @@ export default function App() {
   }
 
   useEffect(() => {
+    // URL 해시에서 복구 모드 감지 (#access_token=...&type=recovery)
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash || "";
+      if (hash.includes("type=recovery") || (hash.includes("access_token") && hash.includes("recovery"))) {
+        setIsPasswordRecovery(true);
+      }
+    }
+
     // 1. 테스트 세션 우선 확인
     const testSess = getActiveTestSession();
     if (testSess) {
@@ -382,7 +393,12 @@ export default function App() {
       });
     }
 
-    const { data: authSub } = supabase.auth.onAuthStateChange((_, s) => {
+    const { data: authSub } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsPasswordRecovery(true);
+        setSession(s);
+        return;
+      }
       const currentTest = getActiveTestSession();
       if (currentTest) {
         setSession(currentTest);
@@ -1030,6 +1046,30 @@ JSON 출력 예시:
   const barW = (s, e) => Math.max(1, (dt(e) - dt(s) + DAY) / span * 100);
   const cells = monthCells(month);
 
+  if (isPasswordRecovery) {
+    return (
+      <main className="login-page">
+        <PasswordChangeModal
+          isOpen={true}
+          mode="recovery"
+          userEmail={session?.user?.email || ""}
+          onClose={() => {
+            setIsPasswordRecovery(false);
+            window.history.replaceState(null, "", window.location.pathname);
+          }}
+          onSuccess={(m) => {
+            alert(m + "\n새 비밀번호로 로그인해 주세요.");
+            setIsPasswordRecovery(false);
+            window.history.replaceState(null, "", window.location.pathname);
+            supabase.auth.signOut();
+            clearTestSession();
+            setSession(null);
+          }}
+        />
+      </main>
+    );
+  }
+
   if (loading) return <div className="center">확인 중...</div>;
   if (!session) return <Login />;
   if (!profile) return <div className="center">권한 확인 중... {msg}</div>;
@@ -1060,6 +1100,13 @@ JSON 출력 예시:
               title="브라우저 캐시를 완전히 비우고 최신 화면으로 새로고침합니다"
             >
               ⚡ 캐시 새로고침
+            </button>
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
+              title="현재 로그인된 계정의 비밀번호를 변경합니다"
+            >
+              🔑 비밀번호 변경
             </button>
             <button onClick={() => { if (isGrade1) return showPermissionModal("Excel 보고서 출력"); excel(); }}>
               Excel 보고서
@@ -1972,6 +2019,17 @@ JSON 출력 예시:
       {selectedManpowerProject && (
         <ProjectManpowerModal project={selectedManpowerProject} onClose={() => setSelectedManpowerProject(null)} />
       )}
+
+      <PasswordChangeModal
+        isOpen={showPasswordModal}
+        mode="change"
+        userEmail={session?.user?.email || ""}
+        onClose={() => setShowPasswordModal(false)}
+        onSuccess={(m) => {
+          setMsg(m);
+          setShowPasswordModal(false);
+        }}
+      />
     </main>
   );
 }

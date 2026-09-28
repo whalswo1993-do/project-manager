@@ -1337,7 +1337,7 @@ JSON 출력 예시:
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <input type="file" ref={masterPlanInput} onChange={e => handleMasterPlanUpload(e.target.files[0])} accept=".xlsx, .xls, image/*" style={{ display: 'none' }} />
+                      <input type="file" ref={masterPlanInput} onChange={e => handleMasterPlanUpload(e.target.files[0])} accept=".xlsx, .xls" style={{ display: 'none' }} />
                       <textarea
                         placeholder="엑셀 표 붙여넣기 (Ctrl+V)"
                         disabled={isExtracting}
@@ -1408,7 +1408,7 @@ JSON 출력 예시:
                           cursor: 'pointer'
                         }}
                       >
-                        {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel/이미지)"}
+                        {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel)"}
                       </button>
                     </div>
                   </div>

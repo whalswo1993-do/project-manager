@@ -37,6 +37,7 @@ scratch/
 # Local raw excel files
 *.xlsx
 *.xls
+*.pptx
 !public/*.xlsx
 !public/*.xls
 !*master-schedule-template.xlsx

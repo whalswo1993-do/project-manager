@@ -566,7 +566,7 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px'}}>
                     <h2>새 견적서 등록 {!canManage && "🔒"}</h2>
                     <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
-                        <input type="file" ref={fileInputRef} onChange={e=>handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, image/*, .pdf" style={{display:'none'}}/>
+                        <input type="file" ref={fileInputRef} onChange={e=>handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, .pdf" style={{display:'none'}}/>
                         <textarea 
                             placeholder={canManage ? "엑셀 표 붙여넣기 (Ctrl+V)" : "등록 권한 없음 (클릭 시 안내)"}
                             disabled={isExtracting}
@@ -634,7 +634,7 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                             }}
                             title={!canManage ? "등록 권한이 없습니다 (클릭 시 권한 안내)" : ""}
                         >
-                            {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel/이미지)"} {!canManage && "🔒"}
+                            {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel)"} {!canManage && "🔒"}
                         </button>
                     </div>
                 </div>

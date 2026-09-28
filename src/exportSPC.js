@@ -53,11 +53,11 @@ export function calculateStats(data, specs, method) {
     let sigma = method === 'sample_std' ? stdDev : calculateSigmaRBar(data, subgroup);
     if (sigma === 0) sigma = 0.0001;
 
-    let cp = 0, cpk = 0, cpu = 0, cpl = 0;
+    let cp = 0, cpk = 0;
     if (usl !== null && lsl !== null) {
         cp = (usl - lsl) / (6 * sigma);
-        cpu = (usl - mean) / (3 * sigma);
-        cpl = (mean - lsl) / (3 * sigma);
+        const cpu = (usl - mean) / (3 * sigma);
+        const cpl = (mean - lsl) / (3 * sigma);
         cpk = Math.min(cpu, cpl);
     }
 
@@ -188,7 +188,7 @@ function drawSPCChartToContext(ctx, W, H, data, spec, mean, sigma, cp, cpk, isPr
     ctx.fillText(`Cpk: ${cpk.toFixed(3)}`, overlayX + 10, overlayY + 36);
 }
 
-export async function exportResultsToExcelWithExcelJS(items, targetCp, method) {
+export async function exportResultsToExcelWithExcelJS(items, targetCp) {
     const workbook = new ExcelJS.Workbook();
     const canvas = document.createElement('canvas');
     canvas.width = 600;

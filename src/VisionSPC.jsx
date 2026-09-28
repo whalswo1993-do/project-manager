@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import ExcelJS from 'exceljs';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarController, LineController, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
@@ -26,25 +26,6 @@ export default function VisionSPC() {
 
     const activeItem = activeItemIndex !== null ? items[activeItemIndex] : null;
 
-    useEffect(() => {
-        loadCustomPresets();
-
-        const channel = supabase
-            .channel('spc-presets-channel')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'spc_presets' },
-                (payload) => {
-                    loadCustomPresets();
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, []);
-
     const loadCustomPresets = async () => {
         try {
             const { data, error } = await supabase.from('spc_presets').select('*');
@@ -61,6 +42,26 @@ export default function VisionSPC() {
             console.error("Failed to load presets from Supabase", e);
         }
     };
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadCustomPresets();
+
+        const channel = supabase
+            .channel('spc-presets-channel')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'spc_presets' },
+                () => {
+                    loadCustomPresets();
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
     const parseSpcGrid = (parsedGrid) => {
         if (!parsedGrid || parsedGrid.length === 0) return [];
 
@@ -190,7 +191,7 @@ export default function VisionSPC() {
             
             const worksheet = workbook.worksheets[0];
             const parsedGrid = [];
-            worksheet.eachRow((row, rowNumber) => {
+            worksheet.eachRow((row) => {
                 const rowValues = row.values.slice(1); // row.values[0] is empty in ExcelJS
                 parsedGrid.push(rowValues);
             });
@@ -229,15 +230,15 @@ export default function VisionSPC() {
         setItems(newItems);
     };
 
-    useEffect(() => {
+    const handleSigmaMethodChange = (newMethod) => {
+        setSigmaMethod(newMethod);
         if (items.length > 0) {
-            const newItems = items.map(item => ({
+            setItems(items.map(item => ({
                 ...item,
-                stats: calculateStats(item.data, item.specs, sigmaMethod)
-            }));
-            setItems(newItems);
+                stats: calculateStats(item.data, item.specs, newMethod)
+            })));
         }
-    }, [sigmaMethod]);
+    };
 
     const handleSavePreset = async () => {
         if (items.length === 0) {
@@ -534,7 +535,7 @@ export default function VisionSPC() {
                         <div style={{display:'flex', gap:'1rem'}}>
                             <div className="config-item">
                                 <span>표준편차(σ):</span>
-                                <select className="config-select" value={sigmaMethod} onChange={(e) => setSigmaMethod(e.target.value)}>
+                                <select className="config-select" value={sigmaMethod} onChange={(e) => handleSigmaMethodChange(e.target.value)}>
                                     <option value="moving_range">군내 (MR / d2)</option>
                                     <option value="sample_std">전체 (Sample Std)</option>
                                 </select>
@@ -564,7 +565,7 @@ export default function VisionSPC() {
                             {items.length > 0 && (
                                 <>
                                     <button className="btn" style={{background: '#24292f', color: '#fff', border: 'none'}} onClick={() => window.print()}>🖨️ 인쇄 / PDF 저장</button>
-                                    <button className="btn" style={{background: '#2da44e', color: '#fff', border: 'none'}} onClick={() => exportResultsToExcelWithExcelJS(items, parseFloat(targetCp), sigmaMethod)}>📊 Excel 리포트 출력</button>
+                                    <button className="btn" style={{background: '#2da44e', color: '#fff', border: 'none'}} onClick={() => exportResultsToExcelWithExcelJS(items, parseFloat(targetCp))}>📊 Excel 리포트 출력</button>
                                 </>
                             )}
                         </div>

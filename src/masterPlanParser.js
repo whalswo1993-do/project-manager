@@ -585,7 +585,6 @@ export function parseExcelMasterPlan(wb, context = {}) {
   }
 
   let currentLine = titleLines[0] || context.formLine || "";
-  let currentMfgNo = context.formMfg || "";
   let currentProject = null;
   let inManpowerSection = false;
   let inGrandTotalSection = false;
@@ -665,12 +664,10 @@ export function parseExcelMasterPlan(wb, context = {}) {
     }
     const mfgMatch2 = combinedLineStr.match(/(E[0-9]{4})/i);
     if (mfgMatch2 && !/total|manpower/i.test(combinedLineStr)) {
-      currentMfgNo = mfgMatch2[1].toUpperCase();
+      const matchedMfg = mfgMatch2[1].toUpperCase();
       for (let l in lineMfgMap) {
-        if (lineMfgMap[l] === currentMfgNo) { currentLine = l; break; }
+        if (lineMfgMap[l] === matchedMfg) { currentLine = l; break; }
       }
-    } else {
-      if (lineMfgMap[currentLine]) currentMfgNo = lineMfgMap[currentLine];
     }
 
     const mStart = excelDateToISO(sRaw, refYear);
@@ -931,7 +928,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
             curD.setDate(curD.getDate() + 1);
           }
           if (activeDates.length > 0) {
-            Object.entries(p._deptMap).forEach(([dName, dData]) => {
+            Object.values(p._deptMap).forEach((dData) => {
               if (dData.total > 0 && Object.keys(dData.daily).length === 0) {
                 const perDay = Math.max(1, Math.min(dData.peak || dData.total, Math.ceil(dData.total / activeDates.length)));
                 let rem = dData.total;
@@ -1015,8 +1012,8 @@ export function extractProjectTags(p, sites = []) {
   const site = String(p.site || '').trim().toLowerCase();
 
   // 1. Job Change (형교환) project check
-  const isJC = /j[\.\/]?c\b|jc\b|job\s*change|형교환|기종교체|모델교체|개조/i.test(name) ||
-               (p.milestones && p.milestones.some(m => /j[\.\/]?c|형교환|job\s*change/i.test(m.name)));
+  const isJC = /j[./]?c\b|jc\b|job\s*change|형교환|기종교체|모델교체|개조/i.test(name) ||
+               (p.milestones && p.milestones.some(m => /j[./]?c|형교환|job\s*change/i.test(m.name)));
 
   // 2. Setup / Initial installation project check
   const isSetup = /set-?up|셋업|신규|설치|초기|반입/i.test(name);

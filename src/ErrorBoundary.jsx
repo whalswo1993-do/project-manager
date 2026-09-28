@@ -1,5 +1,6 @@
-import React from 'react';
-export class ErrorBoundary extends React.Component {
+import { Component } from 'react';
+
+export class ErrorBoundary extends Component {
     constructor(props) {
         super(props);
         this.state = { hasError: false, error: null };
@@ -16,7 +17,7 @@ export class ErrorBoundary extends React.Component {
                         <pre>{this.state.error ? (this.state.error.stack || this.state.error.message || String(this.state.error)) : "Unknown Error"}</pre>
                     </div>
                 );
-            } catch (e) {
+            } catch {
                 return <div style={{padding: "20px", color: "red", background: "#fee"}}>FATAL ERROR IN ERROR BOUNDARY</div>;
             }
         }

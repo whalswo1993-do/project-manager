@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import './IssueManagement.css';
 import { supabase } from './supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';

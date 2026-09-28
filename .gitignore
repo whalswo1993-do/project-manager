@@ -31,6 +31,7 @@ dist-ssr
 build-error.txt
 temp_*.cjs
 temp_*.js
+*.mjs
 scratch/
 
 # Local raw excel files

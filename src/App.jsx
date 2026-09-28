@@ -170,6 +170,8 @@ const monthCells = d => {
 
 export default function App() {
   const [session, setSession] = useState(null);
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [users, setUsers] = useState([]);
@@ -431,7 +433,7 @@ export default function App() {
 
     const handleAccountDeleted = (e) => {
       const deletedEmail = e.detail?.email;
-      const myEmail = session?.user?.email?.toLowerCase();
+      const myEmail = sessionRef.current?.user?.email?.toLowerCase();
       if (deletedEmail && myEmail === deletedEmail) {
         supabase.auth.signOut();
         clearTestSession();
@@ -449,6 +451,7 @@ export default function App() {
       window.removeEventListener("auth-changed", handleAuthChange);
       window.removeEventListener("user-account-deleted", handleAccountDeleted);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const role = profile?.role || "grade1";

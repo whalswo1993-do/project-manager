@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import './Quotations.css';
 import { supabase } from './supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as XLSX from 'xlsx';
 
-export default function Quotations({ projects, session, role, onPermissionDenied }) {
+export default function Quotations({ projects, role, onPermissionDenied }) {
     const canManage = ['admin', 'grade3'].includes(role);
     const notifyPermission = (feature) => {
         if (onPermissionDenied) {
@@ -13,7 +13,6 @@ export default function Quotations({ projects, session, role, onPermissionDenied
             alert(`[${feature}] 권한이 없습니다. 운영자에게 권한을 부여받으시기 바랍니다.`);
         }
     };
-    const [isDragging, setIsDragging] = useState(false);
     const [isExtracting, setIsExtracting] = useState(false);
     const [selectedProjectInput, setSelectedProjectInput] = useState('');
     const [quotations, setQuotations] = useState([]);
@@ -37,19 +36,6 @@ export default function Quotations({ projects, session, role, onPermissionDenied
     const fileInputRef = useRef(null);
     const searchContainerRef = useRef(null);
 
-    useEffect(() => {
-        loadQuotationsData();
-        const handleClickOutside = (event) => {
-            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
-                setIsSearchFocused(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
-
     const loadQuotationsData = async () => {
         try {
             const { data: qData, error: qError } = await supabase.from('quotations').select('*').order('created_at', { ascending: false });
@@ -64,6 +50,20 @@ export default function Quotations({ projects, session, role, onPermissionDenied
             setMsg("데이터를 불러오는데 실패했습니다: " + error.message);
         }
     };
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        loadQuotationsData();
+        const handleClickOutside = (event) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+                setIsSearchFocused(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
     const determineCategory = (text) => {
         const lower = String(text).toLowerCase();
@@ -1079,7 +1079,7 @@ export default function Quotations({ projects, session, role, onPermissionDenied
                             
                             {expandedProjects[group.name] && (
                                 <div className="pa-body">
-                                    {group.quotations.map((quotation, qIdx) => {
+                                    {group.quotations.map((quotation) => {
                                         const itemsInQuotation = quotationItems.filter(item => item.quotation_id === quotation.id);
                                         return (
                                             <div key={quotation.id} className="pa-quotation">

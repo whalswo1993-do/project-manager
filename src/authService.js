@@ -201,7 +201,7 @@ export function getActiveTestSession() {
     if (typeof localStorage === "undefined") return null;
     const raw = localStorage.getItem(TEST_SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -413,7 +413,7 @@ export async function updateUserPassword(newPassword, targetEmail = null) {
 
   // 일반 Supabase 계정
   try {
-    const { data, error } = await supabase.auth.updateUser({
+    const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
 

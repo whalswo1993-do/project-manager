@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import "./ManpowerManagement.css";
 import ExcelJS from "exceljs";
 import PptxGenJS from "pptxgenjs";
 import { normalizeJVName } from "./utils";
 
-export const BASE_DEPT_ORDER = [
+const BASE_DEPT_ORDER = [
   "mechanical",
   "mechanical_sub",
   "vision",
@@ -17,9 +17,8 @@ export const BASE_DEPT_ORDER = [
   "safety",
   "manager"
 ];
-export const DEPT_ORDER = BASE_DEPT_ORDER;
 
-export const DEPT_LABELS = {
+const DEPT_LABELS = {
   mechanical: "기구 (Mechanical)",
   mechanical_sub: "기구 외주 (Mech Sub)",
   vision: "비전 (Vision)",
@@ -33,7 +32,7 @@ export const DEPT_LABELS = {
   manager: "소장 (Manager)"
 };
 
-export const DEPT_SHORT = {
+const DEPT_SHORT = {
   mechanical: "기구",
   mechanical_sub: "기구외주",
   vision: "비전",
@@ -47,7 +46,7 @@ export const DEPT_SHORT = {
   manager: "소장"
 };
 
-export const DEPT_COLORS = {
+const DEPT_COLORS = {
   mechanical: "#3b82f6",
   mechanical_sub: "#60a5fa",
   vision: "#8b5cf6",
@@ -61,20 +60,20 @@ export const DEPT_COLORS = {
   manager: "#06b6d4"
 };
 
-export function getDeptLabel(key) {
+function getDeptLabel(key) {
   const norm = normalizeDeptKey(key);
   if (DEPT_LABELS[norm]) return DEPT_LABELS[norm];
   return key;
 }
 
-export function getDeptShort(key) {
+function getDeptShort(key) {
   const norm = normalizeDeptKey(key);
   if (DEPT_SHORT[norm]) return DEPT_SHORT[norm];
   return key.slice(0, 2);
 }
 
 const DYNAMIC_PALETTE = ["#ec4899", "#6366f1", "#14b8a6", "#84cc16", "#e11d48", "#f97316", "#8b5cf6", "#06b6d4"];
-export function getDeptColor(key) {
+function getDeptColor(key) {
   const norm = normalizeDeptKey(key);
   if (DEPT_COLORS[norm]) return DEPT_COLORS[norm];
   let hash = 0;
@@ -82,7 +81,7 @@ export function getDeptColor(key) {
   return DYNAMIC_PALETTE[Math.abs(hash) % DYNAMIC_PALETTE.length];
 }
 
-export function normalizeDeptKey(key) {
+function normalizeDeptKey(key) {
   if (!key) return "other";
   const s = String(key).toLowerCase().trim();
 
@@ -120,7 +119,7 @@ export function normalizeDeptKey(key) {
   return s;
 }
 
-export function getProjectTotalManday(p) {
+function getProjectTotalManday(p) {
   const mp = p.manpower;
   if (!mp) return 0;
   if (mp.totalManday && Number(mp.totalManday) > 0) return Number(mp.totalManday);
@@ -224,7 +223,7 @@ function renderProjectDetailCard(slide, p, yTop, C, activeDeptKeys = BASE_DEPT_O
       text: t,
       options: { bold: idx > 0, color: idx === 0 ? C.slate : C.navy, align: "center" }
     })),
-    deptPcts.map((t, idx) => ({
+    deptPcts.map((t) => ({
       text: t,
       options: { color: C.gray, align: "center", fontSize: 7.5 }
     }))
@@ -265,7 +264,7 @@ function renderProjectDetailCard(slide, p, yTop, C, activeDeptKeys = BASE_DEPT_O
     margin: 0
   });
 
-  let insight1 = "";
+  let insight1;
   if (p.pTotalManday > 0 && p.pRangeTotal >= p.pTotalManday) {
     insight1 = `• 마스터 플랜 계획 공수(${p.pTotalManday} M/D) 기준 기간 내 전량(100%) 편성`;
   } else if (p.pTotalManday > 0) {
@@ -322,7 +321,6 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth(); // 0-indexed
-  const monthStr = `${year}-${String(month + 1).padStart(2, "0")}`;
 
   // View mode: 'month' (월간 단위) vs 'range' (기간 지정)
   const [viewMode, setViewMode] = useState("month");
@@ -1619,7 +1617,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                     </td>
                     <td style={{ textAlign: "center" }}>
                       <button
-                        onClick={() => setSelectedProjectForDetail(p)}
+                        onClick={() => {
+                          if (onSelectProject) onSelectProject(p);
+                          setSelectedProjectForDetail(p);
+                        }}
                         style={{
                           background: mp ? "#eff6ff" : "#f1f5f9",
                           color: mp ? "#1d4ed8" : "#64748b",
@@ -2060,7 +2061,7 @@ export function ProjectManpowerModal({ project, onClose }) {
       bDate.alignment = { vertical: "middle", horizontal: "center" };
       bDate.border = thinBorder;
 
-      sortedDepts.forEach(([dName, dData], dIdx) => {
+      sortedDepts.forEach(([, dData], dIdx) => {
         const c = bRow.getCell(dIdx + 2);
         c.value = `${dData.total || 0} M/D`;
         c.font = { name: "Malgun Gothic", size: 9.5, bold: true, color: { argb: "FF0F172A" } };

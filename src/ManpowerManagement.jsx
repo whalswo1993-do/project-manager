@@ -163,13 +163,47 @@ export function parseDeptWorkSections(text) {
     const content = cleaned.slice(start, end).trim();
     if (content) {
       if (result[curr.dept]) {
-        result[curr.dept] += ' ' + content;
+        result[curr.dept] += '\n' + content;
       } else {
         result[curr.dept] = content;
       }
     }
   }
   return result;
+}
+
+/**
+ * 일보 작업내용 텍스트에서 1, 2, 3 번호 표기 또는 줄바꿈/구분자 기반으로 개별 작업 항목을 스마트 분리
+ */
+export function splitWorkItems(text) {
+  if (!text) return [];
+  const cleaned = text.trim();
+
+  // 1. 번호 패턴 (1-, 2-, 1., 2., 1), [1], ① 등)
+  const numRegex = /(?:^|\s+|[\n\r]+)(?:\(?\d{1,2}[-.)\]]\s*|[①-⑳]\s*)/g;
+  const matches = [...cleaned.matchAll(numRegex)];
+  if (matches.length > 1 || (matches.length === 1 && matches[0].index === 0)) {
+    const parts = [];
+    for (let i = 0; i < matches.length; i++) {
+      const start = matches[i].index + matches[i][0].length;
+      const end = matches[i + 1] ? matches[i + 1].index : cleaned.length;
+      const item = cleaned.slice(start, end).trim();
+      if (item) parts.push(item);
+    }
+    if (parts.length > 0) return parts;
+  }
+
+  // 2. 줄바꿈으로 구분된 복수 항목
+  const lines = cleaned.split(/\r?\n/).map(l => l.trim().replace(/^[-*•]\s*/, '')).filter(Boolean);
+  if (lines.length > 1) return lines;
+
+  // 3. 쉼표(,) 또는 세미콜론(;) 구분 항목
+  if (cleaned.includes(';') || (cleaned.split(',').length >= 3)) {
+    const sep = cleaned.includes(';') ? ';' : ',';
+    return cleaned.split(sep).map(s => s.trim()).filter(Boolean);
+  }
+
+  return [cleaned];
 }
 
 function getProjectTotalManday(p) {
@@ -429,6 +463,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
   const [onlyReported, setOnlyReported] = useState(true);
   const [compSort, setCompSort] = useState("diffDesc");
   const [expandedDailyDetails, setExpandedDailyDetails] = useState({});
+  // 일자별 실투입 내역에서 작업내용 개별 접기/펼치기 상태 (기본값: 모두 접힘)
+  const [expandedCompReports, setExpandedCompReports] = useState({});
 
   const loadDailyReports = async () => {
     setIsLoadingReports(true);
@@ -1473,22 +1509,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       const visDiff = currVis - prevVis;
       const mgrDiff = currMgr - prevMgr;
 
-      if (mechDiff !== 0) {
-        deptChanges.push(`기구 ${mechDiff > 0 ? `+${mechDiff}` : mechDiff}`);
-        changedDeptKeys.push('기구');
-      }
-      if (ctrlDiff !== 0) {
-        deptChanges.push(`제어 ${ctrlDiff > 0 ? `+${ctrlDiff}` : ctrlDiff}`);
-        changedDeptKeys.push('제어');
-      }
-      if (visDiff !== 0) {
-        deptChanges.push(`비전 ${visDiff > 0 ? `+${visDiff}` : visDiff}`);
-        changedDeptKeys.push('비전');
-      }
-      if (mgrDiff !== 0) {
-        deptChanges.push(`소장 ${mgrDiff > 0 ? `+${mgrDiff}` : mgrDiff}`);
-        changedDeptKeys.push('소장');
-      }
+      if (mechDiff !== 0) deptChanges.push(`기구 ${mechDiff > 0 ? `+${mechDiff}` : mechDiff}`);
+      if (ctrlDiff !== 0) deptChanges.push(`제어 ${ctrlDiff > 0 ? `+${ctrlDiff}` : ctrlDiff}`);
+      if (visDiff !== 0) deptChanges.push(`비전 ${visDiff > 0 ? `+${visDiff}` : visDiff}`);
+      if (mgrDiff !== 0) deptChanges.push(`소장 ${mgrDiff > 0 ? `+${mgrDiff}` : mgrDiff}`);
 
       if (diff > 0) {
         deltaBadge = { type: 'inc', text: `▲ +${diff}명 증원`, color: '#dc2626', bg: '#fee2e2' };
@@ -1512,42 +1536,61 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       if (ms) activeMilestone = ms.name;
     }
 
-    // 부서별 작업내용 파싱 및 증감 부서 작업내용만 선별 취출
-    const parsedWorks = parseDeptWorkSections(r.work_details || "");
-    let noteSnippet = "";
-    let extractedByDept = false;
+    // ★ 업무 규칙: 증원(증가)된 부서만 작업내용 취출! 감원은 작업이 간단해져 뺀 것이므로 기재 안 함
+    const incDeptKeys = [];
+    if (prevReport) {
+      const prevMech = Number(prevReport.facility_count) || 0;
+      const prevCtrl = Number(prevReport.control_count) || 0;
+      const prevVis = Number(prevReport.vision_count) || 0;
+      const prevMgr = Number(prevReport.pm_count) || 0;
 
-    if (changedDeptKeys.length > 0) {
-      const parts = [];
-      changedDeptKeys.forEach(dKey => {
+      if (currMech > prevMech) incDeptKeys.push('기구');
+      if (currCtrl > prevCtrl) incDeptKeys.push('제어');
+      if (currVis > prevVis) incDeptKeys.push('비전');
+      if (currMgr > prevMgr) incDeptKeys.push('소장');
+    }
+
+    const parsedWorks = parseDeptWorkSections(r.work_details || "");
+    const deptWorkItems = []; // [{ dept: '기구작업', items: ['...'] }]
+
+    if (incDeptKeys.length > 0) {
+      incDeptKeys.forEach(dKey => {
         if (parsedWorks[dKey]) {
-          parts.push(`[${dKey}작업] ${parsedWorks[dKey]}`);
+          const items = splitWorkItems(parsedWorks[dKey]);
+          deptWorkItems.push({ dept: `${dKey}작업`, items });
+        } else {
+          // 해당 부서 헤더가 일보에 없는 경우: 해당 부서 키워드가 포함된 라인만 탐색
+          const allLines = (r.work_details || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+          const matchedLines = allLines.filter(l => new RegExp(dKey, 'i').test(l));
+          if (matchedLines.length > 0) {
+            deptWorkItems.push({ dept: `${dKey}작업`, items: matchedLines });
+          } else {
+            // 다른 부서 작업내용을 절대 노출하지 않고 명확히 표시
+            deptWorkItems.push({ dept: `${dKey}작업`, items: ['(일보 내 해당 부서 작업내용 미기재)'] });
+          }
         }
       });
-      if (parts.length > 0) {
-        noteSnippet = parts.join('\n');
-        extractedByDept = true;
-      } else {
-        // 파싱된 섹션이 없으면 전체 작업내용 사용
-        noteSnippet = (r.work_details || "").trim();
-      }
-    } else {
-      // 증감인원이 없는 날 (유지 등): 특이사항이 있으면 특이사항, 없으면 안내 문구
-      if (r.special_notes && r.special_notes.trim()) {
-        noteSnippet = `[특이사항] ${r.special_notes.trim()}`;
-      } else {
-        noteSnippet = "인력 변동 없음";
-      }
+    }
+
+    const specialNote = (r.special_notes || "").trim();
+    const hasWorkContent = deptWorkItems.length > 0 || Boolean(specialNote);
+
+    let noteSnippet = "";
+    if (deptWorkItems.length > 0) {
+      noteSnippet = deptWorkItems.map(dw => `[${dw.dept}]\n${dw.items.map((it, idx) => `${idx + 1}. ${it}`).join('\n')}`).join('\n\n');
+    } else if (specialNote) {
+      noteSnippet = `[특이사항] ${specialNote}`;
     }
 
     return {
       deltaBadge,
       deptChanges,
       milestone: activeMilestone,
+      deptWorkItems,
+      hasWorkContent,
+      specialNote,
       noteSnippet,
-      fullWorkDetails: (r.work_details || "").trim(),
-      hasDeptChanges: changedDeptKeys.length > 0,
-      extractedByDept
+      fullWorkDetails: (r.work_details || "").trim()
     };
   };
 
@@ -2881,6 +2924,39 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                     <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span>📅</span> [{normalizeJVName(selectedProjectComp.projectName)}] 일자별 실투입 내역 ({selectedProjectComp.reports.length}일치 일보)
                     </h4>
+                    {selectedProjectComp.reports.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allOpen = selectedProjectComp.reports.every((r, idx) => expandedCompReports[r.id || r.report_date || idx]);
+                          const next = {};
+                          if (!allOpen) {
+                            selectedProjectComp.reports.forEach((r, idx) => {
+                              next[r.id || r.report_date || idx] = true;
+                            });
+                          }
+                          setExpandedCompReports(next);
+                        }}
+                        style={{
+                          background: '#fff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          padding: '4px 10px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          color: '#475569',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                        title="전체 일자의 작업내용을 한꺼번에 펼치거나 접습니다"
+                      >
+                        {selectedProjectComp.reports.every((r, idx) => expandedCompReports[r.id || r.report_date || idx])
+                          ? '작업내용 전체 접기 ▴'
+                          : '작업내용 전체 펼치기 ▾'}
+                      </button>
+                    )}
                   </div>
 
                   {selectedProjectComp.reports.length === 0 ? (
@@ -2910,10 +2986,12 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                             const dayTotal = pm + fac + ctrl + vis;
 
                             const reasonInfo = getManpowerChangeReason(r, selectedProjectComp.reports, rIdx, selectedProjectComp.project);
-                            const { deltaBadge, deptChanges, milestone, noteSnippet } = reasonInfo;
+                            const { deltaBadge, deptChanges, milestone } = reasonInfo;
+                            const rowKey = r.id || r.report_date || rIdx;
+                            const isExpanded = Boolean(expandedCompReports[rowKey]);
 
                             return (
-                              <tr key={r.id || rIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <tr key={rowKey} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                 <td style={{ padding: '9px 10px', textAlign: 'center', fontWeight: 'bold', color: '#334155', whiteSpace: 'nowrap' }}>
                                   {r.report_date}
                                 </td>
@@ -2933,8 +3011,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                                   {vis > 0 ? `${vis}명` : "-"}
                                 </td>
                                 <td style={{ padding: '8px 12px', textAlign: 'left', verticalAlign: 'middle' }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    {/* 1. 상단 라인: 마일스톤 -> 증감인원 -> 부서별 증감인원 */}
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                                    {/* 1. 상단 라인: 마일스톤 -> 증감인원 -> 부서별 증감인원 (+작업내용 토글 버튼) */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                                       {milestone && (
                                         <span style={{
@@ -2984,29 +3062,74 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                                           ({deptChanges.join(', ')})
                                         </span>
                                       )}
+
+                                      {/* 증원 사유 등 표시할 작업내용이 있는 경우 접기/펼치기 버튼 노출 (기본: 접힘) */}
+                                      {reasonInfo.hasWorkContent && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setExpandedCompReports(prev => ({ ...prev, [rowKey]: !prev[rowKey] }))}
+                                          style={{
+                                            background: isExpanded ? '#dbeafe' : '#f8fafc',
+                                            border: isExpanded ? '1px solid #93c5fd' : '1px solid #cbd5e1',
+                                            borderRadius: '4px',
+                                            padding: '1px 7px',
+                                            fontSize: '11px',
+                                            fontWeight: 600,
+                                            color: isExpanded ? '#1d4ed8' : '#475569',
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '3px',
+                                            whiteSpace: 'nowrap'
+                                          }}
+                                          title="클릭하여 상세 작업내용 펼치기/접기"
+                                        >
+                                          <span>📝 작업내용 {isExpanded ? '접기 ▴' : '보기 ▾'}</span>
+                                        </button>
+                                      )}
                                     </div>
 
-                                    {/* 2. 하단 라인: 부서별 증감인원에 따른 해당 부서 작업내용 취출 기재 */}
-                                    {noteSnippet ? (
-                                      <div
-                                        title={reasonInfo.fullWorkDetails ? `[전체 일보 내용]\n${reasonInfo.fullWorkDetails}` : undefined}
-                                        style={{
-                                          fontSize: '11.5px',
-                                          color: reasonInfo.hasDeptChanges ? '#1e293b' : '#64748b',
-                                          lineHeight: 1.45,
-                                          whiteSpace: 'pre-line',
-                                          wordBreak: 'break-word',
-                                          background: reasonInfo.hasDeptChanges ? '#f8fafc' : 'transparent',
-                                          padding: reasonInfo.hasDeptChanges ? '4px 8px' : '0',
-                                          borderRadius: '4px',
-                                          border: reasonInfo.hasDeptChanges ? '1px solid #e2e8f0' : 'none'
-                                        }}
-                                      >
-                                        {noteSnippet}
-                                      </div>
-                                    ) : (
-                                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                                        인력 변동 없음
+                                    {/* 2. 하단 라인: 펼쳐졌을 때만 증원된 해당 부서 작업내용을 번호별/항목별로 깔끔하게 아래 배치 */}
+                                    {isExpanded && reasonInfo.hasWorkContent && (
+                                      <div style={{
+                                        marginTop: '3px',
+                                        background: '#f8fafc',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '6px',
+                                        padding: '8px 10px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '6px'
+                                      }}>
+                                        {/* 증원된 부서별 작업내용 리스트 (라벨 아래에 항목 배치) */}
+                                        {reasonInfo.deptWorkItems && reasonInfo.deptWorkItems.length > 0 && reasonInfo.deptWorkItems.map((dw, dwIdx) => (
+                                          <div key={dwIdx} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                              <span style={{ background: '#e2e8f0', padding: '1px 6px', borderRadius: '3px' }}>
+                                                [{dw.dept}]
+                                              </span>
+                                            </div>
+                                            <div style={{ paddingLeft: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                              {dw.items.map((it, itIdx) => (
+                                                <div key={itIdx} style={{ fontSize: '11.5px', color: '#334155', lineHeight: 1.45 }}>
+                                                  {dw.items.length > 1 && (
+                                                    <span style={{ fontWeight: 600, color: '#64748b', marginRight: '4px' }}>
+                                                      {itIdx + 1}.
+                                                    </span>
+                                                  )}
+                                                  {it}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        ))}
+
+                                        {/* 특이사항이 있는 경우 */}
+                                        {reasonInfo.specialNote && (
+                                          <div style={{ fontSize: '11.5px', color: '#b45309', background: '#fef3c7', padding: '4px 8px', borderRadius: '4px', border: '1px solid #fde68a' }}>
+                                            <b>[특이사항]</b> {reasonInfo.specialNote}
+                                          </div>
+                                        )}
                                       </div>
                                     )}
                                   </div>

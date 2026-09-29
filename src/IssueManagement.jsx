@@ -257,14 +257,467 @@ ${allText.substring(0, 30000)}
         }
     };
 
+    // --- HTML / TSV 엑셀 표 파서 유틸리티 (마스터스케줄 등록 방식) ---
+    const normalizeReportDate = (raw) => {
+        if (raw === null || raw === undefined) return null;
+        if (typeof raw === 'number') {
+            if (raw > 30000 && raw < 70000) {
+                const date = new Date(Math.round((raw - 25569) * 86400 * 1000));
+                return date.toISOString().slice(0, 10);
+            }
+        }
+        const str = String(raw).trim();
+        if (!str) return null;
+
+        // YYYY-MM-DD or YYYY.MM.DD or YYYY/MM/DD
+        let m = str.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+        if (m) {
+            const y = m[1];
+            const month = String(m[2]).padStart(2, '0');
+            const d = String(m[3]).padStart(2, '0');
+            return `${y}-${month}-${d}`;
+        }
+
+        // YY-MM-DD or YY.MM.DD or YY/MM/DD
+        m = str.match(/^(\d{2})[-./](\d{1,2})[-./](\d{1,2})/);
+        if (m) {
+            const y = `20${m[1]}`;
+            const month = String(m[2]).padStart(2, '0');
+            const d = String(m[3]).padStart(2, '0');
+            return `${y}-${month}-${d}`;
+        }
+
+        // M월 D일 or M/D or M.D
+        m = str.match(/(\d{1,2})월\s*(\d{1,2})일/) || str.match(/^(\d{1,2})[-./](\d{1,2})/);
+        if (m) {
+            const currentYear = new Date().getFullYear();
+            const month = String(m[1]).padStart(2, '0');
+            const d = String(m[2]).padStart(2, '0');
+            return `${currentYear}-${month}-${d}`;
+        }
+
+        return null;
+    };
+
+    const extractGridFromClipboard = (html, text) => {
+        if (html && html.includes('<table')) {
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const trs = Array.from(doc.querySelectorAll('tr'));
+                if (trs.length > 0) {
+                    const grid = trs.map(tr => {
+                        const cells = Array.from(tr.querySelectorAll('th, td'));
+                        return cells.map(c => (c.innerText || c.textContent || '').trim());
+                    }).filter(row => row.length > 0 && row.some(c => c.length > 0));
+                    if (grid.length > 0) return grid;
+                }
+            } catch (e) {
+                console.warn('HTML table parsing error:', e);
+            }
+        }
+
+        if (text && typeof text === 'string') {
+            const clean = text.replace(/^\uFEFF/, '').replace(/\r/g, '');
+            const lines = clean.split('\n');
+            const grid = lines.map(line => line.split('\t').map(c => c.trim()))
+                              .filter(row => row.length > 0 && row.some(c => c.length > 0));
+            if (grid.length > 0) return grid;
+        }
+
+        return [];
+    };
+
+    const parseWorkSheetGrid = (grid) => {
+        const result = {};
+        if (!grid || grid.length === 0) return result;
+
+        let headerRowIdx = -1;
+        let dateCol = -1;
+        let workCol = -1;
+        let noteCol = -1;
+        let deptCol = -1;
+
+        for (let r = 0; r < Math.min(12, grid.length); r++) {
+            const row = grid[r];
+            let dCol = -1, wCol = -1, nCol = -1, dpCol = -1;
+            row.forEach((cell, cIdx) => {
+                const clean = cell.replace(/\s+/g, '');
+                if (/일자|날짜|일시|Date/i.test(clean) && dCol === -1) dCol = cIdx;
+                if (/작업내용|업무내용|공정|진행사항|작업현황|주요작업|작업상세|작업|업무|내용/i.test(clean) && wCol === -1) wCol = cIdx;
+                if (/특이사항|이슈|비고|건의사항|문제점|특기사항|비고란|참고/i.test(clean) && nCol === -1) nCol = cIdx;
+                if (/부서|팀|담당|구분|직종|소속/i.test(clean) && dpCol === -1) dpCol = cIdx;
+            });
+
+            if (dCol !== -1 && wCol !== -1) {
+                headerRowIdx = r;
+                dateCol = dCol;
+                workCol = wCol;
+                noteCol = nCol;
+                deptCol = dpCol;
+                break;
+            }
+        }
+
+        const startRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
+        let lastDate = null;
+
+        for (let r = startRow; r < grid.length; r++) {
+            const row = grid[r];
+            if (!row || row.length === 0) continue;
+
+            let rowDate = null;
+            if (dateCol !== -1 && row[dateCol]) {
+                rowDate = normalizeReportDate(row[dateCol]);
+            } else {
+                for (let c = 0; c < Math.min(3, row.length); c++) {
+                    const testDate = normalizeReportDate(row[c]);
+                    if (testDate) {
+                        rowDate = testDate;
+                        if (dateCol === -1) dateCol = c;
+                        break;
+                    }
+                }
+            }
+
+            const currentDate = rowDate || lastDate;
+            if (!currentDate) continue;
+            if (rowDate) lastDate = rowDate;
+
+            let workText = '';
+            if (workCol !== -1 && row[workCol]) {
+                workText = row[workCol].trim();
+            } else {
+                const others = row.filter((c, idx) => idx !== dateCol && c.length > 1);
+                if (others.length > 0) workText = others.join(' | ');
+            }
+
+            let noteText = '';
+            if (noteCol !== -1 && row[noteCol]) {
+                noteText = row[noteCol].trim();
+            }
+
+            const deptText = (deptCol !== -1 && row[deptCol]) ? row[deptCol].trim() : '';
+            const prefix = deptText ? `[${deptText}] ` : '';
+
+            if (!result[currentDate]) {
+                result[currentDate] = {
+                    date: currentDate,
+                    work_details: [],
+                    special_notes: []
+                };
+            }
+
+            if (workText && !/^(작업내용|공정|업무|내용)$/i.test(workText)) {
+                result[currentDate].work_details.push(`${prefix}${workText}`);
+            }
+            if (noteText && !/^(특이사항|이슈|비고)$/i.test(noteText)) {
+                result[currentDate].special_notes.push(noteText);
+            }
+        }
+
+        const finalMap = {};
+        Object.keys(result).forEach(d => {
+            const item = result[d];
+            const workJoined = item.work_details.join('\n');
+            const noteJoined = item.special_notes.join('\n');
+            if (workJoined || noteJoined) {
+                finalMap[d] = {
+                    date: d,
+                    work_details: workJoined,
+                    special_notes: noteJoined
+                };
+            }
+        });
+
+        return finalMap;
+    };
+
+    const parseManpowerSheetGrid = (grid) => {
+        const finalMap = {};
+        if (!grid || grid.length === 0) return finalMap;
+
+        const toNum = (val) => {
+            if (!val) return 0;
+            const n = parseFloat(String(val).replace(/[^0-9.]/g, ''));
+            return isNaN(n) ? 0 : n;
+        };
+
+        const classifyDept = (text) => {
+            const clean = String(text || '').replace(/\s+/g, '');
+            if (/소장|PM|현장소장|관리자|현장대리/i.test(clean)) return 'pm_count';
+            if (/설계|도면|설계팀/i.test(clean)) return 'design_count';
+            if (/설비|기구|기계|배관/i.test(clean)) return 'facility_count';
+            if (/제어|전장|전기|PLC/i.test(clean)) return 'control_count';
+            if (/비전|Vision|검사/i.test(clean)) return 'vision_count';
+            if (/합계|계|총원|투입|인원|공수|총합/i.test(clean)) return 'personnel_count';
+            return null;
+        };
+
+        // 가로 달력형 검사 (행 0~4에 날짜가 2개 이상 연속/배열되는지)
+        let isHorizontal = false;
+        let dateRowIdx = -1;
+        const dateColMap = {};
+
+        for (let r = 0; r < Math.min(5, grid.length); r++) {
+            let validDatesInRow = 0;
+            const tempCols = {};
+            grid[r].forEach((cell, cIdx) => {
+                const d = normalizeReportDate(cell);
+                if (d) {
+                    validDatesInRow++;
+                    tempCols[cIdx] = d;
+                }
+            });
+            if (validDatesInRow >= 2) {
+                isHorizontal = true;
+                dateRowIdx = r;
+                Object.assign(dateColMap, tempCols);
+                break;
+            }
+        }
+
+        if (isHorizontal) {
+            for (let r = dateRowIdx + 1; r < grid.length; r++) {
+                const row = grid[r];
+                if (!row || row.length === 0) continue;
+                let deptKey = null;
+                for (let c = 0; c < Math.min(3, row.length); c++) {
+                    deptKey = classifyDept(row[c]);
+                    if (deptKey) break;
+                }
+                if (!deptKey) continue;
+
+                Object.entries(dateColMap).forEach(([colIdx, dateStr]) => {
+                    const cNum = parseInt(colIdx, 10);
+                    const val = toNum(row[cNum]);
+                    if (!finalMap[dateStr]) {
+                        finalMap[dateStr] = {
+                            date: dateStr,
+                            pm_count: 0,
+                            design_count: 0,
+                            facility_count: 0,
+                            control_count: 0,
+                            vision_count: 0,
+                            personnel_count: 0
+                        };
+                    }
+                    if (deptKey === 'personnel_count') {
+                        finalMap[dateStr].personnel_count = val;
+                    } else {
+                        finalMap[dateStr][deptKey] = (finalMap[dateStr][deptKey] || 0) + val;
+                    }
+                });
+            }
+        } else {
+            // 세로 일자형 (날짜가 열로 내려가고 부서가 상단 헤더)
+            let headerRowIdx = -1;
+            let dateColIdx = -1;
+            const deptColMap = {};
+
+            for (let r = 0; r < Math.min(10, grid.length); r++) {
+                const row = grid[r];
+                let dCol = -1;
+                const tempDeptCols = {};
+                row.forEach((cell, cIdx) => {
+                    const clean = cell.replace(/\s+/g, '');
+                    if (/일자|날짜|Date/i.test(clean) && dCol === -1) {
+                        dCol = cIdx;
+                    }
+                    const deptKey = classifyDept(clean);
+                    if (deptKey) {
+                        tempDeptCols[cIdx] = deptKey;
+                    }
+                });
+
+                if (dCol !== -1 || Object.keys(tempDeptCols).length >= 2) {
+                    headerRowIdx = r;
+                    dateColIdx = dCol;
+                    Object.assign(deptColMap, tempDeptCols);
+                    break;
+                }
+            }
+
+            const startR = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
+            for (let r = startR; r < grid.length; r++) {
+                const row = grid[r];
+                if (!row || row.length === 0) continue;
+
+                let rowDate = null;
+                if (dateColIdx !== -1 && row[dateColIdx]) {
+                    rowDate = normalizeReportDate(row[dateColIdx]);
+                } else {
+                    for (let c = 0; c < Math.min(3, row.length); c++) {
+                        const testD = normalizeReportDate(row[c]);
+                        if (testD) {
+                            rowDate = testD;
+                            break;
+                        }
+                    }
+                }
+
+                if (!rowDate) continue;
+                if (!finalMap[rowDate]) {
+                    finalMap[rowDate] = {
+                        date: rowDate,
+                        pm_count: 0,
+                        design_count: 0,
+                        facility_count: 0,
+                        control_count: 0,
+                        vision_count: 0,
+                        personnel_count: 0
+                    };
+                }
+
+                Object.entries(deptColMap).forEach(([colIdx, deptKey]) => {
+                    const cNum = parseInt(colIdx, 10);
+                    const val = toNum(row[cNum]);
+                    if (deptKey === 'personnel_count') {
+                        finalMap[rowDate].personnel_count = val;
+                    } else {
+                        finalMap[rowDate][deptKey] = (finalMap[rowDate][deptKey] || 0) + val;
+                    }
+                });
+            }
+        }
+
+        // 인원 합산 자동 보정
+        Object.values(finalMap).forEach(item => {
+            const sum = (item.pm_count || 0) + (item.design_count || 0) + (item.facility_count || 0) + (item.control_count || 0) + (item.vision_count || 0);
+            if ((!item.personnel_count || item.personnel_count === 0) && sum > 0) {
+                item.personnel_count = sum;
+            }
+        });
+
+        return finalMap;
+    };
+
+    const handlePasteReportSheet = (e, type) => {
+        e.preventDefault();
+        if (isGrade1) return notifyPermission('일보 데이터 등록');
+
+        const html = e.clipboardData?.getData("text/html") || "";
+        const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text") || "";
+
+        if (!html && !text) {
+            setMsg('클립보드에 복사된 표 데이터가 없습니다.');
+            return;
+        }
+
+        const grid = extractGridFromClipboard(html, text);
+        if (!grid || grid.length === 0) {
+            setMsg('표 형태의 데이터를 인식하지 못했습니다. 엑셀에서 셀 범위를 복사(Ctrl+C)한 후 붙여넣어 주세요.');
+            return;
+        }
+
+        if (type === 'work') {
+            const workMap = parseWorkSheetGrid(grid);
+            const dates = Object.keys(workMap).sort();
+            if (dates.length === 0) {
+                setMsg('작업내용 시트에서 날짜나 작업 내용을 찾을 수 없습니다. 일자 및 작업내용 열이 포함되어 있는지 확인해주세요.');
+                return;
+            }
+
+            setExtractedReports(prev => {
+                const isInitialEmpty = prev.length === 1 && !prev[0].work_details.trim() && !prev[0].special_notes.trim() && (prev[0].personnel_count || 0) === 0;
+                const currentMap = {};
+                if (!isInitialEmpty) {
+                    prev.forEach(r => {
+                        if (r.date) currentMap[r.date] = { ...r };
+                    });
+                }
+
+                dates.forEach(d => {
+                    const w = workMap[d];
+                    if (!currentMap[d]) {
+                        currentMap[d] = {
+                            date: d,
+                            work_details: w.work_details || '',
+                            special_notes: w.special_notes || '',
+                            personnel_count: 0,
+                            pm_count: 0,
+                            design_count: 0,
+                            facility_count: 0,
+                            control_count: 0,
+                            vision_count: 0
+                        };
+                    } else {
+                        currentMap[d].work_details = w.work_details || currentMap[d].work_details;
+                        if (w.special_notes) {
+                            currentMap[d].special_notes = currentMap[d].special_notes
+                                ? `${currentMap[d].special_notes}\n${w.special_notes}`
+                                : w.special_notes;
+                        }
+                    }
+                });
+
+                const mergedList = Object.values(currentMap).sort((a, b) => a.date.localeCompare(b.date));
+                return mergedList.length > 0 ? mergedList : prev;
+            });
+
+            setCollapsedSections(prev => ({ ...prev, inputForm: false }));
+            setMsg(`📋 작업내용 시트 붙여넣기 완료: ${dates.length}일치 데이터(${dates[0]} ~ ${dates[dates.length - 1]})를 직접입력 폼에 반영했습니다.`);
+        } else if (type === 'manpower') {
+            const mpMap = parseManpowerSheetGrid(grid);
+            const dates = Object.keys(mpMap).sort();
+            if (dates.length === 0) {
+                setMsg('공수 시트에서 날짜나 인원 수치를 찾을 수 없습니다. 일자 및 직종별 인원 열이 포함되어 있는지 확인해주세요.');
+                return;
+            }
+
+            setExtractedReports(prev => {
+                const isInitialEmpty = prev.length === 1 && !prev[0].work_details.trim() && !prev[0].special_notes.trim() && (prev[0].personnel_count || 0) === 0;
+                const currentMap = {};
+                if (!isInitialEmpty) {
+                    prev.forEach(r => {
+                        if (r.date) currentMap[r.date] = { ...r };
+                    });
+                }
+
+                dates.forEach(d => {
+                    const m = mpMap[d];
+                    if (!currentMap[d]) {
+                        currentMap[d] = {
+                            date: d,
+                            work_details: '',
+                            special_notes: '',
+                            personnel_count: m.personnel_count || 0,
+                            pm_count: m.pm_count || 0,
+                            design_count: m.design_count || 0,
+                            facility_count: m.facility_count || 0,
+                            control_count: m.control_count || 0,
+                            vision_count: m.vision_count || 0
+                        };
+                    } else {
+                        currentMap[d].pm_count = m.pm_count ?? currentMap[d].pm_count;
+                        currentMap[d].design_count = m.design_count ?? currentMap[d].design_count;
+                        currentMap[d].facility_count = m.facility_count ?? currentMap[d].facility_count;
+                        currentMap[d].control_count = m.control_count ?? currentMap[d].control_count;
+                        currentMap[d].vision_count = m.vision_count ?? currentMap[d].vision_count;
+                        currentMap[d].personnel_count = m.personnel_count ?? currentMap[d].personnel_count;
+                    }
+                });
+
+                const mergedList = Object.values(currentMap).sort((a, b) => a.date.localeCompare(b.date));
+                return mergedList.length > 0 ? mergedList : prev;
+            });
+
+            setCollapsedSections(prev => ({ ...prev, inputForm: false }));
+            setMsg(`👥 공수 시트 붙여넣기 완료: ${dates.length}일치 데이터(${dates[0]} ~ ${dates[dates.length - 1]})를 직접입력 폼에 병합 반영했습니다.`);
+        }
+    };
+
     const [collapsedSections, setCollapsedSections] = useState(() => {
         try {
             const saved = localStorage.getItem('pm_issue_collapsed_sections');
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                return { upload: false, inputForm: true, reportList: false, ...parsed };
+            }
         } catch (e) {
             console.warn(e);
         }
-        return { upload: false, inputForm: false, reportList: false };
+        return { upload: false, inputForm: true, reportList: false };
     });
 
     const toggleSection = (key) => {
@@ -541,7 +994,7 @@ ${compiledText.substring(0, 30000)}
 
                         <div style={{marginTop: '1rem', marginBottom: '1rem'}}>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                                <div className="panel-title" style={{margin: 0}}>공사일보 파일 첨부</div>
+                                <div className="panel-title" style={{margin: 0}}>공사일보 파일 첨부 및 표 붙여넣기</div>
                                 <button
                                     type="button"
                                     onClick={() => toggleSection('upload')}
@@ -559,7 +1012,8 @@ ${compiledText.substring(0, 30000)}
                                 </button>
                             </div>
                             {!collapsedSections.upload ? (
-                                <div style={{ paddingTop: '2px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', paddingTop: '2px' }}>
+                                    {/* 1. 파일 첨부 버튼 (Vision SPC처럼 가로 100% 확장) */}
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -568,26 +1022,83 @@ ${compiledText.substring(0, 30000)}
                                         }}
                                         disabled={isExtracting}
                                         style={{
+                                            width: '100%',
                                             background: isGrade1 ? '#9ca3af' : isExtracting ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #059669)',
                                             color: '#fff',
-                                            padding: '8px 16px',
+                                            padding: '9px 16px',
                                             borderRadius: '8px',
                                             fontWeight: 'bold',
                                             border: 'none',
                                             boxShadow: '0 2px 5px rgba(16, 185, 129, 0.25)',
-                                            height: '36px',
+                                            height: '38px',
                                             whiteSpace: 'nowrap',
                                             cursor: isGrade1 ? 'not-allowed' : 'pointer',
-                                            display: 'inline-flex',
+                                            display: 'flex',
                                             alignItems: 'center',
+                                            justifyContent: 'center',
                                             gap: '6px',
                                             fontSize: '13px',
+                                            boxSizing: 'border-box',
                                             transition: 'all 0.15s ease'
                                         }}
                                         title={isGrade1 ? "등록 권한이 없습니다 (클릭 시 권한 안내)" : ""}
                                     >
                                         {isExtracting ? "⏳ AI 분석 중..." : "✨ 파일 첨부 (Excel)"} {isGrade1 && "🔒"}
                                     </button>
+
+                                    {/* 2. 엑셀 작업내용 시트 표 붙여넣기 (Ctrl+V) */}
+                                    <textarea
+                                        placeholder="📋 1. 작업내용 시트 표 붙여넣기 (Ctrl+V)"
+                                        onPaste={(e) => handlePasteReportSheet(e, 'work')}
+                                        disabled={isGrade1}
+                                        style={{
+                                            width: '100%',
+                                            height: '38px',
+                                            padding: '9px 12px',
+                                            borderRadius: '8px',
+                                            border: '1.5px solid #10b981',
+                                            outline: 'none',
+                                            resize: 'none',
+                                            overflow: 'hidden',
+                                            whiteSpace: 'nowrap',
+                                            boxSizing: 'border-box',
+                                            fontSize: '12px',
+                                            fontFamily: 'inherit',
+                                            background: isGrade1 ? '#f3f4f6' : '#ffffff',
+                                            color: '#1e293b',
+                                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                                            textAlign: 'left',
+                                            cursor: isGrade1 ? 'not-allowed' : 'text'
+                                        }}
+                                        title={isGrade1 ? "등록 권한이 없습니다" : "엑셀의 작업내용 시트 표 범위를 복사(Ctrl+C)한 후 이 칸에 붙여넣기(Ctrl+V)하세요."}
+                                    />
+
+                                    {/* 3. 엑셀 공수(투입인원) 시트 표 붙여넣기 (Ctrl+V) */}
+                                    <textarea
+                                        placeholder="👥 2. 공수(투입인원) 시트 표 붙여넣기 (Ctrl+V)"
+                                        onPaste={(e) => handlePasteReportSheet(e, 'manpower')}
+                                        disabled={isGrade1}
+                                        style={{
+                                            width: '100%',
+                                            height: '38px',
+                                            padding: '9px 12px',
+                                            borderRadius: '8px',
+                                            border: '1.5px solid #0284c7',
+                                            outline: 'none',
+                                            resize: 'none',
+                                            overflow: 'hidden',
+                                            whiteSpace: 'nowrap',
+                                            boxSizing: 'border-box',
+                                            fontSize: '12px',
+                                            fontFamily: 'inherit',
+                                            background: isGrade1 ? '#f3f4f6' : '#ffffff',
+                                            color: '#1e293b',
+                                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                                            textAlign: 'left',
+                                            cursor: isGrade1 ? 'not-allowed' : 'text'
+                                        }}
+                                        title={isGrade1 ? "등록 권한이 없습니다" : "엑셀의 공수 시트 표 범위를 복사(Ctrl+C)한 후 이 칸에 붙여넣기(Ctrl+V)하세요. 날짜별로 작업내용과 자동 병합됩니다."}
+                                    />
                                 </div>
                             ) : (
                                 <div
@@ -603,7 +1114,7 @@ ${compiledText.substring(0, 30000)}
                                         cursor: 'pointer'
                                     }}
                                 >
-                                    📁 공사일보 파일 첨부 영역 접힘 (클릭하여 펼치기 ▾)
+                                    📁 공사일보 파일 첨부 및 표 붙여넣기 영역 접힘 (클릭하여 펼치기 ▾)
                                 </div>
                             )}
                         </div>
@@ -611,7 +1122,7 @@ ${compiledText.substring(0, 30000)}
                         <div>
                             <div className="panel-title" style={{fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems:'center'}}>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-                                    <span>공사일보 데이터 ({extractedReports.length}일치)</span>
+                                    <span>공사일보 데이터 ({extractedReports.length}일치 직접입력 등록)</span>
                                     <button
                                         type="button"
                                         onClick={() => toggleSection('inputForm')}
@@ -709,7 +1220,7 @@ ${compiledText.substring(0, 30000)}
                                         marginBottom: '10px'
                                     }}
                                 >
-                                    📝 일보 입력 폼 접힘 ({extractedReports.length}일치, 클릭하여 펼치기 ▾)
+                                    📝 일보 직접입력 등록 폼 접힘 ({extractedReports.length}일치, 클릭하여 펼치기 ▾)
                                 </div>
                             )}
                             

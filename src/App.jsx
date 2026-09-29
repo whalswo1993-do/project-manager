@@ -1455,11 +1455,15 @@ JSON 출력 예시:
               {hasUpdate && !dismissUpdateNotice && (
                 <div className="app-update-notice-banner" role="alert">
                   <div className="app-update-notice-text">
-                    <span style={{ fontSize: '13px' }}>🔔</span>
-                    <b>새로운 업데이트가 있습니다!</b>
-                    <span>(진행 중인 업무를 마무리하신 후 천천히 새로고침하셔도 됩니다)</span>
+                    <div className="app-update-title-row">
+                      <span style={{ fontSize: '13px' }}>🔔</span>
+                      <b>새로운 업데이트가 있습니다!</b>
+                    </div>
+                    <span className="app-update-subtext">
+                      (진행 중인 업무를 마무리하신 후 천천히 새로고침하셔도 됩니다)
+                    </span>
                   </div>
-                  <div style={{ display: 'inline-flex', gap: '4px', alignItems: 'center', marginLeft: 'auto' }}>
+                  <div style={{ display: 'inline-flex', gap: '4px', alignItems: 'center', marginLeft: 'auto', flexShrink: 0 }}>
                     <button
                       type="button"
                       onClick={handlePerformUpdate}

@@ -144,15 +144,14 @@
 .app-update-notice-banner {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
   border: 1px solid #fde68a;
   border-radius: 8px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   box-shadow: 0 2px 8px rgba(217, 119, 6, 0.15);
   animation: noticeSlideIn 0.3s ease-out;
   margin-right: 6px;
-  max-width: 480px;
   flex-shrink: 0;
   text-align: left;
 }
@@ -169,24 +168,30 @@
 }
 
 .app-update-notice-text {
-  font-size: 11px;
-  color: #92400e;
-  line-height: 1.35;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-update-title-row {
   display: flex;
   align-items: center;
   gap: 5px;
+  font-size: 11.5px;
+  color: #78350f;
+  line-height: 1.25;
 }
 
-.app-update-notice-text b {
-  color: #78350f;
+.app-update-title-row b {
   font-weight: 700;
   white-space: nowrap;
 }
 
-.app-update-notice-text span {
-  color: #b45309;
+.app-update-subtext {
   font-size: 10.5px;
-  word-break: keep-all;
+  color: #b45309;
+  white-space: nowrap;
+  line-height: 1.25;
 }
 
 .app-update-btn-refresh {

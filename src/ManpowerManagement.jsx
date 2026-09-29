@@ -121,6 +121,57 @@ function normalizeDeptKey(key) {
   return s;
 }
 
+/**
+ * 공사일보 작업내용 텍스트에서 부서별([기구작업], [제어작업], [비전작업] 등) 섹션을 분리/취출하는 헬퍼 함수
+ */
+export function parseDeptWorkSections(text) {
+  if (!text) return {};
+  const cleaned = text.replace(/\r\n/g, '\n').trim();
+
+  // 부서별 섹션 헤더 매칭: [기구작업], [기구], 기구작업:, 기구: 등
+  const regex = /(?:\[(기구|설비기술|설비|제어|비전|비젼|소장|pm|전장|전기|안전)(?:작업)?\]|(?:\n|^)\s*(기구|설비기술|설비|제어|비전|비젼|소장|pm|전장|전기|안전)(?:작업)?[:\s\n])/gi;
+
+  const matches = [];
+  let m;
+  while ((m = regex.exec(cleaned)) !== null) {
+    const rawDept = (m[1] || m[2]).toLowerCase();
+    let norm = '기구';
+    if (/기구|설비/i.test(rawDept)) norm = '기구';
+    else if (/제어/i.test(rawDept)) norm = '제어';
+    else if (/비전|비젼/i.test(rawDept)) norm = '비전';
+    else if (/소장|pm/i.test(rawDept)) norm = '소장';
+    else if (/전장|전기/i.test(rawDept)) norm = '전장';
+    else if (/안전/i.test(rawDept)) norm = '안전';
+
+    matches.push({
+      dept: norm,
+      index: m.index,
+      headerLen: m[0].length
+    });
+  }
+
+  if (matches.length === 0) {
+    return { '전체': cleaned };
+  }
+
+  const result = {};
+  for (let i = 0; i < matches.length; i++) {
+    const curr = matches[i];
+    const next = matches[i + 1];
+    const start = curr.index + curr.headerLen;
+    const end = next ? next.index : cleaned.length;
+    const content = cleaned.slice(start, end).trim();
+    if (content) {
+      if (result[curr.dept]) {
+        result[curr.dept] += ' ' + content;
+      } else {
+        result[curr.dept] = content;
+      }
+    }
+  }
+  return result;
+}
+
 function getProjectTotalManday(p) {
   const mp = p.manpower;
   if (!mp) return 0;
@@ -1404,6 +1455,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
     let deltaBadge = null;
     const deptChanges = [];
+    const changedDeptKeys = [];
 
     if (prevReport) {
       const prevMech = Number(prevReport.facility_count) || 0;
@@ -1421,10 +1473,22 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       const visDiff = currVis - prevVis;
       const mgrDiff = currMgr - prevMgr;
 
-      if (mechDiff !== 0) deptChanges.push(`기구 ${mechDiff > 0 ? `+${mechDiff}` : mechDiff}`);
-      if (ctrlDiff !== 0) deptChanges.push(`제어 ${ctrlDiff > 0 ? `+${ctrlDiff}` : ctrlDiff}`);
-      if (visDiff !== 0) deptChanges.push(`비전 ${visDiff > 0 ? `+${visDiff}` : visDiff}`);
-      if (mgrDiff !== 0) deptChanges.push(`소장 ${mgrDiff > 0 ? `+${mgrDiff}` : mgrDiff}`);
+      if (mechDiff !== 0) {
+        deptChanges.push(`기구 ${mechDiff > 0 ? `+${mechDiff}` : mechDiff}`);
+        changedDeptKeys.push('기구');
+      }
+      if (ctrlDiff !== 0) {
+        deptChanges.push(`제어 ${ctrlDiff > 0 ? `+${ctrlDiff}` : ctrlDiff}`);
+        changedDeptKeys.push('제어');
+      }
+      if (visDiff !== 0) {
+        deptChanges.push(`비전 ${visDiff > 0 ? `+${visDiff}` : visDiff}`);
+        changedDeptKeys.push('비전');
+      }
+      if (mgrDiff !== 0) {
+        deptChanges.push(`소장 ${mgrDiff > 0 ? `+${mgrDiff}` : mgrDiff}`);
+        changedDeptKeys.push('소장');
+      }
 
       if (diff > 0) {
         deltaBadge = { type: 'inc', text: `▲ +${diff}명 증원`, color: '#dc2626', bg: '#fee2e2' };
@@ -1448,13 +1512,42 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       if (ms) activeMilestone = ms.name;
     }
 
-    const noteSnippet = (r.special_notes || r.work_details || "").trim();
+    // 부서별 작업내용 파싱 및 증감 부서 작업내용만 선별 취출
+    const parsedWorks = parseDeptWorkSections(r.work_details || "");
+    let noteSnippet = "";
+    let extractedByDept = false;
+
+    if (changedDeptKeys.length > 0) {
+      const parts = [];
+      changedDeptKeys.forEach(dKey => {
+        if (parsedWorks[dKey]) {
+          parts.push(`[${dKey}작업] ${parsedWorks[dKey]}`);
+        }
+      });
+      if (parts.length > 0) {
+        noteSnippet = parts.join('\n');
+        extractedByDept = true;
+      } else {
+        // 파싱된 섹션이 없으면 전체 작업내용 사용
+        noteSnippet = (r.work_details || "").trim();
+      }
+    } else {
+      // 증감인원이 없는 날 (유지 등): 특이사항이 있으면 특이사항, 없으면 안내 문구
+      if (r.special_notes && r.special_notes.trim()) {
+        noteSnippet = `[특이사항] ${r.special_notes.trim()}`;
+      } else {
+        noteSnippet = "인력 변동 없음";
+      }
+    }
 
     return {
       deltaBadge,
       deptChanges,
       milestone: activeMilestone,
-      noteSnippet
+      noteSnippet,
+      fullWorkDetails: (r.work_details || "").trim(),
+      hasDeptChanges: changedDeptKeys.length > 0,
+      extractedByDept
     };
   };
 
@@ -1787,7 +1880,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         const reason = getManpowerChangeReason(r, targetReports, rIdx, selectedProjectComp?.project);
         const reasonText = [
           reason.milestone ? `[${reason.milestone}]` : "",
-          reason.deltaBadge ? `${reason.deltaBadge.text}${reason.deptChanges.length ? ` (${reason.deptChanges.join(', ')})` : ""}` : "",
+          reason.deltaBadge ? reason.deltaBadge.text : "",
+          reason.deptChanges.length ? `(${reason.deptChanges.join(', ')})` : "",
           reason.noteSnippet || ""
         ].filter(Boolean).join(" · ") || "-";
 
@@ -2839,8 +2933,26 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                                   {vis > 0 ? `${vis}명` : "-"}
                                 </td>
                                 <td style={{ padding: '8px 12px', textAlign: 'left', verticalAlign: 'middle' }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {/* 1. 상단 라인: 마일스톤 -> 증감인원 -> 부서별 증감인원 */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      {milestone && (
+                                        <span style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '3px',
+                                          padding: '2px 7px',
+                                          borderRadius: '4px',
+                                          fontSize: '11px',
+                                          fontWeight: 700,
+                                          color: '#0369a1',
+                                          background: '#e0f2fe',
+                                          border: '1px solid #bae6fd',
+                                          whiteSpace: 'nowrap'
+                                        }} title="마스터플랜 마일스톤">
+                                          🚩 {milestone}
+                                        </span>
+                                      )}
                                       {deltaBadge && (
                                         <span style={{
                                           display: 'inline-flex',
@@ -2859,37 +2971,44 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                                         </span>
                                       )}
                                       {deptChanges && deptChanges.length > 0 && (
-                                        <span style={{ fontSize: '11px', color: '#475569', fontWeight: 600, background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                                        <span style={{
+                                          fontSize: '11px',
+                                          color: '#1e293b',
+                                          fontWeight: 700,
+                                          background: '#f1f5f9',
+                                          border: '1px solid #cbd5e1',
+                                          padding: '2px 6px',
+                                          borderRadius: '4px',
+                                          whiteSpace: 'nowrap'
+                                        }}>
                                           ({deptChanges.join(', ')})
                                         </span>
                                       )}
-                                      {milestone && (
-                                        <span style={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '3px',
-                                          padding: '2px 7px',
-                                          borderRadius: '4px',
-                                          fontSize: '11px',
-                                          fontWeight: 600,
-                                          color: '#0369a1',
-                                          background: '#e0f2fe',
-                                          border: '1px solid #bae6fd',
-                                          whiteSpace: 'nowrap'
-                                        }} title="당일 진행 중인 마스터플랜 마일스톤">
-                                          🚩 {milestone}
-                                        </span>
-                                      )}
                                     </div>
+
+                                    {/* 2. 하단 라인: 부서별 증감인원에 따른 해당 부서 작업내용 취출 기재 */}
                                     {noteSnippet ? (
-                                      <div style={{ fontSize: '11.5px', color: '#334155', lineHeight: 1.35, wordBreak: 'break-all' }}>
+                                      <div
+                                        title={reasonInfo.fullWorkDetails ? `[전체 일보 내용]\n${reasonInfo.fullWorkDetails}` : undefined}
+                                        style={{
+                                          fontSize: '11.5px',
+                                          color: reasonInfo.hasDeptChanges ? '#1e293b' : '#64748b',
+                                          lineHeight: 1.45,
+                                          whiteSpace: 'pre-line',
+                                          wordBreak: 'break-word',
+                                          background: reasonInfo.hasDeptChanges ? '#f8fafc' : 'transparent',
+                                          padding: reasonInfo.hasDeptChanges ? '4px 8px' : '0',
+                                          borderRadius: '4px',
+                                          border: reasonInfo.hasDeptChanges ? '1px solid #e2e8f0' : 'none'
+                                        }}
+                                      >
                                         {noteSnippet}
                                       </div>
-                                    ) : (!milestone && (!deptChanges || deptChanges.length === 0)) ? (
+                                    ) : (
                                       <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                                        변동 없음
+                                        인력 변동 없음
                                       </div>
-                                    ) : null}
+                                    )}
                                   </div>
                                 </td>
                               </tr>

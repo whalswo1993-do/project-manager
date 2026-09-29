@@ -453,6 +453,27 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
     } catch (e) {}
   };
 
+  // 공수 통합 관리 소항목 선택 필터 ('all' | 'controls' | 'summary' | 'calendar' | 'table' | 'comparison')
+  const [activeSection, setActiveSection] = useState(() => {
+    try {
+      return localStorage.getItem('pm_manpower_active_section') || 'all';
+    } catch (e) {
+      return 'all';
+    }
+  });
+
+  const handleSelectSection = (secId) => {
+    setActiveSection(secId);
+    try { localStorage.setItem('pm_manpower_active_section', secId); } catch (e) {}
+    if (secId !== 'all') {
+      setCollapsedSections(prev => {
+        const next = { ...prev, [secId]: false };
+        try { localStorage.setItem('pm_manpower_collapsed_sections', JSON.stringify(next)); } catch (e) {}
+        return next;
+      });
+    }
+  };
+
   // -------------------------------------------------------------
   // 계획공수 vs 실투입공수 (일보 연동) 상태 관리
   // -------------------------------------------------------------
@@ -1962,52 +1983,76 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
   return (
     <div className="manpower-dashboard">
-      {/* Top Header Card */}
-      <div className="mp-header-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-        <div className="mp-title-group">
-          <div className="mp-logo-icon">📊</div>
-          <div className="mp-title-text">
-            <h2><span style={{ color: "#0969da" }}>공수</span> 통합 관리 시스템 (Manpower Management)</h2>
-            <p>마스터 플랜 기반 부서별 일일 투입 인원 및 전사 공수 종합 모니터링</p>
+      {/* Top Header Card (틀고정) */}
+      <div className="mp-header-card system-sticky-header">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', width: '100%' }}>
+          <div className="mp-title-group">
+            <div className="mp-logo-icon">📊</div>
+            <div className="mp-title-text">
+              <h2><span style={{ color: "#0969da" }}>공수</span> 통합 관리 시스템 (Manpower Management)</h2>
+              <p>마스터 플랜 기반 부서별 일일 투입 인원 및 전사 공수 종합 모니터링</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button
+              type="button"
+              onClick={() => setAllSections(false)}
+              style={{
+                padding: '5px 12px',
+                fontSize: '12px',
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                color: '#334155',
+                fontWeight: 500
+              }}
+            >
+              ▾ 전체 펼치기
+            </button>
+            <button
+              type="button"
+              onClick={() => setAllSections(true)}
+              style={{
+                padding: '5px 12px',
+                fontSize: '12px',
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                color: '#334155',
+                fontWeight: 500
+              }}
+            >
+              ▴ 전체 접기
+            </button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <button
-            type="button"
-            onClick={() => setAllSections(false)}
-            style={{
-              padding: '5px 12px',
-              fontSize: '12px',
-              background: '#f8fafc',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              color: '#334155',
-              fontWeight: 500
-            }}
-          >
-            ▾ 전체 펼치기
-          </button>
-          <button
-            type="button"
-            onClick={() => setAllSections(true)}
-            style={{
-              padding: '5px 12px',
-              fontSize: '12px',
-              background: '#f8fafc',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              color: '#334155',
-              fontWeight: 500
-            }}
-          >
-            ▴ 전체 접기
-          </button>
+
+        {/* 소항목 필터 버튼 그룹 */}
+        <div className="system-sub-nav">
+          {[
+            { id: 'all', label: '🌐 전체 표시' },
+            { id: 'controls', label: '🔍 계획공수 조회 조건 및 필터' },
+            { id: 'summary', label: '📈 전사 요약 및 부서별 현황' },
+            { id: 'calendar', label: '📅 일별 전사 투입 달력' },
+            { id: 'table', label: '👥 프로젝트별 계획공수 현황' },
+            { id: 'comparison', label: '⚖️ 계획공수 vs 실투입공수 비교분석' }
+          ].map(sec => (
+            <button
+              key={sec.id}
+              type="button"
+              onClick={() => handleSelectSection(sec.id)}
+              className={`system-sub-btn ${activeSection === sec.id ? 'active' : ''}`}
+            >
+              {sec.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* 1. 조회 조건 및 필터 */}
+      {(activeSection === 'all' || activeSection === 'controls') && (
       <div className="mp-table-section" style={{ marginBottom: "20px" }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsedSections.controls ? 0 : '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -2134,8 +2179,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           </div>
         )}
       </div>
+      )}
 
       {/* 2. 전사 계획공수 요약 및 부서별 편성 현황 */}
+      {(activeSection === 'all' || activeSection === 'summary') && (
       <div className="mp-table-section" style={{ marginBottom: "20px" }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsedSections.summary ? 0 : '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -2236,8 +2283,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           </div>
         )}
       </div>
+      )}
 
       {/* Manpower Calendar View */}
+      {(activeSection === 'all' || activeSection === 'calendar') && (
       <div className="mp-calendar-section" style={{ marginBottom: "16px" }}>
         <div className="mp-cal-head" style={{ cursor: 'pointer' }} onClick={(e) => {
           if (e.target.tagName !== 'BUTTON') toggleSection('calendar');
@@ -2350,8 +2399,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           </div>
         )}
       </div>
+      )}
 
       {/* Project Breakdown Table */}
+      {(activeSection === 'all' || activeSection === 'table') && (
       <div className="mp-table-section">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px", cursor: 'pointer' }} onClick={(e) => {
           if (e.target.tagName !== 'BUTTON') toggleSection('table');
@@ -2515,8 +2566,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           </div>
         )}
       </div>
+      )}
 
       {/* Comparison Section: 계획공수 vs 실투입공수 비교분석 (일보 연동) */}
+      {(activeSection === 'all' || activeSection === 'comparison') && (
       <div className="mp-table-section" style={{ marginTop: "24px" }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
@@ -3163,6 +3216,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           </div>
         )}
       </div>
+      )}
 
       {/* Day Detail Modal */}
       {selectedDay && (

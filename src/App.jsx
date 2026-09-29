@@ -356,6 +356,49 @@ export default function App() {
     try { localStorage.setItem('pm_app_collapsed_sections', JSON.stringify(next)); } catch (e) {}
   };
 
+  // 프로젝트 일정 소항목 선택 필터 ('all' | 'form' | 'filter' | 'gantt' | 'calendar' | 'list')
+  const [activeProjectSection, setActiveProjectSection] = useState(() => {
+    try {
+      return localStorage.getItem('pm_project_active_section') || 'all';
+    } catch (e) {
+      return 'all';
+    }
+  });
+
+  const handleSelectProjectSection = (secId) => {
+    setActiveProjectSection(secId);
+    try { localStorage.setItem('pm_project_active_section', secId); } catch (e) {}
+    if (secId !== 'all') {
+      setCollapsedSections(prev => {
+        const next = { ...prev, [secId]: false };
+        try { localStorage.setItem('pm_app_collapsed_sections', JSON.stringify(next)); } catch (e) {}
+        return next;
+      });
+    }
+  };
+
+  // 틀고정(Sticky) 상단 헤더 높이 측정 및 CSS 변수 동기화
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      const el = document.getElementById('app-fixed-top');
+      if (el) {
+        document.documentElement.style.setProperty('--app-fixed-top-height', `${el.offsetHeight}px`);
+      }
+    };
+    updateHeaderHeight();
+    const el = document.getElementById('app-fixed-top');
+    let ro;
+    if (el && window.ResizeObserver) {
+      ro = new ResizeObserver(updateHeaderHeight);
+      ro.observe(el);
+    }
+    window.addEventListener('resize', updateHeaderHeight);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', updateHeaderHeight);
+    };
+  }, [currentView, role, session]);
+
   const currentUserName = useMemo(() => {
     if (!session) return "담당자";
     return profile?.name ||
@@ -1296,165 +1339,177 @@ JSON 출력 예시:
 
   return (
     <main>
-      <header>
-        <img src="/tw-logo.png" alt="TW Logo" />
-        <div>
-          <b>TW Project</b>
-          <h1>Project Management</h1>
-          <small>{session.user.email} · {role}</small>
-        </div>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-          <div style={{ display: 'flex', gap: '4px' }}>
+      {/* 고정 최상단 헤더 래퍼 (틀고정 / Freeze Pane) */}
+      <div id="app-fixed-top" style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 1000,
+        background: '#eef3f8',
+        margin: '-10px -10px 8px -10px',
+        padding: '10px 10px 6px 10px',
+        borderBottom: '1px solid #d0d7de',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+      }}>
+        <header>
+          <img src="/tw-logo.png" alt="TW Logo" />
+          <div>
+            <b>TW Project</b>
+            <h1>Project Management</h1>
+            <small>{session.user.email} · {role}</small>
+          </div>
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button
+                onClick={() => {
+                  try {
+                    localStorage.setItem("pm_current_view", currentView);
+                    sessionStorage.setItem(`pm_scroll_${currentView}`, window.scrollY.toString());
+                  } catch (e) {}
+                  if ('caches' in window) {
+                    caches.keys().then(ks => ks.forEach(k => caches.delete(k)));
+                  }
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+                  }
+                  window.location.reload(true);
+                }}
+                style={{ background: '#d97706', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
+                title="브라우저 캐시를 완전히 비우고 최신 화면으로 새로고침합니다"
+              >
+                ⚡ 캐시 새로고침
+              </button>
+              <button
+                onClick={() => setShowPasswordModal(true)}
+                style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
+                title="현재 로그인된 계정의 비밀번호를 변경합니다"
+              >
+                🔑 비밀번호 변경
+              </button>
+              <button onClick={handleSignOut}>로그아웃</button>
+            </div>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {role === "admin" && <button onClick={() => setModal("users")}>사용자 권한 관리</button>}
+            </div>
+          </nav>
+        </header>
+
+        <div className="top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 0 0' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button
+              onClick={() => switchView("projects")}
+              style={{
+                background: currentView === "projects" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
+                color: currentView === "projects" ? "#fff" : "#24292e",
+                border: currentView === "projects" ? "1px solid #388bfd" : "1px solid #d1d5da",
+                padding: "0.45rem 1.15rem",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: 600,
+                height: "44px",
+                display: "inline-flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
+                fontSize: "13px"
+              }}
+            >
+              <span>프로젝트 일정 📅</span>
+            </button>
+            <button
+              onClick={() => switchView("manpower")}
+              style={{
+                background: currentView === "manpower" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
+                color: currentView === "manpower" ? "#fff" : "#24292e",
+                border: currentView === "manpower" ? "1px solid #388bfd" : "1px solid #d1d5da",
+                padding: "0.45rem 1.15rem",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: 600,
+                height: "44px",
+                display: "inline-flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
+                fontSize: "13px"
+              }}
+            >
+              <span>공수 통합 관리 📊</span>
+            </button>
+            <button
+              onClick={() => switchView("issues")}
+              style={{
+                background: currentView === "issues" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
+                color: currentView === "issues" ? "#fff" : "#24292e",
+                border: currentView === "issues" ? "1px solid #388bfd" : "1px solid #d1d5da",
+                padding: "0.45rem 1.15rem",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: 600,
+                height: "44px",
+                display: "inline-flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
+                fontSize: "13px"
+              }}
+            >
+              <span>프로젝트 이슈 관리 📋</span>
+            </button>
             <button
               onClick={() => {
-                try {
-                  localStorage.setItem("pm_current_view", currentView);
-                  sessionStorage.setItem(`pm_scroll_${currentView}`, window.scrollY.toString());
-                } catch (e) {}
-                if ('caches' in window) {
-                  caches.keys().then(ks => ks.forEach(k => caches.delete(k)));
-                }
-                if ('serviceWorker' in navigator) {
-                  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
-                }
-                window.location.reload(true);
+                if (isGrade1) return showPermissionModal("견적 조회");
+                switchView("quotations");
               }}
-              style={{ background: '#d97706', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
-              title="브라우저 캐시를 완전히 비우고 최신 화면으로 새로고침합니다"
+              style={{
+                background: currentView === "quotations" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
+                color: currentView === "quotations" ? "#fff" : "#24292e",
+                border: currentView === "quotations" ? "1px solid #388bfd" : "1px solid #d1d5da",
+                padding: "0.45rem 1.15rem",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: 600,
+                height: "44px",
+                display: "inline-flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
+                fontSize: "13px",
+                opacity: isGrade1 ? 0.85 : 1
+              }}
+              title={isGrade1 ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : ""}
             >
-              ⚡ 캐시 새로고침
+              <span>견적 조회 💰 {isGrade1 && "🔒"}</span>
             </button>
             <button
-              onClick={() => setShowPasswordModal(true)}
-              style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
-              title="현재 로그인된 계정의 비밀번호를 변경합니다"
+              onClick={() => switchView("vision-spc")}
+              style={{
+                background: currentView === "vision-spc" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
+                color: currentView === "vision-spc" ? "#fff" : "#24292e",
+                border: currentView === "vision-spc" ? "1px solid #388bfd" : "1px solid #d1d5da",
+                padding: "0.35rem 1.15rem",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontWeight: 600,
+                height: "44px",
+                display: "inline-flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
+                fontSize: "13px",
+                lineHeight: 1.15
+              }}
             >
-              🔑 비밀번호 변경
+              <span>Vision SPC 📈</span>
+              <span style={{ fontSize: "10px", fontWeight: 500, opacity: currentView === "vision-spc" ? 0.9 : 0.75, marginTop: "2px" }}>
+                (Cp,Cpk분석)
+              </span>
             </button>
-            <button onClick={handleSignOut}>로그아웃</button>
           </div>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            {role === "admin" && <button onClick={() => setModal("users")}>사용자 권한 관리</button>}
-          </div>
-        </nav>
-      </header>
-
-      <div className="top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <button
-            onClick={() => switchView("projects")}
-            style={{
-              background: currentView === "projects" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
-              color: currentView === "projects" ? "#fff" : "#24292e",
-              border: currentView === "projects" ? "1px solid #388bfd" : "1px solid #d1d5da",
-              padding: "0.45rem 1.15rem",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: 600,
-              height: "44px",
-              display: "inline-flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              boxSizing: "border-box",
-              fontSize: "13px"
-            }}
-          >
-            <span>프로젝트 일정 📅</span>
-          </button>
-          <button
-            onClick={() => switchView("manpower")}
-            style={{
-              background: currentView === "manpower" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
-              color: currentView === "manpower" ? "#fff" : "#24292e",
-              border: currentView === "manpower" ? "1px solid #388bfd" : "1px solid #d1d5da",
-              padding: "0.45rem 1.15rem",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: 600,
-              height: "44px",
-              display: "inline-flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              boxSizing: "border-box",
-              fontSize: "13px"
-            }}
-          >
-            <span>공수 통합 관리 📊</span>
-          </button>
-          <button
-            onClick={() => switchView("issues")}
-            style={{
-              background: currentView === "issues" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
-              color: currentView === "issues" ? "#fff" : "#24292e",
-              border: currentView === "issues" ? "1px solid #388bfd" : "1px solid #d1d5da",
-              padding: "0.45rem 1.15rem",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: 600,
-              height: "44px",
-              display: "inline-flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              boxSizing: "border-box",
-              fontSize: "13px"
-            }}
-          >
-            <span>프로젝트 이슈 관리 📋</span>
-          </button>
-          <button
-            onClick={() => {
-              if (isGrade1) return showPermissionModal("견적 조회");
-              switchView("quotations");
-            }}
-            style={{
-              background: currentView === "quotations" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
-              color: currentView === "quotations" ? "#fff" : "#24292e",
-              border: currentView === "quotations" ? "1px solid #388bfd" : "1px solid #d1d5da",
-              padding: "0.45rem 1.15rem",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: 600,
-              height: "44px",
-              display: "inline-flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              boxSizing: "border-box",
-              fontSize: "13px",
-              opacity: isGrade1 ? 0.85 : 1
-            }}
-            title={isGrade1 ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : ""}
-          >
-            <span>견적 조회 💰 {isGrade1 && "🔒"}</span>
-          </button>
-          <button
-            onClick={() => switchView("vision-spc")}
-            style={{
-              background: currentView === "vision-spc" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
-              color: currentView === "vision-spc" ? "#fff" : "#24292e",
-              border: currentView === "vision-spc" ? "1px solid #388bfd" : "1px solid #d1d5da",
-              padding: "0.35rem 1.15rem",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontWeight: 600,
-              height: "44px",
-              display: "inline-flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              boxSizing: "border-box",
-              fontSize: "13px",
-              lineHeight: 1.15
-            }}
-          >
-            <span>Vision SPC 📈</span>
-            <span style={{ fontSize: "10px", fontWeight: 500, opacity: currentView === "vision-spc" ? 0.9 : 0.75, marginTop: "2px" }}>
-              (Cp,Cpk분석)
-            </span>
-          </button>
         </div>
       </div>
 
@@ -1468,94 +1523,103 @@ JSON 출력 예시:
         <ManpowerManagement projects={projects} sites={sites} onSelectProject={setSelectedManpowerProject} />
       ) : (
         <>
-          {/* 프로젝트 일정 관리 시스템 메인 헤더 카드 */}
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.85)',
-            backdropFilter: 'blur(12px)',
-            color: '#24292f',
-            border: '1px solid #d0d7de',
-            borderRadius: '14px',
-            padding: '1rem 1.5rem',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '12px',
-            marginBottom: '16px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-              <div style={{
-                width: '36px',
-                height: '36px',
-                background: 'linear-gradient(135deg, #0969da, #0284c7)',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '1.25rem',
-                boxShadow: '0 2px 6px rgba(9, 105, 218, 0.25)'
-              }}>
-                📅
-              </div>
-              <div>
-                <h2 style={{
-                  margin: 0,
-                  fontSize: '1.25rem',
+          {/* 프로젝트 일정 관리 시스템 메인 헤더 카드 (틀고정) */}
+          <div className="system-sticky-header">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  background: 'linear-gradient(135deg, #0969da, #0284c7)',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
                   fontWeight: 700,
-                  letterSpacing: '-0.02em',
-                  background: 'linear-gradient(90deg, #24292f 0%, #57606a 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
+                  fontSize: '1.25rem',
+                  boxShadow: '0 2px 6px rgba(9, 105, 218, 0.25)'
                 }}>
-                  <span style={{ color: '#0969da', WebkitTextFillColor: '#0969da' }}>프로젝트</span> 일정 관리 시스템 (Project Schedule Management)
-                </h2>
-                <p style={{ margin: '3px 0 0 0', fontSize: '0.75rem', color: '#57606a' }}>
-                  마스터 스케줄 일정 계획, 마일스톤 Gantt 차트 및 프로젝트 종합 모니터링
-                </p>
+                  📅
+                </div>
+                <div>
+                  <h2 style={{
+                    margin: 0,
+                    fontSize: '1.25rem',
+                    fontWeight: 700,
+                    letterSpacing: '-0.02em',
+                    background: 'linear-gradient(90deg, #24292f 0%, #57606a 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}>
+                    <span style={{ color: '#0969da', WebkitTextFillColor: '#0969da' }}>프로젝트</span> 일정 관리 시스템 (Project Schedule Management)
+                  </h2>
+                  <p style={{ margin: '3px 0 0 0', fontSize: '0.75rem', color: '#57606a' }}>
+                    마스터 스케줄 일정 계획, 마일스톤 Gantt 차트 및 프로젝트 종합 모니터링
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'inline-flex', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setAllSections(true)}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '12px',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    color: '#334155',
+                    fontWeight: 500
+                  }}
+                  title="프로젝트 일정의 모든 소항목 펼치기"
+                >
+                  ▾ 전체 펼치기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAllSections(false)}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '12px',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    color: '#334155',
+                    fontWeight: 500
+                  }}
+                  title="프로젝트 일정의 모든 소항목 접기"
+                >
+                  ▴ 전체 접기
+                </button>
               </div>
             </div>
 
-            <div style={{ display: 'inline-flex', gap: '6px' }}>
-              <button
-                type="button"
-                onClick={() => setAllSections(true)}
-                style={{
-                  padding: '5px 12px',
-                  fontSize: '12px',
-                  background: '#f8fafc',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  color: '#334155',
-                  fontWeight: 500
-                }}
-                title="프로젝트 일정의 모든 소항목 펼치기"
-              >
-                ▾ 전체 펼치기
-              </button>
-              <button
-                type="button"
-                onClick={() => setAllSections(false)}
-                style={{
-                  padding: '5px 12px',
-                  fontSize: '12px',
-                  background: '#f8fafc',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  color: '#334155',
-                  fontWeight: 500
-                }}
-                title="프로젝트 일정의 모든 소항목 접기"
-              >
-                ▴ 전체 접기
-              </button>
+            {/* 소항목 필터 버튼 그룹 */}
+            <div className="system-sub-nav">
+              {[
+                { id: 'all', label: '🌐 전체 표시' },
+                ...(edit ? [{ id: 'form', label: '📝 프로젝트 등록/수정' }] : []),
+                { id: 'filter', label: '🔍 일정 조회 필터' },
+                { id: 'gantt', label: '📊 프로젝트 간트차트' },
+                { id: 'calendar', label: '📅 프로젝트 일정 달력' },
+                { id: 'list', label: '📋 프로젝트 목록' }
+              ].map(sec => (
+                <button
+                  key={sec.id}
+                  type="button"
+                  onClick={() => handleSelectProjectSection(sec.id)}
+                  className={`system-sub-btn ${activeProjectSection === sec.id ? 'active' : ''}`}
+                >
+                  {sec.label}
+                </button>
+              ))}
             </div>
           </div>
-          {edit && (
+          {edit && (activeProjectSection === 'all' || activeProjectSection === 'form') && (
             <section style={{ transition: 'all 0.2s ease' }}>
               <div 
                 style={{ 
@@ -1930,6 +1994,7 @@ JSON 출력 예시:
             </section>
           )}
 
+          {(activeProjectSection === 'all' || activeProjectSection === 'filter') && (
           <section>
             <div 
               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none', marginBottom: collapsedSections.filter ? 0 : '10px' }}
@@ -1989,7 +2054,9 @@ JSON 출력 예시:
               </div>
             )}
           </section>
+          )}
 
+          {(activeProjectSection === 'all' || activeProjectSection === 'gantt') && (
           <section id="gantt-export">
             <div className="title" style={{ cursor: 'pointer' }} onClick={(e) => {
               if (e.target.tagName !== 'BUTTON') toggleSection('gantt');
@@ -2273,7 +2340,9 @@ JSON 출력 예시:
               </div>
             )}
           </section>
+          )}
 
+          {(activeProjectSection === 'all' || activeProjectSection === 'calendar') && (
           <section id="calendar-export">
             <div className="calhead" style={{ cursor: 'pointer' }} onClick={(e) => {
               if (e.target.tagName !== 'BUTTON') toggleSection('calendar');
@@ -2415,7 +2484,9 @@ JSON 출력 예시:
               </div>
             )}
           </section>
+          )}
 
+          {(activeProjectSection === 'all' || activeProjectSection === 'list') && (
           <section>
             <div className="tools">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -2538,6 +2609,7 @@ JSON 출력 예시:
               </div>
             )}
           </section>
+          )}
 
           {selectedDay && (
             <div className="back" onMouseDown={() => setSelectedDay(null)}>

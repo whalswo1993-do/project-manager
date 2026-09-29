@@ -6,19 +6,19 @@ import * as XLSX from 'xlsx';
 import pptxgen from 'pptxgenjs';
 
 export default function IssueManagement({ projects, role, onPermissionDenied }) {
-    const [activeTab, setActiveTab] = useState(() => {
+    const [activeIssueSection, setActiveIssueSection] = useState(() => {
         try {
-            const saved = localStorage.getItem('pm_issue_active_tab');
-            if (saved && ['register', 'analyze'].includes(saved)) return saved;
+            const saved = localStorage.getItem('pm_issue_active_section');
+            if (saved && ['all', 'register', 'list', 'analyze'].includes(saved)) return saved;
         } catch (e) {}
-        return 'register';
+        return 'all';
     });
 
     useEffect(() => {
         try {
-            localStorage.setItem('pm_issue_active_tab', activeTab);
+            localStorage.setItem('pm_issue_active_section', activeIssueSection);
         } catch (e) {}
-    }, [activeTab]);
+    }, [activeIssueSection]);
     
     const isGrade1 = role === 'grade1';
     const notifyPermission = (feature) => {
@@ -428,42 +428,91 @@ ${compiledText.substring(0, 30000)}
 
     return (
         <div className="issue-management-container">
-            <header className="issue-management-header">
-                <div className="logo-area">
-                    <div className="logo-icon">📋</div>
-                    <div className="logo-text">
-                        <h2><span style={{color: '#0969da'}}>프로젝트</span> 이슈 및 일보관리 시스템 (Issue & Daily Log Management)</h2>
-                        <p>공사일보 텍스트 축적 및 AI 기반 자동 PPT 보고서 생성</p>
+            {/* 프로젝트 이슈 및 일보관리 시스템 메인 헤더 카드 (틀고정) */}
+            <div className="system-sticky-header" style={{
+                background: 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid #e1e4e8',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                marginBottom: '16px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', width: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                        <div style={{
+                            width: '38px',
+                            height: '38px',
+                            background: 'linear-gradient(135deg, #0969da, #0284c7)',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1.25rem',
+                            boxShadow: '0 2px 8px rgba(9, 105, 218, 0.25)'
+                        }}>
+                            📋
+                        </div>
+                        <div>
+                            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#1e293b', letterSpacing: '-0.02em' }}>
+                                <span style={{ color: '#0969da' }}>프로젝트</span> 이슈 및 일보관리 시스템 (Issue & Daily Log Management)
+                            </h2>
+                            <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                                공사일보 텍스트 축적 및 AI 기반 자동 PPT 보고서 생성
+                            </p>
+                        </div>
                     </div>
                 </div>
-                <div style={{display: 'flex', gap: '0.5rem', background: '#e1e4e8', padding: '0.3rem', borderRadius: '8px'}}>
-                    <button 
-                        style={{padding: '0.5rem 1rem', border: 'none', borderRadius: '6px', background: activeTab==='register'?'#fff':'transparent', color: activeTab==='register'?'#0969da':'#57606a', fontWeight: 600, cursor: 'pointer', boxShadow: activeTab==='register'?'0 1px 3px rgba(0,0,0,0.1)':'none'}}
-                        onClick={() => setActiveTab('register')}
+
+                {/* 소항목 필터 네비게이션 버튼 바 */}
+                <div className="system-sub-nav">
+                    <button
+                        type="button"
+                        className={`system-sub-btn ${activeIssueSection === 'all' ? 'active' : ''}`}
+                        onClick={() => setActiveIssueSection('all')}
                     >
-                        일보 등록
+                        🌐 전체 표시
                     </button>
-                    <button 
-                        style={{padding: '0.5rem 1rem', border: 'none', borderRadius: '6px', background: activeTab==='analyze'?'#fff':'transparent', color: activeTab==='analyze'?'#0969da':'#57606a', fontWeight: 600, cursor: 'pointer', boxShadow: activeTab==='analyze'?'0 1px 3px rgba(0,0,0,0.1)':'none', opacity: isGrade1 ? 0.85 : 1}}
+                    <button
+                        type="button"
+                        className={`system-sub-btn ${activeIssueSection === 'register' ? 'active' : ''}`}
+                        onClick={() => {
+                            setActiveIssueSection('register');
+                            setCollapsedSections(prev => ({ ...prev, inputForm: false, upload: false }));
+                        }}
+                    >
+                        ✏️ 공사일보 등록/업로드
+                    </button>
+                    <button
+                        type="button"
+                        className={`system-sub-btn ${activeIssueSection === 'list' ? 'active' : ''}`}
+                        onClick={() => setActiveIssueSection('list')}
+                    >
+                        📋 등록된 일보 목록
+                    </button>
+                    <button
+                        type="button"
+                        className={`system-sub-btn ${activeIssueSection === 'analyze' ? 'active' : ''}`}
                         onClick={() => {
                             if (isGrade1) {
                                 notifyPermission('AI 통합 분석 & PPT 보고서');
                                 return;
                             }
-                            setActiveTab('analyze');
+                            setActiveIssueSection('analyze');
                         }}
                         title={isGrade1 ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : ""}
                     >
-                        AI 통합 분석 & PPT {isGrade1 && "🔒"}
+                        📊 AI 프로젝트 통합 분석 & PPT {isGrade1 && "🔒"}
                     </button>
                 </div>
-            </header>
+            </div>
 
             <input type="file" ref={fileInputRef} onChange={(e) => handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, .csv" style={{display: 'none'}} />
 
-            {activeTab === 'register' ? (
-                <div className="main-container">
-                    <aside className="sidebar">
+            {activeIssueSection !== 'analyze' ? (
+                <div className={`main-container ${activeIssueSection !== 'all' ? 'single-pane' : ''}`}>
+                    {(activeIssueSection === 'all' || activeIssueSection === 'register') && (
+                        <aside className="sidebar" style={{ maxWidth: activeIssueSection === 'register' ? '860px' : 'none', margin: activeIssueSection === 'register' ? '0 auto' : '0', width: '100%' }}>
                         {isGrade1 && (
                             <div style={{background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px', fontSize: '12px', color: '#92400e', lineHeight: '1.4'}}>
                                 🔒 <b>Grade 1 (조회 전용)</b><br/>
@@ -639,26 +688,84 @@ ${compiledText.substring(0, 30000)}
                             )}
                         </div>
                     </aside>
+                    )}
 
+                    {(activeIssueSection === 'all' || activeIssueSection === 'list') && (
                     <div className="content-area">
                         {!selectedProject ? (
                             <div className="empty-state">
-                                <h3>프로젝트를 선택해주세요</h3>
-                                <p>좌측에서 프로젝트를 선택하면 등록된 일보 목록이 표시됩니다.</p>
+                                <div style={{ maxWidth: '420px', margin: '0 auto', textAlign: 'center' }}>
+                                    <span style={{ fontSize: '2.8rem', display: 'block', marginBottom: '10px' }}>📂</span>
+                                    <h3 style={{ margin: '0 0 8px 0', color: '#1e293b' }}>프로젝트를 선택해주세요</h3>
+                                    <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '16px' }}>조회할 프로젝트를 선택하면 등록된 일보 목록이 표시됩니다.</p>
+                                    <select 
+                                        className="project-select" 
+                                        value={selectedProject} 
+                                        onChange={(e) => setSelectedProject(e.target.value)} 
+                                        style={{ width: '100%', padding: '8px 12px', fontSize: '0.9rem' }}
+                                    >
+                                        <option value="">프로젝트를 선택하세요</option>
+                                        {projectOptions.map(p => (
+                                            <option key={p.id} value={p.id}>{p.manufacturingNo ? `${p.manufacturingNo} · ` : ''}{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                         ) : projectReports.length === 0 ? (
                             <div className="empty-state">
-                                <h3>등록된 일보가 없습니다</h3>
-                                <p>좌측에서 공사일보를 업로드하고 저장해보세요.</p>
+                                <div style={{ maxWidth: '420px', margin: '0 auto', textAlign: 'center' }}>
+                                    <span style={{ fontSize: '2.8rem', display: 'block', marginBottom: '10px' }}>📄</span>
+                                    <h3 style={{ margin: '0 0 8px 0', color: '#1e293b' }}>등록된 일보가 없습니다</h3>
+                                    <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '16px' }}>공사일보를 업로드하고 저장해보세요.</p>
+                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                        <select 
+                                            className="project-select" 
+                                            value={selectedProject} 
+                                            onChange={(e) => setSelectedProject(e.target.value)} 
+                                            style={{ width: 'auto', padding: '6px 12px', fontSize: '0.85rem' }}
+                                        >
+                                            {projectOptions.map(p => (
+                                                <option key={p.id} value={p.id}>{p.manufacturingNo ? `${p.manufacturingNo} · ` : ''}{p.name}</option>
+                                            ))}
+                                        </select>
+                                        {activeIssueSection === 'list' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setActiveIssueSection('register')}
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    fontSize: '0.85rem',
+                                                    background: '#0969da',
+                                                    color: '#fff',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                ✏️ 일보 등록하기
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             <div className="dashboard-section">
                                 <div className="section-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
-                                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap'}}>
                                         <span style={{fontSize: '1.5rem'}}>📝</span>
                                         <h2 className="section-title">
                                             {projects.find(p => p.id === selectedProject)?.name || '등록된'} 일보 ({projectReports.length}건)
                                         </h2>
+                                        <select 
+                                            className="project-select" 
+                                            value={selectedProject} 
+                                            onChange={(e) => setSelectedProject(e.target.value)} 
+                                            style={{ width: 'auto', minWidth: '220px', maxWidth: '320px', padding: '4px 8px', fontSize: '0.85rem' }}
+                                        >
+                                            {projectOptions.map(p => (
+                                                <option key={p.id} value={p.id}>{p.manufacturingNo ? `${p.manufacturingNo} · ` : ''}{p.name}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div style={{display: 'flex', gap: '6px'}}>
                                         <button
@@ -750,6 +857,7 @@ ${compiledText.substring(0, 30000)}
                             </div>
                         )}
                     </div>
+                    )}
                 </div>
             ) : (
                 <div style={{padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', overflowY: 'auto', background: 'var(--bg-color)'}}>

@@ -61,6 +61,27 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
         } catch (e) {}
     };
 
+    // 견적 조회 소항목 선택 필터 ('all' | 'newQuote' | 'itemSearch' | 'projectSummary')
+    const [activeQuoteSection, setActiveQuoteSection] = useState(() => {
+        try {
+            return localStorage.getItem('pm_quot_active_section') || 'all';
+        } catch (e) {
+            return 'all';
+        }
+    });
+
+    const handleSelectQuoteSection = (secId) => {
+        setActiveQuoteSection(secId);
+        try { localStorage.setItem('pm_quot_active_section', secId); } catch (e) {}
+        if (secId !== 'all') {
+            setCollapsedSections(prev => {
+                const next = { ...prev, [secId]: false };
+                try { localStorage.setItem('pm_quot_collapsed_sections', JSON.stringify(next)); } catch (e) {}
+                return next;
+            });
+        }
+    };
+
     const toggleAllProjects = (expand) => {
         const next = {};
         Object.keys(groupedQuotations).forEach(k => {
@@ -593,92 +614,100 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
 
     return (
         <>
-            {/* 견적 조회 시스템 메인 헤더 카드 */}
-            <div style={{
-                background: 'rgba(255, 255, 255, 0.85)',
-                backdropFilter: 'blur(12px)',
-                color: '#24292f',
-                border: '1px solid #d0d7de',
-                borderRadius: '14px',
-                padding: '1rem 1.5rem',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '12px',
-                marginBottom: '16px',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                    <div style={{
-                        width: '36px',
-                        height: '36px',
-                        background: 'linear-gradient(135deg, #0969da, #0284c7)',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff',
-                        fontWeight: 700,
-                        fontSize: '1.25rem',
-                        boxShadow: '0 2px 6px rgba(9, 105, 218, 0.25)'
-                    }}>
-                        💰
-                    </div>
-                    <div>
-                        <h2 style={{
-                            margin: 0,
-                            fontSize: '1.25rem',
+            {/* 견적 조회 시스템 메인 헤더 카드 (틀고정) */}
+            <div className="system-sticky-header">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', width: '100%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                        <div style={{
+                            width: '36px',
+                            height: '36px',
+                            background: 'linear-gradient(135deg, #0969da, #0284c7)',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff',
                             fontWeight: 700,
-                            letterSpacing: '-0.02em',
-                            background: 'linear-gradient(90deg, #24292f 0%, #57606a 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent'
+                            fontSize: '1.25rem',
+                            boxShadow: '0 2px 6px rgba(9, 105, 218, 0.25)'
                         }}>
-                            <span style={{ color: '#0969da', WebkitTextFillColor: '#0969da' }}>견적</span> 조회 시스템 (Quotation Management System)
-                        </h2>
-                        <p style={{ margin: '3px 0 0 0', fontSize: '0.75rem', color: '#57606a' }}>
-                            프로젝트별 견적 내역 조회, 사양 및 품목별 단가 종합 분석 관리
-                        </p>
+                            💰
+                        </div>
+                        <div>
+                            <h2 style={{
+                                margin: 0,
+                                fontSize: '1.25rem',
+                                fontWeight: 700,
+                                letterSpacing: '-0.02em',
+                                background: 'linear-gradient(90deg, #24292f 0%, #57606a 100%)',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent'
+                            }}>
+                                <span style={{ color: '#0969da', WebkitTextFillColor: '#0969da' }}>견적</span> 조회 시스템 (Quotation Management System)
+                            </h2>
+                            <p style={{ margin: '3px 0 0 0', fontSize: '0.75rem', color: '#57606a' }}>
+                                프로젝트별 견적 내역 조회, 사양 및 품목별 단가 종합 분석 관리
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'inline-flex', gap: '6px' }}>
+                        <button
+                            type="button"
+                            onClick={() => setAllSections(false)}
+                            style={{
+                                padding: '5px 12px',
+                                fontSize: '12px',
+                                background: '#f8fafc',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                color: '#334155',
+                                fontWeight: 500
+                            }}
+                        >
+                            ▾ 전체 섹션 펼치기
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setAllSections(true)}
+                            style={{
+                                padding: '5px 12px',
+                                fontSize: '12px',
+                                background: '#f8fafc',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                color: '#334155',
+                                fontWeight: 500
+                            }}
+                        >
+                            ▴ 전체 섹션 접기
+                        </button>
                     </div>
                 </div>
 
-                <div style={{ display: 'inline-flex', gap: '6px' }}>
-                    <button
-                        type="button"
-                        onClick={() => setAllSections(false)}
-                        style={{
-                            padding: '5px 12px',
-                            fontSize: '12px',
-                            background: '#f8fafc',
-                            border: '1px solid #cbd5e1',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            color: '#334155',
-                            fontWeight: 500
-                        }}
-                    >
-                        ▾ 전체 섹션 펼치기
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setAllSections(true)}
-                        style={{
-                            padding: '5px 12px',
-                            fontSize: '12px',
-                            background: '#f8fafc',
-                            border: '1px solid #cbd5e1',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            color: '#334155',
-                            fontWeight: 500
-                        }}
-                    >
-                        ▴ 전체 섹션 접기
-                    </button>
+                {/* 소항목 필터 버튼 그룹 */}
+                <div className="system-sub-nav">
+                    {[
+                        { id: 'all', label: '🌐 전체 표시' },
+                        { id: 'newQuote', label: '➕ 새 견적서 등록' },
+                        { id: 'itemSearch', label: '🔍 단가 & 품목 검색 및 단가 추이' },
+                        { id: 'projectSummary', label: '📊 프로젝트별 견적 종합 요약 및 내역' }
+                    ].map(sec => (
+                        <button
+                            key={sec.id}
+                            type="button"
+                            onClick={() => handleSelectQuoteSection(sec.id)}
+                            className={`system-sub-btn ${activeQuoteSection === sec.id ? 'active' : ''}`}
+                        >
+                            {sec.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
+            {(activeQuoteSection === 'all' || activeQuoteSection === 'newQuote') && (
             <section>
                 {!canManage && (
                     <div style={{background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', fontSize: '12px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px'}}>
@@ -820,9 +849,10 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                     </div>
                 )}
             </section>
+            )}
 
             {/* 품목별 단가 검색 및 다차원 연동 필터 섹션 */}
-            {/* 품목별 단가 검색 및 다차원 연동 필터 섹션 */}
+            {(activeQuoteSection === 'all' || activeQuoteSection === 'itemSearch') && (
             <section>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
                     <div>
@@ -1237,7 +1267,9 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
             </div>
         )}
     </section>
+    )}
 
+    {(activeQuoteSection === 'all' || activeQuoteSection === 'projectSummary') && (
             <section>
                 <div className="title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                     <div>
@@ -1422,6 +1454,7 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                     </div>
                 )}
             </section>
+            )}
         </>
     );
 }

@@ -13,33 +13,17 @@
     --warning: #bf8700;
     --warning-bg: rgba(191, 135, 0, 0.15);
     
-    background-color: var(--panel-bg);
     color: var(--text-color);
     font-family: 'Inter', 'Nanum Gothic', sans-serif;
     line-height: 1.5;
-    height: calc(100vh - 220px);
-    min-height: 550px;
+    min-height: 600px;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    overflow: hidden;
     margin: 10px 0;
 }
 
 .issue-management-container * {
     box-sizing: border-box;
-}
-
-.issue-management-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 2rem;
-    border-bottom: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(12px);
-    z-index: 100;
 }
 
 .issue-management-container .logo-area {
@@ -82,19 +66,24 @@
 .issue-management-container .main-container {
     display: grid;
     grid-template-columns: 380px 1fr;
+    gap: 16px;
     flex-grow: 1;
-    overflow: hidden;
+}
+
+.issue-management-container .main-container.single-pane {
+    grid-template-columns: 1fr;
 }
 
 /* Sidebar styling */
 .issue-management-container .sidebar {
-    border-right: 1px solid var(--border-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
     background: var(--panel-bg);
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    overflow-y: auto;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
 }
 
 .issue-management-container .panel-title {
@@ -189,16 +178,14 @@
 /* Content Area Styling */
 .issue-management-container .content-area {
     margin: 0;
-    padding: 2rem;
+    padding: 1.5rem;
     background-color: var(--panel-bg);
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-    overflow-y: auto;
-    overflow-x: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1.5rem;
     min-width: 0;
 }
 

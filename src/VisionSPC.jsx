@@ -478,16 +478,49 @@ export default function VisionSPC() {
                     <div>
                         <div className="panel-title">데이터 입력</div>
                         <div 
-                            className={`dropzone ${isDragging ? 'dragover' : ''}`}
                             onDragOver={handleDragOver}
                             onDragLeave={handleDragLeave}
                             onDrop={handleDrop}
-                            onClick={() => fileInputRef.current.click()}
-                            style={{marginBottom: '1rem'}}
+                            style={{
+                                background: isDragging ? '#ecfdf5' : '#f8fafc',
+                                border: isDragging ? '2px dashed #10b981' : '1px solid #e2e8f0',
+                                borderRadius: '10px',
+                                padding: '12px 14px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                flexWrap: 'wrap',
+                                marginBottom: '1rem',
+                                transition: 'all 0.2s ease'
+                            }}
                         >
-                            <div className="dropzone-icon">📁</div>
-                            <div className="dropzone-text">검사 로그 파일 (.xlsx)</div>
-                            <div className="dropzone-subtext">여기로 드래그하거나 클릭하여 파일 선택</div>
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current.click()}
+                                style={{
+                                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                                    color: '#fff',
+                                    padding: '8px 16px',
+                                    borderRadius: '8px',
+                                    fontWeight: 'bold',
+                                    border: 'none',
+                                    boxShadow: '0 2px 5px rgba(16, 185, 129, 0.25)',
+                                    height: '36px',
+                                    whiteSpace: 'nowrap',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    fontSize: '13px',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                ✨ 파일 첨부 (Excel)
+                            </button>
+                            <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
+                                <span style={{ fontWeight: 600, color: '#334155' }}>검사 로그 (.xlsx, .xls)</span>
+                                <span style={{ display: 'block', fontSize: '11px', color: '#94a3b8' }}>클릭하여 파일 첨부 또는 여기로 드래그</span>
+                            </div>
                         </div>
 
                         <div className="paste-area">

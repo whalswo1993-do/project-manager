@@ -540,8 +540,8 @@ ${compiledText.substring(0, 30000)}
                         </div>
 
                         <div style={{marginTop: '1rem', marginBottom: '1rem'}}>
-                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px'}}>
-                                <div className="panel-title" style={{margin: 0}}>공사일보 원본 업로드</div>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                                <div className="panel-title" style={{margin: 0}}>공사일보 파일 첨부</div>
                                 <button
                                     type="button"
                                     onClick={() => toggleSection('upload')}
@@ -559,13 +559,54 @@ ${compiledText.substring(0, 30000)}
                                 </button>
                             </div>
                             {!collapsedSections.upload ? (
-                                <div className={`dropzone ${isDragging ? 'dragover' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => {
-                                    if (isGrade1) return notifyPermission('공사일보 파일 업로드');
-                                    fileInputRef.current.click();
-                                }}>
-                                    <div className="dropzone-icon">📁</div>
-                                    <div style={{fontSize: '0.85rem', fontWeight: 500}}>엑셀 파일 업로드 (.xlsx) {isGrade1 && "🔒"}</div>
-                                    <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>{isGrade1 ? "클릭 시 권한 안내" : "클릭하거나 드래그"}</div>
+                                <div 
+                                    onDragOver={handleDragOver} 
+                                    onDragLeave={handleDragLeave} 
+                                    onDrop={handleDrop}
+                                    style={{
+                                        background: isDragging ? '#ecfdf5' : '#f8fafc',
+                                        border: isDragging ? '2px dashed #10b981' : '1px solid #e2e8f0',
+                                        borderRadius: '10px',
+                                        padding: '12px 14px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        flexWrap: 'wrap',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (isGrade1) return notifyPermission('공사일보 파일 업로드');
+                                            fileInputRef.current.click();
+                                        }}
+                                        disabled={isExtracting}
+                                        style={{
+                                            background: isGrade1 ? '#9ca3af' : isExtracting ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #059669)',
+                                            color: '#fff',
+                                            padding: '8px 16px',
+                                            borderRadius: '8px',
+                                            fontWeight: 'bold',
+                                            border: 'none',
+                                            boxShadow: '0 2px 5px rgba(16, 185, 129, 0.25)',
+                                            height: '36px',
+                                            whiteSpace: 'nowrap',
+                                            cursor: isGrade1 ? 'not-allowed' : 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            fontSize: '13px',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                        title={isGrade1 ? "등록 권한이 없습니다 (클릭 시 권한 안내)" : ""}
+                                    >
+                                        {isExtracting ? "⏳ AI 분석 중..." : "✨ 파일 첨부 (Excel)"} {isGrade1 && "🔒"}
+                                    </button>
+                                    <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
+                                        <span style={{ fontWeight: 600, color: '#334155' }}>공사일보 원본 (.xlsx, .xls, .csv)</span>
+                                        <span style={{ display: 'block', fontSize: '11px', color: '#94a3b8' }}>클릭하여 파일 첨부 또는 여기로 드래그앤드롭</span>
+                                    </div>
                                 </div>
                             ) : (
                                 <div
@@ -581,7 +622,7 @@ ${compiledText.substring(0, 30000)}
                                         cursor: 'pointer'
                                     }}
                                 >
-                                    📁 파일 업로드 드롭존 접힘 (클릭하여 펼치기 ▾)
+                                    📁 공사일보 파일 첨부 영역 접힘 (클릭하여 펼치기 ▾)
                                 </div>
                             )}
                         </div>

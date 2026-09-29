@@ -1265,32 +1265,24 @@ JSON 출력 예시:
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           {currentView === "projects" && (
-            <>
-              <div style={{ display: 'inline-flex', gap: '4px', background: '#f8fafc', padding: '3px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                <button
-                  type="button"
-                  onClick={() => setAllSections(true)}
-                  style={{ height: '36px', padding: '0 10px', fontSize: '12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, color: '#334155' }}
-                  title="프로젝트 일정의 모든 소항목 펼치기"
-                >
-                  ▾ 전체 펼치기
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAllSections(false)}
-                  style={{ height: '36px', padding: '0 10px', fontSize: '12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, color: '#334155' }}
-                  title="프로젝트 일정의 모든 소항목 접기"
-                >
-                  ▴ 전체 접기
-                </button>
-              </div>
-              <button onClick={() => { if (!del) return showPermissionModal("Site 관리"); setModal("sites"); }} style={{ height: "44px", display: "inline-flex", alignItems: "center" }}>
-                Site 관리 {!del && "🔒"}
+            <div style={{ display: 'inline-flex', gap: '4px', background: '#f8fafc', padding: '3px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+              <button
+                type="button"
+                onClick={() => setAllSections(true)}
+                style={{ height: '36px', padding: '0 10px', fontSize: '12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, color: '#334155' }}
+                title="프로젝트 일정의 모든 소항목 펼치기"
+              >
+                ▾ 전체 펼치기
               </button>
-              <button onClick={() => { if (!del) return showPermissionModal("담당자 관리"); setModal("personnel"); }} style={{ height: "44px", display: "inline-flex", alignItems: "center" }}>
-                담당자 관리 {!del && "🔒"}
+              <button
+                type="button"
+                onClick={() => setAllSections(false)}
+                style={{ height: '36px', padding: '0 10px', fontSize: '12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, color: '#334155' }}
+                title="프로젝트 일정의 모든 소항목 접기"
+              >
+                ▴ 전체 접기
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -1530,6 +1522,51 @@ JSON 출력 예시:
                     <PersonField label="설비기술 담당자" value={form.facilityTechnology} disabled={role === "grade2"} onChange={v => setForm({ ...form, facilityTechnology: v })} dept="설비기술" people={people} />
                     <PersonField label="제어 담당자" value={form.control} disabled={role === "grade2"} onChange={v => setForm({ ...form, control: v })} dept="제어" people={people} />
                     <PersonField label="비전 담당자" value={form.vision} disabled={role === "grade2"} onChange={v => setForm({ ...form, vision: v })} dept="비전" people={people} />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', margin: '10px 0 6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => { if (!del) return showPermissionModal("Site 관리"); setModal("sites"); }}
+                      style={{
+                        padding: '6px 14px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        color: '#334155',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                      }}
+                      title="Site 관리 (Site 목록 추가, 수정, 삭제)"
+                    >
+                      🏢 Site 관리 {!del && "🔒"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { if (!del) return showPermissionModal("담당자 관리"); setModal("personnel"); }}
+                      style={{
+                        padding: '6px 14px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        color: '#334155',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                      }}
+                      title="담당자 관리 (부서별 인원 추가, 수정, 삭제)"
+                    >
+                      👥 담당자 관리 {!del && "🔒"}
+                    </button>
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', margin: '8px 0' }}>

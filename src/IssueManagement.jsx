@@ -234,8 +234,36 @@ ${allText.substring(0, 30000)}
         }
     };
 
+    const [collapsedSections, setCollapsedSections] = useState(() => {
+        try {
+            const saved = localStorage.getItem('pm_issue_collapsed_sections');
+            if (saved) return JSON.parse(saved);
+        } catch (e) {
+            console.warn(e);
+        }
+        return { upload: false, inputForm: false, reportList: false };
+    });
+
+    const toggleSection = (key) => {
+        setCollapsedSections(prev => {
+            const next = { ...prev, [key]: !prev[key] };
+            try {
+                localStorage.setItem('pm_issue_collapsed_sections', JSON.stringify(next));
+            } catch (e) {}
+            return next;
+        });
+    };
+
     const toggleReport = (id) => {
         setExpandedReports(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const toggleAllReports = (expand) => {
+        const next = {};
+        projectReports.forEach(r => {
+            next[r.id] = expand;
+        });
+        setExpandedReports(next);
     };
 
     const generatePPT = async () => {
@@ -430,20 +458,72 @@ ${compiledText.substring(0, 30000)}
                         </div>
 
                         <div style={{marginTop: '1rem', marginBottom: '1rem'}}>
-                            <div className="panel-title">공사일보 원본 업로드</div>
-                            <div className={`dropzone ${isDragging ? 'dragover' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => {
-                                if (isGrade1) return notifyPermission('공사일보 파일 업로드');
-                                fileInputRef.current.click();
-                            }}>
-                                <div className="dropzone-icon">📁</div>
-                                <div style={{fontSize: '0.85rem', fontWeight: 500}}>엑셀 파일 업로드 (.xlsx) {isGrade1 && "🔒"}</div>
-                                <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>{isGrade1 ? "클릭 시 권한 안내" : "클릭하거나 드래그"}</div>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px'}}>
+                                <div className="panel-title" style={{margin: 0}}>공사일보 원본 업로드</div>
+                                <button
+                                    type="button"
+                                    onClick={() => toggleSection('upload')}
+                                    style={{
+                                        background: collapsedSections.upload ? '#3b82f6' : '#f1f5f9',
+                                        color: collapsedSections.upload ? '#fff' : '#475569',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '4px',
+                                        padding: '2px 8px',
+                                        fontSize: '11px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {collapsedSections.upload ? '▸ 펼치기' : '▾ 접기'}
+                                </button>
                             </div>
+                            {!collapsedSections.upload ? (
+                                <div className={`dropzone ${isDragging ? 'dragover' : ''}`} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} onClick={() => {
+                                    if (isGrade1) return notifyPermission('공사일보 파일 업로드');
+                                    fileInputRef.current.click();
+                                }}>
+                                    <div className="dropzone-icon">📁</div>
+                                    <div style={{fontSize: '0.85rem', fontWeight: 500}}>엑셀 파일 업로드 (.xlsx) {isGrade1 && "🔒"}</div>
+                                    <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>{isGrade1 ? "클릭 시 권한 안내" : "클릭하거나 드래그"}</div>
+                                </div>
+                            ) : (
+                                <div
+                                    onClick={() => toggleSection('upload')}
+                                    style={{
+                                        padding: '10px',
+                                        background: '#f8fafc',
+                                        border: '1px dashed #cbd5e1',
+                                        borderRadius: '8px',
+                                        textAlign: 'center',
+                                        color: '#64748b',
+                                        fontSize: '12px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    📁 파일 업로드 드롭존 접힘 (클릭하여 펼치기 ▾)
+                                </div>
+                            )}
                         </div>
 
                         <div>
                             <div className="panel-title" style={{fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems:'center'}}>
-                                <span>공사일보 데이터 ({extractedReports.length}일치)</span>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                                    <span>공사일보 데이터 ({extractedReports.length}일치)</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleSection('inputForm')}
+                                        style={{
+                                            background: collapsedSections.inputForm ? '#3b82f6' : '#f1f5f9',
+                                            color: collapsedSections.inputForm ? '#fff' : '#475569',
+                                            border: '1px solid #cbd5e1',
+                                            borderRadius: '4px',
+                                            padding: '1px 6px',
+                                            fontSize: '10px',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {collapsedSections.inputForm ? '▸ 펼치기' : '▾ 접기'}
+                                    </button>
+                                </div>
                                 <div style={{display:'flex', gap:'8px'}}>
                                     <span style={{color: isGrade1 ? '#9ca3af' : 'var(--primary)', cursor: 'pointer'}} onClick={() => {
                                         if (isGrade1) return notifyPermission('일보 등록 및 편집');
@@ -456,57 +536,78 @@ ${compiledText.substring(0, 30000)}
                                 </div>
                             </div>
                             
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem', maxHeight:'60vh', overflowY:'auto', paddingRight:'5px'}}>
-                                {extractedReports.map((report, idx) => (
-                                    <div key={idx} style={{background:'#f6f8fa', padding:'10px', borderRadius:'8px', border:'1px solid #e1e4e8', position:'relative'}}>
-                                        {extractedReports.length > 1 && (
-                                            <button onClick={() => setExtractedReports(extractedReports.filter((_, i) => i !== idx))} style={{position:'absolute', right:'5px', top:'5px', background:'transparent', border:'none', color:'var(--danger)', cursor:'pointer', fontWeight:'bold'}}>×</button>
-                                        )}
-                                        <div style={{marginBottom:'8px'}}>
-                                            <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>일자</label>
-                                            <input type="date" className="project-select" value={report.date} onChange={(e) => {
-                                                const newR = [...extractedReports];
-                                                newR[idx].date = e.target.value;
-                                                setExtractedReports(newR);
-                                            }} style={{padding:'4px'}} />
-                                        </div>
-                                        <div style={{marginBottom:'8px'}}>
-                                            <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>작업(업무) 내용 *</label>
-                                            <textarea className="paste-textarea" style={{minHeight: '60px'}} placeholder="작업 내용" value={report.work_details} onChange={(e) => {
-                                                const newR = [...extractedReports];
-                                                newR[idx].work_details = e.target.value;
-                                                setExtractedReports(newR);
-                                            }}></textarea>
-                                        </div>
-                                        <div style={{marginBottom:'8px'}}>
-                                            <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>특이/이슈사항</label>
-                                            <textarea className="paste-textarea" style={{minHeight: '40px'}} placeholder="특이사항 및 이슈사항" value={report.special_notes} onChange={(e) => {
-                                                const newR = [...extractedReports];
-                                                newR[idx].special_notes = e.target.value;
-                                                setExtractedReports(newR);
-                                            }}></textarea>
-                                        </div>
-                                        <div>
-                                            <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom:'4px', display:'block'}}>투입 인원 실적</label>
-                                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'4px'}}>
-                                                <div style={{fontSize:'0.7rem'}}>PM <input type="number" value={report.pm_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].pm_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
-                                                <div style={{fontSize:'0.7rem'}}>설계 <input type="number" value={report.design_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].design_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
-                                                <div style={{fontSize:'0.7rem'}}>설비 <input type="number" value={report.facility_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].facility_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
-                                                <div style={{fontSize:'0.7rem'}}>제어 <input type="number" value={report.control_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].control_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
-                                                <div style={{fontSize:'0.7rem'}}>비전 <input type="number" value={report.vision_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].vision_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
-                                                <div style={{fontSize:'0.7rem'}}>기타 <input type="number" value={report.personnel_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].personnel_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                            {!collapsedSections.inputForm ? (
+                                <>
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem', maxHeight:'60vh', overflowY:'auto', paddingRight:'5px'}}>
+                                        {extractedReports.map((report, idx) => (
+                                            <div key={idx} style={{background:'#f6f8fa', padding:'10px', borderRadius:'8px', border:'1px solid #e1e4e8', position:'relative'}}>
+                                                {extractedReports.length > 1 && (
+                                                    <button onClick={() => setExtractedReports(extractedReports.filter((_, i) => i !== idx))} style={{position:'absolute', right:'5px', top:'5px', background:'transparent', border:'none', color:'var(--danger)', cursor:'pointer', fontWeight:'bold'}}>×</button>
+                                                )}
+                                                <div style={{marginBottom:'8px'}}>
+                                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>일자</label>
+                                                    <input type="date" className="project-select" value={report.date} onChange={(e) => {
+                                                        const newR = [...extractedReports];
+                                                        newR[idx].date = e.target.value;
+                                                        setExtractedReports(newR);
+                                                    }} style={{padding:'4px'}} />
+                                                </div>
+                                                <div style={{marginBottom:'8px'}}>
+                                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>작업(업무) 내용 *</label>
+                                                    <textarea className="paste-textarea" style={{minHeight: '60px'}} placeholder="작업 내용" value={report.work_details} onChange={(e) => {
+                                                        const newR = [...extractedReports];
+                                                        newR[idx].work_details = e.target.value;
+                                                        setExtractedReports(newR);
+                                                    }}></textarea>
+                                                </div>
+                                                <div style={{marginBottom:'8px'}}>
+                                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)'}}>특이/이슈사항</label>
+                                                    <textarea className="paste-textarea" style={{minHeight: '40px'}} placeholder="특이사항 및 이슈사항" value={report.special_notes} onChange={(e) => {
+                                                        const newR = [...extractedReports];
+                                                        newR[idx].special_notes = e.target.value;
+                                                        setExtractedReports(newR);
+                                                    }}></textarea>
+                                                </div>
+                                                <div>
+                                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom:'4px', display:'block'}}>투입 인원 실적</label>
+                                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'4px'}}>
+                                                        <div style={{fontSize:'0.7rem'}}>PM <input type="number" value={report.pm_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].pm_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                                        <div style={{fontSize:'0.7rem'}}>설계 <input type="number" value={report.design_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].design_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                                        <div style={{fontSize:'0.7rem'}}>설비 <input type="number" value={report.facility_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].facility_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                                        <div style={{fontSize:'0.7rem'}}>제어 <input type="number" value={report.control_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].control_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                                        <div style={{fontSize:'0.7rem'}}>비전 <input type="number" value={report.vision_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].vision_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                                        <div style={{fontSize:'0.7rem'}}>기타 <input type="number" value={report.personnel_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].personnel_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
 
-                            <button className="btn-analyze" onClick={() => {
-                                if (isGrade1) return notifyPermission('공사일보 저장');
-                                saveReport();
-                            }} disabled={!selectedProject || isExtracting || extractedReports.every(r=>!r.work_details.trim())}>
-                                {isExtracting ? 'AI 추출 중...' : 'Save All' + (isGrade1 ? ' 🔒' : '')}
-                            </button>
+                                    <button className="btn-analyze" onClick={() => {
+                                        if (isGrade1) return notifyPermission('공사일보 저장');
+                                        saveReport();
+                                    }} disabled={!selectedProject || isExtracting || extractedReports.every(r=>!r.work_details.trim())}>
+                                        {isExtracting ? 'AI 추출 중...' : 'Save All' + (isGrade1 ? ' 🔒' : '')}
+                                    </button>
+                                </>
+                            ) : (
+                                <div
+                                    onClick={() => toggleSection('inputForm')}
+                                    style={{
+                                        padding: '10px',
+                                        background: '#f8fafc',
+                                        border: '1px dashed #cbd5e1',
+                                        borderRadius: '8px',
+                                        textAlign: 'center',
+                                        color: '#64748b',
+                                        fontSize: '12px',
+                                        cursor: 'pointer',
+                                        marginBottom: '10px'
+                                    }}
+                                >
+                                    📝 일보 입력 폼 접힘 ({extractedReports.length}일치, 클릭하여 펼치기 ▾)
+                                </div>
+                            )}
                             
                             {msg && (
                                 <div style={{marginTop: '1rem', padding: '0.8rem', borderRadius: '6px', backgroundColor: msg.includes('실패') ? 'var(--danger-bg)' : 'var(--accent-bg)', color: msg.includes('실패') ? 'var(--danger)' : 'var(--accent)', fontSize: '0.85rem', fontWeight: 500}}>
@@ -529,11 +630,45 @@ ${compiledText.substring(0, 30000)}
                             </div>
                         ) : (
                             <div className="dashboard-section">
-                                <div className="section-header">
-                                    <span style={{fontSize: '1.5rem'}}>📝</span>
-                                    <h2 className="section-title">
-                                        {projects.find(p => p.id === selectedProject)?.name || '등록된'} 일보
-                                    </h2>
+                                <div className="section-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px'}}>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                        <span style={{fontSize: '1.5rem'}}>📝</span>
+                                        <h2 className="section-title">
+                                            {projects.find(p => p.id === selectedProject)?.name || '등록된'} 일보 ({projectReports.length}건)
+                                        </h2>
+                                    </div>
+                                    <div style={{display: 'flex', gap: '6px'}}>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleAllReports(true)}
+                                            style={{
+                                                padding: '4px 10px',
+                                                fontSize: '12px',
+                                                background: '#f8fafc',
+                                                border: '1px solid #cbd5e1',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                color: '#334155'
+                                            }}
+                                        >
+                                            ▾ 전체 일보 펼치기
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleAllReports(false)}
+                                            style={{
+                                                padding: '4px 10px',
+                                                fontSize: '12px',
+                                                background: '#f8fafc',
+                                                border: '1px solid #cbd5e1',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                color: '#334155'
+                                            }}
+                                        >
+                                            ▴ 전체 일보 접기
+                                        </button>
+                                    </div>
                                 </div>
                                 <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
                                     {projectReports.map(report => (

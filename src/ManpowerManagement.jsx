@@ -338,6 +338,34 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedProjectForDetail, setSelectedProjectForDetail] = useState(null);
 
+  const [collapsedSections, setCollapsedSections] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pm_manpower_collapsed_sections');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn(e);
+    }
+    return { controls: false, summary: false, calendar: false, table: false };
+  });
+
+  const toggleSection = (key) => {
+    setCollapsedSections(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem('pm_manpower_collapsed_sections', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const setAllSections = (collapsed) => {
+    const next = { controls: collapsed, summary: collapsed, calendar: collapsed, table: collapsed };
+    setCollapsedSections(next);
+    try {
+      localStorage.setItem('pm_manpower_collapsed_sections', JSON.stringify(next));
+    } catch (e) {}
+  };
+
   // Dynamic active departments computation: includes standard departments + any newly introduced departments from projects
   const activeDeptKeys = useMemo(() => {
     const presentDepts = new Set();
@@ -1314,7 +1342,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
   return (
     <div className="manpower-dashboard">
       {/* Top Header Card */}
-      <div className="mp-header-card">
+      <div className="mp-header-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
         <div className="mp-title-group">
           <div className="mp-logo-icon">📊</div>
           <div className="mp-title-text">
@@ -1322,344 +1350,531 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             <p>마스터 플랜 기반 부서별 일일 투입 인원 및 전사 공수 종합 모니터링</p>
           </div>
         </div>
-      </div>
-
-      {/* Filter and Action Bar */}
-      <div className="mp-controls-bar">
-        {/* Row 1: View Mode & Date Range Picker */}
-        <div className="mp-controls-row">
-          <div className="mp-mode-toggle">
-            <button
-              className={`mp-mode-btn ${viewMode === "month" ? "active" : ""}`}
-              onClick={() => setViewMode("month")}
-            >
-              🗓️ 월간 단위 조회
-            </button>
-            <button
-              className={`mp-mode-btn ${viewMode === "range" ? "active" : ""}`}
-              onClick={() => setViewMode("range")}
-            >
-              📆 기간 지정 조회
-            </button>
-          </div>
-
-          {viewMode === "range" ? (
-            <div className="mp-date-range-group">
-              <span className="mp-date-range-label">조회 기간:</span>
-              <input
-                type="date"
-                className="mp-date-input"
-                value={customStart}
-                onChange={e => setCustomStart(e.target.value)}
-              />
-              <span className="mp-date-sep">~</span>
-              <input
-                type="date"
-                className="mp-date-input"
-                value={customEnd}
-                onChange={e => setCustomEnd(e.target.value)}
-              />
-              <div className="mp-quick-btns">
-                <button className="mp-quick-btn" onClick={() => handleQuickPreset(1)}>1개월</button>
-                <button className="mp-quick-btn" onClick={() => handleQuickPreset(3)}>3개월</button>
-                <button className="mp-quick-btn" onClick={() => handleQuickPreset(6)}>6개월</button>
-                <button className="mp-quick-btn" onClick={handleAllRange}>전체 기간</button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ fontSize: "13px", color: "#64748b" }}>
-              선택 기준월: <b style={{ color: "#0969da" }}>{year}년 {month + 1}월</b>
-            </div>
-          )}
-        </div>
-
-        {/* Row 2: Filters & PPT Export Button */}
-        <div className="mp-controls-row">
-          <div className="mp-filter-group">
-            <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>Site 필터:</label>
-            <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
-              <option value="전체">전체 Site</option>
-              {sites.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-            </select>
-
-            <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>부서 필터:</label>
-            <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}>
-              <option value="전체">전체 부서</option>
-              {activeDeptKeys.map(k => (
-                <option key={k} value={k}>{getDeptLabel(k)}</option>
-              ))}
-            </select>
-
-            <input
-              type="text"
-              placeholder="프로젝트, 제조번호 검색..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-
+        <div style={{ display: 'flex', gap: '6px' }}>
           <button
-            className="mp-ppt-btn"
-            onClick={exportManpowerPPT}
-            disabled={isExportingPPT}
-            title="공수 현황 및 프로젝트 상세 분석 보고서 PPT 다운로드"
+            type="button"
+            onClick={() => setAllSections(false)}
+            style={{
+              padding: '5px 12px',
+              fontSize: '12px',
+              background: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: '#334155',
+              fontWeight: 500
+            }}
           >
-            {isExportingPPT ? "⏳ PPT 보고서 생성 중..." : `📊 공수 보고서 PPT 다운로드 (${viewMode === "month" ? `${month + 1}월` : "지정기간"})`}
+            ▾ 전체 펼치기
+          </button>
+          <button
+            type="button"
+            onClick={() => setAllSections(true)}
+            style={{
+              padding: '5px 12px',
+              fontSize: '12px',
+              background: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              color: '#334155',
+              fontWeight: 500
+            }}
+          >
+            ▴ 전체 접기
           </button>
         </div>
       </div>
 
-      {/* KPI Summary Cards */}
-      <div className="mp-kpi-grid">
-        <div className="mp-kpi-card total">
-          <div className="mp-kpi-label"><span>📌</span> 총 투입 공수 ({effectiveLabel})</div>
-          <div className="mp-kpi-val">{periodTotalManday.toLocaleString()} <span style={{ fontSize: "16px" }}>M/D</span></div>
-          <div className="mp-kpi-sub">{effectiveLabel} 기준 합산</div>
+      {/* Filter and Action Bar */}
+      <div style={{ marginBottom: "16px" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '0 4px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>조회 조건 및 필터</span>
+          <button
+            type="button"
+            onClick={() => toggleSection('controls')}
+            style={{
+              background: collapsedSections.controls ? '#3b82f6' : '#f1f5f9',
+              color: collapsedSections.controls ? '#fff' : '#475569',
+              border: '1px solid #cbd5e1',
+              borderRadius: '4px',
+              padding: '2px 8px',
+              fontSize: '11px',
+              cursor: 'pointer'
+            }}
+          >
+            {collapsedSections.controls ? '▸ 조회 조건 펼치기' : '▴ 조회 조건 접기'}
+          </button>
         </div>
+        {!collapsedSections.controls ? (
+          <div className="mp-controls-bar">
+            {/* Row 1: View Mode & Date Range Picker */}
+            <div className="mp-controls-row">
+              <div className="mp-mode-toggle">
+                <button
+                  className={`mp-mode-btn ${viewMode === "month" ? "active" : ""}`}
+                  onClick={() => setViewMode("month")}
+                >
+                  🗓️ 월간 단위 조회
+                </button>
+                <button
+                  className={`mp-mode-btn ${viewMode === "range" ? "active" : ""}`}
+                  onClick={() => setViewMode("range")}
+                >
+                  📆 기간 지정 조회
+                </button>
+              </div>
 
-        <div className="mp-kpi-card peak">
-          <div className="mp-kpi-label"><span>⚡</span> 일일 피크 (최대 인원)</div>
-          <div className="mp-kpi-val" style={{ color: "#dc2626" }}>{periodDailyPeak} <span style={{ fontSize: "16px" }}>명</span></div>
-          <div className="mp-kpi-sub">
-            {peakDates.length > 0 ? `최대 투입일: ${peakDates.slice(0, 3).map(d => d.slice(5)).join(", ")}${peakDates.length > 3 ? ` 외 ${peakDates.length - 3}일` : ""}` : "투입 인원 없음"}
+              {viewMode === "range" ? (
+                <div className="mp-date-range-group">
+                  <span className="mp-date-range-label">조회 기간:</span>
+                  <input
+                    type="date"
+                    className="mp-date-input"
+                    value={customStart}
+                    onChange={e => setCustomStart(e.target.value)}
+                  />
+                  <span className="mp-date-sep">~</span>
+                  <input
+                    type="date"
+                    className="mp-date-input"
+                    value={customEnd}
+                    onChange={e => setCustomEnd(e.target.value)}
+                  />
+                  <div className="mp-quick-btns">
+                    <button className="mp-quick-btn" onClick={() => handleQuickPreset(1)}>1개월</button>
+                    <button className="mp-quick-btn" onClick={() => handleQuickPreset(3)}>3개월</button>
+                    <button className="mp-quick-btn" onClick={() => handleQuickPreset(6)}>6개월</button>
+                    <button className="mp-quick-btn" onClick={handleAllRange}>전체 기간</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: "13px", color: "#64748b" }}>
+                  선택 기준월: <b style={{ color: "#0969da" }}>{year}년 {month + 1}월</b>
+                </div>
+              )}
+            </div>
+
+            {/* Row 2: Filters & PPT Export Button */}
+            <div className="mp-controls-row">
+              <div className="mp-filter-group">
+                <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>Site 필터:</label>
+                <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
+                  <option value="전체">전체 Site</option>
+                  {sites.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                </select>
+
+                <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>부서 필터:</label>
+                <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}>
+                  <option value="전체">전체 부서</option>
+                  {activeDeptKeys.map(k => (
+                    <option key={k} value={k}>{getDeptLabel(k)}</option>
+                  ))}
+                </select>
+
+                <input
+                  type="text"
+                  placeholder="프로젝트, 제조번호 검색..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+
+              <button
+                className="mp-ppt-btn"
+                onClick={exportManpowerPPT}
+                disabled={isExportingPPT}
+                title="공수 현황 및 프로젝트 상세 분석 보고서 PPT 다운로드"
+              >
+                {isExportingPPT ? "⏳ PPT 보고서 생성 중..." : `📊 공수 보고서 PPT 다운로드 (${viewMode === "month" ? `${month + 1}월` : "지정기간"})`}
+              </button>
+            </div>
           </div>
-        </div>
-
-        <div className="mp-kpi-card projects">
-          <div className="mp-kpi-label"><span>🏢</span> 공수 운영 프로젝트</div>
-          <div className="mp-kpi-val">{projectsWithManpower.length} <span style={{ fontSize: "16px" }}>개</span></div>
-          <div className="mp-kpi-sub">조회 대상 {filteredProjects.length}개 프로젝트 중</div>
-        </div>
-
-        <div className="mp-kpi-card depts">
-          <div className="mp-kpi-label"><span>👥</span> 최다 투입 부서</div>
-          <div className="mp-kpi-val" style={{ fontSize: "20px", marginTop: "4px" }}>
-            {(() => {
-              const entries = Object.entries(deptTotals).sort((a, b) => b[1] - a[1]);
-              if (entries[0] && entries[0][1] > 0) {
-                return `${DEPT_SHORT[entries[0][0]]} (${entries[0][1]} M/D)`;
-              }
-              return "-";
-            })()}
+        ) : (
+          <div 
+            onClick={() => toggleSection('controls')}
+            style={{
+              padding: '10px 14px',
+              background: '#f8fafc',
+              border: '1px dashed #cbd5e1',
+              borderRadius: '8px',
+              textAlign: 'center',
+              color: '#64748b',
+              fontSize: '13px',
+              cursor: 'pointer'
+            }}
+          >
+            🔍 조회 조건: <b>{viewMode === "month" ? `${year}년 ${month + 1}월` : `${customStart} ~ ${customEnd}`}</b> · Site: <b>{siteFilter}</b> · 부서: <b>{deptFilter === "전체" ? "전체" : getDeptLabel(deptFilter)}</b> (클릭하여 조건 변경 ▾)
           </div>
-          <div className="mp-kpi-sub">부서별 인력 배분 현황</div>
-        </div>
+        )}
       </div>
 
-      {/* Department Breakdown Banner */}
-      <div className="mp-dept-banner">
-        <h3><span>📈</span> 부서별 공수 투입 현황 ({effectiveLabel})</h3>
-        <div className="mp-dept-tags">
-          {activeDeptKeys.map(deptKey => {
-            const count = deptTotals[deptKey] || 0;
-            const pct = periodTotalManday > 0 ? Math.round((count / periodTotalManday) * 100) : 0;
-            return (
-              <div className="mp-dept-tag" key={deptKey} style={{ borderLeft: `4px solid ${getDeptColor(deptKey)}` }}>
-                <div className="mp-dept-tag-name">{getDeptLabel(deptKey)}</div>
-                <div className="mp-dept-tag-val">
-                  {count.toLocaleString()} M/D <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "normal" }}>({pct}%)</span>
+      {/* KPI Summary Cards & Department Breakdown */}
+      <div style={{ marginBottom: "16px" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '0 4px' }}>
+          <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>전사 공수 요약 및 부서별 현황 ({effectiveLabel})</span>
+          <button
+            type="button"
+            onClick={() => toggleSection('summary')}
+            style={{
+              background: collapsedSections.summary ? '#3b82f6' : '#f1f5f9',
+              color: collapsedSections.summary ? '#fff' : '#475569',
+              border: '1px solid #cbd5e1',
+              borderRadius: '4px',
+              padding: '2px 8px',
+              fontSize: '11px',
+              cursor: 'pointer'
+            }}
+          >
+            {collapsedSections.summary ? '▸ 요약 현황 펼치기' : '▴ 요약 현황 접기'}
+          </button>
+        </div>
+        {!collapsedSections.summary ? (
+          <>
+            <div className="mp-kpi-grid">
+              <div className="mp-kpi-card total">
+                <div className="mp-kpi-label"><span>📌</span> 총 투입 공수 ({effectiveLabel})</div>
+                <div className="mp-kpi-val">{periodTotalManday.toLocaleString()} <span style={{ fontSize: "16px" }}>M/D</span></div>
+                <div className="mp-kpi-sub">{effectiveLabel} 기준 합산</div>
+              </div>
+
+              <div className="mp-kpi-card peak">
+                <div className="mp-kpi-label"><span>⚡</span> 일일 피크 (최대 인원)</div>
+                <div className="mp-kpi-val" style={{ color: "#dc2626" }}>{periodDailyPeak} <span style={{ fontSize: "16px" }}>명</span></div>
+                <div className="mp-kpi-sub">
+                  {peakDates.length > 0 ? `최대 투입일: ${peakDates.slice(0, 3).map(d => d.slice(5)).join(", ")}${peakDates.length > 3 ? ` 외 ${peakDates.length - 3}일` : ""}` : "투입 인원 없음"}
                 </div>
               </div>
-            );
-          })}
-        </div>
+
+              <div className="mp-kpi-card projects">
+                <div className="mp-kpi-label"><span>🏢</span> 공수 운영 프로젝트</div>
+                <div className="mp-kpi-val">{projectsWithManpower.length} <span style={{ fontSize: "16px" }}>개</span></div>
+                <div className="mp-kpi-sub">조회 대상 {filteredProjects.length}개 프로젝트 중</div>
+              </div>
+
+              <div className="mp-kpi-card depts">
+                <div className="mp-kpi-label"><span>👥</span> 최다 투입 부서</div>
+                <div className="mp-kpi-val" style={{ fontSize: "20px", marginTop: "4px" }}>
+                  {(() => {
+                    const entries = Object.entries(deptTotals).sort((a, b) => b[1] - a[1]);
+                    if (entries[0] && entries[0][1] > 0) {
+                      return `${DEPT_SHORT[entries[0][0]]} (${entries[0][1]} M/D)`;
+                    }
+                    return "-";
+                  })()}
+                </div>
+                <div className="mp-kpi-sub">부서별 인력 배분 현황</div>
+              </div>
+            </div>
+
+            <div className="mp-dept-banner">
+              <h3><span>📈</span> 부서별 공수 투입 현황 ({effectiveLabel})</h3>
+              <div className="mp-dept-tags">
+                {activeDeptKeys.map(deptKey => {
+                  const count = deptTotals[deptKey] || 0;
+                  const pct = periodTotalManday > 0 ? Math.round((count / periodTotalManday) * 100) : 0;
+                  return (
+                    <div className="mp-dept-tag" key={deptKey} style={{ borderLeft: `4px solid ${getDeptColor(deptKey)}` }}>
+                      <div className="mp-dept-tag-name">{getDeptLabel(deptKey)}</div>
+                      <div className="mp-dept-tag-val">
+                        {count.toLocaleString()} M/D <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "normal" }}>({pct}%)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div
+            onClick={() => toggleSection('summary')}
+            style={{
+              padding: '12px 16px',
+              background: '#f8fafc',
+              border: '1px dashed #cbd5e1',
+              borderRadius: '8px',
+              textAlign: 'center',
+              color: '#64748b',
+              fontSize: '13px',
+              cursor: 'pointer'
+            }}
+          >
+            📈 총 투입 공수: <b>{periodTotalManday.toLocaleString()} M/D</b> · 일일 피크: <b>{periodDailyPeak}명</b> · 운영 프로젝트: <b>{projectsWithManpower.length}개</b> (클릭하여 상세 지표 펼치기 ▾)
+          </div>
+        )}
       </div>
 
       {/* Manpower Calendar View */}
-      <div className="mp-calendar-section">
-        <div className="mp-cal-head">
+      <div className="mp-calendar-section" style={{ marginBottom: "16px" }}>
+        <div className="mp-cal-head" style={{ cursor: 'pointer' }} onClick={(e) => {
+          if (e.target.tagName !== 'BUTTON') toggleSection('calendar');
+        }}>
           <div>
-            <h3 style={{ margin: "0 0 4px 0" }}>📅 일별 전사 인력 투입 달력 ({year}년 {month + 1}월)</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ margin: "0 0 4px 0" }}>📅 일별 전사 인력 투입 달력 ({year}년 {month + 1}월)</h3>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); toggleSection('calendar'); }}
+                style={{
+                  background: collapsedSections.calendar ? '#3b82f6' : '#f1f5f9',
+                  color: collapsedSections.calendar ? '#fff' : '#475569',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '4px',
+                  padding: '2px 8px',
+                  fontSize: '11px',
+                  cursor: 'pointer'
+                }}
+              >
+                {collapsedSections.calendar ? '▸ 펼치기' : '▾ 접기'}
+              </button>
+            </div>
             <span style={{ fontSize: "12px", color: "#64748b" }}>
               * 날짜를 클릭하면 해당 일자의 프로젝트별 세부 투입 명단을 볼 수 있습니다.
               {viewMode === "range" && ` (전체 지정 기간: ${effectiveStartDate} ~ ${effectiveEndDate})`}
             </span>
           </div>
-          {/* Synchronized Month Navigator in Calendar */}
           <MonthNavigator currentDate={currentDate} onPrev={prevMonth} onNext={nextMonth} onToday={goToToday} />
         </div>
 
-        <div className="mp-cal-weekdays">
-          <span>일</span>
-          <span>월</span>
-          <span>화</span>
-          <span>수</span>
-          <span>목</span>
-          <span>금</span>
-          <span>토</span>
-        </div>
+        {!collapsedSections.calendar ? (
+          <>
+            <div className="mp-cal-weekdays">
+              <span>일</span>
+              <span>월</span>
+              <span>화</span>
+              <span>수</span>
+              <span>목</span>
+              <span>금</span>
+              <span>토</span>
+            </div>
 
-        <div className="mp-cal-grid">
-          {calendarCells.map((cell, idx) => {
-            const isToday = cell.dateStr === todayStr;
-            const hasData = cell.data && cell.data.total > 0;
-            const isPeak = hasData && cell.data.total === periodDailyPeak && periodDailyPeak > 0;
+            <div className="mp-cal-grid">
+              {calendarCells.map((cell, idx) => {
+                const isToday = cell.dateStr === todayStr;
+                const hasData = cell.data && cell.data.total > 0;
+                const isPeak = hasData && cell.data.total === periodDailyPeak && periodDailyPeak > 0;
 
-            let badgeClass = "mp-headcount-badge";
-            if (cell.data && cell.data.total >= 10) badgeClass += " high";
-            else if (cell.data && cell.data.total >= 5) badgeClass += " mid";
+                let badgeClass = "mp-headcount-badge";
+                if (cell.data && cell.data.total >= 10) badgeClass += " high";
+                else if (cell.data && cell.data.total >= 5) badgeClass += " mid";
 
-            return (
-              <div
-                key={idx}
-                className={`mp-cal-day ${!cell.isCurrentMonth ? "other-month" : ""} ${isToday ? "is-today" : ""} ${isPeak ? "has-peak" : ""}`}
-                onClick={() => cell.data && setSelectedDay(cell.data)}
-              >
-                <div className="mp-day-top">
-                  <span className="mp-day-num">{cell.dayNum}</span>
-                  {hasData && (
-                    <span className={badgeClass} title="당일 총 투입 인원">
-                      👥 {cell.data.total}명
-                    </span>
-                  )}
-                </div>
-
-                {hasData && (
-                  <>
-                    <div className="mp-day-depts">
-                      {Object.entries(cell.data.departments).map(([dKey, cnt]) => {
-                        if (cnt <= 0) return null;
-                        return (
-                          <span key={dKey} style={{ borderLeft: `2px solid ${getDeptColor(dKey)}` }}>
-                            {getDeptShort(dKey)} {cnt}
-                          </span>
-                        );
-                      })}
+                return (
+                  <div
+                    key={idx}
+                    className={`mp-cal-day ${!cell.isCurrentMonth ? "other-month" : ""} ${isToday ? "is-today" : ""} ${isPeak ? "has-peak" : ""}`}
+                    onClick={() => cell.data && setSelectedDay(cell.data)}
+                  >
+                    <div className="mp-day-top">
+                      <span className="mp-day-num">{cell.dayNum}</span>
+                      {hasData && (
+                        <span className={badgeClass} title="당일 총 투입 인원">
+                          👥 {cell.data.total}명
+                        </span>
+                      )}
                     </div>
-                    <div className="mp-day-projs" title={cell.data.projectBreakdown.map(p => normalizeJVName(p.name)).join(", ")}>
-                      {cell.data.projectBreakdown.length}개 프로젝트 진행중
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
+
+                    {hasData && (
+                      <>
+                        <div className="mp-day-depts">
+                          {Object.entries(cell.data.departments).map(([dKey, cnt]) => {
+                            if (cnt <= 0) return null;
+                            return (
+                              <span key={dKey} style={{ borderLeft: `2px solid ${getDeptColor(dKey)}` }}>
+                                {getDeptShort(dKey)} {cnt}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        <div className="mp-day-projs" title={cell.data.projectBreakdown.map(p => normalizeJVName(p.name)).join(", ")}>
+                          {cell.data.projectBreakdown.length}개 프로젝트 진행중
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div
+            onClick={() => toggleSection('calendar')}
+            style={{
+              padding: '12px 16px',
+              background: '#f8fafc',
+              border: '1px dashed #cbd5e1',
+              borderRadius: '8px',
+              textAlign: 'center',
+              color: '#64748b',
+              fontSize: '13px',
+              cursor: 'pointer',
+              marginTop: '10px'
+            }}
+          >
+            📅 {year}년 {month + 1}월 일별 전사 인력 투입 달력이 접혀 있습니다. (클릭하여 펼치기 ▾)
+          </div>
+        )}
       </div>
 
       {/* Project Breakdown Table */}
       <div className="mp-table-section">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px", cursor: 'pointer' }} onClick={(e) => {
+          if (e.target.tagName !== 'BUTTON') toggleSection('table');
+        }}>
           <div>
-            <h3 style={{ margin: "0 0 4px 0" }}>🏢 프로젝트별 공수 현황 ({effectiveLabel})</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ margin: "0 0 4px 0" }}>🏢 프로젝트별 공수 현황 ({effectiveLabel})</h3>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); toggleSection('table'); }}
+                style={{
+                  background: collapsedSections.table ? '#3b82f6' : '#f1f5f9',
+                  color: collapsedSections.table ? '#fff' : '#475569',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '4px',
+                  padding: '2px 8px',
+                  fontSize: '11px',
+                  cursor: 'pointer'
+                }}
+              >
+                {collapsedSections.table ? '▸ 펼치기' : '▾ 접기'}
+              </button>
+            </div>
             <span style={{ fontSize: "12px", color: "#64748b" }}>
-              * {viewMode === "range" ? `지정 기간(${effectiveStartDate} ~ ${effectiveEndDate})` : `상단 달력의 기준월(${year}년 {month + 1}월)`}에 투입된 프로젝트별 공수 데이터입니다.
+              * {viewMode === "range" ? `지정 기간(${effectiveStartDate} ~ ${effectiveEndDate})` : `상단 달력의 기준월(${year}년 {month + 1}월)`}에 투입된 프로젝트별 공수 데이터입니다. ({filteredProjects.length}개 프로젝트)
             </span>
           </div>
           {/* Synchronized Month Navigator in Table Section */}
           <MonthNavigator currentDate={currentDate} onPrev={prevMonth} onNext={nextMonth} onToday={goToToday} />
         </div>
-        <div className="mp-table-wrapper">
-          <table className="mp-table">
-            <thead>
-              <tr>
-                <th>제조번호</th>
-                <th>Site · Line</th>
-                <th>프로젝트명</th>
-                {activeDeptKeys.map(k => (
-                  <th key={k} style={{ textAlign: "center" }}>{getDeptShort(k)}</th>
-                ))}
-                <th style={{ textAlign: "center", color: "#1d4ed8" }}>
-                  {viewMode === "range" ? "기간 투입 공수" : `${month + 1}월 투입 공수`}
-                </th>
-                <th style={{ textAlign: "center", background: "#f1f5f9", color: "#0f172a" }}>프로젝트 총 공수</th>
-                <th style={{ textAlign: "center" }}>상세</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProjects.map(p => {
-                const mp = p.manpower;
-                const { pDepts, pRangeTotal } = getProjectRangeData(p);
-                const pTotalManday = getProjectTotalManday(p);
+        {!collapsedSections.table ? (
+          <div className="mp-table-wrapper">
+            <table className="mp-table">
+              <thead>
+                <tr>
+                  <th>제조번호</th>
+                  <th>Site · Line</th>
+                  <th>프로젝트명</th>
+                  {activeDeptKeys.map(k => (
+                    <th key={k} style={{ textAlign: "center" }}>{getDeptShort(k)}</th>
+                  ))}
+                  <th style={{ textAlign: "center", color: "#1d4ed8" }}>
+                    {viewMode === "range" ? "기간 투입 공수" : `${month + 1}월 투입 공수`}
+                  </th>
+                  <th style={{ textAlign: "center", background: "#f1f5f9", color: "#0f172a" }}>프로젝트 총 공수</th>
+                  <th style={{ textAlign: "center" }}>상세</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredProjects.map(p => {
+                  const mp = p.manpower;
+                  const { pDepts, pRangeTotal } = getProjectRangeData(p);
+                  const pTotalManday = getProjectTotalManday(p);
 
-                const effectiveTotal = pTotalManday > 0 ? pTotalManday : (pRangeTotal > 0 ? pRangeTotal : 0);
-                const progressRate = effectiveTotal > 0 && pRangeTotal > 0 ? Math.round((pRangeTotal / effectiveTotal) * 100) : 0;
+                  const effectiveTotal = pTotalManday > 0 ? pTotalManday : (pRangeTotal > 0 ? pRangeTotal : 0);
+                  const progressRate = effectiveTotal > 0 && pRangeTotal > 0 ? Math.round((pRangeTotal / effectiveTotal) * 100) : 0;
 
-                return (
-                  <tr key={p.id}>
-                    <td><b>{normalizeJVName(p.manufacturingNo) || "-"}</b></td>
-                    <td>{normalizeJVName(p.site) || "-"} {p.line ? `· Line ${normalizeJVName(p.line)}` : ""}</td>
-                    <td>
-                      <div style={{ fontWeight: 600, color: "#0f172a" }}>{normalizeJVName(p.name)}</div>
-                      {effectiveTotal > 0 ? (
-                        <div style={{ fontSize: "11px", color: "#475569", marginTop: "2px" }}>
-                          프로젝트 총 공수: <b style={{ color: "#059669" }}>{effectiveTotal.toLocaleString()} M/D</b>
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
-                          공수 미등록
-                        </div>
-                      )}
+                  return (
+                    <tr key={p.id}>
+                      <td><b>{normalizeJVName(p.manufacturingNo) || "-"}</b></td>
+                      <td>{normalizeJVName(p.site) || "-"} {p.line ? `· Line ${normalizeJVName(p.line)}` : ""}</td>
+                      <td>
+                        <div style={{ fontWeight: 600, color: "#0f172a" }}>{normalizeJVName(p.name)}</div>
+                        {effectiveTotal > 0 ? (
+                          <div style={{ fontSize: "11px", color: "#475569", marginTop: "2px" }}>
+                            프로젝트 총 공수: <b style={{ color: "#059669" }}>{effectiveTotal.toLocaleString()} M/D</b>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
+                            공수 미등록
+                          </div>
+                        )}
+                      </td>
+                      {activeDeptKeys.map(k => (
+                        <td key={k} style={{ textAlign: "center" }}>{pDepts[k] ? `${pDepts[k]}명` : "-"}</td>
+                      ))}
+                      <td style={{ textAlign: "center" }}>
+                        <span style={{ fontWeight: "bold", color: pRangeTotal > 0 ? "#1d4ed8" : "#94a3b8", fontSize: "14px" }}>
+                          {pRangeTotal > 0 ? `${pRangeTotal.toLocaleString()} M/D` : "-"}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "center", background: "#f8fafc" }}>
+                        {effectiveTotal > 0 ? (
+                          <div>
+                            <span style={{ fontWeight: "800", color: "#0f172a", fontSize: "14px" }}>
+                              {effectiveTotal.toLocaleString()} M/D
+                            </span>
+                            {pRangeTotal > 0 && (
+                              <div style={{ fontSize: "11px", color: "#059669", fontWeight: 600, marginTop: "1px" }}>
+                                {viewMode === "range" ? "기간" : "당월"} {progressRate}%
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: "#94a3b8" }}>-</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <button
+                          onClick={() => {
+                            if (onSelectProject) onSelectProject(p);
+                            setSelectedProjectForDetail(p);
+                          }}
+                          style={{
+                            background: mp ? "#eff6ff" : "#f1f5f9",
+                            color: mp ? "#1d4ed8" : "#64748b",
+                            border: mp ? "1px solid #bfdbfe" : "1px solid #cbd5e1",
+                            borderRadius: "6px",
+                            padding: "4px 8px",
+                            fontSize: "11px",
+                            fontWeight: "bold",
+                            cursor: "pointer"
+                          }}
+                        >
+                          {mp ? "공수 상세" : "공수 조회"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {filteredProjects.length > 0 && (
+                <tfoot>
+                  <tr style={{ background: "#f1f5f9", fontWeight: "bold", borderTop: "2px solid #cbd5e1" }}>
+                    <td colSpan={3} style={{ textAlign: "center", padding: "10px" }}>
+                      {viewMode === "range" ? "지정 기간 합산" : "당월 합산"}
                     </td>
                     {activeDeptKeys.map(k => (
-                      <td key={k} style={{ textAlign: "center" }}>{pDepts[k] ? `${pDepts[k]}명` : "-"}</td>
+                      <td key={k} style={{ textAlign: "center" }}>{deptTotals[k] > 0 ? `${deptTotals[k]} M/D` : "-"}</td>
                     ))}
-                    <td style={{ textAlign: "center" }}>
-                      <span style={{ fontWeight: "bold", color: pRangeTotal > 0 ? "#1d4ed8" : "#94a3b8", fontSize: "14px" }}>
-                        {pRangeTotal > 0 ? `${pRangeTotal.toLocaleString()} M/D` : "-"}
-                      </span>
+                    <td style={{ textAlign: "center", color: "#1d4ed8", fontSize: "14px" }}>
+                      {periodTotalManday > 0 ? `${periodTotalManday.toLocaleString()} M/D` : "-"}
                     </td>
-                    <td style={{ textAlign: "center", background: "#f8fafc" }}>
-                      {effectiveTotal > 0 ? (
-                        <div>
-                          <span style={{ fontWeight: "800", color: "#0f172a", fontSize: "14px" }}>
-                            {effectiveTotal.toLocaleString()} M/D
-                          </span>
-                          {pRangeTotal > 0 && (
-                            <div style={{ fontSize: "11px", color: "#059669", fontWeight: 600, marginTop: "1px" }}>
-                              {viewMode === "range" ? "기간" : "당월"} {progressRate}%
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span style={{ color: "#94a3b8" }}>-</span>
-                      )}
+                    <td style={{ textAlign: "center", color: "#0f172a", fontSize: "14px", background: "#e2e8f0" }}>
+                      {filteredProjects.reduce((sum, p) => sum + getProjectTotalManday(p), 0).toLocaleString()} M/D
                     </td>
-                    <td style={{ textAlign: "center" }}>
-                      <button
-                        onClick={() => {
-                          if (onSelectProject) onSelectProject(p);
-                          setSelectedProjectForDetail(p);
-                        }}
-                        style={{
-                          background: mp ? "#eff6ff" : "#f1f5f9",
-                          color: mp ? "#1d4ed8" : "#64748b",
-                          border: mp ? "1px solid #bfdbfe" : "1px solid #cbd5e1",
-                          borderRadius: "6px",
-                          padding: "4px 8px",
-                          fontSize: "11px",
-                          fontWeight: "bold",
-                          cursor: "pointer"
-                        }}
-                      >
-                        {mp ? "공수 상세" : "공수 조회"}
-                      </button>
-                    </td>
+                    <td></td>
                   </tr>
-                );
-              })}
-            </tbody>
-            {filteredProjects.length > 0 && (
-              <tfoot>
-                <tr style={{ background: "#f1f5f9", fontWeight: "bold", borderTop: "2px solid #cbd5e1" }}>
-                  <td colSpan={3} style={{ textAlign: "center", padding: "10px" }}>
-                    {viewMode === "range" ? "지정 기간 합산" : "당월 합산"}
-                  </td>
-                  {activeDeptKeys.map(k => (
-                    <td key={k} style={{ textAlign: "center" }}>{deptTotals[k] > 0 ? `${deptTotals[k]} M/D` : "-"}</td>
-                  ))}
-                  <td style={{ textAlign: "center", color: "#1d4ed8", fontSize: "14px" }}>
-                    {periodTotalManday > 0 ? `${periodTotalManday.toLocaleString()} M/D` : "-"}
-                  </td>
-                  <td style={{ textAlign: "center", color: "#0f172a", fontSize: "14px", background: "#e2e8f0" }}>
-                    {filteredProjects.reduce((sum, p) => sum + getProjectTotalManday(p), 0).toLocaleString()} M/D
-                  </td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        ) : (
+          <div
+            onClick={() => toggleSection('table')}
+            style={{
+              padding: '12px 16px',
+              background: '#f8fafc',
+              border: '1px dashed #cbd5e1',
+              borderRadius: '8px',
+              textAlign: 'center',
+              color: '#64748b',
+              fontSize: '13px',
+              cursor: 'pointer'
+            }}
+          >
+            🏢 프로젝트별 공수 현황 표 ({filteredProjects.length}건)가 접혀 있습니다. (클릭하여 펼치기 ▾)
+          </div>
+        )}
       </div>
 
       {/* Day Detail Modal */}

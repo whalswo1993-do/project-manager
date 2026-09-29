@@ -203,6 +203,36 @@ export default function App() {
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const masterPlanInput = useRef(null);
 
+  // 프로젝트 일정 소항목 접기/펼치기 상태 관리 (localStorage 연동)
+  const [collapsedSections, setCollapsedSections] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pm_app_collapsed_sections');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const toggleSection = (key) => {
+    setCollapsedSections(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      try { localStorage.setItem('pm_app_collapsed_sections', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+  };
+
+  const setAllSections = (expand) => {
+    const next = {
+      form: !expand,
+      filter: !expand,
+      gantt: !expand,
+      calendar: !expand,
+      list: !expand
+    };
+    setCollapsedSections(next);
+    try { localStorage.setItem('pm_app_collapsed_sections', JSON.stringify(next)); } catch (e) {}
+  };
+
   const currentUserName = useMemo(() => {
     if (!session) return "담당자";
     return profile?.name ||
@@ -555,6 +585,7 @@ export default function App() {
 
   function editProject(p) {
     setEditing(p.id);
+    setCollapsedSections(prev => ({ ...prev, form: false }));
     const cleanMs = (p.milestones || []).filter(x => x && x.id !== '__status_meta__' && x.id !== '__manpower_meta__');
     const isPOWaiting = (p.status === "PO대기중");
     const isManual = isPOWaiting || Boolean(p.isManualStatus);
@@ -1235,6 +1266,24 @@ JSON 출력 예시:
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           {currentView === "projects" && (
             <>
+              <div style={{ display: 'inline-flex', gap: '4px', background: '#f8fafc', padding: '3px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                <button
+                  type="button"
+                  onClick={() => setAllSections(true)}
+                  style={{ height: '36px', padding: '0 10px', fontSize: '12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, color: '#334155' }}
+                  title="프로젝트 일정의 모든 소항목 펼치기"
+                >
+                  ▾ 전체 펼치기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAllSections(false)}
+                  style={{ height: '36px', padding: '0 10px', fontSize: '12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, color: '#334155' }}
+                  title="프로젝트 일정의 모든 소항목 접기"
+                >
+                  ▴ 전체 접기
+                </button>
+              </div>
               <button onClick={() => { if (!del) return showPermissionModal("Site 관리"); setModal("sites"); }} style={{ height: "44px", display: "inline-flex", alignItems: "center" }}>
                 Site 관리 {!del && "🔒"}
               </button>
@@ -1257,12 +1306,29 @@ JSON 출력 예시:
       ) : (
         <>
           {edit && (
-            <section>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
+            <section style={{ transition: 'all 0.2s ease' }}>
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginBottom: collapsedSections.form ? 0 : '14px', 
+                  flexWrap: 'wrap', 
+                  gap: '12px',
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}
+                onClick={() => toggleSection('form')}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <h2 style={{ margin: 0 }}>{editing ? "프로젝트 수정" : "프로젝트 등록"}</h2>
+                  <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>{editing ? "프로젝트 수정" : "프로젝트 등록"}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: collapsedSections.form ? '#2563eb' : '#64748b' }}>
+                      {collapsedSections.form ? "▸ 펼치기" : "▾ 접기"}
+                    </span>
+                  </h2>
                   {editing && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
                       <span style={{ fontSize: '13px', color: '#1d4ed8', fontWeight: 'bold', background: '#eff6ff', padding: '3px 9px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
                         수정 대상: {form.name || "선택됨"}
                       </span>
@@ -1276,7 +1342,23 @@ JSON 출력 예시:
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => toggleSection('form')}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      background: '#fff',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: '#475569',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {collapsedSections.form ? '▾ 입력란 펼치기' : '▴ 입력란 접기'}
+                  </button>
                   <a
                     href={`${import.meta.env.BASE_URL || '/'}master-schedule-template.xlsx`.replace('//', '/')}
                     download="Master Schedule 양식.xlsx"
@@ -1421,140 +1503,226 @@ JSON 출력 예시:
                 </div>
               </div>
 
-              <div className="grid">
-                <label>제조번호<input value={form.manufacturingNo} disabled={role === "grade2"} onChange={e => setForm({ ...form, manufacturingNo: e.target.value })} /></label>
-                <label>Site *
-                  <select value={form.site} disabled={role === "grade2"} onChange={e => setForm({ ...form, site: e.target.value })}>
-                    <option value="">선택</option>
-                    {sites.map(s => <option key={s.id}>{s.name}</option>)}
-                  </select>
-                </label>
-                <label>Line<input value={form.line} disabled={role === "grade2"} onChange={e => setForm({ ...form, line: e.target.value })} /></label>
-                <label className="wide">프로젝트명 *<input value={form.name} disabled={role === "grade2"} onChange={e => setForm({ ...form, name: e.target.value })} /></label>
-                <label>시작일<input type="date" value={form.startDate} disabled={role === "grade2"} onChange={e => setForm({ ...form, startDate: e.target.value })} /></label>
-                <label>종료일<input type="date" value={form.endDate} disabled={role === "grade2"} onChange={e => setForm({ ...form, endDate: e.target.value })} /></label>
-                <label>상태
-                  <select value={form.status} onChange={e => handleStatusChange(e.target.value)}>
-                    {STATUSES.map(s => <option key={s} value={s}>{s}{s === "PO대기중" ? " (수동 전용)" : ""}</option>)}
-                  </select>
-                </label>
-              </div>
+              {!collapsedSections.form ? (
+                <>
+                  <div className="grid">
+                    <label>제조번호<input value={form.manufacturingNo} disabled={role === "grade2"} onChange={e => setForm({ ...form, manufacturingNo: e.target.value })} /></label>
+                    <label>Site *
+                      <select value={form.site} disabled={role === "grade2"} onChange={e => setForm({ ...form, site: e.target.value })}>
+                        <option value="">선택</option>
+                        {sites.map(s => <option key={s.id}>{s.name}</option>)}
+                      </select>
+                    </label>
+                    <label>Line<input value={form.line} disabled={role === "grade2"} onChange={e => setForm({ ...form, line: e.target.value })} /></label>
+                    <label className="wide">프로젝트명 *<input value={form.name} disabled={role === "grade2"} onChange={e => setForm({ ...form, name: e.target.value })} /></label>
+                    <label>시작일<input type="date" value={form.startDate} disabled={role === "grade2"} onChange={e => setForm({ ...form, startDate: e.target.value })} /></label>
+                    <label>종료일<input type="date" value={form.endDate} disabled={role === "grade2"} onChange={e => setForm({ ...form, endDate: e.target.value })} /></label>
+                    <label>상태
+                      <select value={form.status} onChange={e => handleStatusChange(e.target.value)}>
+                        {STATUSES.map(s => <option key={s} value={s}>{s}{s === "PO대기중" ? " (수동 전용)" : ""}</option>)}
+                      </select>
+                    </label>
+                  </div>
 
-              <div className="people">
-                <PersonField label="PM 담당자" value={form.pm} disabled={role === "grade2"} onChange={v => setForm({ ...form, pm: v })} dept="PM" people={people} />
-                <PersonField label="설계 담당자" value={form.design} disabled={role === "grade2"} onChange={v => setForm({ ...form, design: v })} dept="설계" people={people} />
-                <PersonField label="설비기술 담당자" value={form.facilityTechnology} disabled={role === "grade2"} onChange={v => setForm({ ...form, facilityTechnology: v })} dept="설비기술" people={people} />
-                <PersonField label="제어 담당자" value={form.control} disabled={role === "grade2"} onChange={v => setForm({ ...form, control: v })} dept="제어" people={people} />
-                <PersonField label="비전 담당자" value={form.vision} disabled={role === "grade2"} onChange={v => setForm({ ...form, vision: v })} dept="비전" people={people} />
-              </div>
+                  <div className="people">
+                    <PersonField label="PM 담당자" value={form.pm} disabled={role === "grade2"} onChange={v => setForm({ ...form, pm: v })} dept="PM" people={people} />
+                    <PersonField label="설계 담당자" value={form.design} disabled={role === "grade2"} onChange={v => setForm({ ...form, design: v })} dept="설계" people={people} />
+                    <PersonField label="설비기술 담당자" value={form.facilityTechnology} disabled={role === "grade2"} onChange={v => setForm({ ...form, facilityTechnology: v })} dept="설비기술" people={people} />
+                    <PersonField label="제어 담당자" value={form.control} disabled={role === "grade2"} onChange={v => setForm({ ...form, control: v })} dept="제어" people={people} />
+                    <PersonField label="비전 담당자" value={form.vision} disabled={role === "grade2"} onChange={v => setForm({ ...form, vision: v })} dept="비전" people={people} />
+                  </div>
 
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', margin: '8px 0' }}>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', whiteSpace: 'nowrap' }}>
-                  <input type="checkbox" style={{ width: 'auto', margin: 0, cursor: 'pointer' }} checked={form.autoStatus} onChange={e => handleAutoStatusToggle(e.target.checked)} />
-                  <span>마일스톤 기준 상태 자동 계산</span>
-                </label>
-                {form.autoStatus && (
-                  <span style={{ fontSize: '12px', color: '#059669', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                    (현재 계산: {computedCurrentStatus})
-                  </span>
-                )}
-                {form.isManualStatus && (
-                  <span style={{ fontSize: '12px', color: '#d97706', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                    ⚠️ 수동 수정 상태 (수정자: {form.manualStatusBy || currentUserName})
-                  </span>
-                )}
-              </div>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', margin: '8px 0' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                      <input type="checkbox" style={{ width: 'auto', margin: 0, cursor: 'pointer' }} checked={form.autoStatus} onChange={e => handleAutoStatusToggle(e.target.checked)} />
+                      <span>마일스톤 기준 상태 자동 계산</span>
+                    </label>
+                    {form.autoStatus && (
+                      <span style={{ fontSize: '12px', color: '#059669', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                        (현재 계산: {computedCurrentStatus})
+                      </span>
+                    )}
+                    {form.isManualStatus && (
+                      <span style={{ fontSize: '12px', color: '#d97706', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                        ⚠️ 수동 수정 상태 (수정자: {form.manualStatusBy || currentUserName})
+                      </span>
+                    )}
+                  </div>
 
-              {form.isManualStatus && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fffbeb', border: '1px solid #fde68a', padding: '6px 12px', borderRadius: '6px', margin: '4px 0 8px', fontSize: '12px', color: '#b45309', flexWrap: 'wrap' }}>
-                  <span>수동 수정한 인원 이름:</span>
-                  <input style={{ width: '140px', padding: '4px 8px', fontSize: '12px' }} value={form.manualStatusBy} onChange={e => setForm({ ...form, manualStatusBy: e.target.value })} placeholder="이름 입력" list="people-status-list" />
-                  <datalist id="people-status-list">{peopleNames.map(n => <option key={n} value={n} />)}</datalist>
-                  <span style={{ fontSize: '11px', color: '#92400e' }}>* 프로젝트 목록에 '상태 확인 후 상태 변경을 해주세요' 문구와 함께 표시됩니다.</span>
+                  {form.isManualStatus && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fffbeb', border: '1px solid #fde68a', padding: '6px 12px', borderRadius: '6px', margin: '4px 0 8px', fontSize: '12px', color: '#b45309', flexWrap: 'wrap' }}>
+                      <span>수동 수정한 인원 이름:</span>
+                      <input style={{ width: '140px', padding: '4px 8px', fontSize: '12px' }} value={form.manualStatusBy} onChange={e => setForm({ ...form, manualStatusBy: e.target.value })} placeholder="이름 입력" list="people-status-list" />
+                      <datalist id="people-status-list">{peopleNames.map(n => <option key={n} value={n} />)}</datalist>
+                      <span style={{ fontSize: '11px', color: '#92400e' }}>* 프로젝트 목록에 '상태 확인 후 상태 변경을 해주세요' 문구와 함께 표시됩니다.</span>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', margin: '8px 0' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                      <input type="checkbox" style={{ width: 'auto', margin: 0, cursor: 'pointer' }} checked={form.autoProgress} onChange={e => handleAutoProgressToggle(e.target.checked)} />
+                      <span>일정 기준 진행률 자동 계산</span>
+                    </label>
+                    {!form.autoProgress && (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginLeft: '4px' }}>
+                        <input type="range" min="0" max="100" value={form.progress} onChange={e => setForm({ ...form, progress: e.target.value })} style={{ width: '150px', cursor: 'pointer' }} />
+                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0b68b5' }}>{form.progress}%</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {create && (
+                    <div className="milestones">
+                      <div className="milestone-title-row">
+                        <div>
+                          <h3>마일스톤</h3>
+                          <p>프로젝트의 주요 단계와 기간을 입력하세요.</p>
+                        </div>
+                        <button type="button" className="milestone-add" onClick={addMilestoneRow}>+ 마일스톤 추가</button>
+                      </div>
+                      <div className="mh">
+                        <span>번호</span>
+                        <b>마일스톤명</b>
+                        <b>시작일</b>
+                        <b>종료일</b>
+                        <span>삭제</span>
+                      </div>
+                      {milestones.map((m, i) => (
+                        <div className="mr" key={m.id}>
+                          <span>{i + 1}</span>
+                          <input value={m.name} placeholder="마일스톤명" onChange={e => setMilestones(milestones.map((x, n) => n === i ? { ...x, name: e.target.value } : x))} />
+                          <input type="date" value={m.startDate} onChange={e => setMilestones(milestones.map((x, n) => n === i ? { ...x, startDate: e.target.value } : x))} />
+                          <input type="date" value={m.endDate} onChange={e => setMilestones(milestones.map((x, n) => n === i ? { ...x, endDate: e.target.value } : x))} />
+                          <button type="button" className="milestone-remove" onClick={() => removeMilestoneRow(i)} aria-label={`${i + 1}번 마일스톤 삭제`}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {msg && <p className="notice" style={{ marginTop: '10px', fontWeight: 'bold', color: '#059669' }}>{msg}</p>}
+
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '15px', flexWrap: 'wrap' }}>
+                    <button className="primary" onClick={save}>{editing ? "수정 저장" : "프로젝트 추가"}</button>
+                    {editing && (
+                      <button
+                        type="button"
+                        onClick={() => { setEditing(null); setForm(blank()); setMilestones(newMs()); setMsg(""); }}
+                        style={{ background: '#64748b', color: '#fff', padding: '10px 18px', borderRadius: '6px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}
+                      >
+                        수정 취소
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div 
+                  onClick={() => toggleSection('form')}
+                  style={{
+                    padding: '12px 16px',
+                    background: '#f8fafc',
+                    border: '1px dashed #cbd5e1',
+                    borderRadius: '8px',
+                    textAlign: 'center',
+                    color: '#64748b',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    marginTop: '8px'
+                  }}
+                >
+                  📝 프로젝트 {editing ? "수정" : "등록"} 입력란이 접혀 있습니다. (클릭하여 입력란 펼치기 ▾)
                 </div>
               )}
-
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', margin: '8px 0' }}>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', whiteSpace: 'nowrap' }}>
-                  <input type="checkbox" style={{ width: 'auto', margin: 0, cursor: 'pointer' }} checked={form.autoProgress} onChange={e => handleAutoProgressToggle(e.target.checked)} />
-                  <span>일정 기준 진행률 자동 계산</span>
-                </label>
-                {!form.autoProgress && (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginLeft: '4px' }}>
-                    <input type="range" min="0" max="100" value={form.progress} onChange={e => setForm({ ...form, progress: e.target.value })} style={{ width: '150px', cursor: 'pointer' }} />
-                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0b68b5' }}>{form.progress}%</span>
-                  </div>
-                )}
-              </div>
-
-              {create && (
-                <div className="milestones">
-                  <div className="milestone-title-row">
-                    <div>
-                      <h3>마일스톤</h3>
-                      <p>프로젝트의 주요 단계와 기간을 입력하세요.</p>
-                    </div>
-                    <button type="button" className="milestone-add" onClick={addMilestoneRow}>+ 마일스톤 추가</button>
-                  </div>
-                  <div className="mh">
-                    <span>번호</span>
-                    <b>마일스톤명</b>
-                    <b>시작일</b>
-                    <b>종료일</b>
-                    <span>삭제</span>
-                  </div>
-                  {milestones.map((m, i) => (
-                    <div className="mr" key={m.id}>
-                      <span>{i + 1}</span>
-                      <input value={m.name} placeholder="마일스톤명" onChange={e => setMilestones(milestones.map((x, n) => n === i ? { ...x, name: e.target.value } : x))} />
-                      <input type="date" value={m.startDate} onChange={e => setMilestones(milestones.map((x, n) => n === i ? { ...x, startDate: e.target.value } : x))} />
-                      <input type="date" value={m.endDate} onChange={e => setMilestones(milestones.map((x, n) => n === i ? { ...x, endDate: e.target.value } : x))} />
-                      <button type="button" className="milestone-remove" onClick={() => removeMilestoneRow(i)} aria-label={`${i + 1}번 마일스톤 삭제`}>×</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {msg && <p className="notice" style={{ marginTop: '10px', fontWeight: 'bold', color: '#059669' }}>{msg}</p>}
-
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '15px', flexWrap: 'wrap' }}>
-                <button className="primary" onClick={save}>{editing ? "수정 저장" : "프로젝트 추가"}</button>
-                {editing && (
-                  <button
-                    type="button"
-                    onClick={() => { setEditing(null); setForm(blank()); setMilestones(newMs()); setMsg(""); }}
-                    style={{ background: '#64748b', color: '#fff', padding: '10px 18px', borderRadius: '6px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}
-                  >
-                    수정 취소
-                  </button>
-                )}
-              </div>
             </section>
           )}
 
           <section>
-            <div className="filterbar">
-              <h2>일정 조회</h2>
-              <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
-                <option>전체</option>
-                {sites.map(s => <option key={s.id}>{s.name}</option>)}
-              </select>
-              <select value={personFilter} onChange={e => setPersonFilter(e.target.value)}>
-                <option>전체</option>
-                {peopleNames.map(p => <option key={p}>{p}</option>)}
-              </select>
-              <button onClick={() => { setSiteFilter("전체"); setPersonFilter("전체"); }}>필터 초기화</button>
+            <div 
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none', marginBottom: collapsedSections.filter ? 0 : '10px' }}
+              onClick={() => toggleSection('filter')}
+            >
+              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>일정 조회 필터</span>
+                <span style={{ fontSize: '13px', fontWeight: 'bold', color: collapsedSections.filter ? '#2563eb' : '#64748b' }}>
+                  {collapsedSections.filter ? "▸ 펼치기" : "▾ 접기"}
+                </span>
+              </h2>
+              <button
+                type="button"
+                onClick={() => toggleSection('filter')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#475569',
+                  cursor: 'pointer'
+                }}
+              >
+                {collapsedSections.filter ? '▾ 필터 펼치기' : '▴ 필터 접기'}
+              </button>
             </div>
+            {!collapsedSections.filter ? (
+              <div className="filterbar" style={{ marginTop: '6px' }}>
+                <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
+                  <option>전체</option>
+                  {sites.map(s => <option key={s.id}>{s.name}</option>)}
+                </select>
+                <select value={personFilter} onChange={e => setPersonFilter(e.target.value)}>
+                  <option>전체</option>
+                  {peopleNames.map(p => <option key={p}>{p}</option>)}
+                </select>
+                <button onClick={() => { setSiteFilter("전체"); setPersonFilter("전체"); }}>필터 초기화</button>
+              </div>
+            ) : (
+              <div 
+                onClick={() => toggleSection('filter')}
+                style={{
+                  padding: '10px 14px',
+                  background: '#f8fafc',
+                  border: '1px dashed #cbd5e1',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  color: '#64748b',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  marginTop: '8px'
+                }}
+              >
+                🔍 Site: <b>{siteFilter}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경 ▾)
+              </div>
+            )}
           </section>
 
           <section id="gantt-export">
-            <div className="title">
-              <h2>프로젝트 간트차트</h2>
+            <div className="title" style={{ cursor: 'pointer' }} onClick={(e) => {
+              if (e.target.tagName !== 'BUTTON') toggleSection('gantt');
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h2>프로젝트 간트차트</h2>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); toggleSection('gantt'); }}
+                  style={{
+                    background: collapsedSections.gantt ? '#3b82f6' : '#f1f5f9',
+                    color: collapsedSections.gantt ? '#fff' : '#475569',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {collapsedSections.gantt ? '▸ 펼치기' : '▾ 접기'}
+                </button>
+              </div>
               <div className="view-actions">
                 <span>프로젝트 상위 · 마일스톤 하위 · 오늘선</span>
                 <button
                   className="ppt-btn"
-                  onClick={async () => {
+                  onClick={async (e) => {
+                    e.stopPropagation();
                     if (isGrade1) return showPermissionModal("간트차트 PPT 내보내기");
                     setMsg("간트차트 PPT 생성 중...");
                     try {
@@ -1569,66 +1737,105 @@ JSON 출력 예시:
                 </button>
               </div>
             </div>
-            <div className="gantt">
-              <div className="axis">
-                <span>{iso(gs)}</span>
-                <span>{iso(ge)}</span>
-              </div>
-              {view.map(p => (
-                <div className="gblock" key={p.id}>
-                  <div className="grow">
-                    <button className="toggle" onClick={() => setGanttExpanded({ ...ganttExpanded, [p.id]: !ganttExpanded[p.id] })}>
-                      {ganttExpanded[p.id] ? "▾" : "▸"}
-                    </button>
-                    <div className="glabel">
-                      {p.manufacturingNo ? (
-                        <b style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
-                          {p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')}
-                        </b>
-                      ) : null}
-                      <b style={{ marginTop: '1px', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
-                        {p.name}
-                      </b>
-                      <small style={{ marginTop: '1px', fontSize: '8px' }}>{p.site} · {p.line || "-"}</small>
-                    </div>
-                    <div className="track">
-                      <div className="projectbar" style={{ left: pos(p.startDate) + "%", width: Math.min(barW(p.startDate, p.endDate), 100 - pos(p.startDate)) + "%", background: p.projectColor }}>
-                        <i style={{ width: p.value + "%" }} />
-                        <span>{p.value}%</span>
-                      </div>
-                      <div className="today" style={{ left: pos(iso()) + "%" }} />
-                    </div>
-                  </div>
-                  {ganttExpanded[p.id] && p.milestones.map(m => (
-                    <div className="grow sub" key={m.id}>
-                      <span />
+            {!collapsedSections.gantt ? (
+              <div className="gantt">
+                <div className="axis">
+                  <span>{iso(gs)}</span>
+                  <span>{iso(ge)}</span>
+                </div>
+                {view.map(p => (
+                  <div className="gblock" key={p.id}>
+                    <div className="grow">
+                      <button className="toggle" onClick={() => setGanttExpanded({ ...ganttExpanded, [p.id]: !ganttExpanded[p.id] })}>
+                        {ganttExpanded[p.id] ? "▾" : "▸"}
+                      </button>
                       <div className="glabel">
-                        <span style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{m.name}</span>
-                        <small style={{ fontSize: '8px' }}>{m.startDate} ~ {m.endDate}</small>
+                        {p.manufacturingNo ? (
+                          <b style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
+                            {p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')}
+                          </b>
+                        ) : null}
+                        <b style={{ marginTop: '1px', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
+                          {p.name}
+                        </b>
+                        <small style={{ marginTop: '1px', fontSize: '8px' }}>{p.site} · {p.line || "-"}</small>
                       </div>
                       <div className="track">
-                        <div className="msbar" style={{ left: pos(m.startDate) + "%", width: Math.min(barW(m.startDate, m.endDate), 100 - pos(m.startDate)) + "%", borderColor: p.projectColor, background: p.projectColor + "38" }}>
-                          <i style={{ width: pct(m.startDate, m.endDate) + "%", background: p.projectColor }} />
+                        <div className="projectbar" style={{ left: pos(p.startDate) + "%", width: Math.min(barW(p.startDate, p.endDate), 100 - pos(p.startDate)) + "%", background: p.projectColor }}>
+                          <i style={{ width: p.value + "%" }} />
+                          <span>{p.value}%</span>
                         </div>
                         <div className="today" style={{ left: pos(iso()) + "%" }} />
                       </div>
                     </div>
-                  ))}
-                </div>
-              ))}
-            </div>
+                    {ganttExpanded[p.id] && p.milestones.map(m => (
+                      <div className="grow sub" key={m.id}>
+                        <span />
+                        <div className="glabel">
+                          <span style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{m.name}</span>
+                          <small style={{ fontSize: '8px' }}>{m.startDate} ~ {m.endDate}</small>
+                        </div>
+                        <div className="track">
+                          <div className="msbar" style={{ left: pos(m.startDate) + "%", width: Math.min(barW(m.startDate, m.endDate), 100 - pos(m.startDate)) + "%", borderColor: p.projectColor, background: p.projectColor + "38" }}>
+                            <i style={{ width: pct(m.startDate, m.endDate) + "%", background: p.projectColor }} />
+                          </div>
+                          <div className="today" style={{ left: pos(iso()) + "%" }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div 
+                onClick={() => toggleSection('gantt')}
+                style={{
+                  padding: '12px 16px',
+                  background: '#f8fafc',
+                  border: '1px dashed #cbd5e1',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  color: '#64748b',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  margin: '8px 0'
+                }}
+              >
+                📊 프로젝트 간트차트가 접혀 있습니다. (클릭하여 펼치기 ▾)
+              </div>
+            )}
           </section>
 
           <section id="calendar-export">
-            <div className="calhead">
+            <div className="calhead" style={{ cursor: 'pointer' }} onClick={(e) => {
+              if (e.target.tagName !== 'BUTTON') toggleSection('calendar');
+            }}>
               <div>
-                <h2>프로젝트 일정 달력</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h2>프로젝트 일정 달력</h2>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); toggleSection('calendar'); }}
+                    style={{
+                      background: collapsedSections.calendar ? '#3b82f6' : '#f1f5f9',
+                      color: collapsedSections.calendar ? '#fff' : '#475569',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {collapsedSections.calendar ? '▸ 펼치기' : '▾ 접기'}
+                  </button>
+                </div>
                 <p>프로젝트 기간을 얇은 연속 막대로 표시합니다. 막대를 누르면 상세 정보가 열립니다.</p>
               </div>
               <div className="cal-actions">
                 <button
                   className="ppt-btn"
-                  onClick={async () => {
+                  onClick={async (e) => {
+                    e.stopPropagation();
                     if (isGrade1) return showPermissionModal("일정 달력 PPT 내보내기");
                     setMsg("일정 달력 PPT 생성 중...");
                     try {
@@ -1641,168 +1848,227 @@ JSON 출력 예시:
                 >
                   PPT 내보내기 {isGrade1 && "🔒"}
                 </button>
-                <button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}>‹</button>
+                <button onClick={(e) => { e.stopPropagation(); setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)); }}>‹</button>
                 <b>{month.getFullYear()}년 {month.getMonth() + 1}월</b>
-                <button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}>›</button>
+                <button onClick={(e) => { e.stopPropagation(); setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1)); }}>›</button>
               </div>
             </div>
-            <div className="week">
-              {["일", "월", "화", "수", "목", "금", "토"].map(x => <b key={x}>{x}</b>)}
-            </div>
-            <div className="calendar-weeks">
-              {Array.from({ length: 6 }, (_, weekIndex) => {
-                const weekDays = cells.slice(weekIndex * 7, weekIndex * 7 + 7);
-                const weekStart = iso(weekDays[0]);
-                const weekEnd = iso(weekDays[6]);
-                const weekProjects = view.filter(p => p.startDate <= weekEnd && p.endDate >= weekStart);
-                const lanes = weekProjects.map((p, lane) => ({
-                  p,
-                  lane,
-                  start: Math.max(0, Math.round((dt(p.startDate) - dt(weekStart)) / DAY)),
-                  end: Math.min(6, Math.round((dt(p.endDate) - dt(weekStart)) / DAY))
-                }));
-                const rowHeight = Math.max(75, lanes.length * 18 + 25);
+            {!collapsedSections.calendar ? (
+              <>
+                <div className="week">
+                  {["일", "월", "화", "수", "목", "금", "토"].map(x => <b key={x}>{x}</b>)}
+                </div>
+                <div className="calendar-weeks">
+                  {Array.from({ length: 6 }, (_, weekIndex) => {
+                    const weekDays = cells.slice(weekIndex * 7, weekIndex * 7 + 7);
+                    const weekStart = iso(weekDays[0]);
+                    const weekEnd = iso(weekDays[6]);
+                    const weekProjects = view.filter(p => p.startDate <= weekEnd && p.endDate >= weekStart);
+                    const lanes = weekProjects.map((p, lane) => ({
+                      p,
+                      lane,
+                      start: Math.max(0, Math.round((dt(p.startDate) - dt(weekStart)) / DAY)),
+                      end: Math.min(6, Math.round((dt(p.endDate) - dt(weekStart)) / DAY))
+                    }));
+                    const rowHeight = Math.max(75, lanes.length * 18 + 25);
 
-                return (
-                  <div className="calendar-week-row" key={weekStart} style={{ height: rowHeight + 'px' }}>
-                    <div className="date-cells" style={{ height: rowHeight + 'px' }}>
-                      {weekDays.map(d => {
-                        const dStr = iso(d);
-                        let dayManpower = 0;
-                        view.forEach(p => {
-                          if (p.manpower?.dailyTotal?.[dStr]) dayManpower += Number(p.manpower.dailyTotal[dStr]) || 0;
-                        });
-                        return (
-                          <div className={monthKey(d) === monthKey(month) ? "date-cell" : "date-cell other"} key={dStr}>
-                            <b>{d.getDate()}</b>
-                            {dayManpower > 0 && (
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  fontSize: '10px',
-                                  background: dayManpower >= 10 ? '#fee2e2' : '#dbeafe',
-                                  color: dayManpower >= 10 ? '#b91c1c' : '#1e40af',
-                                  padding: '1px 5px',
-                                  borderRadius: '10px',
-                                  fontWeight: 'bold',
-                                  marginTop: '2px'
-                                }}
-                                title={`당일 프로젝트 투입 공수: ${dayManpower}명`}
-                              >
-                                👥 {dayManpower}명
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="event-lanes" style={{ height: Math.max(24, lanes.length * 18 + 4) }}>
-                      {lanes.map(({ p, lane, start, end }) => (
-                        <button
-                          key={p.id}
-                          className="calendar-bar"
-                          style={{ left: `${start / 7 * 100}%`, width: `${(end - start + 1) / 7 * 100}%`, top: `${lane * 18 + 2}px`, background: p.projectColor }}
-                          onClick={() => setSelectedDay({
-                            date: `${weekStart} ~ ${weekEnd}`,
-                            active: [p],
-                            starts: p.startDate >= weekStart && p.startDate <= weekEnd ? [p] : [],
-                            ends: p.endDate >= weekStart && p.endDate <= weekEnd ? [p] : []
+                    return (
+                      <div className="calendar-week-row" key={weekStart} style={{ height: rowHeight + 'px' }}>
+                        <div className="date-cells" style={{ height: rowHeight + 'px' }}>
+                          {weekDays.map(d => {
+                            const dStr = iso(d);
+                            let dayManpower = 0;
+                            view.forEach(p => {
+                              if (p.manpower?.dailyTotal?.[dStr]) dayManpower += Number(p.manpower.dailyTotal[dStr]) || 0;
+                            });
+                            return (
+                              <div className={monthKey(d) === monthKey(month) ? "date-cell" : "date-cell other"} key={dStr}>
+                                <b>{d.getDate()}</b>
+                                {dayManpower > 0 && (
+                                  <span
+                                    style={{
+                                      display: 'inline-block',
+                                      fontSize: '10px',
+                                      background: dayManpower >= 10 ? '#fee2e2' : '#dbeafe',
+                                      color: dayManpower >= 10 ? '#b91c1c' : '#1e40af',
+                                      padding: '1px 5px',
+                                      borderRadius: '10px',
+                                      fontWeight: 'bold',
+                                      marginTop: '2px'
+                                    }}
+                                    title={`당일 프로젝트 투입 공수: ${dayManpower}명`}
+                                  >
+                                    👥 {dayManpower}명
+                                  </span>
+                                )}
+                              </div>
+                            );
                           })}
-                          title={`${p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}${p.name} · ${p.startDate}~${p.endDate}`}
-                        >
-                          <span>{p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                        </div>
+                        <div className="event-lanes" style={{ height: Math.max(24, lanes.length * 18 + 4) }}>
+                          {lanes.map(({ p, lane, start, end }) => (
+                            <button
+                              key={p.id}
+                              className="calendar-bar"
+                              style={{ left: `${start / 7 * 100}%`, width: `${(end - start + 1) / 7 * 100}%`, top: `${lane * 18 + 2}px`, background: p.projectColor }}
+                              onClick={() => setSelectedDay({
+                                date: `${weekStart} ~ ${weekEnd}`,
+                                active: [p],
+                                starts: p.startDate >= weekStart && p.startDate <= weekEnd ? [p] : [],
+                                ends: p.endDate >= weekStart && p.endDate <= weekEnd ? [p] : []
+                              })}
+                              title={`${p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}${p.name} · ${p.startDate}~${p.endDate}`}
+                            >
+                              <span>{p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div 
+                onClick={() => toggleSection('calendar')}
+                style={{
+                  padding: '12px 16px',
+                  background: '#f8fafc',
+                  border: '1px dashed #cbd5e1',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  color: '#64748b',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  margin: '8px 0'
+                }}
+              >
+                📅 프로젝트 일정 달력 ({month.getFullYear()}년 {month.getMonth() + 1}월)이 접혀 있습니다. (클릭하여 펼치기 ▾)
+              </div>
+            )}
           </section>
 
           <section>
             <div className="tools">
-              <h2>프로젝트 목록</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h2>프로젝트 목록 ({view.length}건)</h2>
+                <button
+                  type="button"
+                  onClick={() => toggleSection('list')}
+                  style={{
+                    background: collapsedSections.list ? '#3b82f6' : '#f1f5f9',
+                    color: collapsedSections.list ? '#fff' : '#475569',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {collapsedSections.list ? '▸ 펼치기' : '▾ 접기'}
+                </button>
+              </div>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="제조번호, Site, Line, 프로젝트, 담당자 검색" />
               {["전체", "진행중", "완료", "지연"].map(x => (
                 <button key={x} className={filter === x ? "active" : ""} onClick={() => setFilter(x)}>{x}</button>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '0 14px 10px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>
-                <input type="checkbox" checked={view.length > 0 && selectedProjects.size === view.length} onChange={toggleSelectAll} style={{ width: 'auto', margin: 0, cursor: 'pointer' }} />
-                전체 선택
-              </label>
-              {selectedProjects.size > 0 && (
-                <button
-                  onClick={() => { if (!del) return showPermissionModal("프로젝트 다중 삭제"); removeSelected(); }}
-                  style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                >
-                  선택 항목 삭제 ({selectedProjects.size}) {!del && "🔒"}
-                </button>
-              )}
-            </div>
-            {view.map(p => (
-              <article key={p.id} style={{ borderLeft: `7px solid ${p.projectColor}` }}>
-                <div>
-                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <input type="checkbox" checked={selectedProjects.has(p.id)} onChange={() => toggleSelect(p.id)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
-                    {p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}
-                  </h3>
-                  <p>
-                    {p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} &nbsp;|&nbsp; PM {p.pm || "-"} · 설계 {p.design || "-"} · 설비 {p.facilityTechnology || "-"} · 제어 {p.control || "-"} · 비전 {p.vision || "-"} &nbsp;|&nbsp; {p.startDate} ~ {p.endDate} · <b style={{ color: p.isManualStatus ? (p.status === "PO대기중" ? '#dc2626' : '#d97706') : 'inherit' }}>{p.status}</b>
-                  </p>
-                  {p.isManualStatus && (
-                    <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#fffbeb', border: '1px solid #f59e0b', padding: '4px 9px', borderRadius: '6px', fontSize: '11px', color: '#b45309', fontWeight: '600' }}>
-                      <span>⚠️ <b>수동 설정 ({p.manualStatusBy || "담당자"})</b> : 상태 확인 후 상태 변경을 해주세요</span>
-                      {edit && p.status !== "PO대기중" && (
-                        <button
-                          type="button"
-                          onClick={() => switchToAutoStatus(p)}
-                          style={{ background: '#fef08a', border: '1px solid #fde047', color: '#854d0e', padding: '2px 7px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}
-                          title="마일스톤 기반 자동 상태 계산으로 복귀"
-                        >
-                          자동 상태 전환
-                        </button>
+            {!collapsedSections.list ? (
+              <>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '0 14px 10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>
+                    <input type="checkbox" checked={view.length > 0 && selectedProjects.size === view.length} onChange={toggleSelectAll} style={{ width: 'auto', margin: 0, cursor: 'pointer' }} />
+                    전체 선택
+                  </label>
+                  {selectedProjects.size > 0 && (
+                    <button
+                      onClick={() => { if (!del) return showPermissionModal("프로젝트 다중 삭제"); removeSelected(); }}
+                      style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                    >
+                      선택 항목 삭제 ({selectedProjects.size}) {!del && "🔒"}
+                    </button>
+                  )}
+                </div>
+                {view.map(p => (
+                  <article key={p.id} style={{ borderLeft: `7px solid ${p.projectColor}` }}>
+                    <div>
+                      <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="checkbox" checked={selectedProjects.has(p.id)} onChange={() => toggleSelect(p.id)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                        {p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}
+                      </h3>
+                      <p>
+                        {p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} &nbsp;|&nbsp; PM {p.pm || "-"} · 설계 {p.design || "-"} · 설비 {p.facilityTechnology || "-"} · 제어 {p.control || "-"} · 비전 {p.vision || "-"} &nbsp;|&nbsp; {p.startDate} ~ {p.endDate} · <b style={{ color: p.isManualStatus ? (p.status === "PO대기중" ? '#dc2626' : '#d97706') : 'inherit' }}>{p.status}</b>
+                      </p>
+                      {p.isManualStatus && (
+                        <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#fffbeb', border: '1px solid #f59e0b', padding: '4px 9px', borderRadius: '6px', fontSize: '11px', color: '#b45309', fontWeight: '600' }}>
+                          <span>⚠️ <b>수동 설정 ({p.manualStatusBy || "담당자"})</b> : 상태 확인 후 상태 변경을 해주세요</span>
+                          {edit && p.status !== "PO대기중" && (
+                            <button
+                              type="button"
+                              onClick={() => switchToAutoStatus(p)}
+                              style={{ background: '#fef08a', border: '1px solid #fde047', color: '#854d0e', padding: '2px 7px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}
+                              title="마일스톤 기반 자동 상태 계산으로 복귀"
+                            >
+                              자동 상태 전환
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {expanded[p.id] && (
+                        <div className="detail">
+                          {p.milestones.length ? p.milestones.map(m => (
+                            <div key={m.id}>
+                              <b>{m.name}</b>
+                              <span>{m.startDate} ~ {m.endDate}</span>
+                              <span>{pct(m.startDate, m.endDate)}%</span>
+                              <span>{dt(m.startDate) < dt(p.startDate) ? "선행 일정" : dt(m.endDate) > dt(p.endDate) ? "후행 일정" : "프로젝트 기간 내"}</span>
+                            </div>
+                          )) : <p>등록된 마일스톤이 없습니다.</p>}
+                        </div>
                       )}
                     </div>
-                  )}
-                  {expanded[p.id] && (
-                    <div className="detail">
-                      {p.milestones.length ? p.milestones.map(m => (
-                        <div key={m.id}>
-                          <b>{m.name}</b>
-                          <span>{m.startDate} ~ {m.endDate}</span>
-                          <span>{pct(m.startDate, m.endDate)}%</span>
-                          <span>{dt(m.startDate) < dt(p.startDate) ? "선행 일정" : dt(m.endDate) > dt(p.endDate) ? "후행 일정" : "프로젝트 기간 내"}</span>
-                        </div>
-                      )) : <p>등록된 마일스톤이 없습니다.</p>}
+                    <div className="bar">
+                      <i style={{ width: p.value + "%", background: p.projectColor }} />
+                      <b>{p.value}%</b>
                     </div>
-                  )}
-                </div>
-                <div className="bar">
-                  <i style={{ width: p.value + "%", background: p.projectColor }} />
-                  <b>{p.value}%</b>
-                </div>
-                <aside>
-                  <button onClick={() => setExpanded({ ...expanded, [p.id]: !expanded[p.id] })}>
-                    {expanded[p.id] ? "마일스톤 닫기" : "마일스톤 보기"}
-                  </button>
-                  <button
-                    onClick={() => setSelectedManpowerProject(p)}
-                    style={{ background: p.manpower ? '#eff6ff' : '#f8fafc', color: p.manpower ? '#1d4ed8' : '#4b5563', border: p.manpower ? '1px solid #bfdbfe' : '1px solid #d1d5db', fontWeight: 'bold' }}
-                  >
-                    공수 확인 {p.manpower?.totalManday ? `(${p.manpower.totalManday}M/D)` : ''}
-                  </button>
-                  <button onClick={() => { if (isGrade1) return showPermissionModal("프로젝트 수정"); editProject(p); }}>
-                    수정 {isGrade1 && "🔒"}
-                  </button>
-                  <button onClick={() => { if (!del) return showPermissionModal("프로젝트 삭제"); remove(p.id); }} style={{ color: del ? 'inherit' : '#9ca3af' }}>
-                    삭제 {!del && "🔒"}
-                  </button>
-                </aside>
-              </article>
-            ))}
+                    <aside>
+                      <button onClick={() => setExpanded({ ...expanded, [p.id]: !expanded[p.id] })}>
+                        {expanded[p.id] ? "마일스톤 닫기" : "마일스톤 보기"}
+                      </button>
+                      <button
+                        onClick={() => setSelectedManpowerProject(p)}
+                        style={{ background: p.manpower ? '#eff6ff' : '#f8fafc', color: p.manpower ? '#1d4ed8' : '#4b5563', border: p.manpower ? '1px solid #bfdbfe' : '1px solid #d1d5db', fontWeight: 'bold' }}
+                      >
+                        공수 확인 {p.manpower?.totalManday ? `(${p.manpower.totalManday}M/D)` : ''}
+                      </button>
+                      <button onClick={() => { if (isGrade1) return showPermissionModal("프로젝트 수정"); editProject(p); }}>
+                        수정 {isGrade1 && "🔒"}
+                      </button>
+                      <button onClick={() => { if (!del) return showPermissionModal("프로젝트 삭제"); remove(p.id); }} style={{ color: del ? 'inherit' : '#9ca3af' }}>
+                        삭제 {!del && "🔒"}
+                      </button>
+                    </aside>
+                  </article>
+                ))}
+              </>
+            ) : (
+              <div 
+                onClick={() => toggleSection('list')}
+                style={{
+                  padding: '12px 16px',
+                  background: '#f8fafc',
+                  border: '1px dashed #cbd5e1',
+                  borderRadius: '8px',
+                  textAlign: 'center',
+                  color: '#64748b',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  margin: '8px 14px 14px'
+                }}
+              >
+                📋 프로젝트 목록 ({view.length}건, 필터: {filter})이 접혀 있습니다. (클릭하여 펼치기 ▾)
+              </div>
+            )}
           </section>
 
           {selectedDay && (

@@ -32,6 +32,42 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
 
     const [msg, setMsg] = useState('');
     const [expandedProjects, setExpandedProjects] = useState({});
+
+    const [collapsedSections, setCollapsedSections] = useState(() => {
+        try {
+            const saved = localStorage.getItem('pm_quot_collapsed_sections');
+            if (saved) return JSON.parse(saved);
+        } catch (e) {
+            console.warn(e);
+        }
+        return { newQuote: false, itemSearch: false, projectSummary: false };
+    });
+
+    const toggleSection = (key) => {
+        setCollapsedSections(prev => {
+            const next = { ...prev, [key]: !prev[key] };
+            try {
+                localStorage.setItem('pm_quot_collapsed_sections', JSON.stringify(next));
+            } catch (e) {}
+            return next;
+        });
+    };
+
+    const setAllSections = (collapsed) => {
+        const next = { newQuote: collapsed, itemSearch: collapsed, projectSummary: collapsed };
+        setCollapsedSections(next);
+        try {
+            localStorage.setItem('pm_quot_collapsed_sections', JSON.stringify(next));
+        } catch (e) {}
+    };
+
+    const toggleAllProjects = (expand) => {
+        const next = {};
+        Object.keys(groupedQuotations).forEach(k => {
+            next[k] = expand;
+        });
+        setExpandedProjects(next);
+    };
     
     const fileInputRef = useRef(null);
     const searchContainerRef = useRef(null);
@@ -557,138 +593,237 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
 
     return (
         <>
+            {/* Top Quick Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '12px' }}>
+                <button
+                    type="button"
+                    onClick={() => setAllSections(false)}
+                    style={{
+                        padding: '5px 12px',
+                        fontSize: '12px',
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        color: '#334155',
+                        fontWeight: 500
+                    }}
+                >
+                    ▾ 전체 섹션 펼치기
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setAllSections(true)}
+                    style={{
+                        padding: '5px 12px',
+                        fontSize: '12px',
+                        background: '#f8fafc',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        color: '#334155',
+                        fontWeight: 500
+                    }}
+                >
+                    ▴ 전체 섹션 접기
+                </button>
+            </div>
+
             <section>
                 {!canManage && (
                     <div style={{background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', fontSize: '12px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px'}}>
                         <span>ℹ️ <b>견적 조회 전용 모드 ({role?.toUpperCase() || 'GRADE2'})</b> : 견적 비용 집계 및 품목별 단가 검색만 가능하며, 견적서 등록 및 삭제 권한은 제한됩니다.</span>
                     </div>
                 )}
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px'}}>
-                    <h2>새 견적서 등록 {!canManage && "🔒"}</h2>
-                    <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
-                        <input type="file" ref={fileInputRef} onChange={e=>handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, .pdf" style={{display:'none'}}/>
-                        <textarea 
-                            placeholder={canManage ? "엑셀 표 붙여넣기 (Ctrl+V)" : "등록 권한 없음 (클릭 시 안내)"}
-                            disabled={isExtracting}
-                            onClick={() => {
-                                if (!canManage) notifyPermission('견적서 등록');
-                            }}
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom: collapsedSections.newQuote ? '0' : '14px'}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <h2 style={{margin: 0}}>새 견적서 등록 {!canManage && "🔒"}</h2>
+                        <button
+                            type="button"
+                            onClick={() => toggleSection('newQuote')}
                             style={{
-                                height: '35px',
-                                width: '180px',
-                                padding: '8px 14px',
-                                borderRadius: '8px',
-                                border: canManage ? '1px solid #10b981' : '1px solid #d1d5da',
-                                outline: 'none',
-                                resize: 'none',
-                                overflow: 'hidden',
-                                whiteSpace: 'nowrap',
-                                boxSizing: 'border-box',
-                                fontSize: '13px',
-                                fontFamily: 'inherit',
-                                background: canManage ? '#fff' : '#f3f4f6',
-                                cursor: canManage ? 'text' : 'pointer'
-                            }}
-                            onPaste={(e) => {
-                                if (!canManage) {
-                                    e.preventDefault();
-                                    notifyPermission('견적서 등록');
-                                    return;
-                                }
-                                const items = e.clipboardData?.items;
-                                if (items) {
-                                    for (let i = 0; i < items.length; i++) {
-                                        const item = items[i];
-                                        if (item.type.indexOf("image") !== -1) {
-                                            e.preventDefault();
-                                            const file = item.getAsFile();
-                                            if (file) { handleFileUpload(file); return; }
-                                        }
-                                    }
-                                }
-                                const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text");
-                                if (text && text.trim().length > 5) {
-                                    e.preventDefault();
-                                    e.target.value = ""; // 입력창 비우기
-                                    handleFileUpload(text);
-                                }
-                            }}
-                        />
-                        <button 
-                            onClick={() => {
-                                if (!canManage) return notifyPermission('견적서 파일 업로드');
-                                fileInputRef.current.click();
-                            }} 
-                            disabled={isExtracting} 
-                            style={{
-                                background: !canManage ? '#9ca3af' : isExtracting ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #059669)',
-                                color: '#fff',
-                                padding: '8px 14px',
-                                borderRadius: '8px',
-                                fontWeight: 'bold',
-                                border: 'none',
-                                boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                                height: '35px',
-                                whiteSpace: 'nowrap',
+                                background: collapsedSections.newQuote ? '#3b82f6' : '#f1f5f9',
+                                color: collapsedSections.newQuote ? '#fff' : '#475569',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '4px',
+                                padding: '2px 8px',
+                                fontSize: '11px',
                                 cursor: 'pointer'
                             }}
-                            title={!canManage ? "등록 권한이 없습니다 (클릭 시 권한 안내)" : ""}
                         >
-                            {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel)"} {!canManage && "🔒"}
+                            {collapsedSections.newQuote ? '▸ 펼치기' : '▾ 접기'}
                         </button>
                     </div>
+                    {!collapsedSections.newQuote && (
+                        <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
+                            <input type="file" ref={fileInputRef} onChange={e=>handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, .pdf" style={{display:'none'}}/>
+                            <textarea 
+                                placeholder={canManage ? "엑셀 표 붙여넣기 (Ctrl+V)" : "등록 권한 없음 (클릭 시 안내)"}
+                                disabled={isExtracting}
+                                onClick={() => {
+                                    if (!canManage) notifyPermission('견적서 등록');
+                                }}
+                                style={{
+                                    height: '35px',
+                                    width: '180px',
+                                    padding: '8px 14px',
+                                    borderRadius: '8px',
+                                    border: canManage ? '1px solid #10b981' : '1px solid #d1d5da',
+                                    outline: 'none',
+                                    resize: 'none',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
+                                    boxSizing: 'border-box',
+                                    fontSize: '13px',
+                                    fontFamily: 'inherit',
+                                    background: canManage ? '#fff' : '#f3f4f6',
+                                    cursor: canManage ? 'text' : 'pointer'
+                                }}
+                                onPaste={(e) => {
+                                    if (!canManage) {
+                                        e.preventDefault();
+                                        notifyPermission('견적서 등록');
+                                        return;
+                                    }
+                                    const items = e.clipboardData?.items;
+                                    if (items) {
+                                        for (let i = 0; i < items.length; i++) {
+                                            const item = items[i];
+                                            if (item.type.indexOf("image") !== -1) {
+                                                e.preventDefault();
+                                                const file = item.getAsFile();
+                                                if (file) { handleFileUpload(file); return; }
+                                            }
+                                        }
+                                    }
+                                    const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text");
+                                    if (text && text.trim().length > 5) {
+                                        e.preventDefault();
+                                        e.target.value = ""; // 입력창 비우기
+                                        handleFileUpload(text);
+                                    }
+                                }}
+                            />
+                            <button 
+                                onClick={() => {
+                                    if (!canManage) return notifyPermission('견적서 파일 업로드');
+                                    fileInputRef.current.click();
+                                }} 
+                                disabled={isExtracting} 
+                                style={{
+                                    background: !canManage ? '#9ca3af' : isExtracting ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #059669)',
+                                    color: '#fff',
+                                    padding: '8px 14px',
+                                    borderRadius: '8px',
+                                    fontWeight: 'bold',
+                                    border: 'none',
+                                    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                                    height: '35px',
+                                    whiteSpace: 'nowrap',
+                                    cursor: 'pointer'
+                                }}
+                                title={!canManage ? "등록 권한이 없습니다 (클릭 시 권한 안내)" : ""}
+                            >
+                                {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel)"} {!canManage && "🔒"}
+                            </button>
+                        </div>
+                    )}
                 </div>
-                <div className="grid">
-                    <label className="wide" style={{ gridColumn: 'span 7' }}>
-                        적용할 프로젝트명 (선택 또는 직접 입력)
-                        <input 
-                            type="text"
-                            list="project-list"
-                            placeholder="A사 10라인 라우팅..."
-                            value={selectedProjectInput}
-                            onChange={(e) => setSelectedProjectInput(e.target.value)}
-                        />
-                        <datalist id="project-list">
-                            {projects.map(p => (
-                                <option key={p.id} value={p.name}>{p.manufacturing_no ? `${p.manufacturing_no} · ` : ''}{p.name}</option>
-                            ))}
-                        </datalist>
-                    </label>
-                </div>
+                {!collapsedSections.newQuote ? (
+                    <>
+                        <div className="grid">
+                            <label className="wide" style={{ gridColumn: 'span 7' }}>
+                                적용할 프로젝트명 (선택 또는 직접 입력)
+                                <input 
+                                    type="text"
+                                    list="project-list"
+                                    placeholder="A사 10라인 라우팅..."
+                                    value={selectedProjectInput}
+                                    onChange={(e) => setSelectedProjectInput(e.target.value)}
+                                />
+                                <datalist id="project-list">
+                                    {projects.map(p => (
+                                        <option key={p.id} value={p.name}>{p.manufacturing_no ? `${p.manufacturing_no} · ` : ''}{p.name}</option>
+                                    ))}
+                                </datalist>
+                            </label>
+                        </div>
 
-                {msg && <p className="notice" style={{marginTop:'10px',fontWeight:'bold',color:'#059669'}}>{msg}</p>}
+                        {msg && <p className="notice" style={{marginTop:'10px',fontWeight:'bold',color:'#059669'}}>{msg}</p>}
+                    </>
+                ) : (
+                    <div 
+                        onClick={() => toggleSection('newQuote')}
+                        style={{
+                            padding: '10px 14px',
+                            background: '#f8fafc',
+                            border: '1px dashed #cbd5e1',
+                            borderRadius: '8px',
+                            textAlign: 'center',
+                            color: '#64748b',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            marginTop: '8px'
+                        }}
+                    >
+                        📝 새 견적서 등록 영역이 접혀 있습니다. (클릭하여 펼치기 ▾)
+                    </div>
+                )}
             </section>
 
+            {/* 품목별 단가 검색 및 다차원 연동 필터 섹션 */}
             {/* 품목별 단가 검색 및 다차원 연동 필터 섹션 */}
             <section>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
                     <div>
-                        <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            품목별 견적 단가 조회 및 비교
-                        </h2>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <h2 style={{ margin: 0 }}>
+                                품목별 견적 단가 조회 및 비교
+                            </h2>
+                            <button
+                                type="button"
+                                onClick={() => toggleSection('itemSearch')}
+                                style={{
+                                    background: collapsedSections.itemSearch ? '#3b82f6' : '#f1f5f9',
+                                    color: collapsedSections.itemSearch ? '#fff' : '#475569',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '4px',
+                                    padding: '2px 8px',
+                                    fontSize: '11px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {collapsedSections.itemSearch ? '▸ 펼치기' : '▾ 접기'}
+                            </button>
+                        </div>
                         <span style={{ fontSize: '12px', color: '#64748b' }}>
                             공정(NC/STK), 프로젝트, 구분(가공품/시장품/기타), 품목을 선택하면 조건에 맞는 품목들만 드롭다운에 실시간 연동되어 표출됩니다.
                         </span>
                     </div>
-                    <button 
-                        onClick={handleResetFilters}
-                        style={{
-                            background: '#f8fafc',
-                            border: '1px solid #cbd5e1',
-                            padding: '6px 14px',
-                            borderRadius: '8px',
-                            fontSize: '12.5px',
-                            fontWeight: '600',
-                            color: '#475569',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                        }}
-                    >
-                        🔄 필터 초기화
-                    </button>
+                    {!collapsedSections.itemSearch && (
+                        <button 
+                            onClick={handleResetFilters}
+                            style={{
+                                background: '#f8fafc',
+                                border: '1px solid #cbd5e1',
+                                padding: '6px 14px',
+                                borderRadius: '8px',
+                                fontSize: '12.5px',
+                                fontWeight: '600',
+                                color: '#475569',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}
+                        >
+                            🔄 필터 초기화
+                        </button>
+                    )}
                 </div>
+
+                {!collapsedSections.itemSearch ? (
+                    <>
 
                 {/* 다차원 연동 필터 카드 */}
                 <div className="quote-filter-card">
@@ -1032,119 +1167,210 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                         )}
                     </>
                 )}
-            </section>
+            </>
+        ) : (
+            <div 
+                onClick={() => toggleSection('itemSearch')}
+                style={{
+                    padding: '12px 16px',
+                    background: '#f8fafc',
+                    border: '1px dashed #cbd5e1',
+                    borderRadius: '8px',
+                    textAlign: 'center',
+                    color: '#64748b',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    marginTop: '8px'
+                }}
+            >
+                🔍 품목별 견적 단가 조회 및 비교 섹션이 접혀 있습니다. (총 {filteredResults.length}건 검색됨, 클릭하여 펼치기 ▾)
+            </div>
+        )}
+    </section>
 
             <section>
-                <div className="title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <h2>프로젝트별 견적 비용 집계</h2>
-                    <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'normal' }}>
-                        ※품목별 견적단가를 확인하기 위한 단순 합산 집계로 최종 견적 금액과 총 금액의 차이가 있을 수 있습니다.
-                    </span>
-                </div>
-                <div style={{ marginTop: '15px' }}>
-                    {Object.values(groupedQuotations).map(group => (
-                        <div key={group.name} className="project-accordion">
-                            <div className="pa-header" onClick={() => toggleProject(group.name)}>
-                                <div className="pa-title">
-                                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        {group.name}
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (!canManage) return notifyPermission('프로젝트 견적 전체 삭제');
-                                                handleDeleteProjectQuotations(e, group);
-                                            }} 
-                                            style={{
-                                                padding: '2px 8px',
-                                                fontSize: '11px',
-                                                color: 'white',
-                                                background: canManage ? '#ef4444' : '#9ca3af',
-                                                border: 'none',
-                                                borderRadius: '4px',
-                                                cursor: 'pointer'
-                                            }}
-                                            title={!canManage ? "삭제 권한이 없습니다 (클릭 시 권한 안내)" : ""}
-                                        >
-                                            전체 삭제 {!canManage && "🔒"}
-                                        </button>
-                                    </h3>
-                                    <div className="pa-summary">
-                                        <span className="pa-badge process">가공품: ₩{group.process_amount.toLocaleString()}</span>
-                                        <span className="pa-badge purchase">구매품: ₩{group.purchase_amount.toLocaleString()}</span>
-                                        <span className="pa-badge other">기타: ₩{group.other_amount.toLocaleString()}</span>
-                                    </div>
-                                </div>
-                                <div className="pa-total">총 ₩ {group.total_amount.toLocaleString()} <span>{expandedProjects[group.name] ? '▴' : '▾'}</span></div>
-                            </div>
-                            
-                            {expandedProjects[group.name] && (
-                                <div className="pa-body">
-                                    {group.quotations.map((quotation) => {
-                                        const itemsInQuotation = quotationItems.filter(item => item.quotation_id === quotation.id);
-                                        return (
-                                            <div key={quotation.id} className="pa-quotation">
-                                                <h4 className="pa-quotation-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                    <span>📄 {quotation.title} <small>({new Date(quotation.created_at).toLocaleDateString()})</small></span>
-                                                    <button 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (!canManage) return notifyPermission('견적 삭제');
-                                                            handleDeleteQuotation(quotation.id);
-                                                        }} 
-                                                        style={{
-                                                            padding: '2px 8px',
-                                                            fontSize: '11px',
-                                                            color: 'white',
-                                                            background: canManage ? '#ef4444' : '#9ca3af',
-                                                            border: 'none',
-                                                            borderRadius: '4px',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                        title={!canManage ? "삭제 권한이 없습니다 (클릭 시 권한 안내)" : ""}
-                                                    >
-                                                        삭제 {!canManage && "🔒"}
-                                                    </button>
-                                                </h4>
-                                                <div style={{ overflowX: 'auto' }}>
-                                                    <table className="data-table nested">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>구분</th>
-                                                                <th>유닛명</th>
-                                                                <th>품목명</th>
-                                                                <th>수량</th>
-                                                                <th className="money-cell">단가 (₩)</th>
-                                                                <th className="money-cell">총액 (₩)</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {itemsInQuotation.map(item => (
-                                                                <tr key={item.id}>
-                                                                    <td><span className={`badge-category cat-${item.item_category === '가공품' ? 'process' : item.item_category === '구매품' ? 'purchase' : 'other'}`}>{item.item_category}</span></td>
-                                                                    <td>{item.unit_name || '-'}</td>
-                                                                    <td>{item.item_name}</td>
-                                                                    <td>{item.quantity}</td>
-                                                                    <td className="money-cell">{Number(item.unit_price).toLocaleString()}</td>
-                                                                    <td className="money-cell">{Number(item.total_price).toLocaleString()}</td>
-                                                                </tr>
-                                                            ))}
-                                                            {itemsInQuotation.length === 0 && <tr><td colSpan="6">품목이 없습니다.</td></tr>}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                <div className="title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <h2 style={{ margin: 0 }}>프로젝트별 견적 비용 집계</h2>
+                            <button
+                                type="button"
+                                onClick={() => toggleSection('projectSummary')}
+                                style={{
+                                    background: collapsedSections.projectSummary ? '#3b82f6' : '#f1f5f9',
+                                    color: collapsedSections.projectSummary ? '#fff' : '#475569',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '4px',
+                                    padding: '2px 8px',
+                                    fontSize: '11px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {collapsedSections.projectSummary ? '▸ 펼치기' : '▾ 접기'}
+                            </button>
                         </div>
-                    ))}
-                    {Object.values(groupedQuotations).length === 0 && (
-                        <div style={{ padding: '2rem', textAlign: 'center', color: '#57606a', border: '1px solid #dce5ed', borderRadius: '8px' }}>
-                            아직 등록된 견적서가 없습니다.
+                        <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'normal' }}>
+                            ※품목별 견적단가를 확인하기 위한 단순 합산 집계로 최종 견적 금액과 총 금액의 차이가 있을 수 있습니다.
+                        </span>
+                    </div>
+                    {!collapsedSections.projectSummary && (
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                                type="button"
+                                onClick={() => toggleAllProjects(true)}
+                                style={{
+                                    padding: '4px 10px',
+                                    fontSize: '12px',
+                                    background: '#f8fafc',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    color: '#334155'
+                                }}
+                            >
+                                ▾ 모든 프로젝트 펼치기
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => toggleAllProjects(false)}
+                                style={{
+                                    padding: '4px 10px',
+                                    fontSize: '12px',
+                                    background: '#f8fafc',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    color: '#334155'
+                                }}
+                            >
+                                ▴ 모든 프로젝트 접기
+                            </button>
                         </div>
                     )}
                 </div>
+                {!collapsedSections.projectSummary ? (
+                    <div style={{ marginTop: '15px' }}>
+                        {Object.values(groupedQuotations).map(group => (
+                            <div key={group.name} className="project-accordion">
+                                <div className="pa-header" onClick={() => toggleProject(group.name)}>
+                                    <div className="pa-title">
+                                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            {group.name}
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (!canManage) return notifyPermission('프로젝트 견적 전체 삭제');
+                                                    handleDeleteProjectQuotations(e, group);
+                                                }} 
+                                                style={{
+                                                    padding: '2px 8px',
+                                                    fontSize: '11px',
+                                                    color: 'white',
+                                                    background: canManage ? '#ef4444' : '#9ca3af',
+                                                    border: 'none',
+                                                    borderRadius: '4px',
+                                                    cursor: 'pointer'
+                                                }}
+                                                title={!canManage ? "삭제 권한이 없습니다 (클릭 시 권한 안내)" : ""}
+                                            >
+                                                전체 삭제 {!canManage && "🔒"}
+                                            </button>
+                                        </h3>
+                                        <div className="pa-summary">
+                                            <span className="pa-badge process">가공품: ₩{group.process_amount.toLocaleString()}</span>
+                                            <span className="pa-badge purchase">구매품: ₩{group.purchase_amount.toLocaleString()}</span>
+                                            <span className="pa-badge other">기타: ₩{group.other_amount.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                    <div className="pa-total">총 ₩ {group.total_amount.toLocaleString()} <span>{expandedProjects[group.name] ? '▴' : '▾'}</span></div>
+                                </div>
+                                
+                                {expandedProjects[group.name] && (
+                                    <div className="pa-body">
+                                        {group.quotations.map((quotation) => {
+                                            const itemsInQuotation = quotationItems.filter(item => item.quotation_id === quotation.id);
+                                            return (
+                                                <div key={quotation.id} className="pa-quotation">
+                                                    <h4 className="pa-quotation-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        <span>📄 {quotation.title} <small>({new Date(quotation.created_at).toLocaleDateString()})</small></span>
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (!canManage) return notifyPermission('견적 삭제');
+                                                                handleDeleteQuotation(quotation.id);
+                                                            }} 
+                                                            style={{
+                                                                padding: '2px 8px',
+                                                                fontSize: '11px',
+                                                                color: 'white',
+                                                                background: canManage ? '#ef4444' : '#9ca3af',
+                                                                border: 'none',
+                                                                borderRadius: '4px',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                            title={!canManage ? "삭제 권한이 없습니다 (클릭 시 권한 안내)" : ""}
+                                                        >
+                                                            삭제 {!canManage && "🔒"}
+                                                        </button>
+                                                    </h4>
+                                                    <div style={{ overflowX: 'auto' }}>
+                                                        <table className="data-table nested">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>구분</th>
+                                                                    <th>유닛명</th>
+                                                                    <th>품목명</th>
+                                                                    <th>수량</th>
+                                                                    <th className="money-cell">단가 (₩)</th>
+                                                                    <th className="money-cell">총액 (₩)</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {itemsInQuotation.map(item => (
+                                                                    <tr key={item.id}>
+                                                                        <td><span className={`badge-category cat-${item.item_category === '가공품' ? 'process' : item.item_category === '구매품' ? 'purchase' : 'other'}`}>{item.item_category}</span></td>
+                                                                        <td>{item.unit_name || '-'}</td>
+                                                                        <td>{item.item_name}</td>
+                                                                        <td>{item.quantity}</td>
+                                                                        <td className="money-cell">{Number(item.unit_price).toLocaleString()}</td>
+                                                                        <td className="money-cell">{Number(item.total_price).toLocaleString()}</td>
+                                                                    </tr>
+                                                                ))}
+                                                                {itemsInQuotation.length === 0 && <tr><td colSpan="6">품목이 없습니다.</td></tr>}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {Object.values(groupedQuotations).length === 0 && (
+                            <div style={{ padding: '2rem', textAlign: 'center', color: '#57606a', border: '1px solid #dce5ed', borderRadius: '8px' }}>
+                                아직 등록된 견적서가 없습니다.
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div 
+                        onClick={() => toggleSection('projectSummary')}
+                        style={{
+                            padding: '12px 16px',
+                            background: '#f8fafc',
+                            border: '1px dashed #cbd5e1',
+                            borderRadius: '8px',
+                            textAlign: 'center',
+                            color: '#64748b',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            marginTop: '12px'
+                        }}
+                    >
+                        📊 프로젝트별 견적 비용 집계 ({Object.keys(groupedQuotations).length}개 프로젝트)가 접혀 있습니다. (클릭하여 펼치기 ▾)
+                    </div>
+                )}
             </section>
         </>
     );

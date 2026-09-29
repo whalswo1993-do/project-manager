@@ -49,21 +49,24 @@
 }
 
 .issue-management-container .logo-icon {
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, #0969da, #db2777);
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #0969da, #0284c7);
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
     font-weight: 700;
-    font-size: 1.2rem;
+    font-size: 1.25rem;
+    box-shadow: 0 2px 6px rgba(9, 105, 218, 0.25);
 }
 
-.issue-management-container .logo-text h1 {
+.issue-management-container .logo-text h1,
+.issue-management-container .logo-text h2 {
     font-size: 1.25rem;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     background: linear-gradient(90deg, #24292f 0%, #57606a 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -73,7 +76,7 @@
 .issue-management-container .logo-text p {
     font-size: 0.75rem;
     color: var(--text-muted);
-    margin: 0;
+    margin: 3px 0 0 0;
 }
 
 .issue-management-container .main-container {

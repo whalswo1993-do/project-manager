@@ -430,9 +430,9 @@ ${compiledText.substring(0, 30000)}
         <div className="issue-management-container">
             <header className="issue-management-header">
                 <div className="logo-area">
-                    <div className="logo-icon">AI</div>
+                    <div className="logo-icon">📋</div>
                     <div className="logo-text">
-                        <h1><span style={{color: 'var(--primary)'}}>AI</span> 프로젝트 이슈 및 일보 관리</h1>
+                        <h2><span style={{color: '#0969da'}}>프로젝트</span> 이슈 및 일보관리 시스템 (Issue & Daily Log Management)</h2>
                         <p>공사일보 텍스트 축적 및 AI 기반 자동 PPT 보고서 생성</p>
                     </div>
                 </div>

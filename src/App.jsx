@@ -1456,28 +1456,6 @@ JSON 출력 예시:
             </span>
           </button>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          {currentView === "projects" && (
-            <div style={{ display: 'inline-flex', gap: '4px', background: '#f8fafc', padding: '3px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-              <button
-                type="button"
-                onClick={() => setAllSections(true)}
-                style={{ height: '36px', padding: '0 10px', fontSize: '12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, color: '#334155' }}
-                title="프로젝트 일정의 모든 소항목 펼치기"
-              >
-                ▾ 전체 펼치기
-              </button>
-              <button
-                type="button"
-                onClick={() => setAllSections(false)}
-                style={{ height: '36px', padding: '0 10px', fontSize: '12px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, color: '#334155' }}
-                title="프로젝트 일정의 모든 소항목 접기"
-              >
-                ▴ 전체 접기
-              </button>
-            </div>
-          )}
-        </div>
       </div>
 
       {currentView === "vision-spc" ? (
@@ -1490,6 +1468,93 @@ JSON 출력 예시:
         <ManpowerManagement projects={projects} sites={sites} onSelectProject={setSelectedManpowerProject} />
       ) : (
         <>
+          {/* 프로젝트 일정 관리 시스템 메인 헤더 카드 */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(12px)',
+            color: '#24292f',
+            border: '1px solid #d0d7de',
+            borderRadius: '14px',
+            padding: '1rem 1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px',
+            marginBottom: '16px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                background: 'linear-gradient(135deg, #0969da, #0284c7)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '1.25rem',
+                boxShadow: '0 2px 6px rgba(9, 105, 218, 0.25)'
+              }}>
+                📅
+              </div>
+              <div>
+                <h2 style={{
+                  margin: 0,
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  letterSpacing: '-0.02em',
+                  background: 'linear-gradient(90deg, #24292f 0%, #57606a 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  <span style={{ color: '#0969da', WebkitTextFillColor: '#0969da' }}>프로젝트</span> 일정 관리 시스템 (Project Schedule Management)
+                </h2>
+                <p style={{ margin: '3px 0 0 0', fontSize: '0.75rem', color: '#57606a' }}>
+                  마스터 스케줄 일정 계획, 마일스톤 Gantt 차트 및 프로젝트 종합 모니터링
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'inline-flex', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setAllSections(true)}
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '12px',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  color: '#334155',
+                  fontWeight: 500
+                }}
+                title="프로젝트 일정의 모든 소항목 펼치기"
+              >
+                ▾ 전체 펼치기
+              </button>
+              <button
+                type="button"
+                onClick={() => setAllSections(false)}
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '12px',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  color: '#334155',
+                  fontWeight: 500
+                }}
+                title="프로젝트 일정의 모든 소항목 접기"
+              >
+                ▴ 전체 접기
+              </button>
+            </div>
+          </div>
           {edit && (
             <section style={{ transition: 'all 0.2s ease' }}>
               <div 

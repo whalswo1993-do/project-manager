@@ -72,10 +72,10 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
     }, [projects]);
 
     useEffect(() => {
-        if (activeTab === 'register' && selectedProject) {
+        if (activeIssueSection !== 'analyze' && selectedProject) {
             loadReports(selectedProject);
         }
-    }, [selectedProject, activeTab]);
+    }, [selectedProject, activeIssueSection]);
 
     async function loadReports(projectId) {
         setMsg('');

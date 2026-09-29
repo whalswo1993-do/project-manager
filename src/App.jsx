@@ -174,6 +174,11 @@ export default function App() {
   sessionRef.current = session;
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
+  const role = profile?.role || "grade1";
+  const isGrade1 = role === "grade1";
+  const create = ["admin", "grade3"].includes(role);
+  const edit = ["admin", "grade3", "grade2"].includes(role);
+  const del = ["admin", "grade3"].includes(role);
   const [users, setUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
@@ -649,12 +654,6 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const role = profile?.role || "grade1";
-  const isGrade1 = role === "grade1";
-  const create = ["admin", "grade3"].includes(role);
-  const edit = ["admin", "grade3", "grade2"].includes(role);
-  const del = ["admin", "grade3"].includes(role);
 
   function showPermissionModal(feature) {
     setPermissionModal({ feature, role });

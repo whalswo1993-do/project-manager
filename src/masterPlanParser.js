@@ -399,12 +399,14 @@ export function normalizeDeptName(raw) {
 
   if (/supervisor|슈퍼바이저|\bsv\b|해체\s*검수|장착\s*검수|해체\/장착\s*검수/i.test(lower)) return "Supervisor";
 
-  // Safety vs 소장 distinction:
-  // "Safety Manager (소장)" -> 소장
-  // "Safety Manager(안전)" -> 안전
-  if (/safety.*소장|소장.*safety/i.test(lower)) return "소장";
-  if (/safety|안전|safe/i.test(lower)) return "안전";
-  if (/manager|소장|현장대리인|\bpm\b|project\s*manager/i.test(lower)) return "소장";
+  // ★ Safety vs 소장(Manager) 구분:
+  // "Safety Manager", "안전관리자", "Safety", "안전", "HSE Manager" 등 안전 관련 키워드는 반드시 "안전"으로 매핑합니다.
+  // 이 검사를 manager/소장보다 항상 먼저 수행하여 "Safety Manager"가 "소장"으로 오인식되는 혼선을 원천 차단합니다.
+  if (/safety|안전|safe|hse|ehs/i.test(lower)) return "안전";
+
+  // 소장 / Site Manager / Project Manager / PM:
+  // safety 키워드가 없는 순수 소장/관리자 명칭만 "소장"으로 매핑합니다.
+  if (/manager|소장|현장대리인|site\s*mgr|field\s*mgr|\bpm\b|project\s*manager/i.test(lower)) return "소장";
 
   if (/mechanical|기구|mech|기술/i.test(lower)) return "기구";
   if (/vision|비전|비젼/i.test(lower)) return "비전";
@@ -985,7 +987,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
             if (val && val !== "0" && !/^\d+$/.test(val) && !/personnel|peak|activity|equipment|line/i.test(val)) {
               const testNorm = normalizeDeptName(val);
               if (testNorm && testNorm !== val) { deptRaw = val; break; }
-              if (/기구|전장|비전|비젼|제어|안전|소장|외주|supervisor|total|합계/i.test(val)) { deptRaw = val; break; }
+              if (/기구|전장|비전|비젼|제어|안전|소장|pm|manager|safety|외주|supervisor|total|합계/i.test(val)) { deptRaw = val; break; }
             }
           }
         }

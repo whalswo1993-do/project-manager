@@ -2567,7 +2567,7 @@ JSON 출력 예시:
                           style={{ padding: "6px 8px", fontSize: "13px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
                         >
                           <option value="admin">관리자</option>
-                          <option value="grade3">Grade3 (소장)</option>
+                          <option value="grade3">Grade3 (PM)</option>
                           <option value="grade2">Grade2 (각 부서 담당자)</option>
                           <option value="grade1">Grade1 (일반)</option>
                         </select>

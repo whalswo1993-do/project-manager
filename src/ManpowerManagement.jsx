@@ -104,9 +104,13 @@ function normalizeDeptKey(key) {
   // Supervisor
   if (/supervis|슈퍼바이저|\bsv\b|해체\s*검수|장착\s*검수|해체\/장착\s*검수/i.test(s)) return "supervisor";
 
-  // Safety vs 소장 distinction:
-  // "Safety Manager (소장)" -> manager
-  // "Safety Manager(안전)" -> safety
+  // ★ Safety vs 소장(Manager) 구분:
+  // "Safety Manager", "안전관리자", "Safety", "안전", "HSE Manager" 등 안전 관련 키워드는 반드시 "safety"로 매핑합니다.
+  // 이 검사를 manager/소장보다 항상 먼저 수행하여 "Safety Manager"가 "manager(소장)"로 오인식되는 혼선을 원천 차단합니다.
+  if (/safety|안전|safe|hse|ehs/i.test(s)) return "safety";
+
+  // 소장 / Site Manager / Project Manager / PM:
+  // safety 키워드가 없는 순수 소장/관리자 명칭만 "manager"로 매핑합니다.
   if (/manager|소장|현장대리인|site mgr|field mgr|\bpm\b|project\s*manager/i.test(s)) return "manager";
 
   if (/vision|비전|비젼|vis/i.test(s)) return "vision";

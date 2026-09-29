@@ -45,7 +45,7 @@ export const DEFAULT_TEST_ACCOUNTS = [
     department: "PM팀",
     role: "grade3",
     active: true,
-    description: "Grade3 (PM 매니저 / 프로젝트 등록·수정·삭제)",
+    description: "Grade3 (PM / 프로젝트 등록·수정·삭제)",
   },
 ];
 

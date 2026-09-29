@@ -2611,7 +2611,7 @@ JSON 출력 예시:
           )}
 
           {selectedDay && (
-            <div className="back" onMouseDown={() => setSelectedDay(null)}>
+            <div className="back" onMouseDown={() => setSelectedDay(null)} style={{ zIndex: 99999 }}>
               <div className="modal" onMouseDown={e => e.stopPropagation()}>
                 <button className="close" onClick={() => setSelectedDay(null)}>×</button>
                 <h2>{selectedDay.date} 프로젝트</h2>
@@ -2631,7 +2631,7 @@ JSON 출력 예시:
       )}
 
       {modal && (
-        <div className="back" onMouseDown={() => setModal(null)}>
+        <div className="back" onMouseDown={() => setModal(null)} style={{ zIndex: 99999 }}>
           <div className="modal" onMouseDown={e => e.stopPropagation()}>
             <button className="close" onClick={() => setModal(null)}>×</button>
             {modal === "users" && (

@@ -476,24 +476,8 @@ export default function VisionSPC() {
             <div className="main-container">
                 <aside className="sidebar">
                     <div>
-                        <div className="panel-title">데이터 입력</div>
-                        <div 
-                            onDragOver={handleDragOver}
-                            onDragLeave={handleDragLeave}
-                            onDrop={handleDrop}
-                            style={{
-                                background: isDragging ? '#ecfdf5' : '#f8fafc',
-                                border: isDragging ? '2px dashed #10b981' : '1px solid #e2e8f0',
-                                borderRadius: '10px',
-                                padding: '12px 14px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                flexWrap: 'wrap',
-                                marginBottom: '1rem',
-                                transition: 'all 0.2s ease'
-                            }}
-                        >
+                        <div className="panel-title" style={{ marginBottom: '8px' }}>데이터 입력</div>
+                        <div style={{ marginBottom: '1rem' }}>
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current.click()}
@@ -517,10 +501,6 @@ export default function VisionSPC() {
                             >
                                 ✨ 파일 첨부 (Excel)
                             </button>
-                            <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
-                                <span style={{ fontWeight: 600, color: '#334155' }}>검사 로그 (.xlsx, .xls)</span>
-                                <span style={{ display: 'block', fontSize: '11px', color: '#94a3b8' }}>클릭하여 파일 첨부 또는 여기로 드래그</span>
-                            </div>
                         </div>
 
                         <div className="paste-area">

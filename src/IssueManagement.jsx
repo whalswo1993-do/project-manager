@@ -559,22 +559,7 @@ ${compiledText.substring(0, 30000)}
                                 </button>
                             </div>
                             {!collapsedSections.upload ? (
-                                <div 
-                                    onDragOver={handleDragOver} 
-                                    onDragLeave={handleDragLeave} 
-                                    onDrop={handleDrop}
-                                    style={{
-                                        background: isDragging ? '#ecfdf5' : '#f8fafc',
-                                        border: isDragging ? '2px dashed #10b981' : '1px solid #e2e8f0',
-                                        borderRadius: '10px',
-                                        padding: '12px 14px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '12px',
-                                        flexWrap: 'wrap',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                >
+                                <div style={{ paddingTop: '2px' }}>
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -603,10 +588,6 @@ ${compiledText.substring(0, 30000)}
                                     >
                                         {isExtracting ? "⏳ AI 분석 중..." : "✨ 파일 첨부 (Excel)"} {isGrade1 && "🔒"}
                                     </button>
-                                    <div style={{ fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
-                                        <span style={{ fontWeight: 600, color: '#334155' }}>공사일보 원본 (.xlsx, .xls, .csv)</span>
-                                        <span style={{ display: 'block', fontSize: '11px', color: '#94a3b8' }}>클릭하여 파일 첨부 또는 여기로 드래그앤드롭</span>
-                                    </div>
                                 </div>
                             ) : (
                                 <div

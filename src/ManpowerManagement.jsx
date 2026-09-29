@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import "./ManpowerManagement.css";
 import ExcelJS from "exceljs";
 import PptxGenJS from "pptxgenjs";
 import { normalizeJVName } from "./utils";
+import { supabase } from "./supabase";
 
 const BASE_DEPT_ORDER = [
   "mechanical",
@@ -345,7 +346,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
     } catch (e) {
       console.warn(e);
     }
-    return { controls: false, summary: false, calendar: false, table: false };
+    return { controls: false, summary: false, calendar: false, table: false, comparison: false };
   });
 
   const toggleSection = (key) => {
@@ -359,12 +360,44 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
   };
 
   const setAllSections = (collapsed) => {
-    const next = { controls: collapsed, summary: collapsed, calendar: collapsed, table: collapsed };
+    const next = { controls: collapsed, summary: collapsed, calendar: collapsed, table: collapsed, comparison: collapsed };
     setCollapsedSections(next);
     try {
       localStorage.setItem('pm_manpower_collapsed_sections', JSON.stringify(next));
     } catch (e) {}
   };
+
+  // -------------------------------------------------------------
+  // 계획공수 vs 실투입공수 (일보 연동) 상태 관리
+  // -------------------------------------------------------------
+  const [dailyReports, setDailyReports] = useState([]);
+  const [isLoadingReports, setIsLoadingReports] = useState(false);
+  const [selectedCompProject, setSelectedCompProject] = useState("ALL");
+  const [compSearch, setCompSearch] = useState("");
+  const [onlyReported, setOnlyReported] = useState(true);
+  const [compSort, setCompSort] = useState("diffDesc");
+  const [expandedDailyDetails, setExpandedDailyDetails] = useState({});
+
+  const loadDailyReports = async () => {
+    setIsLoadingReports(true);
+    try {
+      const { data, error } = await supabase
+        .from('daily_reports')
+        .select('*')
+        .order('report_date', { ascending: false });
+      if (!error && data) {
+        setDailyReports(data);
+      }
+    } catch (e) {
+      console.error("일보 로딩 오류:", e);
+    } finally {
+      setIsLoadingReports(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDailyReports();
+  }, []);
 
   // Dynamic active departments computation: includes standard departments + any newly introduced departments from projects
   const activeDeptKeys = useMemo(() => {
@@ -1339,6 +1372,364 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
     }
   };
 
+  // -------------------------------------------------------------
+  // 계획공수 vs 실투입공수 비교분석 연산
+  // -------------------------------------------------------------
+  // 1. 일보를 project_id별로 그룹화
+  const reportsByProject = useMemo(() => {
+    const map = {};
+    (dailyReports || []).forEach(r => {
+      if (!map[r.project_id]) map[r.project_id] = [];
+      map[r.project_id].push(r);
+    });
+    // 날짜 역순 정렬 (최신 일보 먼저)
+    Object.keys(map).forEach(pid => {
+      map[pid].sort((a, b) => (b.report_date || "").localeCompare(a.report_date || ""));
+    });
+    return map;
+  }, [dailyReports]);
+
+  // 2. 개별 프로젝트의 계획 vs 실투입 비교 계산 함수
+  const computeCompData = (p) => {
+    const pReports = reportsByProject[p.id] || [];
+    const mp = p.manpower || {};
+    const depts = mp.departments || {};
+
+    // 계획 공수
+    const planMech = (Number(depts.mechanical?.total) || 0) + (Number(depts.mechanical_sub?.total) || 0);
+    const planControl = (Number(depts.control?.total) || 0) + (Number(depts.control_sub?.total) || 0);
+    const planVision = (Number(depts.vision?.total) || 0) + (Number(depts.vision_sub?.total) || 0);
+    const planPM = Number(depts.pm?.total) || 0;
+    const planDesign = Number(depts.design?.total) || 0;
+
+    let planOther = 0;
+    Object.entries(depts).forEach(([k, v]) => {
+      const norm = normalizeDeptKey(k);
+      if (!['mechanical', 'mechanical_sub', 'control', 'control_sub', 'vision', 'vision_sub', 'pm', 'design'].includes(norm)) {
+        planOther += Number(v?.total) || 0;
+      }
+    });
+
+    const planTotal = getProjectTotalManday(p);
+
+    // 실투입 공수 (일보 합산)
+    let actualTotal = 0;
+    let actualPM = 0;
+    let actualDesign = 0;
+    let actualMech = 0;
+    let actualControl = 0;
+    let actualVision = 0;
+
+    pReports.forEach(r => {
+      const pCount = Number(r.personnel_count) || 0;
+      const pm = Number(r.pm_count) || 0;
+      const des = Number(r.design_count) || 0;
+      const fac = Number(r.facility_count) || 0;
+      const ctrl = Number(r.control_count) || 0;
+      const vis = Number(r.vision_count) || 0;
+
+      actualPM += pm;
+      actualDesign += des;
+      actualMech += fac;
+      actualControl += ctrl;
+      actualVision += vis;
+
+      const sumDept = pm + des + fac + ctrl + vis;
+      actualTotal += Math.max(pCount, sumDept);
+    });
+
+    const actualOther = Math.max(0, actualTotal - (actualPM + actualDesign + actualMech + actualControl + actualVision));
+
+    // 부서별 목록
+    const deptList = [
+      { key: 'mechanical', name: '기구 / 설비기술', plan: planMech, actual: actualMech, color: '#3b82f6' },
+      { key: 'control', name: '제어 (Control)', plan: planControl, actual: actualControl, color: '#10b981' },
+      { key: 'vision', name: '비전 (Vision)', plan: planVision, actual: actualVision, color: '#8b5cf6' },
+      { key: 'pm', name: 'PM (Project Manager)', plan: planPM, actual: actualPM, color: '#0284c7' },
+      { key: 'design', name: '설계 (Design)', plan: planDesign, actual: actualDesign, color: '#f59e0b' },
+      { key: 'other', name: '기타 / 전장 / 안전', plan: planOther, actual: actualOther, color: '#64748b' },
+    ].map(d => {
+      const diff = d.actual - d.plan; // 실투입 - 계획 (양수면 초과, 음수면 절감/잔여)
+      const rate = d.plan > 0 ? (d.actual / d.plan) * 100 : (d.actual > 0 ? 100 : 0);
+      return { ...d, diff, rate };
+    });
+
+    const totalDiff = actualTotal - planTotal;
+    const totalRate = planTotal > 0 ? (actualTotal / planTotal) * 100 : (actualTotal > 0 ? 100 : 0);
+
+    return {
+      projectId: p.id,
+      project: p,
+      projectName: p.name,
+      manufacturingNo: p.manufacturingNo,
+      site: p.site,
+      line: p.line,
+      planTotal,
+      actualTotal,
+      totalDiff,
+      totalRate,
+      deptList,
+      reportCount: pReports.length,
+      reports: pReports
+    };
+  };
+
+  // 3. 전체 프로젝트 비교 목록
+  const allComparisonData = useMemo(() => {
+    return (projects || []).map(p => computeCompData(p));
+  }, [projects, reportsByProject]);
+
+  // 4. 필터링 및 정렬된 비교 목록
+  const filteredCompData = useMemo(() => {
+    let list = [...allComparisonData];
+
+    if (onlyReported) {
+      list = list.filter(item => item.reportCount > 0 || item.planTotal > 0);
+    }
+
+    if (siteFilter !== "전체") {
+      list = list.filter(item => item.site === siteFilter);
+    }
+
+    if (compSearch.trim()) {
+      const q = compSearch.trim().toLowerCase();
+      list = list.filter(item =>
+        (item.projectName || "").toLowerCase().includes(q) ||
+        (item.manufacturingNo || "").toLowerCase().includes(q) ||
+        (item.site || "").toLowerCase().includes(q)
+      );
+    }
+
+    // 정렬
+    list.sort((a, b) => {
+      if (compSort === "diffDesc") return b.totalDiff - a.totalDiff; // 초과 많은 순
+      if (compSort === "diffAsc") return a.totalDiff - b.totalDiff;  // 잔여 많은 순
+      if (compSort === "actualDesc") return b.actualTotal - a.actualTotal; // 실투입 많은 순
+      if (compSort === "planDesc") return b.planTotal - a.planTotal;     // 계획 많은 순
+      if (compSort === "rateDesc") return b.totalRate - a.totalRate;     // 소진율 높은 순
+      if (compSort === "reportsDesc") return b.reportCount - a.reportCount; // 일보 많은 순
+      return (a.projectName || "").localeCompare(b.projectName || "");
+    });
+
+    return list;
+  }, [allComparisonData, onlyReported, siteFilter, compSearch, compSort]);
+
+  // 5. 선택된 단일 프로젝트 비교 데이터 (단일 모드일 때)
+  const selectedProjectComp = useMemo(() => {
+    if (selectedCompProject === "ALL") return null;
+    return allComparisonData.find(item => item.projectId === selectedCompProject) || null;
+  }, [allComparisonData, selectedCompProject]);
+
+  // 6. 전체 종합 요약 지표 (선택된 단일 또는 전체 대상)
+  const activeCompSummary = useMemo(() => {
+    if (selectedProjectComp) {
+      return {
+        title: `${selectedProjectComp.projectName} 공수 분석`,
+        planTotal: selectedProjectComp.planTotal,
+        actualTotal: selectedProjectComp.actualTotal,
+        totalDiff: selectedProjectComp.totalDiff,
+        totalRate: selectedProjectComp.totalRate,
+        reportCount: selectedProjectComp.reportCount,
+        deptList: selectedProjectComp.deptList
+      };
+    }
+
+    let planTotal = 0;
+    let actualTotal = 0;
+    let reportCount = 0;
+    const deptTotalsMap = {
+      mechanical: { plan: 0, actual: 0 },
+      control: { plan: 0, actual: 0 },
+      vision: { plan: 0, actual: 0 },
+      pm: { plan: 0, actual: 0 },
+      design: { plan: 0, actual: 0 },
+      other: { plan: 0, actual: 0 }
+    };
+
+    filteredCompData.forEach(item => {
+      planTotal += item.planTotal;
+      actualTotal += item.actualTotal;
+      reportCount += item.reportCount;
+      item.deptList.forEach(d => {
+        if (deptTotalsMap[d.key]) {
+          deptTotalsMap[d.key].plan += d.plan;
+          deptTotalsMap[d.key].actual += d.actual;
+        }
+      });
+    });
+
+    const totalDiff = actualTotal - planTotal;
+    const totalRate = planTotal > 0 ? (actualTotal / planTotal) * 100 : (actualTotal > 0 ? 100 : 0);
+
+    const deptList = [
+      { key: 'mechanical', name: '기구 / 설비기술', plan: deptTotalsMap.mechanical.plan, actual: deptTotalsMap.mechanical.actual, color: '#3b82f6' },
+      { key: 'control', name: '제어 (Control)', plan: deptTotalsMap.control.plan, actual: deptTotalsMap.control.actual, color: '#10b981' },
+      { key: 'vision', name: '비전 (Vision)', plan: deptTotalsMap.vision.plan, actual: deptTotalsMap.vision.actual, color: '#8b5cf6' },
+      { key: 'pm', name: 'PM (Project Manager)', plan: deptTotalsMap.pm.plan, actual: deptTotalsMap.pm.actual, color: '#0284c7' },
+      { key: 'design', name: '설계 (Design)', plan: deptTotalsMap.design.plan, actual: deptTotalsMap.design.actual, color: '#f59e0b' },
+      { key: 'other', name: '기타 / 전장 / 안전', plan: deptTotalsMap.other.plan, actual: deptTotalsMap.other.actual, color: '#64748b' },
+    ].map(d => {
+      const diff = d.actual - d.plan;
+      const rate = d.plan > 0 ? (d.actual / d.plan) * 100 : (d.actual > 0 ? 100 : 0);
+      return { ...d, diff, rate };
+    });
+
+    return {
+      title: "전체 프로젝트 종합 비교",
+      planTotal,
+      actualTotal,
+      totalDiff,
+      totalRate,
+      reportCount,
+      deptList
+    };
+  }, [selectedProjectComp, filteredCompData]);
+
+  // 7. 엑셀 다운로드 함수
+  const exportComparisonExcel = async () => {
+    try {
+      const wb = new ExcelJS.Workbook();
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Sheet 1: 프로젝트별 계획 vs 실투입 비교
+      const ws1 = wb.addWorksheet("계획_실투입_비교분석", {
+        views: [{ state: "frozen", ySplit: 4 }]
+      });
+
+      ws1.mergeCells("A1:N1");
+      const titleCell = ws1.getCell("A1");
+      titleCell.value = "TW Project - 프로젝트 계획공수 vs 실투입공수 비교분석 보고서";
+      titleCell.font = { name: "Malgun Gothic", size: 14, bold: true, color: { argb: "FF0F172A" } };
+      titleCell.alignment = { vertical: "middle" };
+      ws1.getRow(1).height = 30;
+
+      ws1.getCell("A2").value = `기준일: ${today} | 공수 통합관리 & 프로젝트 이슈관리(일보) 연동 분석`;
+      ws1.getCell("A2").font = { name: "Malgun Gothic", size: 9, color: { argb: "FF64748B" } };
+
+      const headers = [
+        "제조번호", "Site", "Line", "프로젝트명",
+        "총 계획공수 (M/D)", "총 실투입공수 (M/D)", "가감/차이 (M/D)", "소진율 (%)",
+        "기구/설비 (실/계)", "제어 (실/계)", "비전 (실/계)", "PM (실/계)", "설계 (실/계)", "등록 일보수"
+      ];
+      ws1.addRow([]);
+      const headerRow = ws1.addRow(headers);
+      headerRow.height = 24;
+      headerRow.eachCell(cell => {
+        cell.font = { name: "Malgun Gothic", size: 9.5, bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      });
+
+      filteredCompData.forEach(item => {
+        const getDeptStr = (key) => {
+          const d = item.deptList.find(x => x.key === key);
+          return d ? `${d.actual} / ${d.plan}` : "-";
+        };
+
+        const row = ws1.addRow([
+          normalizeJVName(item.manufacturingNo) || "-",
+          normalizeJVName(item.site) || "-",
+          normalizeJVName(item.line) || "-",
+          normalizeJVName(item.projectName) || "-",
+          item.planTotal,
+          item.actualTotal,
+          item.totalDiff,
+          item.planTotal > 0 ? (item.totalRate / 100) : 0,
+          getDeptStr('mechanical'),
+          getDeptStr('control'),
+          getDeptStr('vision'),
+          getDeptStr('pm'),
+          getDeptStr('design'),
+          `${item.reportCount}건`
+        ]);
+
+        row.getCell(5).numFmt = "#,##0";
+        row.getCell(6).numFmt = "#,##0";
+        row.getCell(7).numFmt = "+#,##0;-#,##0;0";
+        row.getCell(8).numFmt = "0.0%";
+
+        if (item.totalDiff > 0) {
+          row.getCell(7).font = { color: { argb: "FFDC2626" }, bold: true };
+        } else if (item.totalDiff < 0) {
+          row.getCell(7).font = { color: { argb: "FF16A34A" }, bold: true };
+        }
+      });
+
+      ws1.columns = [
+        { width: 14 }, { width: 10 }, { width: 8 }, { width: 28 },
+        { width: 16 }, { width: 16 }, { width: 15 }, { width: 12 },
+        { width: 14 }, { width: 14 }, { width: 14 }, { width: 12 }, { width: 12 }, { width: 11 }
+      ];
+
+      // Sheet 2: 일자별 실투입 상세 내역
+      const ws2 = wb.addWorksheet("일자별_실투입_상세내역", {
+        views: [{ state: "frozen", ySplit: 4 }]
+      });
+
+      ws2.mergeCells("A1:K1");
+      const titleCell2 = ws2.getCell("A1");
+      titleCell2.value = "일자별 실투입 공수 및 작업 내용 상세 내역";
+      titleCell2.font = { name: "Malgun Gothic", size: 14, bold: true, color: { argb: "FF0F172A" } };
+      ws2.getRow(1).height = 28;
+
+      const targetReports = selectedProjectComp
+        ? (selectedProjectComp.reports || []).map(r => ({ ...r, projectName: selectedProjectComp.projectName, manufacturingNo: selectedProjectComp.manufacturingNo }))
+        : filteredCompData.flatMap(p => (p.reports || []).map(r => ({ ...r, projectName: p.projectName, manufacturingNo: p.manufacturingNo })));
+
+      ws2.getCell("A2").value = `대상: ${selectedProjectComp ? selectedProjectComp.projectName : "전체 프로젝트"} (총 ${targetReports.length}건)`;
+
+      const headers2 = [
+        "보고일자", "프로젝트명", "제조번호", "총원 (M/D)",
+        "PM (명)", "설계 (명)", "기구 (명)", "제어 (명)", "비전 (명)",
+        "주요 작업 내용", "특이 사항"
+      ];
+      ws2.addRow([]);
+      const headerRow2 = ws2.addRow(headers2);
+      headerRow2.height = 24;
+      headerRow2.eachCell(cell => {
+        cell.font = { name: "Malgun Gothic", size: 9.5, bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0369A1" } };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+      });
+
+      targetReports.sort((a, b) => (b.report_date || "").localeCompare(a.report_date || ""));
+
+      targetReports.forEach(r => {
+        ws2.addRow([
+          r.report_date,
+          normalizeJVName(r.projectName) || "-",
+          normalizeJVName(r.manufacturingNo) || "-",
+          r.personnel_count || 0,
+          r.pm_count || 0,
+          r.design_count || 0,
+          r.facility_count || 0,
+          r.control_count || 0,
+          r.vision_count || 0,
+          r.work_details || "",
+          r.special_notes || ""
+        ]);
+      });
+
+      ws2.columns = [
+        { width: 12 }, { width: 24 }, { width: 14 }, { width: 11 },
+        { width: 9 }, { width: 9 }, { width: 9 }, { width: 9 }, { width: 9 },
+        { width: 42 }, { width: 30 }
+      ];
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `TW_계획vs실투입_공수비교_${today}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("엑셀 다운로드 오류:", err);
+      alert("엑셀 다운로드 실패: " + err.message);
+    }
+  };
+
   return (
     <div className="manpower-dashboard">
       {/* Top Header Card */}
@@ -1873,6 +2264,475 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
             }}
           >
             🏢 프로젝트별 공수 현황 표 ({filteredProjects.length}건)가 접혀 있습니다. (클릭하여 펼치기 ▾)
+          </div>
+        )}
+      </div>
+
+      {/* Comparison Section: 계획공수 vs 실투입공수 비교분석 (일보 연동) */}
+      <div style={{ marginBottom: "20px" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '0 4px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>⚖️</span>
+              <b>계획공수 vs 실투입공수 비교분석</b>
+              <span style={{ fontSize: '11px', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                일보 연동
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => toggleSection('comparison')}
+              style={{
+                background: collapsedSections.comparison ? '#3b82f6' : '#f1f5f9',
+                color: collapsedSections.comparison ? '#fff' : '#475569',
+                border: '1px solid #cbd5e1',
+                borderRadius: '4px',
+                padding: '2px 8px',
+                fontSize: '11px',
+                cursor: 'pointer'
+              }}
+            >
+              {collapsedSections.comparison ? '▸ 펼치기' : '▾ 접기'}
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={loadDailyReports}
+              disabled={isLoadingReports}
+              style={{
+                padding: '4px 10px',
+                fontSize: '11px',
+                background: '#fff',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                color: '#334155',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+              title="프로젝트 이슈관리의 최신 일보 데이터를 다시 불러옵니다"
+            >
+              {isLoadingReports ? "⏳ 로딩 중..." : "🔄 일보 새로고침"}
+            </button>
+            <button
+              type="button"
+              onClick={exportComparisonExcel}
+              style={{
+                padding: '4px 10px',
+                fontSize: '11px',
+                background: '#047857',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+              title="비교분석 요약 및 일자별 상세 내역을 엑셀로 다운로드합니다"
+            >
+              📥 비교분석 엑셀 다운로드
+            </button>
+          </div>
+        </div>
+
+        {!collapsedSections.comparison ? (
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+            {/* Filter & Selector Toolbar */}
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '10px',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#f8fafc',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>조회 대상:</label>
+                  <select
+                    value={selectedCompProject}
+                    onChange={e => setSelectedCompProject(e.target.value)}
+                    style={{ padding: '4px 8px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', fontWeight: 600, maxWidth: '280px' }}
+                  >
+                    <option value="ALL">🏢 [전체 프로젝트 종합 비교]</option>
+                    {filteredProjects.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.manufacturingNo ? `[${p.manufacturingNo}] ` : ""}{p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedCompProject === "ALL" && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>정렬:</label>
+                      <select
+                        value={compSort}
+                        onChange={e => setCompSort(e.target.value)}
+                        style={{ padding: '4px 8px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff' }}
+                      >
+                        <option value="diffDesc">초과 공수 많은 순 (가감 ▲)</option>
+                        <option value="diffAsc">잔여 공수 많은 순 (가감 ▼)</option>
+                        <option value="actualDesc">실투입 공수 많은 순</option>
+                        <option value="planDesc">계획 공수 많은 순</option>
+                        <option value="rateDesc">소진율 높은 순 (%)</option>
+                        <option value="reportsDesc">등록 일보 많은 순</option>
+                        <option value="nameAsc">프로젝트명 순</option>
+                      </select>
+                    </div>
+
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#475569', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={onlyReported}
+                        onChange={e => setOnlyReported(e.target.checked)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      공수/일보 등록된 건만 보기
+                    </label>
+                  </>
+                )}
+              </div>
+
+              {selectedCompProject === "ALL" && (
+                <input
+                  type="text"
+                  placeholder="프로젝트, 제조번호 검색..."
+                  value={compSearch}
+                  onChange={e => setCompSearch(e.target.value)}
+                  style={{ padding: '4px 10px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '6px', width: '180px' }}
+                />
+              )}
+            </div>
+
+            {/* KPI Cards: 종합 비교 지표 */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '12px',
+              marginBottom: '16px'
+            }}>
+              {/* 계획 총공수 */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #0284c7', borderRadius: '8px', padding: '12px 16px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>📌</span> 총 계획 공수
+                </div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '4px 0' }}>
+                  {activeCompSummary.planTotal.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 'normal', color: '#64748b' }}>M/D</span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  {selectedProjectComp ? "프로젝트 마스터플랜 기준" : `조회 대상 ${filteredCompData.length}개 프로젝트 계획`}
+                </div>
+              </div>
+
+              {/* 실투입 총공수 */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #10b981', borderRadius: '8px', padding: '12px 16px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>⏱️</span> 총 실투입 공수
+                </div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#10b981', margin: '4px 0' }}>
+                  {activeCompSummary.actualTotal.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 'normal', color: '#64748b' }}>M/D</span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  프로젝트 이슈관리 등록 일보 <b>{activeCompSummary.reportCount}건</b> 합산
+                </div>
+              </div>
+
+              {/* 가감 / 차이 */}
+              <div style={{
+                background: activeCompSummary.totalDiff > 0 ? '#fef2f2' : activeCompSummary.totalDiff < 0 ? '#f0fdf4' : '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderLeft: `4px solid ${activeCompSummary.totalDiff > 0 ? '#dc2626' : activeCompSummary.totalDiff < 0 ? '#16a34a' : '#94a3b8'}`,
+                borderRadius: '8px',
+                padding: '12px 16px'
+              }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>⚖️</span> 가감 / 차이 (실투입 - 계획)
+                </div>
+                <div style={{
+                  fontSize: '22px',
+                  fontWeight: 800,
+                  color: activeCompSummary.totalDiff > 0 ? '#dc2626' : activeCompSummary.totalDiff < 0 ? '#16a34a' : '#64748b',
+                  margin: '4px 0'
+                }}>
+                  {activeCompSummary.totalDiff > 0 ? `+${activeCompSummary.totalDiff.toLocaleString()}` : activeCompSummary.totalDiff.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 'normal' }}>M/D</span>
+                </div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: activeCompSummary.totalDiff > 0 ? '#b91c1c' : activeCompSummary.totalDiff < 0 ? '#15803d' : '#64748b' }}>
+                  {activeCompSummary.totalDiff > 0
+                    ? `⚠️ 계획 대비 ${activeCompSummary.totalDiff.toLocaleString()} M/D 초과 투입`
+                    : activeCompSummary.totalDiff < 0
+                      ? `✨ 계획 대비 ${Math.abs(activeCompSummary.totalDiff).toLocaleString()} M/D 절감 (잔여)`
+                      : "계획 공수와 정확히 일치"}
+                </div>
+              </div>
+
+              {/* 전체 소진율 */}
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '4px solid #f59e0b', borderRadius: '8px', padding: '12px 16px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>📊</span> 공수 소진율
+                </div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: activeCompSummary.totalRate > 100 ? '#dc2626' : '#d97706', margin: '4px 0' }}>
+                  {activeCompSummary.planTotal > 0 ? `${activeCompSummary.totalRate.toFixed(1)}%` : "-"}
+                </div>
+                <div style={{ background: '#e2e8f0', borderRadius: '4px', height: '6px', overflow: 'hidden', margin: '6px 0 2px' }}>
+                  <div style={{
+                    width: `${Math.min(100, activeCompSummary.totalRate)}%`,
+                    height: '100%',
+                    background: activeCompSummary.totalRate > 100 ? '#dc2626' : activeCompSummary.totalRate > 80 ? '#f59e0b' : '#10b981'
+                  }} />
+                </div>
+              </div>
+            </div>
+
+            {/* 부서별 계획 vs 실투입 비교 카드/테이블 */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px' }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: 'bold', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>👥</span> 부서별 계획공수 vs 실투입공수 비교
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '8px' }}>
+                {activeCompSummary.deptList.map(dept => {
+                  const isOver = dept.diff > 0;
+                  const isUnder = dept.diff < 0;
+                  return (
+                    <div key={dept.key} style={{
+                      background: '#fff',
+                      border: '1px solid #e2e8f0',
+                      borderLeft: `4px solid ${dept.color}`,
+                      borderRadius: '6px',
+                      padding: '8px 10px'
+                    }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                        {dept.name}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#64748b' }}>
+                        <span>계획: <b>{dept.plan.toLocaleString()}</b></span>
+                        <span>실투입: <b style={{ color: dept.actual > 0 ? '#0f172a' : '#94a3b8' }}>{dept.actual.toLocaleString()}</b></span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', paddingTop: '4px', borderTop: '1px dashed #e2e8f0' }}>
+                        <span style={{ fontSize: '10px', color: '#64748b' }}>가감:</span>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          color: isOver ? '#dc2626' : isUnder ? '#16a34a' : '#64748b'
+                        }}>
+                          {isOver ? `+${dept.diff}` : dept.diff} M/D
+                          {dept.plan > 0 && ` (${dept.rate.toFixed(0)}%)`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 세부 뷰: 단일 프로젝트 선택 모드인 경우 -> 일자별 실투입 내역 상세 */}
+            {selectedProjectComp ? (
+              <div style={{ marginTop: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#1e293b' }}>
+                    📅 [{selectedProjectComp.projectName}] 일자별 실투입 내역 ({selectedProjectComp.reports.length}일치 일보)
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCompProject("ALL")}
+                    style={{ padding: '3px 8px', fontSize: '11px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    ← 전체 프로젝트 비교로 복귀
+                  </button>
+                </div>
+
+                {selectedProjectComp.reports.length === 0 ? (
+                  <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                    등록된 공사일보가 없습니다. [프로젝트 이슈관리] 메뉴에서 일보를 등록하면 실투입 공수가 자동으로 집계됩니다.
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                      <thead>
+                        <tr style={{ background: '#f1f5f9', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>
+                          <th style={{ padding: '8px 10px', textAlign: 'center', width: '95px' }}>보고일자</th>
+                          <th style={{ padding: '8px 10px', textAlign: 'center', width: '75px', color: '#10b981' }}>당일총원</th>
+                          <th style={{ padding: '8px 6px', textAlign: 'center' }}>PM</th>
+                          <th style={{ padding: '8px 6px', textAlign: 'center' }}>설계</th>
+                          <th style={{ padding: '8px 6px', textAlign: 'center' }}>기구</th>
+                          <th style={{ padding: '8px 6px', textAlign: 'center' }}>제어</th>
+                          <th style={{ padding: '8px 6px', textAlign: 'center' }}>비전</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left' }}>주요 작업 내용</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left' }}>특이사항</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedProjectComp.reports.map((r, rIdx) => (
+                          <tr key={r.id || rIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#334155' }}>
+                              {r.report_date}
+                            </td>
+                            <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 'bold', color: '#10b981', background: '#f0fdf4' }}>
+                              {r.personnel_count || (Number(r.pm_count || 0) + Number(r.design_count || 0) + Number(r.facility_count || 0) + Number(r.control_count || 0) + Number(r.vision_count || 0))}명
+                            </td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: r.pm_count > 0 ? '#0f172a' : '#cbd5e1' }}>{r.pm_count || "-"}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: r.design_count > 0 ? '#0f172a' : '#cbd5e1' }}>{r.design_count || "-"}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: r.facility_count > 0 ? '#0f172a' : '#cbd5e1' }}>{r.facility_count || "-"}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: r.control_count > 0 ? '#0f172a' : '#cbd5e1' }}>{r.control_count || "-"}</td>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: r.vision_count > 0 ? '#0f172a' : '#cbd5e1' }}>{r.vision_count || "-"}</td>
+                            <td style={{ padding: '8px 12px', color: '#334155' }}>{r.work_details || "-"}</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>{r.special_notes || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* 전체 프로젝트 비교 목록 테이블 */
+              <div style={{ marginTop: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#1e293b' }}>
+                    🏢 프로젝트별 계획 vs 실투입 비교 목록 ({filteredCompData.length}건)
+                  </h4>
+                  <span style={{ fontSize: '11px', color: '#64748b' }}>
+                    * 프로젝트명을 클릭하면 해당 프로젝트의 일자별 상세 투입 내역을 확인할 수 있습니다.
+                  </span>
+                </div>
+
+                <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', width: '110px' }}>제조번호</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', width: '110px' }}>Site · Line</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>프로젝트명</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right', width: '90px' }}>계획 공수</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right', width: '95px', color: '#10b981' }}>실투입 공수</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right', width: '100px' }}>가감 / 차이</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '110px' }}>소진율</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '85px' }}>일보 건수</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '95px' }}>상세 보기</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCompData.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                            조건에 일치하는 프로젝트가 없습니다.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredCompData.map(item => {
+                          const isOver = item.totalDiff > 0;
+                          const isUnder = item.totalDiff < 0;
+
+                          return (
+                            <tr key={item.projectId} style={{ borderBottom: '1px solid #f1f5f9', background: isOver ? '#fffbfb' : '#fff' }}>
+                              <td style={{ padding: '8px 10px', fontWeight: 'bold', color: '#475569' }}>
+                                {normalizeJVName(item.manufacturingNo) || "-"}
+                              </td>
+                              <td style={{ padding: '8px 10px', color: '#64748b' }}>
+                                {normalizeJVName(item.site) || "-"} {item.line ? `· ${normalizeJVName(item.line)}` : ""}
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>
+                                <a
+                                  href="#select-project"
+                                  onClick={(e) => { e.preventDefault(); setSelectedCompProject(item.projectId); }}
+                                  style={{ fontWeight: 600, color: '#0969da', textDecoration: 'none' }}
+                                  title="클릭하여 이 프로젝트의 일자별 상세 내역 확인"
+                                >
+                                  {normalizeJVName(item.projectName)}
+                                </a>
+                              </td>
+                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, color: '#334155' }}>
+                                {item.planTotal > 0 ? `${item.planTotal.toLocaleString()} M/D` : "-"}
+                              </td>
+                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 'bold', color: item.actualTotal > 0 ? '#10b981' : '#94a3b8' }}>
+                                {item.actualTotal > 0 ? `${item.actualTotal.toLocaleString()} M/D` : "-"}
+                              </td>
+                              <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                                <span style={{
+                                  fontSize: '11px',
+                                  fontWeight: 'bold',
+                                  color: isOver ? '#dc2626' : isUnder ? '#16a34a' : '#64748b',
+                                  background: isOver ? '#fee2e2' : isUnder ? '#dcfce7' : '#f1f5f9',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px'
+                                }}>
+                                  {isOver ? `+${item.totalDiff}` : item.totalDiff} M/D
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                {item.planTotal > 0 ? (
+                                  <div style={{ display: 'inline-block', width: '90px' }}>
+                                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: item.totalRate > 100 ? '#dc2626' : '#334155', marginBottom: '2px' }}>
+                                      {item.totalRate.toFixed(1)}%
+                                    </div>
+                                    <div style={{ background: '#e2e8f0', borderRadius: '3px', height: '4px', overflow: 'hidden' }}>
+                                      <div style={{
+                                        width: `${Math.min(100, item.totalRate)}%`,
+                                        height: '100%',
+                                        background: item.totalRate > 100 ? '#dc2626' : item.totalRate > 80 ? '#f59e0b' : '#10b981'
+                                      }} />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span style={{ color: '#94a3b8', fontSize: '11px' }}>-</span>
+                                )}
+                              </td>
+                              <td style={{ padding: '8px 10px', textAlign: 'center', color: item.reportCount > 0 ? '#0f172a' : '#cbd5e1' }}>
+                                {item.reportCount > 0 ? `${item.reportCount}건` : "-"}
+                              </td>
+                              <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedCompProject(item.projectId)}
+                                  style={{
+                                    padding: '3px 8px',
+                                    fontSize: '11px',
+                                    background: item.reportCount > 0 ? '#eff6ff' : '#f8fafc',
+                                    color: item.reportCount > 0 ? '#1d4ed8' : '#64748b',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontWeight: 500
+                                  }}
+                                >
+                                  일자별 내역
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div
+            onClick={() => toggleSection('comparison')}
+            style={{
+              padding: '12px 16px',
+              background: '#f8fafc',
+              border: '1px dashed #cbd5e1',
+              borderRadius: '8px',
+              textAlign: 'center',
+              color: '#64748b',
+              fontSize: '13px',
+              cursor: 'pointer'
+            }}
+          >
+            ⚖️ 계획공수 vs 실투입공수 비교분석 (총 계획: <b>{activeCompSummary.planTotal.toLocaleString()} M/D</b>, 실투입: <b>{activeCompSummary.actualTotal.toLocaleString()} M/D</b>, 가감: <b style={{ color: activeCompSummary.totalDiff > 0 ? '#dc2626' : '#16a34a' }}>{activeCompSummary.totalDiff > 0 ? `+${activeCompSummary.totalDiff}` : activeCompSummary.totalDiff} M/D</b>) (클릭하여 펼치기 ▾)
           </div>
         )}
       </div>

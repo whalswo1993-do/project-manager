@@ -19,21 +19,32 @@ export function parseNum(val) {
 }
 
 /**
- * 엑셀 시리얼 날짜(숫자) 또는 다양한 날짜 문자열(YYYY-MM-DD, MM/DD, DD-Mon, 한글 날짜 등)을
- * ISO 형식('YYYY-MM-DD')으로 정규화하여 반환합니다.
+ * 날짜 문자열이나 엑셀 시리얼에서 연도 명시 여부(hasYear), 연도, 월, 일을 추출합니다.
  */
-export function excelDateToISO(serial, defaultYear) {
-  if (!serial && serial !== 0) return "";
-  if (serial instanceof Date) return serial.toISOString().slice(0, 10);
+export function parseDateParts(val) {
+  if (!val && val !== 0) return null;
+  if (val instanceof Date) {
+    return {
+      hasYear: true,
+      year: val.getFullYear(),
+      month: val.getMonth() + 1,
+      day: val.getDate()
+    };
+  }
 
-  const str = String(serial).trim();
+  const str = String(val).trim();
   const numVal = Number(str);
-  if (!isNaN(numVal) && typeof serial !== "boolean") {
+  if (!isNaN(numVal) && typeof val !== "boolean") {
     if (numVal >= 25000 && numVal < 80000) {
       const u = Math.floor(numVal - 25569);
-      return new Date(u * 86400 * 1000).toISOString().slice(0, 10);
+      const d = new Date(u * 86400 * 1000);
+      return {
+        hasYear: true,
+        year: d.getUTCFullYear(),
+        month: d.getUTCMonth() + 1,
+        day: d.getUTCDate()
+      };
     }
-    return "";
   }
 
   let s = str.replace(/[\r\n]+/g, '').trim();
@@ -41,61 +52,188 @@ export function excelDateToISO(serial, defaultYear) {
   s = s.replace(/^[([<{'"\s]+|[)\]}>'"\s]+$/g, '').trim();
   s = s.replace(/\.+$/, '').trim();
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-
-  const yr = defaultYear || new Date().getFullYear();
+  // 1. YYYY-MM-DD, YYYY.MM.DD, YYYY/MM/DD
   let m = s.match(/^(\d{4})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);
-  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
-
-  m = s.match(/^(\d{2})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);
-  if (m && parseInt(m[1], 10) >= 20 && parseInt(m[1], 10) <= 40) {
-    return `20${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  if (m) {
+    return { hasYear: true, year: parseInt(m[1], 10), month: parseInt(m[2], 10), day: parseInt(m[3], 10) };
   }
 
+  // 2. YYYY년 MM월 DD일
+  m = s.match(/^(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일?$/);
+  if (m) {
+    return { hasYear: true, year: parseInt(m[1], 10), month: parseInt(m[2], 10), day: parseInt(m[3], 10) };
+  }
+
+  // 3. YY-MM-DD (20~45)
+  m = s.match(/^(\d{2})[-./ ]\s*(\d{1,2})[-./ ]\s*(\d{1,2})$/);
+  if (m && parseInt(m[1], 10) >= 20 && parseInt(m[1], 10) <= 45) {
+    return { hasYear: true, year: 2000 + parseInt(m[1], 10), month: parseInt(m[2], 10), day: parseInt(m[3], 10) };
+  }
+
+  // 4. MM-DD-YYYY or MM/DD/YYYY
   m = s.match(/^(\d{1,2})[-/ ](\d{1,2})[-/ ](\d{2,4})$/);
   if (m && parseInt(m[1], 10) <= 12 && parseInt(m[2], 10) <= 31) {
-    let yStr = m[3].length === 2 ? '20' + m[3] : m[3];
-    return `${yStr}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+    const y = m[3].length === 2 ? 2000 + parseInt(m[3], 10) : parseInt(m[3], 10);
+    return { hasYear: true, year: y, month: parseInt(m[1], 10), day: parseInt(m[2], 10) };
   }
 
+  // 5. DD-Mon-YY or DD-Mon (e.g. 03-Apr-27 or 03-Apr)
   const dMatch = s.match(/^(\d{1,2})[-/ ]([a-zA-Z]{3,})(?:[-/ ](\d{2,4}))?$/);
   if (dMatch) {
-    const day = dMatch[1].padStart(2, '0');
+    const day = parseInt(dMatch[1], 10);
     const monStr = dMatch[2].slice(0, 3).toLowerCase();
-    const mon = monthsMap[monStr];
-    let yStr = dMatch[3] ? (dMatch[3].length === 2 ? '20' + dMatch[3] : dMatch[3]) : String(yr);
-    if (mon) return `${yStr}-${mon}-${day}`;
+    const mon = parseInt(monthsMap[monStr], 10);
+    if (mon && day >= 1 && day <= 31) {
+      if (dMatch[3]) {
+        const y = dMatch[3].length === 2 ? 2000 + parseInt(dMatch[3], 10) : parseInt(dMatch[3], 10);
+        return { hasYear: true, year: y, month: mon, day };
+      }
+      return { hasYear: false, year: null, month: mon, day };
+    }
   }
 
+  // 6. Mon-DD (e.g. Apr-03)
   const engRev = s.match(/^([a-zA-Z]{3,})[-/ ](\d{1,2})(?:[-/ ](\d{2,4}))?$/);
   if (engRev) {
     const monStr = engRev[1].slice(0, 3).toLowerCase();
-    const mon = monthsMap[monStr];
-    const day = engRev[2].padStart(2, '0');
-    let yStr = engRev[3] ? (engRev[3].length === 2 ? '20' + engRev[3] : engRev[3]) : String(yr);
-    if (mon) return `${yStr}-${mon}-${day}`;
+    const mon = parseInt(monthsMap[monStr], 10);
+    const day = parseInt(engRev[2], 10);
+    if (mon && day >= 1 && day <= 31) {
+      if (engRev[3]) {
+        const y = engRev[3].length === 2 ? 2000 + parseInt(engRev[3], 10) : parseInt(engRev[3], 10);
+        return { hasYear: true, year: y, month: mon, day };
+      }
+      return { hasYear: false, year: null, month: mon, day };
+    }
   }
 
-  const koFull = s.match(/^(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일?$/);
-  if (koFull) return `${koFull[1]}-${koFull[2].padStart(2, '0')}-${koFull[3].padStart(2, '0')}`;
-
+  // 7. MM월 DD일 or MM-DD or MM/DD or MM.DD (No year)
   const koMatch = s.match(/^(\d{1,2})[-./월]\s*(\d{1,2})일?$/);
-  if (koMatch && parseInt(koMatch[1], 10) >= 1 && parseInt(koMatch[1], 10) <= 12 && parseInt(koMatch[2], 10) >= 1 && parseInt(koMatch[2], 10) <= 31) {
-    return `${yr}-${koMatch[1].padStart(2, '0')}-${koMatch[2].padStart(2, '0')}`;
+  if (koMatch) {
+    const mo = parseInt(koMatch[1], 10);
+    const da = parseInt(koMatch[2], 10);
+    if (mo >= 1 && mo <= 12 && da >= 1 && da <= 31) {
+      return { hasYear: false, year: null, month: mo, day: da };
+    }
   }
 
   if (/[-./]/.test(s)) {
     const d = new Date(s);
     if (!isNaN(d.getTime())) {
       const y = d.getFullYear();
-      if (y >= 2020 && y <= 2040) return d.toISOString().slice(0, 10);
+      if (y >= 2020 && y <= 2045) {
+        return { hasYear: true, year: y, month: d.getMonth() + 1, day: d.getDate() };
+      }
     }
   }
-  return "";
+
+  return null;
+}
+
+/**
+ * 엑셀 시리얼 날짜(숫자) 또는 다양한 날짜 문자열을 ISO 형식('YYYY-MM-DD')으로 정규화하여 반환합니다.
+ */
+export function excelDateToISO(serial, defaultYear) {
+  const parts = parseDateParts(serial);
+  if (!parts) return "";
+  const yr = parts.hasYear ? parts.year : (defaultYear || new Date().getFullYear());
+  return `${yr}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
 }
 
 export function parseHeaderDate(val, defaultYear) {
   return excelDateToISO(val, defaultYear);
+}
+
+/**
+ * 마스터 스케줄에서 마일스톤(Activity)의 Start, End 날짜를 연도 전환(Cross-year) 및
+ * Project Start Date 기점 규칙에 맞추어 정확한 ISO 날짜(YYYY-MM-DD)로 변환합니다.
+ *
+ * 핵심 규칙:
+ * 1. 마일스톤은 Project Start Date 기점 이후로 시작되므로 Activity 별 시작일자는 자동으로 프로젝트 시작일 이후입니다.
+ * 2. 마일스톤이 순차 진행되면서 월이 12월 -> 1월/2월 등으로 넘어가면 연도가 +1년 바뀝니다.
+ * 3. 동일 Activity 내에서 종료일(End)의 월/일이 시작일(Start)보다 앞선 경우(예: 10월 24일 ~ 01월 13일), 종료일 연도는 +1년입니다.
+ */
+export function resolveMilestoneDates(sRaw, eRaw, durRaw, state = {}) {
+  const sParts = parseDateParts(sRaw);
+  const eParts = parseDateParts(eRaw);
+  if (!sParts || !eParts) return null;
+
+  const projStartDate = state.projectStartDate || "";
+  const baseYear = state.baseYear || (projStartDate ? parseInt(projStartDate.slice(0, 4), 10) : new Date().getFullYear());
+
+  // --- 1. Start 날짜 계산 ---
+  let startYear = state.currentYear || baseYear;
+  if (sParts.hasYear) {
+    startYear = sParts.year;
+  } else {
+    // 직전 마일스톤의 시작 월과 비교하여 월 역전(예: 8~12월 -> 1~6월) 발생 시 연도 +1
+    if (state.lastStartMonth !== undefined && state.lastStartMonth !== null) {
+      if (state.lastStartMonth >= 8 && sParts.month <= 6) {
+        startYear = Math.max(startYear, (state.lastStartYear || startYear) + 1);
+      } else if (state.lastStartMonth >= 7 && sParts.month < state.lastStartMonth && (state.lastStartMonth - sParts.month >= 4)) {
+        startYear = Math.max(startYear, (state.lastStartYear || startYear) + 1);
+      }
+    }
+
+    // 프로젝트 시작일 이후 보장 규칙: Activity 별 시작일자는 무조건 프로젝트 시작일 이후여야 함
+    if (projStartDate) {
+      let candDate = `${startYear}-${String(sParts.month).padStart(2, '0')}-${String(sParts.day).padStart(2, '0')}`;
+      if (candDate < projStartDate) {
+        startYear = Math.max(startYear + 1, parseInt(projStartDate.slice(0, 4), 10));
+        candDate = `${startYear}-${String(sParts.month).padStart(2, '0')}-${String(sParts.day).padStart(2, '0')}`;
+        if (candDate < projStartDate) {
+          startYear++;
+        }
+      }
+    }
+
+    // 직전 마일스톤 시작 연도보다 과거로 돌아가지 않도록 보장
+    if (state.lastStartYear && startYear < state.lastStartYear) {
+      startYear = state.lastStartYear;
+    }
+  }
+
+  const startDateIso = `${startYear}-${String(sParts.month).padStart(2, '0')}-${String(sParts.day).padStart(2, '0')}`;
+
+  // --- 2. End 날짜 계산 ---
+  let endYear = startYear;
+  if (eParts.hasYear) {
+    endYear = eParts.year;
+  } else {
+    let candEndDate = `${endYear}-${String(eParts.month).padStart(2, '0')}-${String(eParts.day).padStart(2, '0')}`;
+    // 종료일이 시작일보다 앞선 경우 (예: 10월 24일 시작, 01월 13일 종료) -> 다음 해로 넘어간 것(+1 year)!
+    if (candEndDate < startDateIso) {
+      endYear = startYear + 1;
+      candEndDate = `${endYear}-${String(eParts.month).padStart(2, '0')}-${String(eParts.day).padStart(2, '0')}`;
+    }
+
+    // Duration 값이 있는 경우 추가 검증
+    const duration = parseNum(durRaw);
+    if (duration > 60 && endYear === startYear) {
+      const d1 = new Date(startDateIso);
+      const d2 = new Date(candEndDate);
+      const diffDays = Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+      if (diffDays < 0 || Math.abs(diffDays - duration) > 100) {
+        const nextYearDate = new Date(`${startYear + 1}-${String(eParts.month).padStart(2, '0')}-${String(eParts.day).padStart(2, '0')}`);
+        const nextDiff = Math.round((nextYearDate - d1) / (1000 * 60 * 60 * 24)) + 1;
+        if (Math.abs(nextDiff - duration) < 5) {
+          endYear = startYear + 1;
+          candEndDate = `${endYear}-${String(eParts.month).padStart(2, '0')}-${String(eParts.day).padStart(2, '0')}`;
+        }
+      }
+    }
+  }
+
+  const endDateIso = `${endYear}-${String(eParts.month).padStart(2, '0')}-${String(eParts.day).padStart(2, '0')}`;
+
+  // State 업데이트 (다음 순차 마일스톤 연도 판별용)
+  state.currentYear = startYear;
+  state.lastStartYear = startYear;
+  state.lastStartMonth = sParts.month;
+  state.lastStartDay = sParts.day;
+  state.lastStartDate = startDateIso;
+
+  return { startDate: startDateIso, endDate: endDateIso };
 }
 
 /**
@@ -159,7 +297,7 @@ export function adjustProjectDates(project) {
     const da = m[3];
     if (!needYearShift && origY >= uploadYear) return dateStr;
     let yearOffset = Math.max(0, origY - minOrigYear);
-    if (firstMonth >= 8 && mo < firstMonth) {
+    if (firstMonth >= 6 && mo < firstMonth) {
       yearOffset = Math.max(yearOffset, 1);
     }
     const targetYear = baseStartYear + yearOffset;
@@ -174,6 +312,28 @@ export function adjustProjectDates(project) {
 
   let newStart = convertDate(project.startDate);
   let newEnd = convertDate(project.endDate);
+
+  // 마일스톤 날짜 전후 정합성 2차 안전 보정:
+  // 1) Activity 시작일자는 Project Start Date 기점 이후여야 함
+  // 2) Activity 종료일자는 시작일자 이후여야 함 (Cross-year)
+  cleanMs.forEach(ms => {
+    if (newStart && ms.startDate && ms.startDate < newStart) {
+      const parts = String(ms.startDate).split('-');
+      if (parts.length === 3) {
+        const correctedYear = parseInt(parts[0], 10) + 1;
+        ms.startDate = `${correctedYear}-${parts[1]}-${parts[2]}`;
+      }
+    }
+    if (ms.startDate && ms.endDate && ms.endDate < ms.startDate) {
+      const sYear = parseInt(ms.startDate.slice(0, 4), 10);
+      const parts = String(ms.endDate).split('-');
+      if (parts.length === 3) {
+        const eYear = Math.max(sYear, parseInt(parts[0], 10) + 1);
+        ms.endDate = `${eYear}-${parts[1]}-${parts[2]}`;
+      }
+    }
+  });
+
   let minD = "", maxD = "";
   cleanMs.forEach(m => {
     if (m.startDate && (!minD || m.startDate < minD)) minD = m.startDate;
@@ -516,7 +676,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
       const iso = parseHeaderDate(row[c], curYear);
       if (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
         const m = parseInt(iso.slice(5, 7), 10);
-        if (prevMonth !== null && prevMonth === 12 && m === 1) curYear++;
+        if (prevMonth !== null && ((prevMonth === 12 && m === 1) || (prevMonth >= 8 && m <= 5))) curYear++;
         prevMonth = m;
         curDates.push({ colIdx: c, dateStr: iso });
       }
@@ -670,9 +830,11 @@ export function parseExcelMasterPlan(wb, context = {}) {
       }
     }
 
-    const mStart = excelDateToISO(sRaw, refYear);
-    const mEnd = excelDateToISO(eRaw, refYear);
-    const isDateRow = Boolean(mStart && mEnd);
+    const sParts = parseDateParts(sRaw);
+    const eParts = parseDateParts(eRaw);
+    const isDateRow = Boolean(sParts && eParts);
+    const mStart = isDateRow ? excelDateToISO(sRaw, refYear) : "";
+    const mEnd = isDateRow ? excelDateToISO(eRaw, refYear) : "";
     const durRaw = colMap.duration !== undefined ? row[colMap.duration] : row[7];
 
     if (isDateRow) {
@@ -727,6 +889,8 @@ export function parseExcelMasterPlan(wb, context = {}) {
       !currentProject || effectiveEqStr !== currentProject.equipment || currentLine !== currentProject._lineNum || inManpowerSection
     );
 
+    const projRefYear = baseStartDate ? parseInt(baseStartDate.slice(0, 4), 10) : refYear;
+
     if (isEqStart) {
       inManpowerSection = false;
       mpDeptCol = -1;
@@ -745,6 +909,15 @@ export function parseExcelMasterPlan(wb, context = {}) {
         manufacturingNo: normalizeJVName(mfgNo),
         line: normalizeJVName(lineLabel || currentLine),
         _lineNum: currentLine,
+        _msState: {
+          projectStartDate: baseStartDate || context.formStartDate || "",
+          baseYear: projRefYear,
+          currentYear: projRefYear,
+          lastStartYear: projRefYear,
+          lastStartMonth: baseStartDate ? parseInt(baseStartDate.slice(5, 7), 10) : null,
+          lastStartDay: baseStartDate ? parseInt(baseStartDate.slice(8, 10), 10) : null,
+          lastStartDate: baseStartDate || ""
+        },
         milestones: [],
         _deptMap: {},
         _dailyTotalMap: {},
@@ -767,6 +940,15 @@ export function parseExcelMasterPlan(wb, context = {}) {
         manufacturingNo: normalizeJVName(mfgNo),
         line: normalizeJVName(lineLabel || currentLine),
         _lineNum: currentLine,
+        _msState: {
+          projectStartDate: baseStartDate || context.formStartDate || "",
+          baseYear: projRefYear,
+          currentYear: projRefYear,
+          lastStartYear: projRefYear,
+          lastStartMonth: baseStartDate ? parseInt(baseStartDate.slice(5, 7), 10) : null,
+          lastStartDay: baseStartDate ? parseInt(baseStartDate.slice(8, 10), 10) : null,
+          lastStartDate: baseStartDate || ""
+        },
         milestones: [],
         _deptMap: {},
         _dailyTotalMap: {},
@@ -883,14 +1065,28 @@ export function parseExcelMasterPlan(wb, context = {}) {
       continue;
     }
 
-    if (actStr && actStr !== "0" && mStart && mEnd && currentProject) {
+    if (actStr && actStr !== "0" && isDateRow && currentProject) {
       inManpowerSection = false;
-      currentProject.milestones.push({ name: normalizeJVName(actStr), startDate: mStart, endDate: mEnd });
+      const msResolved = resolveMilestoneDates(sRaw, eRaw, durRaw, currentProject._msState);
+      if (msResolved && msResolved.startDate && msResolved.endDate) {
+        currentProject.milestones.push({
+          name: normalizeJVName(actStr),
+          startDate: msResolved.startDate,
+          endDate: msResolved.endDate
+        });
+      } else if (mStart && mEnd) {
+        currentProject.milestones.push({
+          name: normalizeJVName(actStr),
+          startDate: mStart,
+          endDate: mEnd
+        });
+      }
     }
   }
 
   projects.forEach(p => {
     delete p._lineNum;
+    delete p._msState;
     if (Object.keys(p._deptMap).length > 0 || p._totalMandayVal > 0) {
       if (Object.keys(p._dailyTotalMap).length === 0) {
         dateCols.forEach(({ dateStr }) => {

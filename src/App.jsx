@@ -963,6 +963,12 @@ export default function App() {
 데이터에 여러 장비(Equipment) 또는 라인(Line)별 공정이 포함되어 있다면, 각각 개별 프로젝트로 분할하여 "projects" 배열에 넣어 반환하세요.
 각 장비 바로 아래에 위치한 공수(Mechanical, Vision, Vision Sub(비전 외주), Control, Electrical, Electrical Sub(전장 외주), Supervisor(슈퍼바이저), Safety(안전) 등 시트에 기재된 모든 부서) 표는 해당 장비 프로젝트의 "manpower"에 각각 1:1로 정확히 할당해야 합니다. 특히 "비전 외주", "전장 외주", "Supervisor(슈퍼바이저)"는 일반 비전/전장과 합치지 말고 반드시 별도 부서로 독립 추출해야 합니다.
 
+★ 마일스톤 날짜 및 연도 전환(Cross-year) 필수 규칙:
+1. 시트 상단에 기재된 'Project Start Date'(예: 2026-07-20)를 기준으로 마일스톤 일정을 결정합니다.
+2. 모든 마일스톤(Activity)의 시작일자는 자동으로 'Project Start Date' 이후여야 합니다.
+3. 마일스톤 표의 Start, End 날짜에 연도가 생략되어 있거나(예: '07월 28일', '01월 13일' 등), 마일스톤이 순서대로 진행되면서 연말에서 연초(10~12월 -> 1~2월)로 넘어가는 경우, 반드시 연도가 +1년 바뀐 것으로 인식해야 합니다. (예: Project Start Date가 2026-07-20일 때, 10월 24일 ~ 01월 13일 공정의 시작일은 2026-10-24, 종료일은 2027-01-13이며, 이후 01월 06일 공정은 2027-01-06입니다.)
+4. 동일 공정(Activity)의 종료일(endDate)은 시작일(startDate)보다 항상 같거나 뒤여야 합니다.
+
 JSON 출력 예시:
 {
  "projects": [

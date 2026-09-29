@@ -289,6 +289,15 @@ ${allText.substring(0, 30000)}
         setExpandedReports(next);
     };
 
+    const setAllSections = (expand) => {
+        const next = { upload: !expand, inputForm: !expand, reportList: !expand };
+        setCollapsedSections(next);
+        try {
+            localStorage.setItem('pm_issue_collapsed_sections', JSON.stringify(next));
+        } catch (e) {}
+        toggleAllReports(expand);
+    };
+
     const generatePPT = async () => {
         if (isGrade1) return notifyPermission('AI 통합 분석 & PPT 보고서');
         if (startDate > endDate) return setAnalyzeMsg('시작일이 종료일보다 클 수 없습니다.');
@@ -429,38 +438,39 @@ ${compiledText.substring(0, 30000)}
     return (
         <div className="issue-management-container">
             {/* 프로젝트 이슈 및 일보관리 시스템 메인 헤더 카드 (틀고정) */}
-            <div className="system-sticky-header" style={{
-                background: 'rgba(255, 255, 255, 0.95)',
-                backdropFilter: 'blur(12px)',
-                border: '1px solid #e1e4e8',
-                borderRadius: '12px',
-                padding: '16px 20px',
-                marginBottom: '16px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', width: '100%' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                        <div style={{
-                            width: '38px',
-                            height: '38px',
-                            background: 'linear-gradient(135deg, #0969da, #0284c7)',
-                            borderRadius: '10px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '1.25rem',
-                            boxShadow: '0 2px 8px rgba(9, 105, 218, 0.25)'
-                        }}>
+            <div className="system-sticky-header">
+                <div className="system-header-row">
+                    <div className="system-title-group">
+                        <div className="system-logo-icon">
                             📋
                         </div>
-                        <div>
-                            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#1e293b', letterSpacing: '-0.02em' }}>
-                                <span style={{ color: '#0969da' }}>프로젝트</span> 이슈 및 일보관리 시스템 (Issue & Daily Log Management)
+                        <div className="system-title-text">
+                            <h2>
+                                <span style={{ color: '#0969da', WebkitTextFillColor: '#0969da' }}>프로젝트</span> 이슈 및 일보관리 시스템 (Issue & Daily Log Management)
                             </h2>
-                            <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                            <p>
                                 공사일보 텍스트 축적 및 AI 기반 자동 PPT 보고서 생성
                             </p>
                         </div>
+                    </div>
+
+                    <div className="system-header-actions">
+                        <button
+                            type="button"
+                            onClick={() => setAllSections(true)}
+                            className="system-toggle-all-btn"
+                            title="이슈 및 일보관리의 모든 소항목 펼치기"
+                        >
+                            ▾ 전체 펼치기
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setAllSections(false)}
+                            className="system-toggle-all-btn"
+                            title="이슈 및 일보관리의 모든 소항목 접기"
+                        >
+                            ▴ 전체 접기
+                        </button>
                     </div>
                 </div>
 

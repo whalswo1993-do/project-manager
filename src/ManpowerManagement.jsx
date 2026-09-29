@@ -1984,45 +1984,29 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
   return (
     <div className="manpower-dashboard">
       {/* Top Header Card (틀고정) */}
-      <div className="mp-header-card system-sticky-header">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', width: '100%' }}>
-          <div className="mp-title-group">
-            <div className="mp-logo-icon">📊</div>
-            <div className="mp-title-text">
-              <h2><span style={{ color: "#0969da" }}>공수</span> 통합 관리 시스템 (Manpower Management)</h2>
+      <div className="system-sticky-header">
+        <div className="system-header-row">
+          <div className="system-title-group">
+            <div className="system-logo-icon">📊</div>
+            <div className="system-title-text">
+              <h2><span style={{ color: "#0969da", WebkitTextFillColor: "#0969da" }}>공수</span> 통합 관리 시스템 (Manpower Management)</h2>
               <p>마스터 플랜 기반 부서별 일일 투입 인원 및 전사 공수 종합 모니터링</p>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '6px' }}>
+          <div className="system-header-actions">
             <button
               type="button"
               onClick={() => setAllSections(false)}
-              style={{
-                padding: '5px 12px',
-                fontSize: '12px',
-                background: '#f8fafc',
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                color: '#334155',
-                fontWeight: 500
-              }}
+              className="system-toggle-all-btn"
+              title="공수 통합 관리의 모든 소항목 펼치기"
             >
               ▾ 전체 펼치기
             </button>
             <button
               type="button"
               onClick={() => setAllSections(true)}
-              style={{
-                padding: '5px 12px',
-                fontSize: '12px',
-                background: '#f8fafc',
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                color: '#334155',
-                fontWeight: 500
-              }}
+              className="system-toggle-all-btn"
+              title="공수 통합 관리의 모든 소항목 접기"
             >
               ▴ 전체 접기
             </button>

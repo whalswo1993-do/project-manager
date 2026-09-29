@@ -1524,55 +1524,26 @@ JSON 출력 예시:
         <>
           {/* 프로젝트 일정 관리 시스템 메인 헤더 카드 (틀고정) */}
           <div className="system-sticky-header">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', width: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  background: 'linear-gradient(135deg, #0969da, #0284c7)',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: '1.25rem',
-                  boxShadow: '0 2px 6px rgba(9, 105, 218, 0.25)'
-                }}>
+            <div className="system-header-row">
+              <div className="system-title-group">
+                <div className="system-logo-icon">
                   📅
                 </div>
-                <div>
-                  <h2 style={{
-                    margin: 0,
-                    fontSize: '1.25rem',
-                    fontWeight: 700,
-                    letterSpacing: '-0.02em',
-                    background: 'linear-gradient(90deg, #24292f 0%, #57606a 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}>
+                <div className="system-title-text">
+                  <h2>
                     <span style={{ color: '#0969da', WebkitTextFillColor: '#0969da' }}>프로젝트</span> 일정 관리 시스템 (Project Schedule Management)
                   </h2>
-                  <p style={{ margin: '3px 0 0 0', fontSize: '0.75rem', color: '#57606a' }}>
+                  <p>
                     마스터 스케줄 일정 계획, 마일스톤 Gantt 차트 및 프로젝트 종합 모니터링
                   </p>
                 </div>
               </div>
 
-              <div style={{ display: 'inline-flex', gap: '6px' }}>
+              <div className="system-header-actions">
                 <button
                   type="button"
                   onClick={() => setAllSections(true)}
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: '12px',
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    color: '#334155',
-                    fontWeight: 500
-                  }}
+                  className="system-toggle-all-btn"
                   title="프로젝트 일정의 모든 소항목 펼치기"
                 >
                   ▾ 전체 펼치기
@@ -1580,16 +1551,7 @@ JSON 출력 예시:
                 <button
                   type="button"
                   onClick={() => setAllSections(false)}
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: '12px',
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    color: '#334155',
-                    fontWeight: 500
-                  }}
+                  className="system-toggle-all-btn"
                   title="프로젝트 일정의 모든 소항목 접기"
                 >
                   ▴ 전체 접기

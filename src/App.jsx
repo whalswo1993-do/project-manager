@@ -457,7 +457,9 @@ export default function App() {
     const checkRemoteVersion = async () => {
       if (!currentBuildTime) return;
       try {
-        const res = await fetch(`/version.json?t=${Date.now()}`, {
+        const baseUrl = import.meta.env.BASE_URL || '/';
+        const targetUrl = `${baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'}version.json?t=${Date.now()}`;
+        const res = await fetch(targetUrl, {
           cache: "no-store",
           headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" }
         });

@@ -994,7 +994,7 @@ ${compiledText.substring(0, 30000)}
 
                         <div style={{marginTop: '1rem', marginBottom: '1rem'}}>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                                <div className="panel-title" style={{margin: 0}}>공사일보 파일 첨부 및 표 붙여넣기</div>
+                                <div className="panel-title" style={{margin: 0, fontSize: '0.8rem', whiteSpace: 'nowrap'}}>공사일보 파일 첨부 및 표 붙여넣기</div>
                                 <button
                                     type="button"
                                     onClick={() => toggleSection('upload')}
@@ -1120,36 +1120,51 @@ ${compiledText.substring(0, 30000)}
                         </div>
 
                         <div>
-                            <div className="panel-title" style={{fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems:'center'}}>
-                                <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-                                    <span>공사일보 데이터 ({extractedReports.length}일치 직접입력 등록)</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => toggleSection('inputForm')}
-                                        style={{
-                                            background: collapsedSections.inputForm ? '#3b82f6' : '#f1f5f9',
-                                            color: collapsedSections.inputForm ? '#fff' : '#475569',
-                                            border: '1px solid #cbd5e1',
-                                            borderRadius: '4px',
-                                            padding: '1px 6px',
-                                            fontSize: '10px',
-                                            cursor: 'pointer'
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: !collapsedSections.inputForm ? '6px' : '0'}}>
+                                <div style={{fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>
+                                    공사일보 데이터 ({extractedReports.length}일치 직접입력 등록)
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => toggleSection('inputForm')}
+                                    style={{
+                                        background: collapsedSections.inputForm ? '#3b82f6' : '#f1f5f9',
+                                        color: collapsedSections.inputForm ? '#fff' : '#475569',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '4px',
+                                        padding: '2px 8px',
+                                        fontSize: '11px',
+                                        whiteSpace: 'nowrap',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {collapsedSections.inputForm ? '▸ 펼치기' : '▾ 접기'}
+                                </button>
+                            </div>
+                            
+                            {!collapsedSections.inputForm && (
+                                <div style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', marginBottom: '8px', fontSize: '11px', whiteSpace: 'nowrap'}}>
+                                    <span
+                                        style={{color: isGrade1 ? '#9ca3af' : 'var(--primary)', cursor: isGrade1 ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap'}}
+                                        onClick={() => {
+                                            if (isGrade1) return notifyPermission('일보 등록 및 편집');
+                                            setExtractedReports([...extractedReports, {date: new Date().toISOString().slice(0,10), work_details:'', special_notes:'', personnel_count:0, pm_count:0, design_count:0, facility_count:0, control_count:0, vision_count:0}]);
                                         }}
                                     >
-                                        {collapsedSections.inputForm ? '▸ 펼치기' : '▾ 접기'}
-                                    </button>
+                                        + 일자 추가 {isGrade1 && "🔒"}
+                                    </span>
+                                    <span style={{color: '#cbd5e1'}}>|</span>
+                                    <span
+                                        style={{color: isGrade1 ? '#9ca3af' : 'var(--danger)', cursor: isGrade1 ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap'}}
+                                        onClick={() => {
+                                            if (isGrade1) return notifyPermission('일보 등록 및 편집');
+                                            setExtractedReports([{date: new Date().toISOString().slice(0, 10), work_details: '', special_notes: '', personnel_count: 0, pm_count:0, design_count:0, facility_count:0, control_count:0, vision_count:0}]);
+                                        }}
+                                    >
+                                        초기화
+                                    </span>
                                 </div>
-                                <div style={{display:'flex', gap:'8px'}}>
-                                    <span style={{color: isGrade1 ? '#9ca3af' : 'var(--primary)', cursor: 'pointer'}} onClick={() => {
-                                        if (isGrade1) return notifyPermission('일보 등록 및 편집');
-                                        setExtractedReports([...extractedReports, {date: new Date().toISOString().slice(0,10), work_details:'', special_notes:'', personnel_count:0, pm_count:0, design_count:0, facility_count:0, control_count:0, vision_count:0}]);
-                                    }}>+ 일자 추가 {isGrade1 && "🔒"}</span>
-                                    <span style={{color: isGrade1 ? '#9ca3af' : 'var(--danger)', cursor: 'pointer'}} onClick={() => {
-                                        if (isGrade1) return notifyPermission('일보 등록 및 편집');
-                                        setExtractedReports([{date: new Date().toISOString().slice(0, 10), work_details: '', special_notes: '', personnel_count: 0, pm_count:0, design_count:0, facility_count:0, control_count:0, vision_count:0}]);
-                                    }}>초기화</span>
-                                </div>
-                            </div>
+                            )}
                             
                             {!collapsedSections.inputForm ? (
                                 <>
@@ -1216,6 +1231,9 @@ ${compiledText.substring(0, 30000)}
                                         textAlign: 'center',
                                         color: '#64748b',
                                         fontSize: '12px',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
                                         cursor: 'pointer',
                                         marginBottom: '10px'
                                     }}

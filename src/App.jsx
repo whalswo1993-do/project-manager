@@ -283,6 +283,49 @@ export default function App() {
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const masterPlanInput = useRef(null);
 
+  // 간트차트 기간 필터 상태 관리 (localStorage 연동)
+  const [ganttStartDate, setGanttStartDate] = useState(() => {
+    try { return localStorage.getItem('pm_gantt_start_date') || ""; } catch (e) { return ""; }
+  });
+  const [ganttEndDate, setGanttEndDate] = useState(() => {
+    try { return localStorage.getItem('pm_gantt_end_date') || ""; } catch (e) { return ""; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('pm_gantt_start_date', ganttStartDate); } catch (e) {}
+  }, [ganttStartDate]);
+
+  useEffect(() => {
+    try { localStorage.setItem('pm_gantt_end_date', ganttEndDate); } catch (e) {}
+  }, [ganttEndDate]);
+
+  const setQuickRange = (type) => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth(); // 0-indexed
+
+    if (type === 'thisMonth') {
+      const first = new Date(y, m, 1);
+      const last = new Date(y, m + 1, 0);
+      setGanttStartDate(first.toISOString().slice(0, 10));
+      setGanttEndDate(last.toISOString().slice(0, 10));
+    } else if (type === 'nextMonth') {
+      const first = new Date(y, m + 1, 1);
+      const last = new Date(y, m + 2, 0);
+      setGanttStartDate(first.toISOString().slice(0, 10));
+      setGanttEndDate(last.toISOString().slice(0, 10));
+    } else if (type === 'thisQuarter') {
+      const qStartMonth = Math.floor(m / 3) * 3;
+      const first = new Date(y, qStartMonth, 1);
+      const last = new Date(y, qStartMonth + 3, 0);
+      setGanttStartDate(first.toISOString().slice(0, 10));
+      setGanttEndDate(last.toISOString().slice(0, 10));
+    } else if (type === 'thisYear') {
+      setGanttStartDate(`${y}-01-01`);
+      setGanttEndDate(`${y}-12-31`);
+    }
+  };
+
   // 프로젝트 일정 소항목 접기/펼치기 상태 관리 (localStorage 연동)
   const [collapsedSections, setCollapsedSections] = useState(() => {
     try {
@@ -629,6 +672,27 @@ export default function App() {
       projectColor: COLORS[i % COLORS.length]
     }));
   }, [projects, search, filter, siteFilter, personFilter]);
+
+  // 간트차트 기간 필터가 적용된 프로젝트 목록
+  const ganttView = useMemo(() => {
+    if (!ganttStartDate && !ganttEndDate) {
+      return view;
+    }
+    return view.filter(p => {
+      const pStart = p.startDate || "";
+      const pEnd = p.endDate || "";
+      if (ganttStartDate && ganttEndDate) {
+        return (!pStart || pStart <= ganttEndDate) && (!pEnd || pEnd >= ganttStartDate);
+      }
+      if (ganttStartDate) {
+        return !pEnd || pEnd >= ganttStartDate;
+      }
+      if (ganttEndDate) {
+        return !pStart || pStart <= ganttEndDate;
+      }
+      return true;
+    });
+  }, [view, ganttStartDate, ganttEndDate]);
 
   async function save() {
     if (!editing && !create) return showPermissionModal("새 프로젝트 생성");
@@ -1181,8 +1245,21 @@ JSON 출력 예시:
     }
   }
 
-  const gs = view.length ? new Date(Math.min(...view.flatMap(p => [dt(p.startDate).getTime(), ...(p.milestones || []).map(m => dt(m.startDate).getTime())]))) : dt(iso());
-  const ge = view.length ? new Date(Math.max(...view.flatMap(p => [dt(p.endDate).getTime(), ...(p.milestones || []).map(m => dt(m.endDate).getTime())]))) : new Date(gs.getTime() + DAY);
+  const ganttBase = ganttView;
+  const gs = ganttBase.length
+    ? new Date(Math.min(
+        ...(ganttStartDate ? [dt(ganttStartDate).getTime()] : []),
+        ...ganttBase.flatMap(p => [dt(p.startDate).getTime(), ...(p.milestones || []).map(m => dt(m.startDate).getTime())])
+      ))
+    : (ganttStartDate ? dt(ganttStartDate) : dt(iso()));
+
+  const ge = ganttBase.length
+    ? new Date(Math.max(
+        ...(ganttEndDate ? [dt(ganttEndDate).getTime()] : []),
+        ...ganttBase.flatMap(p => [dt(p.endDate).getTime(), ...(p.milestones || []).map(m => dt(m.endDate).getTime())])
+      ))
+    : (ganttEndDate ? dt(ganttEndDate) : new Date(gs.getTime() + DAY));
+
   const span = Math.max(DAY, ge - gs + DAY);
   const pos = d => Math.max(0, Math.min(100, (dt(d) - gs) / span * 100));
   const barW = (s, e) => Math.max(1, (dt(e) - dt(s) + DAY) / span * 100);
@@ -1853,7 +1930,7 @@ JSON 출력 예시:
               if (e.target.tagName !== 'BUTTON') toggleSection('gantt');
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2>프로젝트 간트차트</h2>
+                <h2>프로젝트 간트차트 {ganttView.length > 0 && <span style={{ fontSize: '14px', color: '#2563eb', fontWeight: 'normal' }}>({ganttView.length}건)</span>}</h2>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); toggleSection('gantt'); }}
@@ -1877,68 +1954,234 @@ JSON 출력 예시:
                   onClick={async (e) => {
                     e.stopPropagation();
                     if (isGrade1) return showPermissionModal("간트차트 PPT 내보내기");
+                    if (!ganttView.length) return setMsg("내보낼 프로젝트가 없습니다.");
                     setMsg("간트차트 PPT 생성 중...");
                     try {
-                      await exportGanttReport(view, { filter, siteFilter, personFilter, search });
+                      const periodLabel = (ganttStartDate || ganttEndDate)
+                        ? ` (기간: ${ganttStartDate || '시작'} ~ ${ganttEndDate || '종료'})`
+                        : '';
+                      await exportGanttReport(ganttView, { filter: filter + periodLabel, siteFilter, personFilter, search });
                       setMsg("간트차트 PPT를 완료했습니다.");
                     } catch (error) {
                       setMsg("PPT 생성 실패: " + error.message);
                     }
                   }}
                 >
-                  PPT 내보내기 {isGrade1 && "🔒"}
+                  PPT 내보내기 ({ganttView.length}건) {isGrade1 && "🔒"}
                 </button>
               </div>
             </div>
+
             {!collapsedSections.gantt ? (
-              <div className="gantt">
-                <div className="axis">
-                  <span>{iso(gs)}</span>
-                  <span>{iso(ge)}</span>
-                </div>
-                {view.map(p => (
-                  <div className="gblock" key={p.id}>
-                    <div className="grow">
-                      <button className="toggle" onClick={() => setGanttExpanded({ ...ganttExpanded, [p.id]: !ganttExpanded[p.id] })}>
-                        {ganttExpanded[p.id] ? "▾" : "▸"}
-                      </button>
-                      <div className="glabel">
-                        {p.manufacturingNo ? (
-                          <b style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
-                            {p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')}
-                          </b>
-                        ) : null}
-                        <b style={{ marginTop: '1px', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
-                          {p.name}
-                        </b>
-                        <small style={{ marginTop: '1px', fontSize: '8px' }}>{p.site} · {p.line || "-"}</small>
-                      </div>
-                      <div className="track">
-                        <div className="projectbar" style={{ left: pos(p.startDate) + "%", width: Math.min(barW(p.startDate, p.endDate), 100 - pos(p.startDate)) + "%", background: p.projectColor }}>
-                          <i style={{ width: p.value + "%" }} />
-                          <span>{p.value}%</span>
-                        </div>
-                        <div className="today" style={{ left: pos(iso()) + "%" }} />
-                      </div>
-                    </div>
-                    {ganttExpanded[p.id] && p.milestones.map(m => (
-                      <div className="grow sub" key={m.id}>
-                        <span />
-                        <div className="glabel">
-                          <span style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{m.name}</span>
-                          <small style={{ fontSize: '8px' }}>{m.startDate} ~ {m.endDate}</small>
-                        </div>
-                        <div className="track">
-                          <div className="msbar" style={{ left: pos(m.startDate) + "%", width: Math.min(barW(m.startDate, m.endDate), 100 - pos(m.startDate)) + "%", borderColor: p.projectColor, background: p.projectColor + "38" }}>
-                            <i style={{ width: pct(m.startDate, m.endDate) + "%", background: p.projectColor }} />
-                          </div>
-                          <div className="today" style={{ left: pos(iso()) + "%" }} />
-                        </div>
-                      </div>
-                    ))}
+              <>
+                {/* 간트차트 기간 필터 툴바 */}
+                <div style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  alignItems: 'center',
+                  background: '#f8fafc',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  marginBottom: '10px'
+                }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#334155', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    📅 <b>진행 기간 설정:</b>
+                  </span>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <input
+                      type="date"
+                      value={ganttStartDate}
+                      onChange={e => setGanttStartDate(e.target.value)}
+                      style={{ padding: '3px 8px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '4px', height: '28px', background: '#fff' }}
+                      title="간트차트 조회 시작일"
+                    />
+                    <span style={{ fontSize: '12px', color: '#64748b' }}>~</span>
+                    <input
+                      type="date"
+                      value={ganttEndDate}
+                      onChange={e => setGanttEndDate(e.target.value)}
+                      style={{ padding: '3px 8px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '4px', height: '28px', background: '#fff' }}
+                      title="간트차트 조회 종료일"
+                    />
                   </div>
-                ))}
-              </div>
+
+                  <div style={{ display: 'inline-flex', gap: '4px', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => setQuickRange('thisMonth')}
+                      style={{ padding: '3px 8px', fontSize: '11px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#475569' }}
+                    >
+                      이번 달
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickRange('nextMonth')}
+                      style={{ padding: '3px 8px', fontSize: '11px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#475569' }}
+                    >
+                      다음 달
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickRange('thisQuarter')}
+                      style={{ padding: '3px 8px', fontSize: '11px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#475569' }}
+                    >
+                      이번 분기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickRange('thisYear')}
+                      style={{ padding: '3px 8px', fontSize: '11px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#475569' }}
+                    >
+                      올해 전체
+                    </button>
+                    {(ganttStartDate || ganttEndDate) && (
+                      <button
+                        type="button"
+                        onClick={() => { setGanttStartDate(''); setGanttEndDate(''); }}
+                        style={{ padding: '3px 8px', fontSize: '11px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        ✕ 기간 초기화
+                      </button>
+                    )}
+                  </div>
+
+                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#64748b' }}>
+                    {ganttStartDate || ganttEndDate ? (
+                      <span>
+                        기간 내 진행: <b style={{ color: '#2563eb' }}>{ganttView.length}</b>건
+                        <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '4px' }}>(전체 {view.length}건 중)</span>
+                      </span>
+                    ) : (
+                      <span>전체 프로젝트: <b>{view.length}</b>건</span>
+                    )}
+                  </span>
+                </div>
+
+                <div className="gantt">
+                  <div className="axis">
+                    <span>{iso(gs)}</span>
+                    {(ganttStartDate || ganttEndDate) && (
+                      <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 'bold' }}>
+                        조회기간: {ganttStartDate || '시작'} ~ {ganttEndDate || '종료'}
+                      </span>
+                    )}
+                    <span>{iso(ge)}</span>
+                  </div>
+
+                  {ganttView.length === 0 ? (
+                    <div style={{
+                      padding: '36px 16px',
+                      textAlign: 'center',
+                      color: '#64748b',
+                      background: '#f8fafc',
+                      borderRadius: '8px',
+                      border: '1px dashed #cbd5e1',
+                      margin: '12px 0'
+                    }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                        🔍 설정하신 기간 동안 진행되는 프로젝트가 없습니다.
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>
+                        설정 기간: <b>{ganttStartDate || '처음'}</b> ~ <b>{ganttEndDate || '끝'}</b>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setGanttStartDate(''); setGanttEndDate(''); }}
+                        style={{
+                          marginTop: '10px',
+                          padding: '5px 12px',
+                          fontSize: '12px',
+                          background: '#2563eb',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        기간 필터 초기화 (전체 보기)
+                      </button>
+                    </div>
+                  ) : (
+                    ganttView.map(p => (
+                      <div className="gblock" key={p.id}>
+                        <div className="grow">
+                          <button className="toggle" onClick={() => setGanttExpanded({ ...ganttExpanded, [p.id]: !ganttExpanded[p.id] })}>
+                            {ganttExpanded[p.id] ? "▾" : "▸"}
+                          </button>
+                          <div className="glabel">
+                            {p.manufacturingNo ? (
+                              <b style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
+                                {p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')}
+                              </b>
+                            ) : null}
+                            <b style={{ marginTop: '1px', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
+                              {p.name}
+                            </b>
+                            <small style={{ marginTop: '1px', fontSize: '8px' }}>{p.site} · {p.line || "-"}</small>
+                          </div>
+                          <div className="track">
+                            {(ganttStartDate || ganttEndDate) && (
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  left: `${ganttStartDate ? pos(ganttStartDate) : 0}%`,
+                                  width: `${Math.max(0, (ganttEndDate ? pos(ganttEndDate) : 100) - (ganttStartDate ? pos(ganttStartDate) : 0))}%`,
+                                  top: 0,
+                                  bottom: 0,
+                                  backgroundColor: 'rgba(59, 130, 246, 0.06)',
+                                  borderLeft: ganttStartDate ? '1px dashed #60a5fa' : 'none',
+                                  borderRight: ganttEndDate ? '1px dashed #60a5fa' : 'none',
+                                  pointerEvents: 'none',
+                                  zIndex: 0
+                                }}
+                              />
+                            )}
+                            <div className="projectbar" style={{ left: pos(p.startDate) + "%", width: Math.min(barW(p.startDate, p.endDate), 100 - pos(p.startDate)) + "%", background: p.projectColor }}>
+                              <i style={{ width: p.value + "%" }} />
+                              <span>{p.value}%</span>
+                            </div>
+                            <div className="today" style={{ left: pos(iso()) + "%" }} />
+                          </div>
+                        </div>
+                        {ganttExpanded[p.id] && p.milestones.map(m => (
+                          <div className="grow sub" key={m.id}>
+                            <span />
+                            <div className="glabel">
+                              <span style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{m.name}</span>
+                              <small style={{ fontSize: '8px' }}>{m.startDate} ~ {m.endDate}</small>
+                            </div>
+                            <div className="track">
+                              {(ganttStartDate || ganttEndDate) && (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    left: `${ganttStartDate ? pos(ganttStartDate) : 0}%`,
+                                    width: `${Math.max(0, (ganttEndDate ? pos(ganttEndDate) : 100) - (ganttStartDate ? pos(ganttStartDate) : 0))}%`,
+                                    top: 0,
+                                    bottom: 0,
+                                    backgroundColor: 'rgba(59, 130, 246, 0.06)',
+                                    borderLeft: ganttStartDate ? '1px dashed #60a5fa' : 'none',
+                                    borderRight: ganttEndDate ? '1px dashed #60a5fa' : 'none',
+                                    pointerEvents: 'none',
+                                    zIndex: 0
+                                  }}
+                                />
+                              )}
+                              <div className="msbar" style={{ left: pos(m.startDate) + "%", width: Math.min(barW(m.startDate, m.endDate), 100 - pos(m.startDate)) + "%", borderColor: p.projectColor, background: p.projectColor + "38" }}>
+                                <i style={{ width: pct(m.startDate, m.endDate) + "%", background: p.projectColor }} />
+                              </div>
+                              <div className="today" style={{ left: pos(iso()) + "%" }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
             ) : (
               <div 
                 onClick={() => toggleSection('gantt')}
@@ -1954,7 +2197,14 @@ JSON 출력 예시:
                   margin: '8px 0'
                 }}
               >
-                📊 프로젝트 간트차트가 접혀 있습니다. (클릭하여 펼치기 ▾)
+                📊 프로젝트 간트차트가 접혀 있습니다.
+                {ganttStartDate || ganttEndDate ? (
+                  <span style={{ color: '#2563eb', fontWeight: 600 }}>
+                    {' '}(설정 기간: {ganttStartDate || '처음'} ~ {ganttEndDate || '끝'}, {ganttView.length}건 진행)
+                  </span>
+                ) : (
+                  <span> ({view.length}건)</span>
+                )} (클릭하여 펼치기 ▾)
               </div>
             )}
           </section>

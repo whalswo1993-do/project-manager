@@ -32,7 +32,7 @@ import {
 
 const DAY = 86400000;
 const STATUSES = ["검토중", "PO대기중", "제작 및 운송중", "진행중", "완료"];
-const DEPTS = ["PM", "설계", "설비기술", "기구", "기구 외주", "비전", "비전 외주", "제어", "제어 외주", "전장", "전장 외주", "Supervisor", "안전", "소장"];
+const DEPTS = ["소장", "설계", "설비기술", "기구", "기구 외주", "비전", "비전 외주", "제어", "제어 외주", "전장", "전장 외주", "Supervisor", "안전"];
 const COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#d946ef", "#f43f5e", "#14b8a6", "#84cc16", "#6366f1", "#a855f7", "#10b981", "#f59e0b"];
 
 const iso = (d = new Date()) => d.toISOString().slice(0, 10);
@@ -194,7 +194,7 @@ export default function App() {
   const [msg, setMsg] = useState("");
   const [newSite, setNewSite] = useState("");
   const [newPerson, setNewPerson] = useState("");
-  const [newDept, setNewDept] = useState("PM");
+  const [newDept, setNewDept] = useState("소장");
   const VALID_VIEWS = ["projects", "manpower", "issues", "quotations", "vision-spc"];
 
   const [currentView, setCurrentView] = useState(() => {
@@ -1168,7 +1168,7 @@ export default function App() {
 
       const prompt = `당신은 프로젝트 일정표(Master Plan) 및 공수(Manpower) 데이터를 분석하는 전문가입니다. 첨부된 데이터(이미지 또는 엑셀 텍스트)를 분석하여 아래 JSON 구조로만 데이터를 추출하세요.
 데이터에 여러 장비(Equipment) 또는 라인(Line)별 공정이 포함되어 있다면, 각각 개별 프로젝트로 분할하여 "projects" 배열에 넣어 반환하세요.
-각 장비 바로 아래에 위치한 공수(Mechanical, Vision, Vision Sub(비전 외주), Control, Electrical, Electrical Sub(전장 외주), Supervisor(슈퍼바이저), Safety(안전) 등 시트에 기재된 모든 부서) 표는 해당 장비 프로젝트의 "manpower"에 각각 1:1로 정확히 할당해야 합니다. 특히 "비전 외주", "전장 외주", "Supervisor(슈퍼바이저)"는 일반 비전/전장과 합치지 말고 반드시 별도 부서로 독립 추출해야 합니다.
+각 장비 바로 아래에 위치한 공수(Mechanical, Vision, Vision Sub(비전 외주), Control, Electrical, Electrical Sub(전장 외주), Supervisor(슈퍼바이저), Safety(안전), 소장/Manager/PM 등 시트에 기재된 모든 부서) 표는 해당 장비 프로젝트의 "manpower"에 각각 1:1로 정확히 할당해야 합니다. 특히 "비전 외주", "전장 외주", "Supervisor(슈퍼바이저)"는 일반 비전/전장과 합치지 말고 반드시 별도 부서로 독립 추출해야 하며, PM 및 소장은 "소장"으로 부서명을 통일하여 추출해야 합니다.
 
 ★ 마일스톤 날짜 및 연도 전환(Cross-year) 필수 규칙:
 1. 시트 상단에 기재된 'Project Start Date'(예: 2026-07-20)를 기준으로 마일스톤 일정을 결정합니다.
@@ -1710,7 +1710,7 @@ JSON 출력 예시:
                   </div>
 
                   <div className="people">
-                    <PersonField label="PM 담당자" value={form.pm} disabled={role === "grade2"} onChange={v => setForm({ ...form, pm: v })} dept="PM" people={people} />
+                    <PersonField label="소장(Manager) 담당자" value={form.pm} disabled={role === "grade2"} onChange={v => setForm({ ...form, pm: v })} dept="소장" people={people} />
                     <PersonField label="설계 담당자" value={form.design} disabled={role === "grade2"} onChange={v => setForm({ ...form, design: v })} dept="설계" people={people} />
                     <PersonField label="설비기술 담당자" value={form.facilityTechnology} disabled={role === "grade2"} onChange={v => setForm({ ...form, facilityTechnology: v })} dept="설비기술" people={people} />
                     <PersonField label="제어 담당자" value={form.control} disabled={role === "grade2"} onChange={v => setForm({ ...form, control: v })} dept="제어" people={people} />
@@ -2400,7 +2400,7 @@ JSON 출력 예시:
                         {p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}
                       </h3>
                       <p>
-                        {p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} &nbsp;|&nbsp; PM {p.pm || "-"} · 설계 {p.design || "-"} · 설비 {p.facilityTechnology || "-"} · 제어 {p.control || "-"} · 비전 {p.vision || "-"} &nbsp;|&nbsp; {p.startDate} ~ {p.endDate} · <b style={{ color: p.isManualStatus ? (p.status === "PO대기중" ? '#dc2626' : '#d97706') : 'inherit' }}>{p.status}</b>
+                        {p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} &nbsp;|&nbsp; 소장 {p.pm || p.manager || "-"} · 설계 {p.design || "-"} · 설비 {p.facilityTechnology || "-"} · 제어 {p.control || "-"} · 비전 {p.vision || "-"} &nbsp;|&nbsp; {p.startDate} ~ {p.endDate} · <b style={{ color: p.isManualStatus ? (p.status === "PO대기중" ? '#dc2626' : '#d97706') : 'inherit' }}>{p.status}</b>
                       </p>
                       {p.isManualStatus && (
                         <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#fffbeb', border: '1px solid #f59e0b', padding: '4px 9px', borderRadius: '6px', fontSize: '11px', color: '#b45309', fontWeight: '600' }}>
@@ -2567,7 +2567,7 @@ JSON 출력 예시:
                           style={{ padding: "6px 8px", fontSize: "13px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
                         >
                           <option value="admin">관리자</option>
-                          <option value="grade3">Grade3 (PM)</option>
+                          <option value="grade3">Grade3 (소장)</option>
                           <option value="grade2">Grade2 (각 부서 담당자)</option>
                           <option value="grade1">Grade1 (일반)</option>
                         </select>
@@ -2633,18 +2633,21 @@ JSON 출력 예시:
                   <input value={newPerson} onChange={e => setNewPerson(e.target.value)} />
                   <button onClick={() => add("personnel")}>추가</button>
                 </div>
-                {DEPTS.map(d => (
-                  <div key={d}>
-                    <b>{d}</b>
-                    <div className="tags">
-                      {people.filter(p => p.department === d).map(p => (
-                        <button key={p.id} onContextMenu={e => { e.preventDefault(); trash("personnel", p); }}>
-                          {p.name}
-                        </button>
-                      ))}
+                {DEPTS.map(d => {
+                  const isMgr = (d === "소장");
+                  return (
+                    <div key={d}>
+                      <b>{d === "소장" ? "소장 (Manager)" : d}</b>
+                      <div className="tags">
+                        {people.filter(p => isMgr ? (p.department === "소장" || p.department === "PM") : p.department === d).map(p => (
+                          <button key={p.id} onContextMenu={e => { e.preventDefault(); trash("personnel", p); }}>
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </>
             )}
           </div>
@@ -2720,12 +2723,13 @@ function Manage({ title, rows, value, setValue, add, trash }) {
 }
 
 function PersonField({ label, value, disabled, onChange, dept, people }) {
+  const isMgr = (dept === "소장" || dept === "PM");
   return (
     <label>
       {label}
       <input list={dept} value={value} disabled={disabled} onChange={e => onChange(e.target.value)} />
       <datalist id={dept}>
-        {people.filter(x => x.department === dept).map(x => <option key={x.id} value={x.name} />)}
+        {people.filter(x => isMgr ? (x.department === "소장" || x.department === "PM") : x.department === dept).map(x => <option key={x.id} value={x.name} />)}
       </datalist>
     </label>
   );

@@ -140,7 +140,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
             const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
             const prompt = `
 다음은 현장 공사일보(엑셀)의 원본 텍스트입니다. 이 내용에서 일자별로 데이터를 분류하여 3가지 주요 정보(작업내용, 특이사항, 투입인원)를 추출해주세요.
-특히 투입인원은 부서별(PM, 설계, 설비기술, 제어, 비전)로 세분화하여 파악해주세요. 파악할 수 없는 인원은 기타(personnel_count)로 합산하세요.
+특히 투입인원은 부서별(소장/Manager, 설계, 설비기술, 제어, 비전)로 세분화하여 파악해주세요. 파악할 수 없는 인원은 기타(personnel_count)로 합산하세요.
 결과는 반드시 아래 JSON 배열 포맷으로만 반환해주세요. (마크다운 포맷이나 백틱을 절대로 포함하지 마세요.)
 **중요: 텍스트에 연도(Year)가 표기되어 있지 않은 경우, 반드시 올해(${new Date().getFullYear()}년)를 기준으로 날짜를 작성하세요.**
 
@@ -151,7 +151,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
     "work_details": "해당 일자의 진행 작업(업무) 내용 요약 (다중 라인은 \\n 사용)",
     "special_notes": "특이사항, 이슈사항, 문제점, 지연 사유 등 요약 (없으면 빈 문자열)",
     "personnel_count": 부서 파악이 안되는 기타 인원수 합계 (숫자),
-    "pm_count": PM 투입 인원 (숫자),
+    "pm_count": 소장(Manager/PM) 투입 인원 (숫자),
     "design_count": 설계 투입 인원 (숫자),
     "facility_count": 설비기술 투입 인원 (숫자),
     "control_count": 제어 투입 인원 (숫자),
@@ -594,7 +594,7 @@ ${compiledText.substring(0, 30000)}
                                                 <div>
                                                     <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom:'4px', display:'block'}}>투입 인원 실적</label>
                                                     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'4px'}}>
-                                                        <div style={{fontSize:'0.7rem'}}>PM <input type="number" value={report.pm_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].pm_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
+                                                        <div style={{fontSize:'0.7rem'}}>소장 <input type="number" value={report.pm_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].pm_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
                                                         <div style={{fontSize:'0.7rem'}}>설계 <input type="number" value={report.design_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].design_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
                                                         <div style={{fontSize:'0.7rem'}}>설비 <input type="number" value={report.facility_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].facility_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
                                                         <div style={{fontSize:'0.7rem'}}>제어 <input type="number" value={report.control_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].control_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
@@ -727,7 +727,7 @@ ${compiledText.substring(0, 30000)}
                                                         <div>
                                                             <div style={{fontWeight: 600, color: '#1f2328', marginBottom: '0.3rem'}}>투입 인원 실적 (총 {(report.pm_count||0)+(report.design_count||0)+(report.facility_count||0)+(report.control_count||0)+(report.vision_count||0)+(report.personnel_count||0)}명)</div>
                                                             <div style={{display:'flex', gap:'8px', flexWrap:'wrap', fontSize:'0.75rem', background:'#fff', padding:'6px', borderRadius:'4px', border:'1px solid #e1e4e8'}}>
-                                                                {report.pm_count > 0 && <span>PM: {report.pm_count}</span>}
+                                                                {report.pm_count > 0 && <span>소장: {report.pm_count}</span>}
                                                                 {report.design_count > 0 && <span>설계: {report.design_count}</span>}
                                                                 {report.facility_count > 0 && <span>설비: {report.facility_count}</span>}
                                                                 {report.control_count > 0 && <span>제어: {report.control_count}</span>}

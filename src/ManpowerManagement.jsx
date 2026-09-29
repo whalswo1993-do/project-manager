@@ -107,14 +107,11 @@ function normalizeDeptKey(key) {
   // Safety vs 소장 distinction:
   // "Safety Manager (소장)" -> manager
   // "Safety Manager(안전)" -> safety
-  if (/safety.*소장|소장.*safety/i.test(s)) return "manager";
-  if (/safety|안전|safe/i.test(s)) return "safety";
-  if (/manager|소장|현장대리인|site mgr|field mgr/i.test(s)) return "manager";
+  if (/manager|소장|현장대리인|site mgr|field mgr|\bpm\b|project\s*manager/i.test(s)) return "manager";
 
   if (/vision|비전|비젼|vis/i.test(s)) return "vision";
   if (/control|제어|cont/i.test(s)) return "control";
   if (/electrical|electronical|전장|전기|elec/i.test(s)) return "electrical";
-  if (/^pm$/i.test(s)) return "pm";
   if (/설계|design/i.test(s)) return "design";
 
   return s;
@@ -173,7 +170,7 @@ function renderProjectDetailCard(slide, p, yTop, C, activeDeptKeys = BASE_DEPT_O
     [
       { text: `[${normalizeJVName(p.manufacturingNo) || "제조번호 없음"}]  `, options: { bold: true, color: "93C5FD", fontSize: 11 } },
       { text: `${normalizeJVName(p.name)}  `, options: { bold: true, color: C.white, fontSize: 12 } },
-      { text: `(Site: ${normalizeJVName(p.site) || "-"} | Line: ${normalizeJVName(p.line) || "-"} | PM: ${p.pm || "-"})`, options: { color: "CBD5E1", fontSize: 9 } }
+      { text: `(Site: ${normalizeJVName(p.site) || "-"} | Line: ${normalizeJVName(p.line) || "-"} | 소장: ${p.pm || p.manager || "-"})`, options: { color: "CBD5E1", fontSize: 9 } }
     ],
     { x: 0.8, y: yTop + 0.08, w: 7.2, h: 0.3, margin: 0 }
   );
@@ -1540,7 +1537,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       { key: 'vision', name: '비전 (Vision)', plan: planVision, actual: actualVision, color: '#8b5cf6' },
       { key: 'electrical', name: '전장 (Electrical)', plan: planElectrical, actual: 0, color: '#f59e0b' },
       { key: 'safety', name: '안전 (Safety)', plan: planSafety, actual: 0, color: '#ef4444' },
-      { key: 'manager', name: '소장 (Site Manager)', plan: planManager, actual: actualManager, color: '#0284c7' },
+      { key: 'manager', name: '소장 (Manager)', plan: planManager, actual: actualManager, color: '#0284c7' },
       ...(planSV > 0 ? [{ key: 'supervisor', name: 'SV (Supervisor)', plan: planSV, actual: 0, color: '#06b6d4' }] : []),
       { key: 'other', name: '기타 (Other)', plan: planOther, actual: actualOther, color: '#64748b' },
     ];

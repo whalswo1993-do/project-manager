@@ -404,13 +404,12 @@ export function normalizeDeptName(raw) {
   // "Safety Manager(안전)" -> 안전
   if (/safety.*소장|소장.*safety/i.test(lower)) return "소장";
   if (/safety|안전|safe/i.test(lower)) return "안전";
-  if (/manager|소장|현장대리인/i.test(lower)) return "소장";
+  if (/manager|소장|현장대리인|\bpm\b|project\s*manager/i.test(lower)) return "소장";
 
   if (/mechanical|기구|mech|기술/i.test(lower)) return "기구";
   if (/vision|비전|비젼/i.test(lower)) return "비전";
   if (/control|제어|cont/i.test(lower)) return "제어";
   if (/electrical|electronical|전장|전기|elec/i.test(lower)) return "전장";
-  if (/^pm$/i.test(lower)) return "PM";
   if (/설계|design/i.test(lower)) return "설계";
 
   return s.replace(/\s*\([^)]*\)$/, '').trim() || s;

@@ -1389,12 +1389,80 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
     return map;
   }, [dailyReports]);
 
-  // 2. 개별 프로젝트의 계획 vs 실투입 비교 계산 함수
+  // 일보기반 및 마일스톤 연동 인력 변동 사유 분석 헬퍼
+  const getManpowerChangeReason = (r, allReports, idx, project) => {
+    const prevReport = allReports && allReports[idx + 1];
+
+    const currMech = Number(r.facility_count) || 0;
+    const currCtrl = Number(r.control_count) || 0;
+    const currVis = Number(r.vision_count) || 0;
+    const currMgr = Number(r.pm_count) || 0;
+    const currOther = Number(r.personnel_count) || 0;
+    const currDeptSum = currMech + currCtrl + currVis + currMgr;
+    const currTotal = currDeptSum > 0 ? currDeptSum : currOther;
+
+    let deltaBadge = null;
+    const deptChanges = [];
+
+    if (prevReport) {
+      const prevMech = Number(prevReport.facility_count) || 0;
+      const prevCtrl = Number(prevReport.control_count) || 0;
+      const prevVis = Number(prevReport.vision_count) || 0;
+      const prevMgr = Number(prevReport.pm_count) || 0;
+      const prevOther = Number(prevReport.personnel_count) || 0;
+      const prevDeptSum = prevMech + prevCtrl + prevVis + prevMgr;
+      const prevTotal = prevDeptSum > 0 ? prevDeptSum : prevOther;
+
+      const diff = currTotal - prevTotal;
+
+      const mechDiff = currMech - prevMech;
+      const ctrlDiff = currCtrl - prevCtrl;
+      const visDiff = currVis - prevVis;
+      const mgrDiff = currMgr - prevMgr;
+
+      if (mechDiff !== 0) deptChanges.push(`기구 ${mechDiff > 0 ? `+${mechDiff}` : mechDiff}`);
+      if (ctrlDiff !== 0) deptChanges.push(`제어 ${ctrlDiff > 0 ? `+${ctrlDiff}` : ctrlDiff}`);
+      if (visDiff !== 0) deptChanges.push(`비전 ${visDiff > 0 ? `+${visDiff}` : visDiff}`);
+      if (mgrDiff !== 0) deptChanges.push(`소장 ${mgrDiff > 0 ? `+${mgrDiff}` : mgrDiff}`);
+
+      if (diff > 0) {
+        deltaBadge = { type: 'inc', text: `▲ +${diff}명 증원`, color: '#dc2626', bg: '#fee2e2' };
+      } else if (diff < 0) {
+        deltaBadge = { type: 'dec', text: `▼ ${Math.abs(diff)}명 감원`, color: '#2563eb', bg: '#dbeafe' };
+      } else {
+        deltaBadge = { type: 'same', text: `유지 (${currTotal}명)`, color: '#64748b', bg: '#f1f5f9' };
+      }
+    } else {
+      deltaBadge = { type: 'init', text: `● 현 투입 (${currTotal}명)`, color: '#059669', bg: '#dcfce7' };
+    }
+
+    // Active milestone on this report date
+    let activeMilestone = "";
+    if (project?.milestones && r.report_date) {
+      const ms = project.milestones.find(m => {
+        const s = m.startDate || m.start;
+        const e = m.endDate || m.end;
+        return s && e && r.report_date >= s && r.report_date <= e && m.name;
+      });
+      if (ms) activeMilestone = ms.name;
+    }
+
+    const noteSnippet = (r.special_notes || r.work_details || "").trim();
+
+    return {
+      deltaBadge,
+      deptChanges,
+      milestone: activeMilestone,
+      noteSnippet
+    };
+  };
+
+  // 2. 개별 프로젝트의 계획 vs 실투입 비교 계산 함수 (설계 제외, PM -> 소장, 모든 부서 분리)
   const computeCompData = (p) => {
     const pReports = reportsByProject[p.id] || [];
     const mp = p.manpower || {};
 
-    // 1. 계획 공수 집계 (마스터플랜 부서 키 정규화 반영)
+    // 1. 계획 공수 집계 (마스터플랜 부서 키 정규화 반영, 설계 제외)
     const deptPlanMap = {};
     if (mp.departments) {
       Object.entries(mp.departments).forEach(([rawD, dData]) => {
@@ -1412,44 +1480,49 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
     const planMech = (deptPlanMap["mechanical"] || 0) + (deptPlanMap["mechanical_sub"] || 0);
     const planControl = (deptPlanMap["control"] || 0) + (deptPlanMap["control_sub"] || 0);
     const planVision = (deptPlanMap["vision"] || 0) + (deptPlanMap["vision_sub"] || 0);
-    const planPM = deptPlanMap["pm"] || 0;
-    const planDesign = deptPlanMap["design"] || 0;
-
-    const planTotal = getProjectTotalManday(p);
+    const planElectrical = (deptPlanMap["electrical"] || 0) + (deptPlanMap["electrical_sub"] || 0);
+    const planSafety = deptPlanMap["safety"] || 0;
+    const planManager = (deptPlanMap["manager"] || 0) + (deptPlanMap["pm"] || 0);
+    const planSV = deptPlanMap["supervisor"] || 0;
 
     let planOther = 0;
     Object.entries(deptPlanMap).forEach(([k, v]) => {
-      if (!['mechanical', 'mechanical_sub', 'control', 'control_sub', 'vision', 'vision_sub', 'pm', 'design'].includes(k)) {
+      // 설계(design)는 현장 투입 대상이 아니므로 제외
+      if (!['mechanical', 'mechanical_sub', 'control', 'control_sub', 'vision', 'vision_sub', 'electrical', 'electrical_sub', 'safety', 'manager', 'pm', 'supervisor', 'design'].includes(k)) {
         planOther += v;
       }
     });
-    const knownPlanSum = planMech + planControl + planVision + planPM + planDesign + planOther;
-    if (planTotal > knownPlanSum) {
-      planOther += (planTotal - knownPlanSum);
+
+    const masterTotal = getProjectTotalManday(p);
+    const designPlan = deptPlanMap["design"] || 0;
+    const fieldTargetTotal = Math.max(0, masterTotal - designPlan);
+
+    const knownFieldPlanSum = planMech + planControl + planVision + planElectrical + planSafety + planManager + planSV + planOther;
+    if (fieldTargetTotal > knownFieldPlanSum) {
+      planOther += (fieldTargetTotal - knownFieldPlanSum);
     }
 
-    // 2. 실투입 공수 (일보 합산 - 부서별 합산 우선)
+    const planTotal = planMech + planControl + planVision + planElectrical + planSafety + planManager + planSV + planOther;
+
+    // 2. 실투입 공수 (일보 합산 - 설계 제외, PM은 소장으로 매핑)
     let actualTotal = 0;
-    let actualPM = 0;
-    let actualDesign = 0;
+    let actualManager = 0;
     let actualMech = 0;
     let actualControl = 0;
     let actualVision = 0;
     let actualOther = 0;
 
     pReports.forEach(r => {
-      const pm = Number(r.pm_count) || 0;
-      const des = Number(r.design_count) || 0;
+      const mgr = Number(r.pm_count) || 0;
       const fac = Number(r.facility_count) || 0;
       const ctrl = Number(r.control_count) || 0;
       const vis = Number(r.vision_count) || 0;
       const extraOther = Number(r.personnel_count) || 0;
 
-      const deptSum = pm + des + fac + ctrl + vis;
+      const deptSum = mgr + fac + ctrl + vis;
       const dayTotal = deptSum > 0 ? deptSum : extraOther;
 
-      actualPM += pm;
-      actualDesign += des;
+      actualManager += mgr;
       actualMech += fac;
       actualControl += ctrl;
       actualVision += vis;
@@ -1460,16 +1533,20 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       }
     });
 
-    // 3. 부서별 목록
-    const deptList = [
-      { key: 'mechanical', name: '기구 / 설비기술', plan: planMech, actual: actualMech, color: '#3b82f6' },
+    // 3. 부서별 개별 목록 (기타/전장/안전 분리, PM -> 소장, 설계 제외)
+    const rawDeptList = [
+      { key: 'mechanical', name: '기구 (Mechanical)', plan: planMech, actual: actualMech, color: '#3b82f6' },
       { key: 'control', name: '제어 (Control)', plan: planControl, actual: actualControl, color: '#10b981' },
       { key: 'vision', name: '비전 (Vision)', plan: planVision, actual: actualVision, color: '#8b5cf6' },
-      { key: 'pm', name: 'PM (Project Manager)', plan: planPM, actual: actualPM, color: '#0284c7' },
-      { key: 'design', name: '설계 (Design)', plan: planDesign, actual: actualDesign, color: '#f59e0b' },
-      { key: 'other', name: '기타 / 전장 / 안전', plan: planOther, actual: actualOther, color: '#64748b' },
-    ].map(d => {
-      const diff = d.actual - d.plan; // 실투입 - 계획 (양수면 초과, 음수면 절감/잔여)
+      { key: 'electrical', name: '전장 (Electrical)', plan: planElectrical, actual: 0, color: '#f59e0b' },
+      { key: 'safety', name: '안전 (Safety)', plan: planSafety, actual: 0, color: '#ef4444' },
+      { key: 'manager', name: '소장 (Site Manager)', plan: planManager, actual: actualManager, color: '#0284c7' },
+      ...(planSV > 0 ? [{ key: 'supervisor', name: 'SV (Supervisor)', plan: planSV, actual: 0, color: '#06b6d4' }] : []),
+      { key: 'other', name: '기타 (Other)', plan: planOther, actual: actualOther, color: '#64748b' },
+    ];
+
+    const deptList = rawDeptList.map(d => {
+      const diff = d.actual - d.plan;
       const rate = d.plan > 0 ? (d.actual / d.plan) * 100 : (d.actual > 0 ? 100 : 0);
       return { ...d, diff, rate };
     });
@@ -1598,7 +1675,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       const headers = [
         "제조번호", "Site", "Line", "프로젝트명",
         "총 계획공수 (M/D)", "총 실투입공수 (M/D)", "가감/차이 (M/D)", "소진율 (%)",
-        "기구/설비 (실/계)", "제어 (실/계)", "비전 (실/계)", "PM (실/계)", "설계 (실/계)", "등록 일보수"
+        "기구 (실/계)", "제어 (실/계)", "비전 (실/계)", "전장 (실/계)", "안전 (실/계)", "소장 (실/계)", "기타 (실/계)", "등록 일보수"
       ];
       ws1.addRow([]);
       const headerRow = ws1.addRow(headers);
@@ -1627,8 +1704,10 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           getDeptStr('mechanical'),
           getDeptStr('control'),
           getDeptStr('vision'),
-          getDeptStr('pm'),
-          getDeptStr('design'),
+          getDeptStr('electrical'),
+          getDeptStr('safety'),
+          getDeptStr('manager'),
+          getDeptStr('other'),
           `${item.reportCount}건`
         ]);
 
@@ -1647,7 +1726,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       ws1.columns = [
         { width: 14 }, { width: 10 }, { width: 8 }, { width: 28 },
         { width: 16 }, { width: 16 }, { width: 15 }, { width: 12 },
-        { width: 14 }, { width: 14 }, { width: 14 }, { width: 12 }, { width: 12 }, { width: 11 }
+        { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 11 }
       ];
 
       // Sheet 2: 일자별 실투입 상세 내역
@@ -1669,7 +1748,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
       const headers2 = [
         "보고일자", "프로젝트명", "제조번호", "당일 총원 (명)",
-        "PM (명)", "설계 (명)", "기구 (명)", "제어 (명)", "비전 (명)", "기타 (명)"
+        "소장 (명)", "기구 (명)", "제어 (명)", "비전 (명)", "기타 (명)", "비고 (인력 변동 및 주요 사유)"
       ];
       ws2.addRow([]);
       const headerRow2 = ws2.addRow(headers2);
@@ -1682,15 +1761,21 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
       targetReports.sort((a, b) => (b.report_date || "").localeCompare(a.report_date || ""));
 
-      targetReports.forEach(r => {
+      targetReports.forEach((r, rIdx) => {
         const pm = Number(r.pm_count) || 0;
-        const des = Number(r.design_count) || 0;
         const fac = Number(r.facility_count) || 0;
         const ctrl = Number(r.control_count) || 0;
         const vis = Number(r.vision_count) || 0;
         const extra = Number(r.personnel_count) || 0;
-        const deptSum = pm + des + fac + ctrl + vis;
+        const deptSum = pm + fac + ctrl + vis;
         const dayTotal = deptSum > 0 ? deptSum : extra;
+
+        const reason = getManpowerChangeReason(r, targetReports, rIdx, selectedProjectComp?.project);
+        const reasonText = [
+          reason.milestone ? `[${reason.milestone}]` : "",
+          reason.deltaBadge ? `${reason.deltaBadge.text}${reason.deptChanges.length ? ` (${reason.deptChanges.join(', ')})` : ""}` : "",
+          reason.noteSnippet || ""
+        ].filter(Boolean).join(" · ") || "-";
 
         ws2.addRow([
           r.report_date,
@@ -1698,17 +1783,17 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           normalizeJVName(r.manufacturingNo) || "-",
           dayTotal,
           pm,
-          des,
           fac,
           ctrl,
           vis,
-          (extra > 0 && deptSum === 0) ? extra : 0
+          (extra > 0 && deptSum === 0) ? extra : 0,
+          reasonText
         ]);
       });
 
       ws2.columns = [
         { width: 13 }, { width: 28 }, { width: 16 }, { width: 14 },
-        { width: 10 }, { width: 10 }, { width: 12 }, { width: 10 }, { width: 10 }, { width: 10 }
+        { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 45 }
       ];
 
       const buf = await wb.xlsx.writeBuffer();
@@ -1772,28 +1857,33 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         </div>
       </div>
 
-      {/* Filter and Action Bar */}
-      <div style={{ marginBottom: "16px" }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '0 4px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>조회 조건 및 필터</span>
-          <button
-            type="button"
-            onClick={() => toggleSection('controls')}
-            style={{
-              background: collapsedSections.controls ? '#3b82f6' : '#f1f5f9',
-              color: collapsedSections.controls ? '#fff' : '#475569',
-              border: '1px solid #cbd5e1',
-              borderRadius: '4px',
-              padding: '2px 8px',
-              fontSize: '11px',
-              cursor: 'pointer'
-            }}
-          >
-            {collapsedSections.controls ? '▸ 조회 조건 펼치기' : '▴ 조회 조건 접기'}
-          </button>
+      {/* 1. 조회 조건 및 필터 */}
+      <div className="mp-table-section" style={{ marginBottom: "20px" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsedSections.controls ? 0 : '14px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#17263b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🔍</span> 계획공수 조회 조건 및 필터
+            </h3>
+            <button
+              type="button"
+              onClick={() => toggleSection('controls')}
+              style={{
+                background: collapsedSections.controls ? '#3b82f6' : '#f1f5f9',
+                color: collapsedSections.controls ? '#fff' : '#475569',
+                border: '1px solid #cbd5e1',
+                borderRadius: '4px',
+                padding: '2px 8px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              {collapsedSections.controls ? '▸ 펼치기' : '▾ 접기'}
+            </button>
+          </div>
         </div>
         {!collapsedSections.controls ? (
-          <div className="mp-controls-bar">
+          <div className="mp-controls-bar" style={{ border: 'none', padding: 0, background: 'transparent' }}>
             {/* Row 1: View Mode & Date Range Picker */}
             <div className="mp-controls-row">
               <div className="mp-mode-toggle">
@@ -1895,51 +1985,56 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         )}
       </div>
 
-      {/* KPI Summary Cards & Department Breakdown */}
-      <div style={{ marginBottom: "16px" }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', padding: '0 4px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#475569' }}>전사 공수 요약 및 부서별 현황 ({effectiveLabel})</span>
-          <button
-            type="button"
-            onClick={() => toggleSection('summary')}
-            style={{
-              background: collapsedSections.summary ? '#3b82f6' : '#f1f5f9',
-              color: collapsedSections.summary ? '#fff' : '#475569',
-              border: '1px solid #cbd5e1',
-              borderRadius: '4px',
-              padding: '2px 8px',
-              fontSize: '11px',
-              cursor: 'pointer'
-            }}
-          >
-            {collapsedSections.summary ? '▸ 요약 현황 펼치기' : '▴ 요약 현황 접기'}
-          </button>
+      {/* 2. 전사 계획공수 요약 및 부서별 편성 현황 */}
+      <div className="mp-table-section" style={{ marginBottom: "20px" }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsedSections.summary ? 0 : '14px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>📈</span> 전사 계획공수 요약 및 부서별 편성 현황 ({effectiveLabel})
+            </h3>
+            <button
+              type="button"
+              onClick={() => toggleSection('summary')}
+              style={{
+                background: collapsedSections.summary ? '#3b82f6' : '#f1f5f9',
+                color: collapsedSections.summary ? '#fff' : '#475569',
+                border: '1px solid #cbd5e1',
+                borderRadius: '4px',
+                padding: '2px 8px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              {collapsedSections.summary ? '▸ 펼치기' : '▾ 접기'}
+            </button>
+          </div>
         </div>
         {!collapsedSections.summary ? (
           <>
             <div className="mp-kpi-grid">
               <div className="mp-kpi-card total">
-                <div className="mp-kpi-label"><span>📌</span> 총 투입 공수 ({effectiveLabel})</div>
+                <div className="mp-kpi-label"><span>📌</span> 총 계획공수 ({effectiveLabel})</div>
                 <div className="mp-kpi-val">{periodTotalManday.toLocaleString()} <span style={{ fontSize: "16px" }}>M/D</span></div>
-                <div className="mp-kpi-sub">{effectiveLabel} 기준 합산</div>
+                <div className="mp-kpi-sub">{effectiveLabel} 마스터플랜 기준 편성 합산</div>
               </div>
 
               <div className="mp-kpi-card peak">
-                <div className="mp-kpi-label"><span>⚡</span> 일일 피크 (최대 인원)</div>
+                <div className="mp-kpi-label"><span>⚡</span> 일일 계획 피크 (최대 인원)</div>
                 <div className="mp-kpi-val" style={{ color: "#dc2626" }}>{periodDailyPeak} <span style={{ fontSize: "16px" }}>명</span></div>
                 <div className="mp-kpi-sub">
-                  {peakDates.length > 0 ? `최대 투입일: ${peakDates.slice(0, 3).map(d => d.slice(5)).join(", ")}${peakDates.length > 3 ? ` 외 ${peakDates.length - 3}일` : ""}` : "투입 인원 없음"}
+                  {peakDates.length > 0 ? `최대 투입일: ${peakDates.slice(0, 3).map(d => d.slice(5)).join(", ")}${peakDates.length > 3 ? ` 외 ${peakDates.length - 3}일` : ""}` : "계획 편성 없음"}
                 </div>
               </div>
 
               <div className="mp-kpi-card projects">
-                <div className="mp-kpi-label"><span>🏢</span> 공수 운영 프로젝트</div>
+                <div className="mp-kpi-label"><span>🏢</span> 계획공수 편성 프로젝트</div>
                 <div className="mp-kpi-val">{projectsWithManpower.length} <span style={{ fontSize: "16px" }}>개</span></div>
                 <div className="mp-kpi-sub">조회 대상 {filteredProjects.length}개 프로젝트 중</div>
               </div>
 
               <div className="mp-kpi-card depts">
-                <div className="mp-kpi-label"><span>👥</span> 최다 투입 부서</div>
+                <div className="mp-kpi-label"><span>👥</span> 최다 계획 부서</div>
                 <div className="mp-kpi-val" style={{ fontSize: "20px", marginTop: "4px" }}>
                   {(() => {
                     const entries = Object.entries(deptTotals).sort((a, b) => b[1] - a[1]);
@@ -1949,12 +2044,14 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                     return "-";
                   })()}
                 </div>
-                <div className="mp-kpi-sub">부서별 인력 배분 현황</div>
+                <div className="mp-kpi-sub">부서별 계획 인력 배분 현황</div>
               </div>
             </div>
 
-            <div className="mp-dept-banner">
-              <h3><span>📈</span> 부서별 공수 투입 현황 ({effectiveLabel})</h3>
+            <div className="mp-dept-banner" style={{ marginTop: '16px' }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 'bold', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📈</span> 부서별 계획공수 편성 현황 ({effectiveLabel})
+              </h4>
               <div className="mp-dept-tags">
                 {activeDeptKeys.map(deptKey => {
                   const count = deptTotals[deptKey] || 0;
@@ -1985,7 +2082,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
               cursor: 'pointer'
             }}
           >
-            📈 총 투입 공수: <b>{periodTotalManday.toLocaleString()} M/D</b> · 일일 피크: <b>{periodDailyPeak}명</b> · 운영 프로젝트: <b>{projectsWithManpower.length}개</b> (클릭하여 상세 지표 펼치기 ▾)
+            📈 총 계획공수: <b>{periodTotalManday.toLocaleString()} M/D</b> · 일일 계획 피크: <b>{periodDailyPeak}명</b> · 편성 프로젝트: <b>{projectsWithManpower.length}개</b> (클릭하여 상세 지표 펼치기 ▾)
           </div>
         )}
       </div>
@@ -1997,7 +2094,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: "0 0 4px 0" }}>📅 일별 전사 인력 투입 달력 ({year}년 {month + 1}월)</h3>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#17263b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📅</span> 일별 전사 계획공수 투입 달력 ({year}년 {month + 1}월)
+              </h3>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); toggleSection('calendar'); }}
@@ -2008,6 +2107,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                   borderRadius: '4px',
                   padding: '2px 8px',
                   fontSize: '11px',
+                  fontWeight: 600,
                   cursor: 'pointer'
                 }}
               >
@@ -2096,7 +2196,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
               marginTop: '10px'
             }}
           >
-            📅 {year}년 {month + 1}월 일별 전사 인력 투입 달력이 접혀 있습니다. (클릭하여 펼치기 ▾)
+            📅 {year}년 {month + 1}월 일별 전사 계획공수 투입 달력이 접혀 있습니다. (클릭하여 펼치기 ▾)
           </div>
         )}
       </div>
@@ -2108,7 +2208,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: "0 0 4px 0" }}>🏢 프로젝트별 공수 현황 ({effectiveLabel})</h3>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#17263b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>🏢</span> 프로젝트별 계획공수 현황 ({effectiveLabel})
+              </h3>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); toggleSection('table'); }}
@@ -2119,6 +2221,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                   borderRadius: '4px',
                   padding: '2px 8px',
                   fontSize: '11px',
+                  fontWeight: 600,
                   cursor: 'pointer'
                 }}
               >
@@ -2126,7 +2229,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
               </button>
             </div>
             <span style={{ fontSize: "12px", color: "#64748b" }}>
-              * {viewMode === "range" ? `지정 기간(${effectiveStartDate} ~ ${effectiveEndDate})` : `상단 달력의 기준월(${year}년 {month + 1}월)`}에 투입된 프로젝트별 공수 데이터입니다. ({filteredProjects.length}개 프로젝트)
+              * {viewMode === "range" ? `지정 기간(${effectiveStartDate} ~ ${effectiveEndDate})` : `상단 달력의 기준월(${year}년 {month + 1}월)`}에 편성된 프로젝트별 계획공수 데이터입니다. ({filteredProjects.length}개 프로젝트)
             </span>
           </div>
           {/* Synchronized Month Navigator in Table Section */}
@@ -2144,9 +2247,9 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                     <th key={k} style={{ textAlign: "center" }}>{getDeptShort(k)}</th>
                   ))}
                   <th style={{ textAlign: "center", color: "#1d4ed8" }}>
-                    {viewMode === "range" ? "기간 투입 공수" : `${month + 1}월 투입 공수`}
+                    {viewMode === "range" ? "기간 계획공수" : `${month + 1}월 계획공수`}
                   </th>
-                  <th style={{ textAlign: "center", background: "#f1f5f9", color: "#0f172a" }}>프로젝트 총 공수</th>
+                  <th style={{ textAlign: "center", background: "#f1f5f9", color: "#0f172a" }}>프로젝트 총 계획공수</th>
                   <th style={{ textAlign: "center" }}>상세</th>
                 </tr>
               </thead>
@@ -2167,11 +2270,11 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                         <div style={{ fontWeight: 600, color: "#0f172a" }}>{normalizeJVName(p.name)}</div>
                         {effectiveTotal > 0 ? (
                           <div style={{ fontSize: "11px", color: "#475569", marginTop: "2px" }}>
-                            프로젝트 총 공수: <b style={{ color: "#059669" }}>{effectiveTotal.toLocaleString()} M/D</b>
+                            프로젝트 총 계획공수: <b style={{ color: "#059669" }}>{effectiveTotal.toLocaleString()} M/D</b>
                           </div>
                         ) : (
                           <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
-                            공수 미등록
+                            계획공수 미등록
                           </div>
                         )}
                       </td>
@@ -2258,7 +2361,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
               cursor: 'pointer'
             }}
           >
-            🏢 프로젝트별 공수 현황 표 ({filteredProjects.length}건)가 접혀 있습니다. (클릭하여 펼치기 ▾)
+            🏢 프로젝트별 계획공수 현황 표 ({filteredProjects.length}건)가 접혀 있습니다. (클릭하여 펼치기 ▾)
           </div>
         )}
       </div>
@@ -2268,7 +2371,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: "0 0 4px 0", fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#17263b', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>⚖️</span> 계획공수 vs 실투입공수 비교분석
                 <span style={{ fontSize: '12px', background: '#dbeafe', color: '#1e40af', padding: '3px 10px', borderRadius: '12px', fontWeight: 600 }}>
                   일보 연동
@@ -2351,7 +2454,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                   <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'normal' }}>({filteredCompData.length}건)</span>
                 </h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#475569', cursor: 'pointer' }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     <input
                       type="checkbox"
                       checked={onlyReported}
@@ -2682,52 +2785,105 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                         <thead>
                           <tr style={{ background: '#f1f5f9', color: '#334155', borderBottom: '1px solid #cbd5e1' }}>
-                            <th style={{ padding: '10px 14px', textAlign: 'center', whiteSpace: 'nowrap', width: '110px' }}>보고일자</th>
-                            <th style={{ padding: '10px 14px', textAlign: 'center', whiteSpace: 'nowrap', width: '100px', color: '#10b981' }}>당일 총원</th>
-                            <th style={{ padding: '10px 14px', textAlign: 'center', whiteSpace: 'nowrap', minWidth: '70px' }}>PM</th>
-                            <th style={{ padding: '10px 14px', textAlign: 'center', whiteSpace: 'nowrap', minWidth: '70px' }}>설계</th>
-                            <th style={{ padding: '10px 14px', textAlign: 'center', whiteSpace: 'nowrap', minWidth: '80px' }}>기구</th>
-                            <th style={{ padding: '10px 14px', textAlign: 'center', whiteSpace: 'nowrap', minWidth: '70px' }}>제어</th>
-                            <th style={{ padding: '10px 14px', textAlign: 'center', whiteSpace: 'nowrap', minWidth: '70px' }}>비전</th>
-                            <th style={{ padding: '10px 14px', textAlign: 'center', whiteSpace: 'nowrap', minWidth: '70px' }}>기타</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'center', whiteSpace: 'nowrap', width: '95px' }}>보고일자</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'center', whiteSpace: 'nowrap', width: '85px', color: '#10b981' }}>당일 총원</th>
+                            <th style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap', width: '70px', minWidth: '70px', maxWidth: '70px' }}>소장</th>
+                            <th style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap', width: '70px', minWidth: '70px', maxWidth: '70px' }}>기구</th>
+                            <th style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap', width: '70px', minWidth: '70px', maxWidth: '70px' }}>제어</th>
+                            <th style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap', width: '70px', minWidth: '70px', maxWidth: '70px' }}>비전</th>
+                            <th style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap', width: '70px', minWidth: '70px', maxWidth: '70px' }}>기타</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'left', minWidth: '320px' }}>비고 (인력 변동 및 주요 사유)</th>
                           </tr>
                         </thead>
                         <tbody>
                           {selectedProjectComp.reports.map((r, rIdx) => {
                             const pm = Number(r.pm_count) || 0;
-                            const des = Number(r.design_count) || 0;
                             const fac = Number(r.facility_count) || 0;
                             const ctrl = Number(r.control_count) || 0;
                             const vis = Number(r.vision_count) || 0;
                             const extra = Number(r.personnel_count) || 0;
-                            const deptSum = pm + des + fac + ctrl + vis;
+                            const deptSum = pm + fac + ctrl + vis;
                             const dayTotal = deptSum > 0 ? deptSum : extra;
+
+                            const reasonInfo = getManpowerChangeReason(r, selectedProjectComp.reports, rIdx, selectedProjectComp.project);
+                            const { deltaBadge, deptChanges, milestone, noteSnippet } = reasonInfo;
 
                             return (
                               <tr key={r.id || rIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                <td style={{ padding: '9px 12px', textAlign: 'center', fontWeight: 'bold', color: '#334155', whiteSpace: 'nowrap' }}>
+                                <td style={{ padding: '9px 10px', textAlign: 'center', fontWeight: 'bold', color: '#334155', whiteSpace: 'nowrap' }}>
                                   {r.report_date}
                                 </td>
-                                <td style={{ padding: '9px 12px', textAlign: 'center', fontWeight: 'bold', color: '#10b981', background: '#f0fdf4', whiteSpace: 'nowrap' }}>
+                                <td style={{ padding: '9px 10px', textAlign: 'center', fontWeight: 'bold', color: '#10b981', background: '#f0fdf4', whiteSpace: 'nowrap' }}>
                                   {dayTotal}명
                                 </td>
-                                <td style={{ padding: '9px 12px', textAlign: 'center', color: pm > 0 ? '#0f172a' : '#cbd5e1', fontWeight: pm > 0 ? 600 : 'normal', whiteSpace: 'nowrap' }}>
+                                <td style={{ padding: '9px 8px', textAlign: 'center', color: pm > 0 ? '#0f172a' : '#cbd5e1', fontWeight: pm > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '70px' }}>
                                   {pm > 0 ? `${pm}명` : "-"}
                                 </td>
-                                <td style={{ padding: '9px 12px', textAlign: 'center', color: des > 0 ? '#0f172a' : '#cbd5e1', fontWeight: des > 0 ? 600 : 'normal', whiteSpace: 'nowrap' }}>
-                                  {des > 0 ? `${des}명` : "-"}
-                                </td>
-                                <td style={{ padding: '9px 12px', textAlign: 'center', color: fac > 0 ? '#0f172a' : '#cbd5e1', fontWeight: fac > 0 ? 600 : 'normal', whiteSpace: 'nowrap' }}>
+                                <td style={{ padding: '9px 8px', textAlign: 'center', color: fac > 0 ? '#0f172a' : '#cbd5e1', fontWeight: fac > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '70px' }}>
                                   {fac > 0 ? `${fac}명` : "-"}
                                 </td>
-                                <td style={{ padding: '9px 12px', textAlign: 'center', color: ctrl > 0 ? '#0f172a' : '#cbd5e1', fontWeight: ctrl > 0 ? 600 : 'normal', whiteSpace: 'nowrap' }}>
+                                <td style={{ padding: '9px 8px', textAlign: 'center', color: ctrl > 0 ? '#0f172a' : '#cbd5e1', fontWeight: ctrl > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '70px' }}>
                                   {ctrl > 0 ? `${ctrl}명` : "-"}
                                 </td>
-                                <td style={{ padding: '9px 12px', textAlign: 'center', color: vis > 0 ? '#0f172a' : '#cbd5e1', fontWeight: vis > 0 ? 600 : 'normal', whiteSpace: 'nowrap' }}>
+                                <td style={{ padding: '9px 8px', textAlign: 'center', color: vis > 0 ? '#0f172a' : '#cbd5e1', fontWeight: vis > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '70px' }}>
                                   {vis > 0 ? `${vis}명` : "-"}
                                 </td>
-                                <td style={{ padding: '9px 12px', textAlign: 'center', color: (extra > 0 && deptSum === 0) ? '#0f172a' : '#cbd5e1', whiteSpace: 'nowrap' }}>
+                                <td style={{ padding: '9px 8px', textAlign: 'center', color: (extra > 0 && deptSum === 0) ? '#0f172a' : '#cbd5e1', whiteSpace: 'nowrap', width: '70px' }}>
                                   {(extra > 0 && deptSum === 0) ? `${extra}명` : "-"}
+                                </td>
+                                <td style={{ padding: '8px 12px', textAlign: 'left', verticalAlign: 'middle' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      {deltaBadge && (
+                                        <span style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '3px',
+                                          padding: '2px 7px',
+                                          borderRadius: '4px',
+                                          fontSize: '11px',
+                                          fontWeight: 700,
+                                          color: deltaBadge.color,
+                                          background: deltaBadge.bg,
+                                          border: `1px solid ${deltaBadge.color}33`,
+                                          whiteSpace: 'nowrap'
+                                        }}>
+                                          {deltaBadge.text}
+                                        </span>
+                                      )}
+                                      {deptChanges && deptChanges.length > 0 && (
+                                        <span style={{ fontSize: '11px', color: '#475569', fontWeight: 600, background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>
+                                          ({deptChanges.join(', ')})
+                                        </span>
+                                      )}
+                                      {milestone && (
+                                        <span style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '3px',
+                                          padding: '2px 7px',
+                                          borderRadius: '4px',
+                                          fontSize: '11px',
+                                          fontWeight: 600,
+                                          color: '#0369a1',
+                                          background: '#e0f2fe',
+                                          border: '1px solid #bae6fd',
+                                          whiteSpace: 'nowrap'
+                                        }} title="당일 진행 중인 마스터플랜 마일스톤">
+                                          🚩 {milestone}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {noteSnippet ? (
+                                      <div style={{ fontSize: '11.5px', color: '#334155', lineHeight: 1.35, wordBreak: 'break-all' }}>
+                                        {noteSnippet}
+                                      </div>
+                                    ) : (!milestone && (!deptChanges || deptChanges.length === 0)) ? (
+                                      <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                        변동 없음
+                                      </div>
+                                    ) : null}
+                                  </div>
                                 </td>
                               </tr>
                             );

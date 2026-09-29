@@ -1478,32 +1478,18 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       });
     }
 
-    const planMech = (deptPlanMap["mechanical"] || 0) + (deptPlanMap["mechanical_sub"] || 0);
-    const planControl = (deptPlanMap["control"] || 0) + (deptPlanMap["control_sub"] || 0);
-    const planVision = (deptPlanMap["vision"] || 0) + (deptPlanMap["vision_sub"] || 0);
-    const planElectrical = (deptPlanMap["electrical"] || 0) + (deptPlanMap["electrical_sub"] || 0);
+    // 1. 계획 공수 집계 (마스터플랜 부서 키 정규화 반영, 설계 제외)
+    const planMech = deptPlanMap["mechanical"] || 0;
+    const planMechSub = deptPlanMap["mechanical_sub"] || 0;
+    const planControl = deptPlanMap["control"] || 0;
+    const planControlSub = deptPlanMap["control_sub"] || 0;
+    const planVision = deptPlanMap["vision"] || 0;
+    const planVisionSub = deptPlanMap["vision_sub"] || 0;
+    const planElectrical = deptPlanMap["electrical"] || 0;
+    const planElectricalSub = deptPlanMap["electrical_sub"] || 0;
     const planSafety = deptPlanMap["safety"] || 0;
     const planManager = (deptPlanMap["manager"] || 0) + (deptPlanMap["pm"] || 0);
     const planSV = deptPlanMap["supervisor"] || 0;
-
-    let planOther = 0;
-    Object.entries(deptPlanMap).forEach(([k, v]) => {
-      // 설계(design)는 현장 투입 대상이 아니므로 제외
-      if (!['mechanical', 'mechanical_sub', 'control', 'control_sub', 'vision', 'vision_sub', 'electrical', 'electrical_sub', 'safety', 'manager', 'pm', 'supervisor', 'design'].includes(k)) {
-        planOther += v;
-      }
-    });
-
-    const masterTotal = getProjectTotalManday(p);
-    const designPlan = deptPlanMap["design"] || 0;
-    const fieldTargetTotal = Math.max(0, masterTotal - designPlan);
-
-    const knownFieldPlanSum = planMech + planControl + planVision + planElectrical + planSafety + planManager + planSV + planOther;
-    if (fieldTargetTotal > knownFieldPlanSum) {
-      planOther += (fieldTargetTotal - knownFieldPlanSum);
-    }
-
-    const planTotal = planMech + planControl + planVision + planElectrical + planSafety + planManager + planSV + planOther;
 
     // 2. 실투입 공수 (일보 합산 - 설계 제외, PM은 소장으로 매핑)
     let actualTotal = 0;
@@ -1511,40 +1497,70 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
     let actualMech = 0;
     let actualControl = 0;
     let actualVision = 0;
-    let actualOther = 0;
 
     pReports.forEach(r => {
       const mgr = Number(r.pm_count) || 0;
       const fac = Number(r.facility_count) || 0;
       const ctrl = Number(r.control_count) || 0;
       const vis = Number(r.vision_count) || 0;
-      const extraOther = Number(r.personnel_count) || 0;
 
       const deptSum = mgr + fac + ctrl + vis;
-      const dayTotal = deptSum > 0 ? deptSum : extraOther;
+      const dayTotal = deptSum;
 
       actualManager += mgr;
       actualMech += fac;
       actualControl += ctrl;
       actualVision += vis;
       actualTotal += dayTotal;
-
-      if (extraOther > 0 && deptSum === 0) {
-        actualOther += extraOther;
-      }
     });
 
-    // 3. 부서별 개별 목록 (기타/전장/안전 분리, PM -> 소장, 설계 제외)
-    const rawDeptList = [
+    // 3. 부서별 개별 목록 (기타 제거, 외주 분리, PM -> 소장, 설계 제외)
+    // 기본 부서 (프로젝트 공통 표준 부서 6종)
+    const baseDepts = [
       { key: 'mechanical', name: '기구 (Mechanical)', plan: planMech, actual: actualMech, color: '#3b82f6' },
       { key: 'control', name: '제어 (Control)', plan: planControl, actual: actualControl, color: '#10b981' },
       { key: 'vision', name: '비전 (Vision)', plan: planVision, actual: actualVision, color: '#8b5cf6' },
       { key: 'electrical', name: '전장 (Electrical)', plan: planElectrical, actual: 0, color: '#f59e0b' },
       { key: 'safety', name: '안전 (Safety)', plan: planSafety, actual: 0, color: '#ef4444' },
       { key: 'manager', name: '소장 (Manager)', plan: planManager, actual: actualManager, color: '#0284c7' },
-      ...(planSV > 0 ? [{ key: 'supervisor', name: 'SV (Supervisor)', plan: planSV, actual: 0, color: '#06b6d4' }] : []),
-      { key: 'other', name: '기타 (Other)', plan: planOther, actual: actualOther, color: '#64748b' },
     ];
+
+    // 외주 및 특수 부서 (외주인력을 사용하는 프로젝트의 경우 계획 또는 실투입이 있으면 개별 카드로 분리 노출)
+    const subDepts = [];
+    if (planMechSub > 0) {
+      subDepts.push({ key: 'mechanical_sub', name: '기구 외주 (Mech Sub)', plan: planMechSub, actual: 0, color: '#60a5fa' });
+    }
+    if (planControlSub > 0) {
+      subDepts.push({ key: 'control_sub', name: '제어 외주 (Control Sub)', plan: planControlSub, actual: 0, color: '#34d399' });
+    }
+    if (planVisionSub > 0) {
+      subDepts.push({ key: 'vision_sub', name: '비전 외주 (Vision Sub)', plan: planVisionSub, actual: 0, color: '#a855f7' });
+    }
+    if (planElectricalSub > 0) {
+      subDepts.push({ key: 'electrical_sub', name: '전장 외주 (Elec Sub)', plan: planElectricalSub, actual: 0, color: '#d97706' });
+    }
+    if (planSV > 0) {
+      subDepts.push({ key: 'supervisor', name: 'SV (Supervisor)', plan: planSV, actual: 0, color: '#06b6d4' });
+    }
+
+    // 그 외 deptPlanMap에 등록된 다른 동적 부서들 (설계 제외, 이미 등록된 부서 제외)
+    const standardKeys = new Set(['mechanical', 'mechanical_sub', 'control', 'control_sub', 'vision', 'vision_sub', 'electrical', 'electrical_sub', 'safety', 'manager', 'pm', 'supervisor', 'design', 'other']);
+    Object.entries(deptPlanMap).forEach(([k, v]) => {
+      if (!standardKeys.has(k) && v > 0) {
+        subDepts.push({
+          key: k,
+          name: getDeptLabel(k),
+          plan: v,
+          actual: 0,
+          color: getDeptColor(k)
+        });
+      }
+    });
+
+    const rawDeptList = [...baseDepts, ...subDepts];
+
+    // 총 계획공수: 부서별 실제 계획공수의 순수 합산 (임의 기타/잔여 차액 방지)
+    const planTotal = rawDeptList.reduce((acc, d) => acc + (d.plan || 0), 0);
 
     const deptList = rawDeptList.map(d => {
       const diff = d.actual - d.plan;
@@ -1663,7 +1679,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         views: [{ state: "frozen", ySplit: 4 }]
       });
 
-      ws1.mergeCells("A1:N1");
+      ws1.mergeCells("A1:O1");
       const titleCell = ws1.getCell("A1");
       titleCell.value = "TW Project - 프로젝트 계획공수 vs 실투입공수 비교분석 보고서";
       titleCell.font = { name: "Malgun Gothic", size: 14, bold: true, color: { argb: "FF0F172A" } };
@@ -1676,7 +1692,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       const headers = [
         "제조번호", "Site", "Line", "프로젝트명",
         "총 계획공수 (M/D)", "총 실투입공수 (M/D)", "가감/차이 (M/D)", "소진율 (%)",
-        "기구 (실/계)", "제어 (실/계)", "비전 (실/계)", "전장 (실/계)", "안전 (실/계)", "소장 (실/계)", "기타 (실/계)", "등록 일보수"
+        "기구 (실/계)", "제어 (실/계)", "비전 (실/계)", "전장 (실/계)", "안전 (실/계)", "소장 (실/계)", "등록 일보수"
       ];
       ws1.addRow([]);
       const headerRow = ws1.addRow(headers);
@@ -1708,7 +1724,6 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           getDeptStr('electrical'),
           getDeptStr('safety'),
           getDeptStr('manager'),
-          getDeptStr('other'),
           `${item.reportCount}건`
         ]);
 
@@ -1727,7 +1742,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       ws1.columns = [
         { width: 14 }, { width: 10 }, { width: 8 }, { width: 28 },
         { width: 16 }, { width: 16 }, { width: 15 }, { width: 12 },
-        { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 11 }
+        { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 11 }
       ];
 
       // Sheet 2: 일자별 실투입 상세 내역
@@ -1735,7 +1750,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         views: [{ state: "frozen", ySplit: 4 }]
       });
 
-      ws2.mergeCells("A1:J1");
+      ws2.mergeCells("A1:I1");
       const titleCell2 = ws2.getCell("A1");
       titleCell2.value = "일자별 실투입 공수 상세 내역 (공수 분석)";
       titleCell2.font = { name: "Malgun Gothic", size: 14, bold: true, color: { argb: "FF0F172A" } };
@@ -1749,7 +1764,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
       const headers2 = [
         "보고일자", "프로젝트명", "제조번호", "당일 총원 (명)",
-        "소장 (명)", "기구 (명)", "제어 (명)", "비전 (명)", "기타 (명)", "비고 (인력 변동 및 주요 사유)"
+        "소장 (명)", "기구 (명)", "제어 (명)", "비전 (명)", "비고 (인력 변동 및 주요 사유)"
       ];
       ws2.addRow([]);
       const headerRow2 = ws2.addRow(headers2);
@@ -1767,9 +1782,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
         const fac = Number(r.facility_count) || 0;
         const ctrl = Number(r.control_count) || 0;
         const vis = Number(r.vision_count) || 0;
-        const extra = Number(r.personnel_count) || 0;
-        const deptSum = pm + fac + ctrl + vis;
-        const dayTotal = deptSum > 0 ? deptSum : extra;
+        const dayTotal = pm + fac + ctrl + vis;
 
         const reason = getManpowerChangeReason(r, targetReports, rIdx, selectedProjectComp?.project);
         const reasonText = [
@@ -1787,14 +1800,13 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
           fac,
           ctrl,
           vis,
-          (extra > 0 && deptSum === 0) ? extra : 0,
           reasonText
         ]);
       });
 
       ws2.columns = [
         { width: 13 }, { width: 28 }, { width: 16 }, { width: 14 },
-        { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 45 }
+        { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 45 }
       ];
 
       const buf = await wb.xlsx.writeBuffer();
@@ -2792,7 +2804,6 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                             <th style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap', width: '70px', minWidth: '70px', maxWidth: '70px' }}>기구</th>
                             <th style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap', width: '70px', minWidth: '70px', maxWidth: '70px' }}>제어</th>
                             <th style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap', width: '70px', minWidth: '70px', maxWidth: '70px' }}>비전</th>
-                            <th style={{ padding: '10px 8px', textAlign: 'center', whiteSpace: 'nowrap', width: '70px', minWidth: '70px', maxWidth: '70px' }}>기타</th>
                             <th style={{ padding: '10px 12px', textAlign: 'left', minWidth: '320px' }}>비고 (인력 변동 및 주요 사유)</th>
                           </tr>
                         </thead>
@@ -2802,9 +2813,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                             const fac = Number(r.facility_count) || 0;
                             const ctrl = Number(r.control_count) || 0;
                             const vis = Number(r.vision_count) || 0;
-                            const extra = Number(r.personnel_count) || 0;
-                            const deptSum = pm + fac + ctrl + vis;
-                            const dayTotal = deptSum > 0 ? deptSum : extra;
+                            const dayTotal = pm + fac + ctrl + vis;
 
                             const reasonInfo = getManpowerChangeReason(r, selectedProjectComp.reports, rIdx, selectedProjectComp.project);
                             const { deltaBadge, deptChanges, milestone, noteSnippet } = reasonInfo;
@@ -2828,9 +2837,6 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                                 </td>
                                 <td style={{ padding: '9px 8px', textAlign: 'center', color: vis > 0 ? '#0f172a' : '#cbd5e1', fontWeight: vis > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '70px' }}>
                                   {vis > 0 ? `${vis}명` : "-"}
-                                </td>
-                                <td style={{ padding: '9px 8px', textAlign: 'center', color: (extra > 0 && deptSum === 0) ? '#0f172a' : '#cbd5e1', whiteSpace: 'nowrap', width: '70px' }}>
-                                  {(extra > 0 && deptSum === 0) ? `${extra}명` : "-"}
                                 </td>
                                 <td style={{ padding: '8px 12px', textAlign: 'left', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>

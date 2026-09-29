@@ -195,7 +195,87 @@ export default function App() {
   const [newSite, setNewSite] = useState("");
   const [newPerson, setNewPerson] = useState("");
   const [newDept, setNewDept] = useState("PM");
-  const [currentView, setCurrentView] = useState("projects");
+  const VALID_VIEWS = ["projects", "manpower", "issues", "quotations", "vision-spc"];
+
+  const [currentView, setCurrentView] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pm_current_view");
+      if (saved && VALID_VIEWS.includes(saved)) {
+        return saved;
+      }
+    } catch (e) {}
+    return "projects";
+  });
+
+  // currentView 변경 시 localStorage 동기화
+  useEffect(() => {
+    try {
+      localStorage.setItem("pm_current_view", currentView);
+    } catch (e) {}
+  }, [currentView]);
+
+  // 스크롤 위치 저장 (스크롤 이벤트 및 페이지 새로고침/이탈 시)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+
+    const saveScroll = () => {
+      try {
+        sessionStorage.setItem(`pm_scroll_${currentView}`, window.scrollY.toString());
+      } catch (e) {}
+    };
+
+    window.addEventListener("scroll", saveScroll, { passive: true });
+    window.addEventListener("beforeunload", saveScroll);
+
+    return () => {
+      window.removeEventListener("scroll", saveScroll);
+      window.removeEventListener("beforeunload", saveScroll);
+    };
+  }, [currentView]);
+
+  // 페이지 로드 및 렌더링 완료 시 이전 스크롤 위치 복원
+  useEffect(() => {
+    if (loading) return;
+
+    const restoreScroll = () => {
+      try {
+        const saved = sessionStorage.getItem(`pm_scroll_${currentView}`);
+        if (saved !== null) {
+          const top = parseInt(saved, 10);
+          if (!isNaN(top) && top > 0) {
+            window.scrollTo({ top, behavior: "instant" });
+          }
+        }
+      } catch (e) {}
+    };
+
+    // DOM 및 비동기 데이터 렌더링 타이밍을 고려해 다단계 스크롤 복원
+    restoreScroll();
+    const t1 = setTimeout(restoreScroll, 50);
+    const t2 = setTimeout(restoreScroll, 150);
+    const t3 = setTimeout(restoreScroll, 350);
+    const t4 = setTimeout(restoreScroll, 700);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
+  }, [currentView, loading]);
+
+  const switchView = (targetView) => {
+    try {
+      sessionStorage.setItem(`pm_scroll_${targetView}`, "0");
+    } catch (e) {}
+    setCurrentView(targetView);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  };
+
   const [isExtracting, setIsExtracting] = useState(false);
   const [selectedManpowerProject, setSelectedManpowerProject] = useState(null);
   const [selectedProjects, setSelectedProjects] = useState(new Set());
@@ -1118,6 +1198,10 @@ JSON 출력 예시:
           <div style={{ display: 'flex', gap: '4px' }}>
             <button
               onClick={() => {
+                try {
+                  localStorage.setItem("pm_current_view", currentView);
+                  sessionStorage.setItem(`pm_scroll_${currentView}`, window.scrollY.toString());
+                } catch (e) {}
                 if ('caches' in window) {
                   caches.keys().then(ks => ks.forEach(k => caches.delete(k)));
                 }
@@ -1149,7 +1233,7 @@ JSON 출력 예시:
       <div className="top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <button
-            onClick={() => setCurrentView("projects")}
+            onClick={() => switchView("projects")}
             style={{
               background: currentView === "projects" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
               color: currentView === "projects" ? "#fff" : "#24292e",
@@ -1170,7 +1254,7 @@ JSON 출력 예시:
             <span>프로젝트 일정 📅</span>
           </button>
           <button
-            onClick={() => setCurrentView("manpower")}
+            onClick={() => switchView("manpower")}
             style={{
               background: currentView === "manpower" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
               color: currentView === "manpower" ? "#fff" : "#24292e",
@@ -1191,7 +1275,7 @@ JSON 출력 예시:
             <span>공수 통합 관리 📊</span>
           </button>
           <button
-            onClick={() => setCurrentView("issues")}
+            onClick={() => switchView("issues")}
             style={{
               background: currentView === "issues" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
               color: currentView === "issues" ? "#fff" : "#24292e",
@@ -1214,7 +1298,7 @@ JSON 출력 예시:
           <button
             onClick={() => {
               if (isGrade1) return showPermissionModal("견적 조회");
-              setCurrentView("quotations");
+              switchView("quotations");
             }}
             style={{
               background: currentView === "quotations" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
@@ -1238,7 +1322,7 @@ JSON 출력 예시:
             <span>견적 조회 💰 {isGrade1 && "🔒"}</span>
           </button>
           <button
-            onClick={() => setCurrentView("vision-spc")}
+            onClick={() => switchView("vision-spc")}
             style={{
               background: currentView === "vision-spc" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
               color: currentView === "vision-spc" ? "#fff" : "#24292e",

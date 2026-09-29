@@ -6,7 +6,19 @@ import * as XLSX from 'xlsx';
 import pptxgen from 'pptxgenjs';
 
 export default function IssueManagement({ projects, role, onPermissionDenied }) {
-    const [activeTab, setActiveTab] = useState('register'); // 'register' or 'analyze'
+    const [activeTab, setActiveTab] = useState(() => {
+        try {
+            const saved = localStorage.getItem('pm_issue_active_tab');
+            if (saved && ['register', 'analyze'].includes(saved)) return saved;
+        } catch (e) {}
+        return 'register';
+    });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('pm_issue_active_tab', activeTab);
+        } catch (e) {}
+    }, [activeTab]);
     
     const isGrade1 = role === 'grade1';
     const notifyPermission = (feature) => {
@@ -18,7 +30,18 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
     };
     
     // Register Tab States
-    const [selectedProject, setSelectedProject] = useState('');
+    const [selectedProject, setSelectedProject] = useState(() => {
+        try {
+            return localStorage.getItem('pm_issue_selected_project') || '';
+        } catch (e) {}
+        return '';
+    });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('pm_issue_selected_project', selectedProject);
+        } catch (e) {}
+    }, [selectedProject]);
     const [extractedReports, setExtractedReports] = useState([{
         date: new Date().toISOString().slice(0, 10),
         work_details: '',

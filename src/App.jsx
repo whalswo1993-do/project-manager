@@ -576,27 +576,59 @@ export default function App() {
 
   const peopleNames = [...new Set(people.map(p => p.name))].sort();
 
-  const view = useMemo(() => projects.map((p, i) => {
-    const cleanMs = (p.milestones || []).filter(x => x && x.id !== '__status_meta__');
-    const isPOWaiting = (p.status === "PO대기중");
-    const effectiveManual = isPOWaiting || Boolean(p.isManualStatus);
-    const currentStatus = effectiveManual ? p.status : computeAutoStatus({ ...p, milestones: cleanMs });
-    return {
+  const view = useMemo(() => {
+    const list = projects.map(p => {
+      const cleanMs = (p.milestones || [])
+        .filter(x => x && x.id !== '__status_meta__')
+        .sort((a, b) => {
+          const sA = a.startDate || "";
+          const sB = b.startDate || "";
+          if (sA !== sB) return sA.localeCompare(sB);
+          return (a.endDate || "").localeCompare(b.endDate || "");
+        });
+
+      const isPOWaiting = (p.status === "PO대기중");
+      const effectiveManual = isPOWaiting || Boolean(p.isManualStatus);
+      const currentStatus = effectiveManual ? p.status : computeAutoStatus({ ...p, milestones: cleanMs });
+      return {
+        ...p,
+        milestones: cleanMs,
+        status: currentStatus,
+        isManualStatus: effectiveManual,
+        manualStatusBy: p.manualStatusBy || (effectiveManual ? (p.pm || "담당자") : ""),
+        value: progress({ ...p, status: currentStatus, milestones: cleanMs }),
+        overdue: currentStatus !== "완료" && dt(p.endDate) < dt(iso())
+      };
+    }).filter(p => {
+      const text = [p.manufacturingNo, p.site, p.line, p.name, p.pm, p.design, p.facilityTechnology, p.control, p.vision].join(" ").toLowerCase();
+      const status = filter === "전체" || (filter === "완료" && p.status === "완료") || (filter === "진행중" && p.status !== "완료") || (filter === "지연" && p.overdue) || (p.status === filter);
+      const site = siteFilter === "전체" || p.site === siteFilter;
+      const person = personFilter === "전체" || [p.pm, p.design, p.facilityTechnology, p.control, p.vision].includes(personFilter);
+      return text.includes(search.toLowerCase()) && status && site && person;
+    });
+
+    // 프로젝트 시작일(startDate) 기준 오름차순 정렬 (빠른 시작일 순서대로 나열)
+    list.sort((a, b) => {
+      const sA = a.startDate || "";
+      const sB = b.startDate || "";
+      if (!sA && !sB) return 0;
+      if (!sA) return 1;
+      if (!sB) return -1;
+      const cmpStart = sA.localeCompare(sB);
+      if (cmpStart !== 0) return cmpStart;
+      const eA = a.endDate || "";
+      const eB = b.endDate || "";
+      const cmpEnd = eA.localeCompare(eB);
+      if (cmpEnd !== 0) return cmpEnd;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+
+    // 정렬된 순서에 맞추어 프로젝트 고유 색상(COLORS) 부여
+    return list.map((p, i) => ({
       ...p,
-      status: currentStatus,
-      isManualStatus: effectiveManual,
-      manualStatusBy: p.manualStatusBy || (effectiveManual ? (p.pm || "담당자") : ""),
-      value: progress({ ...p, status: currentStatus, milestones: cleanMs }),
-      overdue: currentStatus !== "완료" && dt(p.endDate) < dt(iso()),
       projectColor: COLORS[i % COLORS.length]
-    };
-  }).filter(p => {
-    const text = [p.manufacturingNo, p.site, p.line, p.name, p.pm, p.design, p.facilityTechnology, p.control, p.vision].join(" ").toLowerCase();
-    const status = filter === "전체" || (filter === "완료" && p.status === "완료") || (filter === "진행중" && p.status !== "완료") || (filter === "지연" && p.overdue) || (p.status === filter);
-    const site = siteFilter === "전체" || p.site === siteFilter;
-    const person = personFilter === "전체" || [p.pm, p.design, p.facilityTechnology, p.control, p.vision].includes(personFilter);
-    return text.includes(search.toLowerCase()) && status && site && person;
-  }), [projects, search, filter, siteFilter, personFilter]);
+    }));
+  }, [projects, search, filter, siteFilter, personFilter]);
 
   async function save() {
     if (!editing && !create) return showPermissionModal("새 프로젝트 생성");

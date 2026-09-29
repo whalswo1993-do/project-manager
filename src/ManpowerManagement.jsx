@@ -2953,8 +2953,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                         title="전체 일자의 작업내용을 한꺼번에 펼치거나 접습니다"
                       >
                         {selectedProjectComp.reports.every((r, idx) => expandedCompReports[r.id || r.report_date || idx])
-                          ? '작업내용 전체 접기 ▴'
-                          : '작업내용 전체 펼치기 ▾'}
+                          ? '증원 부서 작업내용 전체 접기 ▴'
+                          : '증원 부서 작업내용 전체 펼치기 ▾'}
                       </button>
                     )}
                   </div>
@@ -3084,7 +3084,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                                           }}
                                           title="클릭하여 상세 작업내용 펼치기/접기"
                                         >
-                                          <span>📝 작업내용 {isExpanded ? '접기 ▴' : '보기 ▾'}</span>
+                                          <span>📝 증원 부서 작업내용 {isExpanded ? '접기 ▴' : '보기 ▾'}</span>
                                         </button>
                                       )}
                                     </div>

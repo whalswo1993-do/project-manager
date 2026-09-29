@@ -476,39 +476,64 @@ export default function VisionSPC() {
             <div className="main-container">
                 <aside className="sidebar">
                     <div>
-                        <div className="panel-title" style={{ marginBottom: '8px' }}>데이터 입력</div>
-                        <div style={{ marginBottom: '1rem' }}>
+                        <div className="panel-title" style={{ marginBottom: '10px' }}>데이터 입력</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginBottom: '1.25rem' }}>
+                            {/* 1. 파일 첨부 버튼 (표 붙여넣기 칸 크기만큼 width: 100%로 확장) */}
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current.click()}
                                 style={{
+                                    width: '100%',
                                     background: 'linear-gradient(135deg, #10b981, #059669)',
                                     color: '#fff',
-                                    padding: '8px 16px',
+                                    padding: '9px 16px',
                                     borderRadius: '8px',
                                     fontWeight: 'bold',
                                     border: 'none',
                                     boxShadow: '0 2px 5px rgba(16, 185, 129, 0.25)',
-                                    height: '36px',
+                                    height: '38px',
                                     whiteSpace: 'nowrap',
                                     cursor: 'pointer',
-                                    display: 'inline-flex',
+                                    display: 'flex',
                                     alignItems: 'center',
+                                    justifyContent: 'center',
                                     gap: '6px',
                                     fontSize: '13px',
+                                    boxSizing: 'border-box',
                                     transition: 'all 0.15s ease'
                                 }}
                             >
                                 ✨ 파일 첨부 (Excel)
                             </button>
-                        </div>
 
-                        <div className="paste-area">
-                            <div className="panel-title" style={{fontSize: '0.8rem'}}>클립보드 데이터 붙여넣기 (CTRL+V)</div>
+                            {/* 2. 엑셀 표 붙여넣기 (Ctrl+V) (파일첨부 버튼 아래쪽 배치) */}
                             <textarea 
-                                className="paste-textarea" 
-                                placeholder="엑셀에서 헤더를 포함한 데이터를 복사하여 이곳에 붙여넣어 주세요..."
+                                placeholder="엑셀 표 붙여넣기 (Ctrl+V)"
                                 onInput={handlePaste}
+                                onPaste={(e) => {
+                                    const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text") || "";
+                                    if (text && text.trim().length > 0) {
+                                        // onInput이 트리거되므로 자연스럽게 파싱됨
+                                    }
+                                }}
+                                style={{
+                                    width: '100%',
+                                    height: '38px',
+                                    padding: '9px 14px',
+                                    borderRadius: '8px',
+                                    border: '1.5px solid #10b981',
+                                    outline: 'none',
+                                    resize: 'none',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
+                                    boxSizing: 'border-box',
+                                    fontSize: '13px',
+                                    fontFamily: 'inherit',
+                                    background: '#ffffff',
+                                    color: '#1e293b',
+                                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                                    textAlign: 'left'
+                                }}
                             ></textarea>
                         </div>
                     </div>

@@ -6,7 +6,16 @@ import { registerSW } from 'virtual:pwa-register'
 
 import { ErrorBoundary } from './ErrorBoundary.jsx'
 
-try { registerSW({ immediate: true }) } catch (e) { console.error('SW Error:', e) }
+try {
+  registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      window.dispatchEvent(new CustomEvent('app-update-available'))
+    }
+  })
+} catch (e) {
+  console.error('SW Error:', e)
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

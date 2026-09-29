@@ -2,10 +2,30 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const buildTimestamp = Date.now()
+
+const versionPlugin = () => ({
+  name: 'version-plugin',
+  generateBundle() {
+    this.emitFile({
+      type: 'asset',
+      fileName: 'version.json',
+      source: JSON.stringify({
+        version: buildTimestamp,
+        buildTime: new Date(buildTimestamp).toISOString()
+      }, null, 2)
+    })
+  }
+})
+
 export default defineConfig({
   base: '/',
+  define: {
+    __APP_BUILD_TIME__: buildTimestamp
+  },
   plugins: [
     react(),
+    versionPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['tw-logo.png', 'pwa-192.png', 'pwa-512.png'],
@@ -37,6 +57,10 @@ export default defineConfig({
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
             handler: 'NetworkOnly',
             options: { cacheName: 'supabase-network-only' }
+          },
+          {
+            urlPattern: /version\.json/i,
+            handler: 'NetworkOnly'
           }
         ]
       }

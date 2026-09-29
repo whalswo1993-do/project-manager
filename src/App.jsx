@@ -404,6 +404,97 @@ export default function App() {
     };
   }, [currentView, role, session]);
 
+  // 시스템 업데이트 실시간 감지 상태 및 핸들러
+  const [hasUpdate, setHasUpdate] = useState(false);
+  const [dismissUpdateNotice, setDismissUpdateNotice] = useState(() => {
+    try {
+      return sessionStorage.getItem("pm_update_dismissed") === "true";
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const handlePerformUpdate = () => {
+    try {
+      localStorage.setItem("pm_current_view", currentView);
+      sessionStorage.setItem(`pm_scroll_${currentView}`, window.scrollY.toString());
+      sessionStorage.removeItem("pm_update_dismissed");
+    } catch (e) {}
+    if ("caches" in window) {
+      caches.keys().then(ks => ks.forEach(k => caches.delete(k)));
+    }
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+    }
+    window.location.reload(true);
+  };
+
+  const handleDismissUpdate = () => {
+    setDismissUpdateNotice(true);
+    try {
+      sessionStorage.setItem("pm_update_dismissed", "true");
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    // 1. PWA 서비스워커 이벤트 리스너
+    const handleSWUpdate = () => {
+      setHasUpdate(true);
+    };
+    window.addEventListener("app-update-available", handleSWUpdate);
+
+    // 2. 디버깅 및 사용자 수동 테스트용 함수 노출
+    window.__triggerUpdateNotice = () => {
+      setHasUpdate(true);
+      setDismissUpdateNotice(false);
+      try { sessionStorage.removeItem("pm_update_dismissed"); } catch (e) {}
+      console.log("🔔 [TW Project] 업데이트 알림 테스트가 활성화되었습니다.");
+    };
+
+    // 3. 배포된 version.json 확인 (주기적 폴링 및 탭 복귀 시 확인)
+    const currentBuildTime = typeof __APP_BUILD_TIME__ !== "undefined" ? __APP_BUILD_TIME__ : null;
+
+    const checkRemoteVersion = async () => {
+      if (!currentBuildTime) return;
+      try {
+        const res = await fetch(`/version.json?t=${Date.now()}`, {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache", "Pragma": "no-cache" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.version && Number(data.version) > Number(currentBuildTime)) {
+            setHasUpdate(true);
+          }
+        }
+      } catch (err) {
+        // 네트워크 일시 오류 등은 조용히 무시
+      }
+    };
+
+    const initialTimer = setTimeout(checkRemoteVersion, 3000);
+    const intervalTimer = setInterval(checkRemoteVersion, 60 * 1000); // 1분 주기 확인
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkRemoteVersion();
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.getRegistration().then(reg => {
+            if (reg) reg.update();
+          }).catch(() => {});
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("app-update-available", handleSWUpdate);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearTimeout(initialTimer);
+      clearInterval(intervalTimer);
+    };
+  }, []);
+
   const currentUserName = useMemo(() => {
     if (!session) return "담당자";
     return profile?.name ||
@@ -1357,26 +1448,46 @@ JSON 출력 예시:
             <small>{session.user.email} · {role}</small>
           </div>
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <button
-                onClick={() => {
-                  try {
-                    localStorage.setItem("pm_current_view", currentView);
-                    sessionStorage.setItem(`pm_scroll_${currentView}`, window.scrollY.toString());
-                  } catch (e) {}
-                  if ('caches' in window) {
-                    caches.keys().then(ks => ks.forEach(k => caches.delete(k)));
-                  }
-                  if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
-                  }
-                  window.location.reload(true);
-                }}
-                style={{ background: '#d97706', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
-                title="브라우저 캐시를 완전히 비우고 최신 화면으로 새로고침합니다"
-              >
-                ⚡ 캐시 새로고침
-              </button>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {/* 업데이트 감지 안내 배너 (캐시 새로고침 버튼 좌측에 비차단형으로 배치) */}
+              {hasUpdate && !dismissUpdateNotice && (
+                <div className="app-update-notice-banner" role="alert">
+                  <div className="app-update-notice-text">
+                    <span style={{ fontSize: '13px' }}>🔔</span>
+                    <b>새로운 업데이트가 있습니다!</b>
+                    <span>(진행 중인 업무를 마무리하신 후 천천히 새로고침하셔도 됩니다)</span>
+                  </div>
+                  <div style={{ display: 'inline-flex', gap: '4px', alignItems: 'center', marginLeft: 'auto' }}>
+                    <button
+                      type="button"
+                      onClick={handlePerformUpdate}
+                      className="app-update-btn-refresh"
+                      title="최신 코드를 반영하여 페이지를 새로고침합니다"
+                    >
+                      🚀 지금 새로고침
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDismissUpdate}
+                      className="app-update-btn-later"
+                      title="알림을 닫고 현재 작업을 계속합니다 (언제든 캐시 새로고침 버튼으로 반영 가능)"
+                    >
+                      나중에
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="cache-refresh-btn-wrapper">
+                <button
+                  onClick={handlePerformUpdate}
+                  style={{ background: '#d97706', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
+                  title="브라우저 캐시를 완전히 비우고 최신 화면으로 새로고침합니다"
+                >
+                  ⚡ 캐시 새로고침
+                </button>
+                {hasUpdate && <span className="update-badge-dot" title="새로운 시스템 업데이트가 있습니다 (클릭하여 새로고침 가능)" />}
+              </div>
               <button
                 onClick={() => setShowPasswordModal(true)}
                 style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}

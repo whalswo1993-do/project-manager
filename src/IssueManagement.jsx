@@ -42,17 +42,26 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
             localStorage.setItem('pm_issue_selected_project', selectedProject);
         } catch (e) {}
     }, [selectedProject]);
-    const [extractedReports, setExtractedReports] = useState([{
-        date: new Date().toISOString().slice(0, 10),
+
+    const createEmptyReport = (dateStr = new Date().toISOString().slice(0, 10)) => ({
+        date: dateStr,
         work_details: '',
         special_notes: '',
-        personnel_count: 0,
         pm_count: 0,
         design_count: 0,
         facility_count: 0,
+        facility_outsource: 0,
         control_count: 0,
-        vision_count: 0
-    }]);
+        control_outsource: 0,
+        electrical_count: 0,
+        electrical_outsource: 0,
+        vision_count: 0,
+        vision_outsource: 0,
+        personnel_count: 0, // 안전/CS (기타 대체)
+        custom_depts: {}
+    });
+
+    const [extractedReports, setExtractedReports] = useState([createEmptyReport()]);
     const [isExtracting, setIsExtracting] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [msg, setMsg] = useState('');
@@ -101,7 +110,22 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
             setMsg('일보 목록을 불러오는데 실패했습니다.');
             return;
         }
-        setProjectReports(data || []);
+        const parsed = (data || []).map(r => {
+            let extra = {};
+            if (r.content && typeof r.content === 'string' && r.content.trim().startsWith('{')) {
+                try { extra = JSON.parse(r.content); } catch (e) {}
+            }
+            return {
+                ...r,
+                electrical_count: Number(r.electrical_count ?? extra.electrical_count ?? 0),
+                facility_outsource: Number(r.facility_outsource ?? extra.facility_outsource ?? 0),
+                control_outsource: Number(r.control_outsource ?? extra.control_outsource ?? 0),
+                electrical_outsource: Number(r.electrical_outsource ?? extra.electrical_outsource ?? 0),
+                vision_outsource: Number(r.vision_outsource ?? extra.vision_outsource ?? 0),
+                custom_depts: extra.custom_depts || {}
+            };
+        });
+        setProjectReports(parsed);
     }
 
     const handleDragOver = (e) => {
@@ -141,7 +165,10 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
             dates.forEach(d => {
                 const m = mpMap[d];
                 const totalMD = (m.pm_count || 0) + (m.design_count || 0) + (m.facility_count || 0) +
-                                (m.control_count || 0) + (m.vision_count || 0) + (m.personnel_count || 0);
+                                (m.facility_outsource || 0) + (m.control_count || 0) + (m.control_outsource || 0) +
+                                (m.electrical_count || 0) + (m.electrical_outsource || 0) +
+                                (m.vision_count || 0) + (m.vision_outsource || 0) + (m.personnel_count || 0) +
+                                Object.values(m.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
                 const existingDbReport = (projectReports || []).find(p => p.report_date === d);
 
                 if (!currentMap[d]) {
@@ -151,21 +178,33 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
                             date: d,
                             work_details: existingDbReport?.work_details || existingDbReport?.content || '',
                             special_notes: existingDbReport?.special_notes || existingDbReport?.issues || '',
-                            personnel_count: m.personnel_count || 0,
                             pm_count: m.pm_count || 0,
                             design_count: m.design_count || 0,
                             facility_count: m.facility_count || 0,
+                            facility_outsource: m.facility_outsource || 0,
                             control_count: m.control_count || 0,
-                            vision_count: m.vision_count || 0
+                            control_outsource: m.control_outsource || 0,
+                            electrical_count: m.electrical_count || 0,
+                            electrical_outsource: m.electrical_outsource || 0,
+                            vision_count: m.vision_count || 0,
+                            vision_outsource: m.vision_outsource || 0,
+                            personnel_count: m.personnel_count || 0, // 안전/CS
+                            custom_depts: { ...(existingDbReport?.custom_depts || {}), ...(m.custom_depts || {}) }
                         };
                     }
                 } else {
                     currentMap[d].pm_count = m.pm_count ?? currentMap[d].pm_count;
                     currentMap[d].design_count = m.design_count ?? currentMap[d].design_count;
                     currentMap[d].facility_count = m.facility_count ?? currentMap[d].facility_count;
+                    currentMap[d].facility_outsource = m.facility_outsource ?? currentMap[d].facility_outsource;
                     currentMap[d].control_count = m.control_count ?? currentMap[d].control_count;
+                    currentMap[d].control_outsource = m.control_outsource ?? currentMap[d].control_outsource;
+                    currentMap[d].electrical_count = m.electrical_count ?? currentMap[d].electrical_count;
+                    currentMap[d].electrical_outsource = m.electrical_outsource ?? currentMap[d].electrical_outsource;
                     currentMap[d].vision_count = m.vision_count ?? currentMap[d].vision_count;
+                    currentMap[d].vision_outsource = m.vision_outsource ?? currentMap[d].vision_outsource;
                     currentMap[d].personnel_count = m.personnel_count ?? currentMap[d].personnel_count;
+                    currentMap[d].custom_depts = { ...(currentMap[d].custom_depts || {}), ...(m.custom_depts || {}) };
 
                     if (!currentMap[d].work_details && existingDbReport) {
                         currentMap[d].work_details = existingDbReport.work_details || existingDbReport.content || '';
@@ -231,7 +270,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
 
                 // 공수/인원 시트 검사 (명시적 일보 시트 제외 및 더 많은 유효 인원 데이터를 가진 시트 우선 채택)
                 if (!isExplicitWork) {
-                    const mTree = parseManpowerSheetGrid(grid);
+                    const mTree = parseManpowerSheetGrid(grid, sheetName);
                     const mCount = mTree ? Object.keys(mTree).length : 0;
                     const curMCount = detectedManpowerMap ? Object.keys(detectedManpowerMap).length : 0;
                     if (mCount > curMCount) {
@@ -343,7 +382,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
             const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
             const prompt = `
 다음은 현장 공사일보(엑셀)의 원본 텍스트입니다. 이 내용에서 일자별로 데이터를 분류하여 3가지 주요 정보(작업내용, 특이사항, 투입인원)를 추출해주세요.
-특히 투입인원은 부서별(소장/Manager, 설계, 설비기술, 제어, 비전)로 세분화하여 파악해주세요. 파악할 수 없는 인원은 기타(personnel_count)로 합산하세요.
+특히 투입인원은 부서별(소장, 설계, 기구, 기구외주, 제어, 제어외주, 전장, 전장외주, 비전, 비전외주, 안전/CS)로 세분화하여 파악해주세요. 전장(전기/배선)과 제어(PLC/로봇제어)는 반드시 별개 부서로 구분하세요. 안전, 통역, 법인, 기타 지원인력은 안전/CS(personnel_count)로 합산하세요. 그 외 도비, 레이저용접 등 명시된 특수 부서는 custom_depts 객체에 담으세요.
 결과는 반드시 아래 JSON 배열 포맷으로만 반환해주세요. (마크다운 포맷이나 백틱을 절대로 포함하지 마세요.)
 **중요: 텍스트에 연도(Year)가 표기되어 있지 않은 경우, 반드시 올해(${new Date().getFullYear()}년)를 기준으로 날짜를 작성하세요.**
 
@@ -351,14 +390,20 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
 [
   {
     "date": "YYYY-MM-DD",
-    "work_details": "해당 일자의 진행 작업(업무) 내용 요약 (다중 라인은 \\n 사용)",
+    "work_details": "해당 일자의 진행 작업(업무) 내용 요약 (다중 라인은 \n 사용)",
     "special_notes": "특이사항, 이슈사항, 문제점, 지연 사유 등 요약 (없으면 빈 문자열)",
-    "personnel_count": 부서 파악이 안되는 기타 인원수 합계 (숫자),
     "pm_count": 소장(Manager/PM) 투입 인원 (숫자),
     "design_count": 설계 투입 인원 (숫자),
-    "facility_count": 설비기술 투입 인원 (숫자),
+    "facility_count": 기구 투입 인원 (숫자),
+    "facility_outsource": 기구외주 투입 인원 (숫자),
     "control_count": 제어 투입 인원 (숫자),
-    "vision_count": 비전 투입 인원 (숫자)
+    "control_outsource": 제어외주 투입 인원 (숫자),
+    "electrical_count": 전장 투입 인원 (숫자),
+    "electrical_outsource": 전장외주 투입 인원 (숫자),
+    "vision_count": 비전 투입 인원 (숫자),
+    "vision_outsource": 비전외주 투입 인원 (숫자),
+    "personnel_count": 안전/CS/지원 투입 인원 (숫자),
+    "custom_depts": { "도비": 0 }
   }
 ]
 
@@ -375,13 +420,18 @@ ${allText.substring(0, 100000)}
                     date: r.date || new Date().toISOString().slice(0, 10),
                     work_details: r.work_details || '',
                     special_notes: r.special_notes || r.issues || '',
-                    personnel_count: Number(r.personnel_count) || 0,
                     pm_count: Number(r.pm_count) || 0,
                     design_count: Number(r.design_count) || 0,
                     facility_count: Number(r.facility_count) || 0,
+                    facility_outsource: Number(r.facility_outsource) || 0,
                     control_count: Number(r.control_count) || 0,
-                    vision_count: Number(r.vision_count) || 0
-                })));
+                    control_outsource: Number(r.control_outsource) || 0,
+                    electrical_count: Number(r.electrical_count) || 0,
+                    electrical_outsource: Number(r.electrical_outsource) || 0,
+                    vision_count: Number(r.vision_count) || 0,
+                    vision_outsource: Number(r.vision_outsource) || 0,
+                    personnel_count: Number(r.personnel_count) || 0,
+                    custom_depts: r.custom_depts || {}})));
             }
             setMsg(`AI가 ${parsed.length}일치의 일보 내용을 성공적으로 구조화했습니다. 내용 확인 후 저장해주세요.`);
         } catch (error) {
@@ -407,16 +457,26 @@ ${allText.substring(0, 100000)}
     };
 
     const handleEditReport = (report) => {
+        let extra = {};
+        if (report.content && typeof report.content === 'string' && report.content.trim().startsWith('{')) {
+            try { extra = JSON.parse(report.content); } catch (e) {}
+        }
         setExtractedReports([{
             date: report.report_date,
-            work_details: report.work_details || report.content || '',
+            work_details: report.work_details || (typeof report.content === 'string' && !report.content.trim().startsWith('{') ? report.content : ''),
             special_notes: report.special_notes || report.issues || '',
-            personnel_count: report.personnel_count || 0,
             pm_count: report.pm_count || 0,
             design_count: report.design_count || 0,
             facility_count: report.facility_count || 0,
+            facility_outsource: report.facility_outsource ?? extra.facility_outsource ?? 0,
             control_count: report.control_count || 0,
-            vision_count: report.vision_count || 0
+            control_outsource: report.control_outsource ?? extra.control_outsource ?? 0,
+            electrical_count: report.electrical_count ?? extra.electrical_count ?? 0,
+            electrical_outsource: report.electrical_outsource ?? extra.electrical_outsource ?? 0,
+            vision_count: report.vision_count || 0,
+            vision_outsource: report.vision_outsource ?? extra.vision_outsource ?? 0,
+            personnel_count: report.personnel_count || 0, // 안전/CS
+            custom_depts: report.custom_depts || extra.custom_depts || {}
         }]);
         setCollapsedSections(prev => ({ ...prev, inputForm: false }));
         setActiveIssueSection('all');
@@ -433,7 +493,10 @@ ${allText.substring(0, 100000)}
             const hasWork = Boolean(r.work_details && r.work_details.trim());
             const hasNotes = Boolean(r.special_notes && r.special_notes.trim());
             const totalMD = (r.pm_count || 0) + (r.design_count || 0) + (r.facility_count || 0) +
-                            (r.control_count || 0) + (r.vision_count || 0) + (r.personnel_count || 0);
+                            (r.facility_outsource || 0) + (r.control_count || 0) + (r.control_outsource || 0) +
+                            (r.electrical_count || 0) + (r.electrical_outsource || 0) +
+                            (r.vision_count || 0) + (r.vision_outsource || 0) + (r.personnel_count || 0) +
+                            Object.values(r.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
             return hasWork || hasNotes || totalMD > 0;
         });
 
@@ -455,7 +518,19 @@ ${allText.substring(0, 100000)}
 
         const existingMap = {};
         (existingRows || []).forEach(row => {
-            existingMap[row.report_date] = row;
+            let extra = {};
+            if (row.content && typeof row.content === 'string' && row.content.trim().startsWith('{')) {
+                try { extra = JSON.parse(row.content); } catch (e) {}
+            }
+            existingMap[row.report_date] = {
+                ...row,
+                electrical_count: Number(row.electrical_count ?? extra.electrical_count ?? 0),
+                facility_outsource: Number(row.facility_outsource ?? extra.facility_outsource ?? 0),
+                control_outsource: Number(row.control_outsource ?? extra.control_outsource ?? 0),
+                electrical_outsource: Number(row.electrical_outsource ?? extra.electrical_outsource ?? 0),
+                vision_outsource: Number(row.vision_outsource ?? extra.vision_outsource ?? 0),
+                custom_depts: extra.custom_depts || {}
+            };
         });
 
         // 2. 기존 일보가 있으면 최신 내용으로 추가/병합, 없으면 신규 생성
@@ -464,10 +539,13 @@ ${allText.substring(0, 100000)}
             const rWork = (r.work_details || '').trim();
             const rNotes = (r.special_notes || '').trim();
             const rTotalMD = (r.pm_count || 0) + (r.design_count || 0) + (r.facility_count || 0) +
-                            (r.control_count || 0) + (r.vision_count || 0) + (r.personnel_count || 0);
+                            (r.facility_outsource || 0) + (r.control_count || 0) + (r.control_outsource || 0) +
+                            (r.electrical_count || 0) + (r.electrical_outsource || 0) +
+                            (r.vision_count || 0) + (r.vision_outsource || 0) + (r.personnel_count || 0) +
+                            Object.values(r.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
 
             // 작업내용: 이번 폼에 내용이 있으면 최신 내용 반영, 비어있고 기존 DB가 있으면 기존 내용 유지
-            const finalWork = rWork || (existing ? (existing.work_details || existing.content || '') : '');
+            const finalWork = rWork || (existing ? (existing.work_details || (typeof existing.content === 'string' && !existing.content.trim().startsWith('{') ? existing.content : '')) : '');
             
             // 특이사항: 이번 폼에 내용이 있으면 반영, 비어있고 기존 DB가 있으면 기존 내용 유지
             const finalNotes = rNotes || (existing ? (existing.special_notes || existing.issues || '') : '');
@@ -476,22 +554,46 @@ ${allText.substring(0, 100000)}
             let pm = r.pm_count || 0;
             let design = r.design_count || 0;
             let facility = r.facility_count || 0;
+            let facilityOutsource = r.facility_outsource || 0;
             let control = r.control_count || 0;
+            let controlOutsource = r.control_outsource || 0;
+            let electrical = r.electrical_count || 0;
+            let electricalOutsource = r.electrical_outsource || 0;
             let vision = r.vision_count || 0;
+            let visionOutsource = r.vision_outsource || 0;
             let personnel = r.personnel_count || 0;
+            let customDepts = { ...(r.custom_depts || {}) };
 
             if (rTotalMD === 0 && existing) {
                 const exTotal = (existing.pm_count || 0) + (existing.design_count || 0) + (existing.facility_count || 0) +
-                                (existing.control_count || 0) + (existing.vision_count || 0) + (existing.personnel_count || 0);
+                                (existing.facility_outsource || 0) + (existing.control_count || 0) + (existing.control_outsource || 0) +
+                                (existing.electrical_count || 0) + (existing.electrical_outsource || 0) +
+                                (existing.vision_count || 0) + (existing.vision_outsource || 0) + (existing.personnel_count || 0) +
+                                Object.values(existing.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
                 if (exTotal > 0) {
                     pm = existing.pm_count || 0;
                     design = existing.design_count || 0;
                     facility = existing.facility_count || 0;
+                    facilityOutsource = existing.facility_outsource || 0;
                     control = existing.control_count || 0;
+                    controlOutsource = existing.control_outsource || 0;
+                    electrical = existing.electrical_count || 0;
+                    electricalOutsource = existing.electrical_outsource || 0;
                     vision = existing.vision_count || 0;
+                    visionOutsource = existing.vision_outsource || 0;
                     personnel = existing.personnel_count || 0;
+                    customDepts = { ...(existing.custom_depts || {}) };
                 }
             }
+
+            const extraData = {
+                electrical_count: electrical,
+                facility_outsource: facilityOutsource,
+                control_outsource: controlOutsource,
+                electrical_outsource: electricalOutsource,
+                vision_outsource: visionOutsource,
+                custom_depts: customDepts
+            };
 
             return {
                 project_id: selectedProject,
@@ -499,13 +601,13 @@ ${allText.substring(0, 100000)}
                 work_details: finalWork,
                 special_notes: finalNotes,
                 issues: existing?.issues || '', 
-                personnel_count: personnel,
+                personnel_count: personnel, // 안전/CS
                 pm_count: pm,
                 design_count: design,
                 facility_count: facility,
                 control_count: control,
                 vision_count: vision,
-                content: existing?.content || '' 
+                content: JSON.stringify(extraData) 
             };
         });
 
@@ -521,11 +623,7 @@ ${allText.substring(0, 100000)}
             setMsg('저장 실패: ' + error.message);
         } else {
             setMsg(`✅ ${insertData.length}일치의 공사일보가 성공적으로 저장(최신 반영/병합)되었습니다.`);
-            setExtractedReports([{
-                date: new Date().toISOString().slice(0, 10),
-                work_details: '', special_notes: '', personnel_count: 0,
-                pm_count: 0, design_count: 0, facility_count: 0, control_count: 0, vision_count: 0
-            }]);
+            setExtractedReports([createEmptyReport()]);
             loadReports(selectedProject);
         }
     };
@@ -539,7 +637,7 @@ ${allText.substring(0, 100000)}
     };
 
     // --- HTML / TSV 엑셀 표 파서 유틸리티 (모든 날짜 포맷 전천후 지원) ---
-    const normalizeReportDate = (raw) => {
+    const normalizeReportDate = (raw, baseYear = new Date().getFullYear(), fallbackMonth = null) => {
         if (!raw) return null;
         if (raw instanceof Date && !isNaN(raw)) {
             return raw.toISOString().slice(0, 10);
@@ -610,11 +708,22 @@ ${allText.substring(0, 100000)}
             return `20${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
         }
 
+        // 2-1. "  1/Wed", "10/Fri" 등 요일이 붙은 날짜 포맷 (fallbackMonth 지원)
+        let mDayWeek = cleanStr.match(/^\s*(\d{1,2})\s*\/\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|[월화수목금토일])/i);
+        if (mDayWeek && fallbackMonth) {
+            return `${baseYear}-${String(fallbackMonth).padStart(2, '0')}-${String(mDayWeek[1]).padStart(2, '0')}`;
+        }
+
         // 3. 월/일 포맷: [M/D], (M/D), 독립된 M/D나 M.D나 M월 D일 (호기/라인 번호 혼동 방지를 위해 연도 없는 하이픈(-)은 제외)
         m = cleanStr.match(/(?:^|\[|\(|일자|금일|일보)\s*(1[0-2]|0?[1-9])[/.\s월]+([12]\d|3[01]|0?[1-9])[일]?(?:\s*\]|\s*\)|$)/);
         if (m) {
-            const currentYear = new Date().getFullYear();
-            return `${currentYear}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`;
+            const yr = baseYear || new Date().getFullYear();
+            return `${yr}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`;
+        }
+
+        // 4. 순수 일수 숫자만 있는 경우 (1~31) 및 fallbackMonth 존재 시
+        if (/^\s*([1-9]|[12][0-9]|3[01])\s*$/.test(cleanStr) && fallbackMonth) {
+            return `${baseYear}-${String(fallbackMonth).padStart(2, '0')}-${String(cleanStr.trim()).padStart(2, '0')}`;
         }
 
         return null;
@@ -1199,14 +1308,20 @@ ${allText.substring(0, 100000)}
                 if (!currentMap[d]) {
                     currentMap[d] = {
                         date: d,
-                        work_details: w.work_details || existingDbReport?.work_details || existingDbReport?.content || '',
+                        work_details: w.work_details || existingDbReport?.work_details || (typeof existingDbReport?.content === 'string' && !existingDbReport?.content.trim().startsWith('{') ? existingDbReport.content : ''),
                         special_notes: w.special_notes || existingDbReport?.special_notes || existingDbReport?.issues || '',
-                        personnel_count: existingDbReport?.personnel_count || 0,
                         pm_count: existingDbReport?.pm_count || 0,
                         design_count: existingDbReport?.design_count || 0,
                         facility_count: existingDbReport?.facility_count || 0,
+                        facility_outsource: existingDbReport?.facility_outsource || 0,
                         control_count: existingDbReport?.control_count || 0,
-                        vision_count: existingDbReport?.vision_count || 0
+                        control_outsource: existingDbReport?.control_outsource || 0,
+                        electrical_count: existingDbReport?.electrical_count || 0,
+                        electrical_outsource: existingDbReport?.electrical_outsource || 0,
+                        vision_count: existingDbReport?.vision_count || 0,
+                        vision_outsource: existingDbReport?.vision_outsource || 0,
+                        personnel_count: existingDbReport?.personnel_count || 0, // 안전/CS
+                        custom_depts: existingDbReport?.custom_depts || {}
                     };
                 } else {
                     currentMap[d].work_details = w.work_details || currentMap[d].work_details;
@@ -1216,14 +1331,23 @@ ${allText.substring(0, 100000)}
                             : w.special_notes;
                     }
                     const curTotal = (currentMap[d].pm_count || 0) + (currentMap[d].design_count || 0) + (currentMap[d].facility_count || 0) +
-                                    (currentMap[d].control_count || 0) + (currentMap[d].vision_count || 0) + (currentMap[d].personnel_count || 0);
+                                    (currentMap[d].facility_outsource || 0) + (currentMap[d].control_count || 0) + (currentMap[d].control_outsource || 0) +
+                                    (currentMap[d].electrical_count || 0) + (currentMap[d].electrical_outsource || 0) +
+                                    (currentMap[d].vision_count || 0) + (currentMap[d].vision_outsource || 0) + (currentMap[d].personnel_count || 0) +
+                                    Object.values(currentMap[d].custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
                     if (curTotal === 0 && existingDbReport) {
                         currentMap[d].pm_count = existingDbReport.pm_count || 0;
                         currentMap[d].design_count = existingDbReport.design_count || 0;
                         currentMap[d].facility_count = existingDbReport.facility_count || 0;
+                        currentMap[d].facility_outsource = existingDbReport.facility_outsource || 0;
                         currentMap[d].control_count = existingDbReport.control_count || 0;
+                        currentMap[d].control_outsource = existingDbReport.control_outsource || 0;
+                        currentMap[d].electrical_count = existingDbReport.electrical_count || 0;
+                        currentMap[d].electrical_outsource = existingDbReport.electrical_outsource || 0;
                         currentMap[d].vision_count = existingDbReport.vision_count || 0;
+                        currentMap[d].vision_outsource = existingDbReport.vision_outsource || 0;
                         currentMap[d].personnel_count = existingDbReport.personnel_count || 0;
+                        currentMap[d].custom_depts = existingDbReport.custom_depts || {};
                     }
                 }
             });
@@ -1237,9 +1361,99 @@ ${allText.substring(0, 100000)}
         setMsg(`📋 작업내용 시트 붙여넣기 완료: ${label} ${validDates.length}일치 데이터(${validDates[0]} ~ ${validDates[validDates.length - 1]})를 직접입력 폼에 반영했습니다.`);
     };
 
-    const parseManpowerSheetGrid = (grid) => {
+    const parseTimeToHours = (val) => {
+        if (typeof val === 'number') {
+            if (val > 0 && val < 1.0) return val * 24;
+            if (val >= 1 && val <= 24) return val;
+        }
+        const str = String(val).trim();
+        const isPM = /PM/i.test(str);
+        const isAM = /AM/i.test(str);
+        const m = str.match(/([0-9]{1,2}):([0-9]{2})/);
+        if (m) {
+            let h = parseInt(m[1], 10);
+            const min = parseInt(m[2], 10);
+            if (isPM && h < 12) h += 12;
+            if (isAM && h === 12) h = 0;
+            return h + min / 60;
+        }
+        return null;
+    };
+
+    const calculateWorkedHoursToMD = (hours, isNight = false) => {
+        const h = parseFloat(hours);
+        if (isNaN(h) || h <= 0) return 0;
+        if (isNight) {
+            if (h <= 8.5) return 1.5;
+            if (h < 16.0) return 2.0;
+            return 2.5;
+        } else {
+            if (h <= 4.5) return 0.5;
+            if (h <= 8.5) return 1.0;
+            if (h < 16.0) return 1.5;
+            return 2.0;
+        }
+    };
+
+    const classifyDept = (text, isStrictDeptCol = false) => {
+        if (!text) return null;
+        const clean = String(text).replace(/\s+/g, '');
+        if (/합계|총원|투입인원|인원합계|공수합계|총합|total|^계$/i.test(clean)) return { key: '__TOTAL__' };
+
+        if (/^(No\.?|구분|성명|이름|출장자|직원|출근|퇴근|수당|휴일|휴무|코드|code|라인|장비|번호)$/i.test(clean)) {
+            return null;
+        }
+
+        const isSub = /외주|sub|협력|outsourc|엘라이트/i.test(clean);
+        if (isSub) {
+            if (/비전|비젼|vision|vis|엘라이트/i.test(clean)) return { key: 'vision_outsource', label: '비전외주' };
+            if (/전장|전기|배선|포설|elec/i.test(clean)) return { key: 'electrical_outsource', label: '전장외주' };
+            if (/제어|control|plc/i.test(clean)) return { key: 'control_outsource', label: '제어외주' };
+            if (/설비|기구|생기|설기|생산기술|설비기술|기계|배관|mech/i.test(clean)) return { key: 'facility_outsource', label: '기구외주' };
+            return { key: 'facility_outsource', label: '기구외주' };
+        }
+
+        if (/소장|현장소장|관리자|현장대리|Supervisor|\bSV\b|\bPM\b|\bPL\b|ProjectManager/i.test(clean)) {
+            return { key: 'pm_count', label: '소장' };
+        }
+        if (/설계|도면|design/i.test(clean)) {
+            return { key: 'design_count', label: '설계' };
+        }
+        if (/전장|전기|포설|결선|배선|electrical/i.test(clean)) {
+            return { key: 'electrical_count', label: '전장' };
+        }
+        if (/제어|PLC|HMI|control/i.test(clean)) {
+            return { key: 'control_count', label: '제어' };
+        }
+        if (/설비|기구|생기|설기|생산기술|설비기술|기계|배관|공압|mechanical/i.test(clean)) {
+            return { key: 'facility_count', label: '기구' };
+        }
+        if (/비전|비젼|vision|검사|이물비전|치수비전/i.test(clean)) {
+            return { key: 'vision_count', label: '비전' };
+        }
+        if (/안전|Safety|HSE|EHS|CS|고객지원|지원|통역|법인|본사|우원기술/i.test(clean)) {
+            return { key: 'personnel_count', label: '안전/CS' };
+        }
+
+        if (isStrictDeptCol || /도비|레이저|용접|로보트|로봇|가공|조립공정|해체|반입|교체|세팅|setting|인증|양산/i.test(clean)) {
+            if (clean.length >= 2 && clean.length <= 15 && !/\d{2,}|http|file|row|col/i.test(clean)) {
+                if (!isStrictDeptCol && /^[가-힣]{2,4}$/.test(clean) && !/공정|작업|기술|팀|부|조|파트/.test(clean)) {
+                    return null;
+                }
+                return { key: 'custom', name: clean, label: clean };
+            }
+        }
+
+        return null;
+    };
+
+    const parseManpowerSheetGrid = (grid, sheetName = '') => {
         const finalMap = {};
         if (!grid || grid.length === 0) return finalMap;
+
+        let fallbackMonth = null;
+        const sm = (sheetName || '').match(/(1[0-2]|0?[1-9])\s*월/);
+        if (sm) fallbackMonth = parseInt(sm[1], 10);
 
         const initDate = (d) => {
             if (!finalMap[d]) {
@@ -1248,346 +1462,299 @@ ${allText.substring(0, 100000)}
                     pm_count: 0,
                     design_count: 0,
                     facility_count: 0,
+                    facility_outsource: 0,
                     control_count: 0,
+                    control_outsource: 0,
+                    electrical_count: 0,
+                    electrical_outsource: 0,
                     vision_count: 0,
+                    vision_outsource: 0,
                     personnel_count: 0,
-                    _totalFromSheet: 0
+                    custom_depts: {}
                 };
             }
         };
 
-        // 직종 자동 판별기 (현장별 다양한 직종 및 조직 명칭 통합)
-        const classifyDept = (text) => {
-            const clean = String(text || '').replace(/\s+/g, '');
-            if (/소장|PM|현장소장|관리자|현장대리|Supervisor/i.test(clean)) return 'pm_count';
-            if (/설계|도면|설계팀/i.test(clean)) return 'design_count';
-            if (/설비|기구|생기|생산기술|설비기술|기계|배관|공압/i.test(clean)) return 'facility_count';
-            if (/제어|전장|전기|PLC/i.test(clean)) return 'control_count';
-            if (/비전|Vision|검사/i.test(clean)) return 'vision_count';
-            if (/안전|통역|법인|CS|외주|^기타$/i.test(clean)) return 'personnel_count';
-            if (/합계|총원|투입|인원|공수|총합|total|^계$/i.test(clean)) return '__TOTAL__';
-            return null;
-        };
-
-        // 사용자 지침 기반 정밀 MD 환산 함수:
-        // 주간 기준: 8시간 근무 시 1.0 MD, 8시간 초과~16시간 미만 = 1.5 MD, 16시간 이상 = 2.0 MD (4시간 반일 = 0.5 MD)
-        // 야간 기준: 기본 1.5 MD부터 시작하여 동일하게 증가 (<=8시간 = 1.5 MD, 8시간 초과~16시간 미만 = 2.0 MD, 16시간 이상 = 2.5 MD)
-        const calculateWorkedHoursToMD = (hours, isNight = false) => {
-            const h = parseFloat(hours);
-            if (isNaN(h) || h <= 0) return 0;
-            if (!isNight) {
-                if (h <= 4.5) return 0.5;
-                if (h <= 8.5) return 1.0;
-                if (h < 16.0) return 1.5;
-                return 2.0;
+        const addMDToMap = (dateStr, deptInfo, md) => {
+            if (!deptInfo || md <= 0) return;
+            initDate(dateStr);
+            if (deptInfo.key === '__TOTAL__') {
+                finalMap[dateStr]._totalFromSheet = (finalMap[dateStr]._totalFromSheet || 0) + md;
+            } else if (deptInfo.key === 'custom') {
+                const cName = deptInfo.name || deptInfo.label || '기타부서';
+                finalMap[dateStr].custom_depts[cName] = (finalMap[dateStr].custom_depts[cName] || 0) + md;
             } else {
-                if (h <= 8.5) return 1.5;
-                if (h < 16.0) return 2.0;
-                return 2.5;
+                finalMap[dateStr][deptInfo.key] = (finalMap[dateStr][deptInfo.key] || 0) + md;
             }
         };
 
-        // 1. 유효 일자 열(Date Columns) 자동 감지 (단일행 일자 + 2행 분할 월/일 모두 지원)
-        let bestDateRowIdx = -1;
-        let maxDateCount = 0;
+        let bestDateRow = -1;
         let bestDateColMap = {};
+        let maxDates = 0;
 
-        // A. 단일 행 내 일자(엑셀 일련번호, YYYY-MM-DD, M/D 등) 최다 보유 행 탐색
-        for (let r = 0; r < Math.min(8, grid.length); r++) {
+        for (let r = 0; r < Math.min(25, grid.length); r++) {
             const row = grid[r];
+            if (!row) continue;
+            const curColMap = {};
             let count = 0;
-            const temp = {};
-            row.forEach((cell, c) => {
-                const d = normalizeReportDate(cell);
+            row.forEach((cell, cIdx) => {
+                const d = normalizeReportDate(cell, 2026, fallbackMonth);
                 if (d) {
+                    curColMap[cIdx] = d;
                     count++;
-                    temp[c] = d;
                 }
             });
-            if (count > maxDateCount && count >= 2) {
-                maxDateCount = count;
-                bestDateRowIdx = r;
-                bestDateColMap = temp;
+            if (count > maxDates && count >= 2) {
+                maxDates = count;
+                bestDateRow = r;
+                bestDateColMap = curColMap;
             }
         }
 
-        // B. 2행 분할 헤더(상단 월 마커 + 하단 1~31 일수, 예: SKOY 양식) 검사
-        if (maxDateCount < 5) {
-            let monthRowIdx = -1;
-            const monthCols = {};
-            for (let r = 0; r < Math.min(6, grid.length); r++) {
+        if (bestDateRow !== -1 && maxDates >= 2) {
+            const dateCols = Object.keys(bestDateColMap).map(k => parseInt(k, 10));
+
+            let deptHeaderColIdx = -1;
+            for (let r = Math.max(0, bestDateRow - 3); r <= bestDateRow + 2; r++) {
                 const row = grid[r];
-                let currentYM = null;
-                row.forEach((cell, c) => {
-                    const s = String(cell).trim();
-                    const mMonth = s.match(/(?:(20\d{2})년\s*)?(1[0-2]|0?[1-9])월/);
-                    if (mMonth) {
-                        const yr = mMonth[1] || new Date().getFullYear();
-                        currentYM = `${yr}-${String(mMonth[2]).padStart(2, '0')}`;
-                    }
-                    if (currentYM) {
-                        monthCols[c] = currentYM;
-                    }
-                });
-                if (Object.keys(monthCols).length >= 5) {
-                    monthRowIdx = r;
-                    break;
-                }
-            }
-
-            if (monthRowIdx !== -1) {
-                for (let r = monthRowIdx + 1; r < Math.min(monthRowIdx + 4, grid.length); r++) {
-                    const row = grid[r];
-                    let dayCount = 0;
-                    const temp = {};
-                    row.forEach((cell, c) => {
-                        const n = parseInt(String(cell).trim(), 10);
-                        if (!isNaN(n) && n >= 1 && n <= 31 && monthCols[c]) {
-                            temp[c] = `${monthCols[c]}-${String(n).padStart(2, '0')}`;
-                            dayCount++;
-                        }
-                    });
-                    if (dayCount > maxDateCount) {
-                        maxDateCount = dayCount;
-                        bestDateRowIdx = r;
-                        bestDateColMap = temp;
-                    }
-                }
-            }
-        }
-
-        const dateCols = Object.keys(bestDateColMap).map(c => parseInt(c, 10));
-
-        // 2-Row Attendance (출근 행 + 퇴근 행) 양식 여부 판별
-        let isTwoRowAttendance = false;
-        if (dateCols.length > 0) {
-            for (let r = bestDateRowIdx + 1; r < Math.min(bestDateRowIdx + 20, grid.length); r++) {
-                const rowText = grid[r].map(c => String(c)).join(' ');
-                if (/출근/i.test(rowText) && grid[r + 1] && /퇴근/i.test(grid[r + 1].map(c => String(c)).join(' '))) {
-                    isTwoRowAttendance = true;
-                    break;
-                }
-            }
-        }
-
-        if (dateCols.length > 0 && isTwoRowAttendance) {
-            // [패턴 1] 2행 출퇴근 기록 양식 (SK대전연구소, 헝가리근태, 삼성SDI, SKBA 등)
-            for (let r = bestDateRowIdx + 1; r < grid.length; r++) {
-                const rowIn = grid[r];
-                if (!rowIn || rowIn.length === 0) continue;
-
-                const textIn = rowIn.slice(0, 6).map(c => String(c)).join(' ');
-                if (!/출근/i.test(textIn)) continue;
-
-                const rowOut = grid[r + 1] || [];
-                let deptKey = 'personnel_count';
-                for (let c = 0; c < 6; c++) {
-                    const dk = classifyDept(rowIn[c] || rowOut[c]);
-                    if (dk && dk !== '__TOTAL__') {
-                        deptKey = dk;
+                if (!row) continue;
+                for (let c = 0; c < Math.min(8, row.length); c++) {
+                    const s = String(row[c]).replace(/\s+/g, '');
+                    if (/부서|조직|직종|수행업무|직무|담당업무/i.test(s)) {
+                        deptHeaderColIdx = c;
                         break;
                     }
                 }
-
-                dateCols.forEach(col => {
-                    const dateStr = bestDateColMap[col];
-                    const inVal = rowIn[col];
-                    const outVal = rowOut[col];
-
-                    if (!inVal && !outVal) return;
-                    const inStr = String(inVal).trim();
-                    const outStr = String(outVal).trim();
-                    if (/휴무|휴일|휴가|병가|귀국|공가|결근|LEAVE/i.test(inStr + ' ' + outStr)) return;
-
-                    let startH = 0;
-                    let endH = 0;
-                    let hasIn = false;
-                    let hasOut = false;
-
-                    if (typeof inVal === 'number' && inVal > 0 && inVal < 1) {
-                        startH = inVal * 24;
-                        hasIn = true;
-                    } else if (/^\d{1,2}(:\d{2})?$/.test(inStr)) {
-                        const parts = inStr.split(':');
-                        startH = parseInt(parts[0], 10) + (parts[1] ? parseInt(parts[1], 10) / 60 : 0);
-                        hasIn = true;
-                    }
-
-                    if (typeof outVal === 'number' && outVal > 0 && outVal < 1) {
-                        endH = outVal * 24;
-                        hasOut = true;
-                    } else if (/^\d{1,2}(:\d{2})?$/.test(outStr)) {
-                        const parts = outStr.split(':');
-                        endH = parseInt(parts[0], 10) + (parts[1] ? parseInt(parts[1], 10) / 60 : 0);
-                        hasOut = true;
-                    }
-
-                    let md = 0;
-                    const isNight = startH >= 19 || startH <= 5 || /야간/i.test(textIn);
-
-                    if (hasIn && hasOut) {
-                        if (endH < startH) endH += 24;
-                        let duration = endH - startH;
-                        if (duration >= 8.5) duration -= 1.0;
-                        md = calculateWorkedHoursToMD(duration, isNight);
-                    } else if (hasIn || hasOut || /출근|정상|근무|출장|^1$/i.test(inStr + ' ' + outStr)) {
-                        md = isNight ? 1.5 : 1.0;
-                    }
-
-                    if (md > 0) {
-                        initDate(dateStr);
-                        finalMap[dateStr][deptKey] = (finalMap[dateStr][deptKey] || 0) + md;
-                    }
-                });
-                r++; // 퇴근 행 건너뜀
+                if (deptHeaderColIdx !== -1) break;
             }
-        } else if (dateCols.length > 0) {
-            // [패턴 2] 가로 캘린더형 (근무 시간 8/10h, 시간범위 08:00~17:00, 직종별 인원수/MD 1/1.5/2 등)
-            for (let r = bestDateRowIdx + 1; r < grid.length; r++) {
-                const row = grid[r];
-                if (!row || row.length === 0) continue;
 
-                let deptKey = null;
-                let isTotalRow = false;
-                let rowLabel = '';
-                for (let c = 0; c < Math.min(6, row.length); c++) {
-                    const str = String(row[c]).trim();
-                    rowLabel += ' ' + str;
-                    const dk = classifyDept(str);
-                    if (dk === '__TOTAL__') isTotalRow = true;
-                    else if (dk && !deptKey) deptKey = dk;
+            let isTwoRowTimeFormat = false;
+            for (let r = bestDateRow + 1; r < Math.min(bestDateRow + 12, grid.length); r++) {
+                const rowStr = (grid[r] || []).slice(0, 6).join(' ');
+                if (/출근|퇴근|출\s*근|퇴\s*근/i.test(rowStr)) {
+                    isTwoRowTimeFormat = true;
+                    break;
                 }
+            }
 
-                if (!deptKey && !isTotalRow) continue;
-                const targetDept = isTotalRow ? '__TOTAL__' : deptKey;
+            if (isTwoRowTimeFormat) {
+                let r = bestDateRow + 1;
+                while (r < grid.length) {
+                    const row1 = grid[r];
+                    if (!row1 || row1.length === 0) { r++; continue; }
 
-                dateCols.forEach(col => {
-                    const dateStr = bestDateColMap[col];
-                    const val = row[col];
-                    if (!val) return;
-                    const s = String(val).trim();
-                    if (!s || /휴무|휴일|휴가|병가|귀국|공가|결근/i.test(s)) return;
+                    const row1Str = row1.slice(0, 7).join(' ');
+                    const isClockInRow = /출근|출\s*근/i.test(row1Str);
+                    const isClockOutRow = /퇴근|퇴\s*근/i.test(row1Str);
 
-                    let md = 0;
-                    const isNight = /야간|심야|night/i.test(rowLabel);
+                    let inRow = null;
+                    let outRow = null;
 
-                    // 1. "08:00 ~ 21:00" 형태의 출퇴근 시간 범위
-                    const timeRangeMatch = s.match(/([0-9]{1,2}):([0-9]{2})\s*[-~]\s*([0-9]{1,2}):([0-9]{2})/);
-                    if (timeRangeMatch) {
-                        const stH = parseInt(timeRangeMatch[1], 10) + parseInt(timeRangeMatch[2], 10) / 60;
-                        let etH = parseInt(timeRangeMatch[3], 10) + parseInt(timeRangeMatch[4], 10) / 60;
-                        if (etH < stH) etH += 24;
-                        let dur = etH - stH;
-                        if (dur >= 8.5) dur -= 1.0;
-                        md = calculateWorkedHoursToMD(dur, isNight || stH >= 19 || etH <= 6);
-                    } else if (typeof val === 'number' && val > 0 && val < 1.0) {
-                        // 2. 단일행 출근 시각 분수 표기 (0.375 = 09:00 출근) -> 1.0 MD 배정
-                        md = isNight ? 1.5 : 1.0;
-                    } else {
-                        const n = parseFloat(s.replace(/[^0-9.]/g, ''));
-                        // 엑셀 날짜 일련번호(45000~47000) 등 오기입 데이터 제외
-                        if (!isNaN(n) && n > 0 && !(n > 30000 && n < 70000)) {
-                            if (n >= 6 && n <= 24 && !isTotalRow) {
-                                // 3. 근무한 시간 (8시간, 10시간, 12시간 등)
-                                md = calculateWorkedHoursToMD(n, isNight);
-                            } else {
-                                // 4. 인원수 또는 MD 직접 표기 (1, 1.5, 2, 0.5 등)
-                                md = n;
+                    if (isClockInRow) {
+                        inRow = row1;
+                        if (r + 1 < grid.length && /퇴근|퇴\s*근/i.test((grid[r + 1] || []).slice(0, 7).join(' '))) {
+                            outRow = grid[r + 1];
+                        }
+                    } else if (isClockOutRow) {
+                        outRow = row1;
+                    }
+
+                    if (!inRow && !outRow) {
+                        r++;
+                        continue;
+                    }
+
+                    let deptInfo = null;
+                    if (deptHeaderColIdx !== -1) {
+                        const cVal = String((inRow || outRow)[deptHeaderColIdx] || '').trim();
+                        if (cVal) deptInfo = classifyDept(cVal, true);
+                        if (!deptInfo && inRow && outRow) {
+                            const cVal2 = String(outRow[deptHeaderColIdx] || '').trim();
+                            if (cVal2) deptInfo = classifyDept(cVal2, true);
+                        }
+                    }
+
+                    if (!deptInfo) {
+                        for (let c = 0; c < Math.min(6, (inRow || outRow).length); c++) {
+                            const str = String((inRow || outRow)[c]).trim();
+                            const dk = classifyDept(str, false);
+                            if (dk) {
+                                deptInfo = dk;
+                                break;
                             }
                         }
                     }
 
-                    if (md > 0) {
-                        initDate(dateStr);
-                        if (targetDept === '__TOTAL__') {
-                            finalMap[dateStr]._totalFromSheet = md;
+                    if (!deptInfo) {
+                        deptInfo = { key: 'personnel_count', label: '안전/CS' };
+                    }
+
+                    dateCols.forEach(col => {
+                        const dateStr = bestDateColMap[col];
+                        const inVal = inRow ? inRow[col] : null;
+                        const outVal = outRow ? outRow[col] : null;
+
+                        const inH = parseTimeToHours(inVal);
+                        const outH = parseTimeToHours(outVal);
+
+                        let md = 0;
+                        if (inH !== null && outH !== null && outH > inH) {
+                            let dur = outH - inH;
+                            if (dur >= 8.5) dur -= 1.0;
+                            md = calculateWorkedHoursToMD(dur, inH >= 19 || outH <= 6);
+                        } else if (inH !== null || outH !== null) {
+                            md = 1.0;
                         } else {
-                            finalMap[dateStr][targetDept] = (finalMap[dateStr][targetDept] || 0) + md;
+                            const rawCell = String((inRow || outRow)[col] || '').trim();
+                            if (rawCell && !/휴일|휴무|결근|leave|off|연차|공란/i.test(rawCell)) {
+                                if (rawCell.length <= 20 && !(/[가-힣]{2,}/.test(rawCell) && !/(\d+(\.\d+)?\s*(명|MD|인|시간|h))/i.test(rawCell))) {
+                                    const n = parseFloat(rawCell.replace(/[^0-9.]/g, ''));
+                                    if (!isNaN(n) && n > 0 && n <= 100) {
+                                        md = n >= 6 ? calculateWorkedHoursToMD(n, false) : n;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (md > 0) {
+                            addMDToMap(dateStr, deptInfo, md);
+                        }
+                    });
+
+                    r += (outRow && inRow) ? 2 : 1;
+                }
+            } else {
+                for (let r = bestDateRow + 1; r < grid.length; r++) {
+                    const row = grid[r];
+                    if (!row || row.length === 0) continue;
+
+                    let deptInfo = null;
+                    let isTotalRow = false;
+                    let rowLabel = '';
+
+                    if (deptHeaderColIdx !== -1) {
+                        const s = String(row[deptHeaderColIdx] || '').trim();
+                        rowLabel += ' ' + s;
+                        const dk = classifyDept(s, true);
+                        if (dk?.key === '__TOTAL__') isTotalRow = true;
+                        else if (dk) deptInfo = dk;
+                    }
+
+                    if (!deptInfo && !isTotalRow) {
+                        for (let c = 0; c < Math.min(7, row.length); c++) {
+                            const str = String(row[c]).trim();
+                            rowLabel += ' ' + str;
+                            const dk = classifyDept(str, false);
+                            if (dk?.key === '__TOTAL__') { isTotalRow = true; break; }
+                            else if (dk && !deptInfo) deptInfo = dk;
                         }
                     }
-                });
+
+                    if (!deptInfo && !isTotalRow) continue;
+                    const targetDept = isTotalRow ? { key: '__TOTAL__' } : deptInfo;
+
+                    dateCols.forEach(col => {
+                        const dateStr = bestDateColMap[col];
+                        const val = row[col];
+                        if (val === undefined || val === null || val === '') return;
+
+                        const s = String(val).trim();
+                        if (!s || /휴무|휴일|휴가|병가|귀국|공가|결근/i.test(s)) return;
+                        if (s.length > 20 || (/[가-힣]{2,}/.test(s) && !/(\d+(\.\d+)?\s*(명|MD|인|시간|h))/i.test(s))) return;
+
+                        let md = 0;
+                        const isNight = /야간|심야|night/i.test(rowLabel);
+
+                        const timeRangeMatch = s.match(/([0-9]{1,2}):([0-9]{2})\s*[-~]\s*([0-9]{1,2}):([0-9]{2})/);
+                        if (timeRangeMatch) {
+                            const stH = parseInt(timeRangeMatch[1], 10) + parseInt(timeRangeMatch[2], 10) / 60;
+                            let etH = parseInt(timeRangeMatch[3], 10) + parseInt(timeRangeMatch[4], 10) / 60;
+                            if (etH < stH) etH += 24;
+                            let dur = etH - stH;
+                            if (dur >= 8.5) dur -= 1.0;
+                            md = calculateWorkedHoursToMD(dur, isNight || stH >= 19 || etH <= 6);
+                        } else if (typeof val === 'number' && val > 0 && val < 1.0) {
+                            md = isNight ? 1.5 : 1.0;
+                        } else {
+                            const n = parseFloat(s.replace(/[^0-9.]/g, ''));
+                            if (!isNaN(n) && n > 0 && n <= 100 && !(n > 30000 && n < 70000)) {
+                                if (n >= 6 && n <= 24 && !isTotalRow) {
+                                    md = calculateWorkedHoursToMD(n, isNight);
+                                } else {
+                                    md = n;
+                                }
+                            }
+                        }
+
+                        if (md > 0) {
+                            addMDToMap(dateStr, targetDept, md);
+                        }
+                    });
+                }
             }
         } else {
-            // [패턴 3] 세로 일자형 목록 (날짜가 아래로 내려가고 부서가 상단 헤더에 있는 양식)
-            let headerRowIdx = -1;
-            let dateColIdx = -1;
-            const deptColMap = {};
-
-            for (let r = 0; r < Math.min(10, grid.length); r++) {
+            let dCol = -1;
+            let deptColMap = {};
+            for (let r = 0; r < Math.min(15, grid.length); r++) {
                 const row = grid[r];
-                let dCol = -1;
+                if (!row) continue;
                 const tempDeptCols = {};
                 row.forEach((cell, cIdx) => {
-                    const clean = cell.replace(/\s+/g, '');
+                    const clean = String(cell).replace(/\s+/g, '');
                     if (/일자|날짜|Date/i.test(clean) && dCol === -1) {
                         dCol = cIdx;
                     }
-                    const deptKey = classifyDept(clean);
-                    if (deptKey) {
-                        tempDeptCols[cIdx] = deptKey;
+                    const dk = classifyDept(clean, true);
+                    if (dk) {
+                        tempDeptCols[cIdx] = dk;
                     }
                 });
 
-                if (dCol !== -1 || Object.keys(tempDeptCols).length >= 2) {
-                    headerRowIdx = r;
-                    dateColIdx = dCol;
-                    Object.assign(deptColMap, tempDeptCols);
+                if (Object.keys(tempDeptCols).length >= 2) {
+                    deptColMap = tempDeptCols;
                     break;
                 }
             }
 
-            const startR = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
-            for (let r = startR; r < grid.length; r++) {
-                const row = grid[r];
-                if (!row || row.length === 0) continue;
+            if (dCol !== -1 && Object.keys(deptColMap).length >= 1) {
+                for (let r = 0; r < grid.length; r++) {
+                    const row = grid[r];
+                    if (!row) continue;
+                    const dateVal = row[dCol];
+                    const rowDate = normalizeReportDate(dateVal, 2026, fallbackMonth);
+                    if (!rowDate) continue;
 
-                let rowDate = null;
-                if (dateColIdx !== -1 && row[dateColIdx]) {
-                    rowDate = normalizeReportDate(row[dateColIdx]);
-                } else {
-                    for (let c = 0; c < Math.min(3, row.length); c++) {
-                        const testD = normalizeReportDate(row[c]);
-                        if (testD) {
-                            rowDate = testD;
-                            break;
+                    Object.entries(deptColMap).forEach(([colIdx, dk]) => {
+                        const cNum = parseInt(colIdx, 10);
+                        const val = row[cNum];
+                        if (!val) return;
+                        const s = String(val).trim();
+                        if (s.length > 20 || (/[가-힣]{2,}/.test(s) && !/(\d+(\.\d+)?\s*(명|MD|인|시간|h))/i.test(s))) return;
+
+                        let md = 0;
+                        const n = parseFloat(s.replace(/[^0-9.]/g, ''));
+                        if (!isNaN(n) && n > 0 && n <= 100 && !(n > 30000 && n < 70000)) {
+                            if (n >= 6 && n <= 24 && dk.key !== '__TOTAL__') {
+                                md = calculateWorkedHoursToMD(n, false);
+                            } else {
+                                md = n;
+                            }
                         }
-                    }
+
+                        if (md > 0) {
+                            addMDToMap(rowDate, dk, md);
+                        }
+                    });
                 }
-
-                if (!rowDate) continue;
-                initDate(rowDate);
-
-                Object.entries(deptColMap).forEach(([colIdx, deptKey]) => {
-                    const cNum = parseInt(colIdx, 10);
-                    const val = row[cNum];
-                    if (!val) return;
-                    const s = String(val).trim();
-                    if (!s || /휴무|휴일|휴가|병가|귀국|공가|결근/i.test(s)) return;
-
-                    let md = 0;
-                    const n = parseFloat(s.replace(/[^0-9.]/g, ''));
-                    if (!isNaN(n) && n > 0 && !(n > 30000 && n < 70000)) {
-                        if (n >= 6 && n <= 24 && deptKey !== '__TOTAL__') {
-                            md = calculateWorkedHoursToMD(n, false);
-                        } else {
-                            md = n;
-                        }
-                    }
-
-                    if (md > 0) {
-                        if (deptKey === '__TOTAL__') {
-                            finalMap[rowDate]._totalFromSheet = md;
-                        } else {
-                            finalMap[rowDate][deptKey] = (finalMap[rowDate][deptKey] || 0) + md;
-                        }
-                    }
-                });
             }
         }
 
-        // 3. 인원 합산 보정 (Total/합계가 '기타'로 오분류되지 않도록 처리)
         Object.values(finalMap).forEach(item => {
-            const deptSum = (item.pm_count || 0) + (item.design_count || 0) + (item.facility_count || 0) + (item.control_count || 0) + (item.vision_count || 0);
+            const deptSum = (item.pm_count || 0) + (item.design_count || 0) + (item.facility_count || 0) +
+                            (item.facility_outsource || 0) + (item.control_count || 0) + (item.control_outsource || 0) +
+                            (item.electrical_count || 0) + (item.electrical_outsource || 0) +
+                            (item.vision_count || 0) + (item.vision_outsource || 0) + (item.personnel_count || 0) +
+                            Object.values(item.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
             const totalVal = item._totalFromSheet || 0;
 
             if (deptSum > 0) {
@@ -1600,11 +1767,13 @@ ${allText.substring(0, 100000)}
             delete item._totalFromSheet;
         });
 
-        // 4. 데이터가 없는 일자는 자동 제외하여 일보 추가 방지
         const filteredMap = {};
         Object.entries(finalMap).forEach(([dateStr, item]) => {
             const totalMD = (item.pm_count || 0) + (item.design_count || 0) + (item.facility_count || 0) +
-                            (item.control_count || 0) + (item.vision_count || 0) + (item.personnel_count || 0);
+                            (item.facility_outsource || 0) + (item.control_count || 0) + (item.control_outsource || 0) +
+                            (item.electrical_count || 0) + (item.electrical_outsource || 0) +
+                            (item.vision_count || 0) + (item.vision_outsource || 0) + (item.personnel_count || 0) +
+                            Object.values(item.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
             if (totalMD > 0) {
                 filteredMap[dateStr] = item;
             }
@@ -2250,19 +2419,120 @@ ${compiledText.substring(0, 30000)}
                                                         setExtractedReports(newR);
                                                     }}></textarea>
                                                 </div>
-                                                <div>
-                                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom:'4px', display:'block'}}>
-                                                        투입 인원 실적 (합계: {(report.pm_count||0)+(report.design_count||0)+(report.facility_count||0)+(report.control_count||0)+(report.vision_count||0)+(report.personnel_count||0)}명)
-                                                    </label>
-                                                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'4px'}}>
-                                                        <div style={{fontSize:'0.7rem'}}>소장 <input type="number" value={report.pm_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].pm_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
-                                                        <div style={{fontSize:'0.7rem'}}>설계 <input type="number" value={report.design_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].design_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
-                                                        <div style={{fontSize:'0.7rem'}}>설비 <input type="number" value={report.facility_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].facility_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
-                                                        <div style={{fontSize:'0.7rem'}}>제어 <input type="number" value={report.control_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].control_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
-                                                        <div style={{fontSize:'0.7rem'}}>비전 <input type="number" value={report.vision_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].vision_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
-                                                        <div style={{fontSize:'0.7rem'}}>기타 <input type="number" value={report.personnel_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].personnel_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
-                                                    </div>
-                                                </div>
+                                                {(() => {
+                                                    const curTotal = (report.pm_count || 0) + (report.design_count || 0) + (report.facility_count || 0) +
+                                                                     (report.facility_outsource || 0) + (report.control_count || 0) + (report.control_outsource || 0) +
+                                                                     (report.electrical_count || 0) + (report.electrical_outsource || 0) +
+                                                                     (report.vision_count || 0) + (report.vision_outsource || 0) + (report.personnel_count || 0) +
+                                                                     Object.values(report.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+                                                    return (
+                                                        <div>
+                                                            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px'}}>
+                                                                <label style={{fontSize: '0.75rem', fontWeight: 700, color: '#1e293b'}}>
+                                                                    투입 인원 실적 (총 {curTotal}명)
+                                                                </label>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const dName = prompt('추가할 특수 부서명을 입력하세요 (예: 도비, 레이저용접 등):');
+                                                                        if (dName && dName.trim()) {
+                                                                            const cleanD = dName.trim();
+                                                                            const newR = [...extractedReports];
+                                                                            newR[idx].custom_depts = { ...(newR[idx].custom_depts || {}), [cleanD]: 1 };
+                                                                            setExtractedReports(newR);
+                                                                        }
+                                                                    }}
+                                                                    style={{
+                                                                        fontSize: '11px',
+                                                                        padding: '2px 8px',
+                                                                        background: '#eff6ff',
+                                                                        border: '1px dashed #3b82f6',
+                                                                        color: '#1d4ed8',
+                                                                        borderRadius: '4px',
+                                                                        cursor: 'pointer',
+                                                                        fontWeight: 600
+                                                                    }}
+                                                                >
+                                                                    + 부서 추가
+                                                                </button>
+                                                            </div>
+                                                            {/* 기본 및 자사 부서 그리드 */}
+                                                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:'4px', marginBottom:'4px'}}>
+                                                                <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
+                                                                    <span style={{color: '#475569', minWidth: '24px'}}>소장</span>
+                                                                    <input type="number" step="0.5" value={report.pm_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].pm_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'38px', padding:'2px'}}/>
+                                                                </div>
+                                                                <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
+                                                                    <span style={{color: '#475569', minWidth: '24px'}}>설계</span>
+                                                                    <input type="number" step="0.5" value={report.design_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].design_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'38px', padding:'2px'}}/>
+                                                                </div>
+                                                                <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
+                                                                    <span style={{color: '#0369a1', minWidth: '24px'}}>기구</span>
+                                                                    <input type="number" step="0.5" value={report.facility_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].facility_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'38px', padding:'2px'}}/>
+                                                                </div>
+                                                                <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
+                                                                    <span style={{color: '#059669', minWidth: '24px'}}>제어</span>
+                                                                    <input type="number" step="0.5" value={report.control_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].control_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'38px', padding:'2px'}}/>
+                                                                </div>
+                                                                <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
+                                                                    <span style={{color: '#d97706', minWidth: '24px'}}>전장</span>
+                                                                    <input type="number" step="0.5" value={report.electrical_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].electrical_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'38px', padding:'2px'}}/>
+                                                                </div>
+                                                                <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
+                                                                    <span style={{color: '#7c3aed', minWidth: '24px'}}>비전</span>
+                                                                    <input type="number" step="0.5" value={report.vision_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].vision_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'38px', padding:'2px'}}/>
+                                                                </div>
+                                                                <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px', gridColumn: 'span 2'}}>
+                                                                    <span style={{color: '#e11d48', minWidth: '45px'}}>안전/CS</span>
+                                                                    <input type="number" step="0.5" value={report.personnel_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].personnel_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'38px', padding:'2px'}}/>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* 외주 부서 그리드 */}
+                                                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:'4px', background:'#fffbeb', padding:'4px', borderRadius:'4px', border:'1px solid #fef3c7', marginBottom:'4px'}}>
+                                                                <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
+                                                                    <span style={{color: '#b45309', fontSize:'0.65rem'}}>기구외주</span>
+                                                                    <input type="number" step="0.5" value={report.facility_outsource} onChange={e=>{const newR=[...extractedReports]; newR[idx].facility_outsource=Number(e.target.value); setExtractedReports(newR);}} style={{width:'34px', padding:'2px'}}/>
+                                                                </div>
+                                                                <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
+                                                                    <span style={{color: '#b45309', fontSize:'0.65rem'}}>제어외주</span>
+                                                                    <input type="number" step="0.5" value={report.control_outsource} onChange={e=>{const newR=[...extractedReports]; newR[idx].control_outsource=Number(e.target.value); setExtractedReports(newR);}} style={{width:'34px', padding:'2px'}}/>
+                                                                </div>
+                                                                <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
+                                                                    <span style={{color: '#b45309', fontSize:'0.65rem'}}>전장외주</span>
+                                                                    <input type="number" step="0.5" value={report.electrical_outsource} onChange={e=>{const newR=[...extractedReports]; newR[idx].electrical_outsource=Number(e.target.value); setExtractedReports(newR);}} style={{width:'34px', padding:'2px'}}/>
+                                                                </div>
+                                                                <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
+                                                                    <span style={{color: '#b45309', fontSize:'0.65rem'}}>비전외주</span>
+                                                                    <input type="number" step="0.5" value={report.vision_outsource} onChange={e=>{const newR=[...extractedReports]; newR[idx].vision_outsource=Number(e.target.value); setExtractedReports(newR);}} style={{width:'34px', padding:'2px'}}/>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* 동적 커스텀 부서 표시 */}
+                                                            {report.custom_depts && Object.keys(report.custom_depts).length > 0 && (
+                                                                <div style={{display:'flex', gap:'4px', flexWrap:'wrap', background:'#f5f3ff', padding:'4px', borderRadius:'4px', border:'1px solid #ede9fe'}}>
+                                                                    {Object.entries(report.custom_depts).map(([deptName, cnt]) => (
+                                                                        <div key={deptName} style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px', background:'#fff', padding:'2px 4px', borderRadius:'3px', border:'1px solid #ddd6fe'}}>
+                                                                            <span style={{color: '#6366f1', fontWeight: 600}}>{deptName}</span>
+                                                                            <input type="number" step="0.5" value={cnt} onChange={e => {
+                                                                                const newR = [...extractedReports];
+                                                                                newR[idx].custom_depts = { ...newR[idx].custom_depts, [deptName]: Number(e.target.value) };
+                                                                                setExtractedReports(newR);
+                                                                            }} style={{width:'34px', padding:'2px'}}/>
+                                                                            <button type="button" onClick={() => {
+                                                                                const newR = [...extractedReports];
+                                                                                const nextDepts = { ...newR[idx].custom_depts };
+                                                                                delete nextDepts[deptName];
+                                                                                newR[idx].custom_depts = nextDepts;
+                                                                                setExtractedReports(newR);
+                                                                            }} style={{background:'transparent', border:'none', color:'#ef4444', cursor:'pointer', fontSize:'11px', padding:'0 2px'}}>×</button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
                                         ))}
                                     </div>
@@ -2273,7 +2543,10 @@ ${compiledText.substring(0, 30000)}
                                             const hasWork = Boolean(r.work_details && r.work_details.trim());
                                             const hasNotes = Boolean(r.special_notes && r.special_notes.trim());
                                             const totalMD = (r.pm_count || 0) + (r.design_count || 0) + (r.facility_count || 0) +
-                                                            (r.control_count || 0) + (r.vision_count || 0) + (r.personnel_count || 0);
+                                                            (r.facility_outsource || 0) + (r.control_count || 0) + (r.control_outsource || 0) +
+                                                            (r.electrical_count || 0) + (r.electrical_outsource || 0) +
+                                                            (r.vision_count || 0) + (r.vision_outsource || 0) + (r.personnel_count || 0) +
+                                                            Object.values(r.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
                                             return hasWork || hasNotes || totalMD > 0;
                                         });
 
@@ -2436,7 +2709,10 @@ ${compiledText.substring(0, 30000)}
                                 <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
                                     {projectReports.map(report => {
                                         const totalMD = (report.pm_count || 0) + (report.design_count || 0) + (report.facility_count || 0) +
-                                                        (report.control_count || 0) + (report.vision_count || 0) + (report.personnel_count || 0);
+                                                        (report.facility_outsource || 0) + (report.control_count || 0) + (report.control_outsource || 0) +
+                                                        (report.electrical_count || 0) + (report.electrical_outsource || 0) +
+                                                        (report.vision_count || 0) + (report.vision_outsource || 0) + (report.personnel_count || 0) +
+                                                        Object.values(report.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
 
                                         return (
                                             <div key={report.id} className="issue-card" style={{borderLeftColor: '#6e7781'}}>
@@ -2504,12 +2780,20 @@ ${compiledText.substring(0, 30000)}
                                                                     투입 인원 실적 (총 {totalMD}명)
                                                                 </div>
                                                                 <div style={{display:'flex', gap:'8px', flexWrap:'wrap', fontSize:'0.75rem', background:'#fff', padding:'6px', borderRadius:'4px', border:'1px solid #e1e4e8'}}>
-                                                                    {report.pm_count > 0 && <span>소장: {report.pm_count}</span>}
+                                                                    {report.pm_count > 0 && <span style={{fontWeight:600}}>소장: {report.pm_count}</span>}
                                                                     {report.design_count > 0 && <span>설계: {report.design_count}</span>}
-                                                                    {report.facility_count > 0 && <span>설비: {report.facility_count}</span>}
-                                                                    {report.control_count > 0 && <span>제어: {report.control_count}</span>}
-                                                                    {report.vision_count > 0 && <span>비전: {report.vision_count}</span>}
-                                                                    {report.personnel_count > 0 && <span>기타: {report.personnel_count}</span>}
+                                                                    {report.facility_count > 0 && <span style={{color:'#0284c7', fontWeight:600}}>기구: {report.facility_count}</span>}
+                                                                    {report.facility_outsource > 0 && <span style={{color:'#d97706', fontWeight:600}}>기구외주: {report.facility_outsource}</span>}
+                                                                    {report.control_count > 0 && <span style={{color:'#059669', fontWeight:600}}>제어: {report.control_count}</span>}
+                                                                    {report.control_outsource > 0 && <span style={{color:'#10b981', fontWeight:600}}>제어외주: {report.control_outsource}</span>}
+                                                                    {report.electrical_count > 0 && <span style={{color:'#b45309', fontWeight:600}}>전장: {report.electrical_count}</span>}
+                                                                    {report.electrical_outsource > 0 && <span style={{color:'#f59e0b', fontWeight:600}}>전장외주: {report.electrical_outsource}</span>}
+                                                                    {report.vision_count > 0 && <span style={{color:'#7c3aed', fontWeight:600}}>비전: {report.vision_count}</span>}
+                                                                    {report.vision_outsource > 0 && <span style={{color:'#a855f7', fontWeight:600}}>비전외주: {report.vision_outsource}</span>}
+                                                                    {report.personnel_count > 0 && <span style={{color:'#e11d48', fontWeight:600}}>안전/CS: {report.personnel_count}</span>}
+                                                                    {report.custom_depts && Object.entries(report.custom_depts).map(([k, v]) => Number(v) > 0 && (
+                                                                        <span key={k} style={{color:'#4f46e5', fontWeight:600}}>{k}: {v}</span>
+                                                                    ))}
                                                                     {totalMD === 0 && <span style={{color: '#94a3b8'}}>투입 인원 없음</span>}
                                                                 </div>
                                                             </div>

@@ -298,8 +298,8 @@
     background: #ffffff;
     border-radius: 14px;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 620px;
+    width: 95%;
+    max-width: 660px;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
@@ -314,12 +314,13 @@
 }
 
 .spm-header {
-    padding: 18px 22px;
+    padding: 16px 20px;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     background: #f8fafc;
+    flex-shrink: 0;
 }
 
 .spm-header-title {
@@ -348,11 +349,14 @@
 }
 
 .spm-body {
-    padding: 20px 22px;
+    padding: 18px 20px;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .spm-info-box {
@@ -362,22 +366,32 @@
     padding: 12px 14px;
     font-size: 13px;
     line-height: 1.5;
+    flex-shrink: 0;
 }
 
 .spm-options-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .spm-option-card {
     border: 1.5px solid #e2e8f0;
     border-radius: 10px;
-    padding: 14px 16px;
+    padding: 12px 14px;
     cursor: pointer;
     transition: all 0.15s ease;
     background: #ffffff;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .spm-option-card:hover {
@@ -391,6 +405,40 @@
     box-shadow: 0 0 0 1px #10b981;
 }
 
+.spm-option-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+}
+
+.spm-radio-input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #10b981;
+    margin: 0;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+.spm-title-area {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.spm-project-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: #0f172a;
+    word-break: break-word;
+}
+
 .spm-badge-count {
     background: #e0f2fe;
     color: #0284c7;
@@ -398,6 +446,8 @@
     font-weight: 700;
     padding: 2px 7px;
     border-radius: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .spm-badge-recommend {
@@ -407,10 +457,12 @@
     font-weight: 700;
     padding: 2px 7px;
     border-radius: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .spm-preview-box {
-    margin-top: 8px;
+    margin-left: 30px;
     padding: 8px 10px;
     background: #ffffff;
     border: 1px solid #e2e8f0;
@@ -418,19 +470,23 @@
     font-size: 11px;
     color: #475569;
     white-space: pre-wrap;
-    font-family: monospace;
-    max-height: 80px;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    max-height: 70px;
     overflow-y: auto;
+    overflow-x: hidden;
     line-height: 1.4;
+    box-sizing: border-box;
 }
 
 .spm-footer {
-    padding: 14px 22px;
+    padding: 14px 20px;
     border-top: 1px solid #e2e8f0;
     background: #f8fafc;
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+    flex-shrink: 0;
 }
 
 .spm-btn-cancel {
@@ -466,4 +522,5 @@
     background: #059669;
     box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
 }
+
 

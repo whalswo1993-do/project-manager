@@ -268,43 +268,37 @@ ${allText.substring(0, 30000)}
         }
     };
 
-    // --- HTML / TSV 엑셀 표 파서 유틸리티 (마스터스케줄 등록 방식) ---
+    // --- HTML / TSV 엑셀 표 파서 유틸리티 (모든 날짜 포맷 전천후 지원) ---
     const normalizeReportDate = (raw) => {
-        if (raw === null || raw === undefined) return null;
-        if (typeof raw === 'number') {
-            if (raw > 30000 && raw < 70000) {
-                const date = new Date(Math.round((raw - 25569) * 86400 * 1000));
-                return date.toISOString().slice(0, 10);
-            }
+        if (!raw) return null;
+        if (typeof raw === 'number' && raw > 30000 && raw < 70000) {
+            const date = new Date(Math.round((raw - 25569) * 86400 * 1000));
+            return date.toISOString().slice(0, 10);
         }
+
         const str = String(raw).trim();
         if (!str) return null;
 
-        // YYYY-MM-DD or YYYY.MM.DD or YYYY/MM/DD
-        let m = str.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+        // 1. 4자리 연도 YYYY-MM-DD, YYYY.MM.DD, YYYY/MM/DD, YYYY년 M월 D일
+        let m = str.match(/(20\d{2})[-./\s년]+(1[0-2]|0?[1-9])[-./\s월]+([12]\d|3[01]|0?[1-9])/);
         if (m) {
-            const y = m[1];
-            const month = String(m[2]).padStart(2, '0');
-            const d = String(m[3]).padStart(2, '0');
-            return `${y}-${month}-${d}`;
+            return `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
         }
 
-        // YY-MM-DD or YY.MM.DD or YY/MM/DD
-        m = str.match(/^(\d{2})[-./](\d{1,2})[-./](\d{1,2})/);
+        // 2. 2자리 연도 YY-MM-DD, YY/MM/DD, YY.MM.DD (예: 26/07/20, 26.7.20)
+        m = str.match(/(?:^|[^\d])(2[4-9])[-./](1[0-2]|0?[1-9])[-./]([12]\d|3[01]|0?[1-9])(?:$|[^\d])/);
         if (m) {
-            const y = `20${m[1]}`;
-            const month = String(m[2]).padStart(2, '0');
-            const d = String(m[3]).padStart(2, '0');
-            return `${y}-${month}-${d}`;
+            return `20${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
         }
 
-        // M월 D일 or M/D or M.D
-        m = str.match(/(\d{1,2})월\s*(\d{1,2})일/) || str.match(/^(\d{1,2})[-./](\d{1,2})/);
+        // 3. 월/일 포맷: [07/20], [7/20], (07/20), 7월 20일, 7/20 (연도 없으면 올해 연도 부여)
+        m = str.match(/\[\s*(1[0-2]|0?[1-9])[-./월\s]+([12]\d|3[01]|0?[1-9])[일\s]*\]/) ||
+            str.match(/\(\s*(1[0-2]|0?[1-9])[-./월\s]+([12]\d|3[01]|0?[1-9])[일\s]*\)/) ||
+            str.match(/(?:금일|일보|진행|일자|보고)\D*(1[0-2]|0?[1-9])[-./월\s]+([12]\d|3[01]|0?[1-9])/i) ||
+            str.match(/^0?(1[0-2]|0?[1-9])[-./월\s]+([12]\d|3[01]|0?[1-9])[일]?$/);
         if (m) {
             const currentYear = new Date().getFullYear();
-            const month = String(m[1]).padStart(2, '0');
-            const d = String(m[2]).padStart(2, '0');
-            return `${currentYear}-${month}-${d}`;
+            return `${currentYear}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`;
         }
 
         return null;
@@ -466,38 +460,60 @@ ${allText.substring(0, 30000)}
                 }
             }
         } else {
-            // 2. 일일 업무 보고서 블록형 양식 (헤더에 "금일 진행 사항 [YYYY/MM/DD]" 등이 포함된 양식)
+            // 2. 일일 업무 보고서 블록형 양식 (Sequential Date Block Scanner)
+            let currentDate = null;
+
             for (let r = 0; r < grid.length; r++) {
                 const row = grid[r];
+                if (!row || row.length === 0) continue;
+
+                // 이 행에서 날짜가 감지되는지 확인 (단, 명일 진행/예정 셀은 제외)
+                let detectedDate = null;
                 for (let c = 0; c < row.length; c++) {
                     const cell = row[c] || '';
-                    const dateMatch = cell.match(/(\d{4}[-./]\d{1,2}[-./]\d{1,2})/);
-                    if (dateMatch && /금일|진행|업무|보고|일보|Date/i.test(cell)) {
-                        const parsedDate = normalizeReportDate(dateMatch[1]);
-                        if (parsedDate) {
-                            if (!result[parsedDate]) {
-                                result[parsedDate] = { date: parsedDate, work_details: [], special_notes: [] };
-                            }
+                    if (/명일\s*진행|익일\s*진행|명일\s*예정|진행\s*예정/i.test(cell)) continue;
+                    const d = normalizeReportDate(cell);
+                    if (d) {
+                        detectedDate = d;
+                        break;
+                    }
+                }
 
-                            // 헤더 아래 행들에서 작업내용과 이슈사항 수집
-                            for (let nr = r + 1; nr < Math.min(r + 15, grid.length); nr++) {
-                                const nextRow = grid[nr];
-                                const labelCell = (nextRow[0] || '').replace(/\s+/g, '');
-                                const contentCell = (nextRow[c] || '').trim();
+                if (detectedDate) {
+                    currentDate = detectedDate;
+                    if (!result[currentDate]) {
+                        result[currentDate] = { date: currentDate, work_details: [], special_notes: [] };
+                    }
+                }
 
-                                if (/금일\s*진행|명일\s*진행|일일\s*업무/i.test(nextRow.join(' '))) break;
+                if (!currentDate) continue;
 
-                                if (/주요진행|진행사항|금일작업|작업내용/i.test(labelCell) || (nr === r + 1 && contentCell)) {
-                                    if (contentCell && !result[parsedDate].work_details.includes(contentCell)) {
-                                        result[parsedDate].work_details.push(contentCell);
-                                    }
-                                } else if (/이슈|특이사항|문제점|건의/i.test(labelCell)) {
-                                    if (contentCell && !result[parsedDate].special_notes.includes(contentCell)) {
-                                        result[parsedDate].special_notes.push(contentCell);
-                                    }
-                                }
-                            }
-                        }
+                // 행에서 라벨과 가장 실질적인 내용 텍스트 탐색
+                const firstCol = (row[0] || '').replace(/\s+/g, '');
+                const rowText = row.join(' ');
+
+                // 가장 긴 의미 있는 내용 셀 탐색 (단, 라벨이나 날짜 셀 제외)
+                let bestText = '';
+                for (let c = 0; c < row.length; c++) {
+                    const cellVal = (row[c] || '').trim();
+                    if (!cellVal) continue;
+                    if (/^(구분|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고)$/i.test(cellVal.replace(/\s+/g, ''))) continue;
+                    if (normalizeReportDate(cellVal)) continue;
+                    if (cellVal.length > bestText.length) {
+                        bestText = cellVal;
+                    }
+                }
+
+                if (!bestText) continue;
+
+                // 특이사항 또는 작업내용으로 분류하여 누적
+                if (/이슈|특이사항|문제점|건의|비고/i.test(firstCol) || /이슈\s*사항/i.test(rowText)) {
+                    if (!result[currentDate].special_notes.includes(bestText)) {
+                        result[currentDate].special_notes.push(bestText);
+                    }
+                } else if (bestText.length >= 4 || /\[.*\]|<.*>|\d\./.test(bestText)) {
+                    if (!result[currentDate].work_details.includes(bestText)) {
+                        result[currentDate].work_details.push(bestText);
                     }
                 }
             }
@@ -1659,30 +1675,29 @@ ${compiledText.substring(0, 30000)}
                                             className={`spm-option-card ${isSelected ? 'selected' : ''}`}
                                             onClick={() => setSplitProjectModal(prev => ({ ...prev, selectedChoice: pName }))}
                                         >
-                                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                            {/* 1. 상단 가로 일자 정렬 행 (라디오는 왼쪽 세로중앙, 그 뒤로 문구 일자 나열) */}
+                                            <div className="spm-option-row">
                                                 <input
                                                     type="radio"
                                                     name="spm-project-choice"
+                                                    className="spm-radio-input"
                                                     checked={isSelected}
                                                     onChange={() => setSplitProjectModal(prev => ({ ...prev, selectedChoice: pName }))}
-                                                    style={{ marginTop: '3px', cursor: 'pointer', accentColor: '#10b981' }}
                                                 />
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                                        <span style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>
-                                                            [{pName}]
-                                                        </span>
-                                                        <span className="spm-badge-count">{count}일치 감지</span>
-                                                        {isCurProj && <span className="spm-badge-recommend">⭐ 현재 프로젝트 추천</span>}
-                                                    </div>
-                                                    {sample && (
-                                                        <div className="spm-preview-box">
-                                                            {sample.split('\n').slice(0, 3).join('\n')}
-                                                            {sample.split('\n').length > 3 ? '\n...' : ''}
-                                                        </div>
-                                                    )}
+                                                <div className="spm-title-area">
+                                                    <span className="spm-project-title">[{pName}]</span>
+                                                    <span className="spm-badge-count">{count}일치 감지</span>
+                                                    {isCurProj && <span className="spm-badge-recommend">⭐ 현재 프로젝트 추천</span>}
                                                 </div>
                                             </div>
+
+                                            {/* 2. 하단 3줄 미리보기 네모 박스 */}
+                                            {sample && (
+                                                <div className="spm-preview-box">
+                                                    {sample.split('\n').slice(0, 3).join('\n')}
+                                                    {sample.split('\n').length > 3 ? '\n...' : ''}
+                                                </div>
+                                            )}
                                         </label>
                                     );
                                 })}
@@ -1692,24 +1707,22 @@ ${compiledText.substring(0, 30000)}
                                     className={`spm-option-card ${splitProjectModal.selectedChoice === '__ALL__' ? 'selected' : ''}`}
                                     onClick={() => setSplitProjectModal(prev => ({ ...prev, selectedChoice: '__ALL__' }))}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                    <div className="spm-option-row">
                                         <input
                                             type="radio"
                                             name="spm-project-choice"
+                                            className="spm-radio-input"
                                             checked={splitProjectModal.selectedChoice === '__ALL__'}
                                             onChange={() => setSplitProjectModal(prev => ({ ...prev, selectedChoice: '__ALL__' }))}
-                                            style={{ marginTop: '3px', cursor: 'pointer', accentColor: '#10b981' }}
                                         />
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>
-                                                    🌐 일보상 내용 전체 등록 (분리하지 않고 원본 전체 저장)
-                                                </span>
-                                            </div>
-                                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                                                감지된 모든 프로젝트 작업내용을 구분 없이 통째로 일보 폼에 반영합니다.
-                                            </div>
+                                        <div className="spm-title-area">
+                                            <span className="spm-project-title">
+                                                🌐 일보상 내용 전체 등록 (분리하지 않고 원본 전체 저장)
+                                            </span>
                                         </div>
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: '#64748b', marginLeft: '30px' }}>
+                                        감지된 모든 프로젝트 작업내용을 구분 없이 통째로 일보 폼에 반영합니다.
                                     </div>
                                 </label>
                             </div>

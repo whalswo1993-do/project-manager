@@ -333,16 +333,31 @@ ${allText.substring(0, 30000)}
         return [];
     };
 
+    // 사이트 / 고객사 식별 시그니처 (HSBMA, SKOH2, SKOY, SKBA, SKBM, SDI, 현대차 아산 등 사이트 간 오연결 원천 차단)
+    const extractSiteSignature = (str) => {
+        if (!str) return null;
+        const s = String(str).toLowerCase();
+        if (/hsbma|북미\s*jv|현대\s*북미|북미/i.test(s)) return 'HSBMA';
+        if (/skoh2|skoh|sk\s*oh2|이반차/i.test(s)) return 'SKOH2';
+        if (/skoy|sk\s*oy|옌청/i.test(s)) return 'SKOY';
+        if (/skba|sk\s*ba|조지아/i.test(s)) return 'SKBA';
+        if (/skbm|sk\s*bm|코마롬/i.test(s)) return 'SKBM';
+        if (/삼성\s*sdi|sdi|울산\s*m/i.test(s)) return 'SDI';
+        if (/현대차\s*아산|아산/i.test(s)) return 'HY_ASAN';
+        return null;
+    };
+
     // 라인 번호 / 범위 시그니처 추출 헬퍼 (예: "Line 5~8", "5~8라인", "1, 2라인", "3라인", "Line 3")
     const extractLineSignature = (str) => {
         if (!str) return null;
         let m = str.match(/(?:line|라인|호기)\s*([0-9]+(?:\s*[-~,]\s*[0-9]+)?)/i);
         if (m) return m[1].replace(/\s+/g, '').replace('-', '~').replace(',', '~');
 
-        m = str.match(/([0-9]+(?:\s*[-~,]\s*[0-9]+)?)\s*(?:line|라인|호기)/i);
+        // Lookbehind (?<![A-Za-z0-9]) 적용으로 'SKOH2 - 9Line' 등 사이트코드 내 숫자가 라인으로 오인식되는 문제 차단
+        m = str.match(/(?<![A-Za-z0-9])([0-9]+(?:\s*[-~,]\s*[0-9]+)?)\s*(?:line|라인|호기)/i);
         if (m) return m[1].replace(/\s+/g, '').replace('-', '~').replace(',', '~');
 
-        m = str.match(/\b([0-9]{1,2}\s*[-~]\s*[0-9]{1,2})\b/);
+        m = str.match(/(?<![A-Za-z0-9])([0-9]{1,2}\s*[-~]\s*[0-9]{1,2})(?![A-Za-z0-9])/);
         if (m) return m[1].replace(/\s+/g, '').replace('-', '~');
 
         return null;
@@ -362,21 +377,26 @@ ${allText.substring(0, 30000)}
         return false;
     };
 
-    // 범용 지능형 프로젝트명 정규화 (변형 명칭, 꼬리표 등을 통일된 핵심 프로젝트명으로 그룹화)
+    // 범용 지능형 프로젝트명 정규화 (사이트 격리 및 핵심 라인/공정 통일)
     const normalizeProjectName = (rawTitle, bodyPreview = '', projectList = []) => {
         if (!rawTitle) return '';
         let clean = rawTitle.trim().replace(/^[■●▶◆【\[\s]+/, '').replace(/[】\]\s]+$/, '').trim();
+
+        // 0. 사이트(Site) 시그니처 식별 (현재 앱 선택 프로젝트 및 텍스트 컨텍스트 기반 타 사이트 오연결 원천 차단)
+        const curProjObj = (projects || []).find(p => p.id === selectedProject);
+        const curSite = extractSiteSignature(curProjObj?.name) || 'HSBMA';
+        const candSite = extractSiteSignature(clean) || extractSiteSignature(bodyPreview) || curSite;
 
         // 1. 라인 번호 시그니처 추출 (제목 우선 -> 본문 앞머리 보조)
         let lineSig = extractLineSignature(clean);
         if (!lineSig && bodyPreview) {
             lineSig = extractLineSignature(bodyPreview);
             if (!lineSig) {
-                const indLine = bodyPreview.match(/([5-8])\s*(?:line|라인|호기)/i);
+                const indLine = bodyPreview.match(/(?<![A-Za-z0-9])([5-8])\s*(?:line|라인|호기)/i);
                 if (indLine) lineSig = '5~8';
-                const ind12 = bodyPreview.match(/([1-2])\s*(?:line|라인|호기)/i);
+                const ind12 = bodyPreview.match(/(?<![A-Za-z0-9])([1-2])\s*(?:line|라인|호기)/i);
                 if (ind12) lineSig = '1~2';
-                const ind3 = bodyPreview.match(/(?:3\s*(?:line|라인|호기)|3L-)/i);
+                const ind3 = bodyPreview.match(/(?:(?<![A-Za-z0-9])3\s*(?:line|라인|호기)|3L-)/i);
                 if (ind3) lineSig = '3';
             }
         }
@@ -387,19 +407,24 @@ ${allText.substring(0, 30000)}
         const isYangsan = /양산|생산대응|양산대응|양산\s*사전|생산/i.test(combinedContext);
         const isJC = /j\/?c|형교환|기종교체/i.test(combinedContext);
         const isSTK = /stk/i.test(clean);
-        const isHSBMA = /hsbma|북미/i.test(clean);
 
         if (!lineSig) {
             if (isSTK && !isJC && !/3/.test(clean)) lineSig = '5~8';
-            if (isHSBMA && isYangsan) lineSig = '1~2';
+            if (candSite === 'HSBMA' && isYangsan) lineSig = '1~2';
         }
 
-        // 3. 앱에 등록된 프로젝트 목록과의 시맨틱 매칭
+        // 3. 앱에 등록된 프로젝트 목록과의 시맨틱 매칭 (동일 사이트 내에서만 매칭)
         const effectiveProjects = (projectList && projectList.length > 0) ? projectList : (projects || []);
         let bestProj = null;
         let highestScore = -999;
 
         for (const p of effectiveProjects) {
+            const pSite = extractSiteSignature(p.name);
+            // 엄격한 사이트 격리 (Site Isolation): 서로 다른 사이트(예: HSBMA vs SKOH2)는 절대 연결하지 않음!
+            if (candSite && pSite && candSite !== pSite) {
+                continue;
+            }
+
             const pName = p.name || '';
             const pClean = pName.replace(/\s*\([^)]*\)\s*$/, '').trim();
             const pLineSig = extractLineSignature(pClean);
@@ -419,7 +444,7 @@ ${allText.substring(0, 30000)}
             if (isYangsan && /양산/i.test(pName)) score += 25;
             if (isJC && /j\/?c|형교환/i.test(pName)) score += 30;
 
-            if (isHSBMA && /hsbma/i.test(pName)) score += 15;
+            if (candSite === 'HSBMA' && /hsbma/i.test(pName)) score += 15;
             if (isSTK && /5~8|set-?up|셋업/i.test(pName)) score += 20;
 
             // 키워드 단어 매칭
@@ -436,10 +461,11 @@ ${allText.substring(0, 30000)}
 
         if (bestProj) return bestProj;
 
-        // 4. 범용 폴백 표준화 규칙
-        if (lineSig === '5~8' || (isSTK && isSetup)) return 'HSBMA 5~8Line Set-up';
-        if (lineSig === '1~2' || (isHSBMA && isYangsan)) return 'HSBMA 1~2Line 양산대응';
-        if (lineSig === '3' || isJC) return 'HSBMA 3Line J/C 양산대응';
+        // 4. 범용 폴백 표준화 규칙 (등록되지 않은 법인 계약건 등 사이트별 표준 명칭 통일)
+        const sitePrefix = candSite === 'HSBMA' ? 'HSBMA' : (candSite || 'HSBMA');
+        if (lineSig === '3' || isJC) return `${sitePrefix} 3Line J/C 양산대응`;
+        if (lineSig === '5~8' || (isSTK && isSetup)) return `${sitePrefix} 5~8Line Set-up`;
+        if (lineSig === '1~2' || isYangsan) return `${sitePrefix} 1~2Line 양산대응`;
 
         return clean;
     };
@@ -747,10 +773,51 @@ ${allText.substring(0, 30000)}
         const finalMap = {};
         if (!grid || grid.length === 0) return finalMap;
 
-        const toNum = (val) => {
+        // 근무 시간(Hours) 또는 출퇴근 시간을 MD(Man-Day) 공수로 자동 환산하는 스마트 헬퍼
+        // 1인 8시간 = 1.0 MD, 8시간 초과~16시간 미만 = 1.5 MD, 16시간 이상 = 2.0 MD
+        // 야간 근무: 8시간 = 1.5 MD 시작, 8시간 초과~16시간 미만 = 2.0 MD, 16시간 이상 = 2.5 MD
+        const convertWorkHoursToMD = (hours, isNight = false) => {
+            const h = parseFloat(hours);
+            if (isNaN(h) || h <= 0) return 0;
+            if (!isNight) {
+                if (h <= 8) return 1.0;
+                if (h < 16) return 1.5;
+                return 2.0;
+            } else {
+                if (h <= 8) return 1.5;
+                if (h < 16) return 2.0;
+                return 2.5;
+            }
+        };
+
+        const parseCellToMD = (val, colHeader = '', rowLabel = '') => {
             if (!val) return 0;
-            const n = parseFloat(String(val).replace(/[^0-9.]/g, ''));
-            return isNaN(n) ? 0 : n;
+            const str = String(val).trim();
+            if (!str || /휴무|휴가|병가|귀국|공가|결근/i.test(str)) return 0;
+
+            const isNight = /야간|심야|night/i.test(colHeader + ' ' + rowLabel);
+            const isExplicitHours = /시간|hour|근무시간/i.test(colHeader + ' ' + rowLabel) || /[0-9]+(?:\.[0-9]+)?\s*(?:시간|h)/i.test(str);
+
+            // 출퇴근 시간 형식 (예: "08:00~21:00", "08:00-21:00")
+            const timeRangeMatch = str.match(/([0-9]{1,2}):([0-9]{2})\s*[-~]\s*([0-9]{1,2}):([0-9]{2})/);
+            if (timeRangeMatch) {
+                const startH = parseInt(timeRangeMatch[1], 10) + parseInt(timeRangeMatch[2], 10) / 60;
+                let endH = parseInt(timeRangeMatch[3], 10) + parseInt(timeRangeMatch[4], 10) / 60;
+                if (endH < startH) endH += 24;
+                const workHours = endH - startH;
+                return convertWorkHoursToMD(workHours, isNight || startH >= 20 || endH <= 6);
+            }
+
+            const n = parseFloat(str.replace(/[^0-9.]/g, ''));
+            if (isNaN(n) || n <= 0) return 0;
+
+            // 명시적 시간 단위이거나, 단일 인원 셀에서 7.5~24시간이 입력된 경우 (단, 합계/총원 행 제외)
+            if (isExplicitHours || (n >= 7.5 && n <= 24 && !/합계|총원|계|총합/i.test(rowLabel))) {
+                return convertWorkHoursToMD(n, isNight);
+            }
+
+            // 이미 MD/인원수 단위 (예: 1, 1.5, 2, 0.5 등)
+            return n;
         };
 
         const classifyDept = (text) => {
@@ -800,7 +867,8 @@ ${allText.substring(0, 30000)}
 
                 Object.entries(dateColMap).forEach(([colIdx, dateStr]) => {
                     const cNum = parseInt(colIdx, 10);
-                    const val = toNum(row[cNum]);
+                    const rowLabel = row[0] || row[1] || '';
+                    const val = parseCellToMD(row[cNum], dateStr, rowLabel);
                     if (!finalMap[dateStr]) {
                         finalMap[dateStr] = {
                             date: dateStr,
@@ -881,7 +949,9 @@ ${allText.substring(0, 30000)}
 
                 Object.entries(deptColMap).forEach(([colIdx, deptKey]) => {
                     const cNum = parseInt(colIdx, 10);
-                    const val = toNum(row[cNum]);
+                    const colName = (grid[headerRowIdx] && grid[headerRowIdx][cNum]) || '';
+                    const rowLabel = row[0] || '';
+                    const val = parseCellToMD(row[cNum], colName, rowLabel);
                     if (deptKey === 'personnel_count') {
                         finalMap[rowDate].personnel_count = val;
                     } else {

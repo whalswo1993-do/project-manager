@@ -288,24 +288,28 @@ ${allText.substring(0, 30000)}
             }
         }
 
-        // 0. 앞뒤 특수문자, 불릿, 괄호 내 요일(월/화/수/목/금/토/일/Mon/Tue...) 사전 정규화
-        str = str.replace(/\s*\([월화수목금토일A-Za-z\s]+\)\s*/g, ' ').trim();
-        str = str.replace(/^[■●▶◆【\[\s]+/, '').replace(/[】\]\s]+$/, '').trim();
+        // 라인/호기/장비/공정/작업 등 일반 업무 텍스트는 4자리 연도가 포함되지 않은 한 날짜가 아님!
+        if (/라인|line|호기|작업|장비|집진기|양산|대응|셋업|set-?up|설치|공정|반입|마킹|하역|개|대|ea|브라켓|모니터링|티칭|프로그램/i.test(str)) {
+            if (!/20\d{2}/.test(str)) return null;
+        }
+
+        // 괄호 내 요일(월/화/수/목/금/토/일/Mon/Tue...) 사전 정규화
+        let cleanStr = str.replace(/\s*\([월화수목금토일A-Za-z\s]+\)\s*/g, ' ').trim();
 
         // 1. 4자리 연도 YYYY-MM-DD, YYYY.MM.DD, YYYY/MM/DD, YYYY년 M월 D일
-        let m = str.match(/(20\d{2})[-./\s년]+(1[0-2]|0?[1-9])[-./\s월]+([12]\d|3[01]|0?[1-9])[일]?/);
+        let m = cleanStr.match(/(20\d{2})[-./\s년]+(1[0-2]|0?[1-9])[-./\s월]+([12]\d|3[01]|0?[1-9])[일]?/);
         if (m) {
             return `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
         }
 
         // 2. 2자리 연도 YY-MM-DD, YY/MM/DD, YY.MM.DD (예: 26/07/20, 26. 7. 20, 26-7-20)
-        m = str.match(/(?:^|[^\d])(2[4-9])[-./\s년]+(1[0-2]|0?[1-9])[-./\s월]+([12]\d|3[01]|0?[1-9])[일]?(?:$|[^\d])/);
+        m = cleanStr.match(/(?:^|[^\d])(2[4-9])[-./\s년]+(1[0-2]|0?[1-9])[-./\s월]+([12]\d|3[01]|0?[1-9])[일]?(?:$|[^\d])/);
         if (m) {
             return `20${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
         }
 
-        // 3. 월/일 포맷: [07/20], 7/20, 7.20, 7-20, 7월 20일 (연도 없으면 올해 연도 부여)
-        m = str.match(/(?:^|[^\d]|금일|일보|진행|일자|보고\s*)(1[0-2]|0?[1-9])[-./\s월]+([12]\d|3[01]|0?[1-9])[일]?(?:$|[^\d])/);
+        // 3. 월/일 포맷: [M/D], (M/D), 독립된 M/D나 M.D나 M월 D일 (호기/라인 번호 혼동 방지를 위해 연도 없는 하이픈(-)은 제외)
+        m = cleanStr.match(/(?:^|\[|\(|일자|금일|일보)\s*(1[0-2]|0?[1-9])[/.\s월]+([12]\d|3[01]|0?[1-9])[일]?(?:\s*\]|\s*\)|$)/);
         if (m) {
             const currentYear = new Date().getFullYear();
             return `${currentYear}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`;
@@ -334,10 +338,44 @@ ${allText.substring(0, 30000)}
 
         if (text && typeof text === 'string') {
             const clean = text.replace(/^\uFEFF/, '').replace(/\r/g, '');
-            const lines = clean.split('\n');
-            const grid = lines.map(line => line.split('\t').map(c => c.trim()))
-                              .filter(row => row.length > 0 && row.some(c => c.length > 0));
-            if (grid.length > 0) return grid;
+            // 큰따옴표 내 줄바꿈(Alt+Enter)을 온전히 보존하는 스마트 TSV 파서
+            const rows = [];
+            let currentRow = [];
+            let currentCell = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < clean.length; i++) {
+                const char = clean[i];
+                const nextChar = clean[i + 1];
+
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') {
+                        currentCell += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === '\t' && !inQuotes) {
+                    currentRow.push(currentCell.trim());
+                    currentCell = '';
+                } else if (char === '\n' && !inQuotes) {
+                    currentRow.push(currentCell.trim());
+                    if (currentRow.some(c => c.length > 0)) {
+                        rows.push(currentRow);
+                    }
+                    currentRow = [];
+                    currentCell = '';
+                } else {
+                    currentCell += char;
+                }
+            }
+            if (currentCell || currentRow.length > 0) {
+                currentRow.push(currentCell.trim());
+                if (currentRow.some(c => c.length > 0)) {
+                    rows.push(currentRow);
+                }
+            }
+            if (rows.length > 0) return rows;
         }
 
         return [];
@@ -641,7 +679,7 @@ ${allText.substring(0, 30000)}
                 let detectedDate = null;
                 for (let c = 0; c < row.length; c++) {
                     const cell = row[c] || '';
-                    if (/명일\s*진행|익일\s*진행|명일\s*예정|진행\s*예정/i.test(cell)) continue;
+                    if (/명일|익일|예정/i.test(cell)) continue;
                     const d = normalizeReportDate(cell);
                     if (d) {
                         detectedDate = d;
@@ -668,13 +706,21 @@ ${allText.substring(0, 30000)}
                     const cellVal = (row[c] || '').trim();
                     if (!cellVal) continue;
                     // 구분용 라벨이나 날짜 셀은 건너뜀
-                    if (/^(구분|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고|주요\s*업무|일자|날짜)$/i.test(cellVal.replace(/\s+/g, ''))) continue;
+                    if (/^(구분|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|주요\s*진행\s*예정|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고|주요\s*업무|일자|날짜)$/i.test(cellVal.replace(/\s+/g, ''))) continue;
                     if (normalizeReportDate(cellVal)) continue;
+
+                    // 명일/예정 열은 작업내용 대신 특이사항에 보존
+                    const isPlanCol = (c >= 2 && row.length >= 4 && /명일|예정/i.test(row[c - 1] || ''));
 
                     // 특이사항 또는 작업내용으로 분류하여 누적
                     if (isSpecialNoteRow || /^(특이사항|이슈):/i.test(cellVal)) {
                         if (!result[currentDate].special_notes.includes(cellVal)) {
                             result[currentDate].special_notes.push(cellVal);
+                        }
+                    } else if (isPlanCol) {
+                        const planText = `[명일 진행 예정]\n${cellVal}`;
+                        if (!result[currentDate].special_notes.includes(planText)) {
+                            result[currentDate].special_notes.push(planText);
                         }
                     } else if (cellVal.length >= 4 || /\[.*\]|<.*>|\d\./.test(cellVal)) {
                         if (!result[currentDate].work_details.includes(cellVal)) {

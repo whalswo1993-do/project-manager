@@ -333,115 +333,192 @@ ${allText.substring(0, 30000)}
         return [];
     };
 
-    // 프로젝트명 정규화 (변형 명칭, 작업내용 꼬리표 등을 통일된 핵심 프로젝트명으로 그룹화)
-    const normalizeProjectName = (rawTitle) => {
+    // 라인 번호 / 범위 시그니처 추출 헬퍼 (예: "Line 5~8", "5~8라인", "1, 2라인", "3라인", "Line 3")
+    const extractLineSignature = (str) => {
+        if (!str) return null;
+        let m = str.match(/(?:line|라인|호기)\s*([0-9]+(?:\s*[-~,]\s*[0-9]+)?)/i);
+        if (m) return m[1].replace(/\s+/g, '').replace('-', '~').replace(',', '~');
+
+        m = str.match(/([0-9]+(?:\s*[-~,]\s*[0-9]+)?)\s*(?:line|라인|호기)/i);
+        if (m) return m[1].replace(/\s+/g, '').replace('-', '~').replace(',', '~');
+
+        m = str.match(/\b([0-9]{1,2}\s*[-~]\s*[0-9]{1,2})\b/);
+        if (m) return m[1].replace(/\s+/g, '').replace('-', '~');
+
+        return null;
+    };
+
+    // 라인 번호가 특정 범위(예: 7 in 5~8)에 포함되는지 검사
+    const isLineInRange = (lineNumStr, rangeStr) => {
+        if (!lineNumStr || !rangeStr) return false;
+        if (lineNumStr === rangeStr) return true;
+        const num = parseInt(lineNumStr, 10);
+        const m = rangeStr.match(/^([0-9]+)~([0-9]+)$/);
+        if (m && !isNaN(num)) {
+            const start = parseInt(m[1], 10);
+            const end = parseInt(m[2], 10);
+            return num >= start && num <= end;
+        }
+        return false;
+    };
+
+    // 범용 지능형 프로젝트명 정규화 (변형 명칭, 꼬리표 등을 통일된 핵심 프로젝트명으로 그룹화)
+    const normalizeProjectName = (rawTitle, bodyPreview = '', projectList = []) => {
         if (!rawTitle) return '';
-        let clean = rawTitle.trim();
-        // 외곽 대괄호 및 불릿 기호 제거
-        clean = clean.replace(/^[■●▶◆【\[\s]+/, '').replace(/[】\]\s]+$/, '').trim();
+        let clean = rawTitle.trim().replace(/^[■●▶◆【\[\s]+/, '').replace(/[】\]\s]+$/, '').trim();
 
-        // 1. 핵심 라인 패턴 인식 및 그룹 통일
-        // STK Line 5~8 / 5-8 / 5~8라인 / 5~8Line 계열 -> 'STK Line 5~8'
-        if (/(?:Line\s*5\s*[-~]\s*8|5\s*[-~]\s*8\s*Line|5\s*[-~]\s*8\s*라인|5\s*[-~]\s*8\s*호기)/i.test(clean)) {
-            return 'STK Line 5~8';
-        }
-        // STK Line 3 / 3Line / 3라인 계열 -> 'STK Line 3'
-        if (/(?:Line\s*3|3\s*Line|3\s*라인|3\s*호기)/i.test(clean)) {
-            return 'STK Line 3';
-        }
-        // HSBMA 1, 2라인 계열 -> 'HSBMA 양산 대응 (1, 2라인)'
-        if (/(?:1\s*[,~-]\s*2\s*라인|1\s*[,~-]\s*2\s*Line)/i.test(clean) && /HSBMA/i.test(clean)) {
-            return 'HSBMA 양산 대응 (1, 2라인)';
-        }
-
-        // 2. 일반 규칙: 괄호 보호 후 콤마/콜론/대시 뒤 작업내용 설명 분리
-        const parenMap = [];
-        clean = clean.replace(/\([^)]+\)/g, (m) => {
-            parenMap.push(m);
-            return `__PAREN_${parenMap.length - 1}__`;
-        });
-
-        // 콤마, 콜론, 슬래시 등으로 세부 작업내용이 이어진 경우 앞부분의 프로젝트명만 취함
-        const prefixMatch = clean.match(/^([A-Za-z0-9가-힣_\s~-]+?)(?:[,:\-/]\s*(?:Line\s*Marking|Unloading|Installation|Setting|Set-up|하역|반입|설치|셋업|양산|점검|테스트|생산).*|$)/i);
-        let result = prefixMatch ? prefixMatch[1].trim() : clean;
-
-        if (result.includes(',')) {
-            const parts = result.split(',');
-            if (parts.length > 1 && /(?:Line|라인|양산|Set-up|STK|HSBMA)/i.test(parts[0])) {
-                result = parts[0].trim();
+        // 1. 라인 번호 시그니처 추출 (제목 우선 -> 본문 앞머리 보조)
+        let lineSig = extractLineSignature(clean);
+        if (!lineSig && bodyPreview) {
+            lineSig = extractLineSignature(bodyPreview);
+            if (!lineSig) {
+                const indLine = bodyPreview.match(/([5-8])\s*(?:line|라인|호기)/i);
+                if (indLine) lineSig = '5~8';
+                const ind12 = bodyPreview.match(/([1-2])\s*(?:line|라인|호기)/i);
+                if (ind12) lineSig = '1~2';
+                const ind3 = bodyPreview.match(/(?:3\s*(?:line|라인|호기)|3L-)/i);
+                if (ind3) lineSig = '3';
             }
         }
 
-        // 괄호 복원
-        parenMap.forEach((p, idx) => {
-            result = result.replace(`__PAREN_${idx}__`, p);
-        });
+        // 2. 공정/단계(Stage) 시그니처 판별
+        const combinedContext = `${clean} ${bodyPreview}`;
+        const isSetup = /set-?up|셋업|설치|하역|반입|마킹|unloading|installation|setting|도킹|레벨|조립/i.test(combinedContext);
+        const isYangsan = /양산|생산대응|양산대응|양산\s*사전|생산/i.test(combinedContext);
+        const isJC = /j\/?c|형교환|기종교체/i.test(combinedContext);
+        const isSTK = /stk/i.test(clean);
+        const isHSBMA = /hsbma|북미/i.test(clean);
 
-        return result.replace(/\s+/g, ' ').trim();
+        if (!lineSig) {
+            if (isSTK && !isJC && !/3/.test(clean)) lineSig = '5~8';
+            if (isHSBMA && isYangsan) lineSig = '1~2';
+        }
+
+        // 3. 앱에 등록된 프로젝트 목록과의 시맨틱 매칭
+        const effectiveProjects = (projectList && projectList.length > 0) ? projectList : (projects || []);
+        let bestProj = null;
+        let highestScore = -999;
+
+        for (const p of effectiveProjects) {
+            const pName = p.name || '';
+            const pClean = pName.replace(/\s*\([^)]*\)\s*$/, '').trim();
+            const pLineSig = extractLineSignature(pClean);
+            let score = 0;
+
+            if (lineSig && pLineSig) {
+                if (lineSig === pLineSig) {
+                    score += 60;
+                } else if (isLineInRange(lineSig, pLineSig)) {
+                    score += 50;
+                } else {
+                    score -= 50;
+                }
+            }
+
+            if (isSetup && /set-?up|셋업|설치/i.test(pName)) score += 25;
+            if (isYangsan && /양산/i.test(pName)) score += 25;
+            if (isJC && /j\/?c|형교환/i.test(pName)) score += 30;
+
+            if (isHSBMA && /hsbma/i.test(pName)) score += 15;
+            if (isSTK && /5~8|set-?up|셋업/i.test(pName)) score += 20;
+
+            // 키워드 단어 매칭
+            const words = clean.split(/[\s,()_~-]+/).filter(w => w.length >= 2);
+            words.forEach(w => {
+                if (pClean.toLowerCase().includes(w.toLowerCase())) score += 8;
+            });
+
+            if (score > highestScore && score >= 25) {
+                highestScore = score;
+                bestProj = pClean;
+            }
+        }
+
+        if (bestProj) return bestProj;
+
+        // 4. 범용 폴백 표준화 규칙
+        if (lineSig === '5~8' || (isSTK && isSetup)) return 'HSBMA 5~8Line Set-up';
+        if (lineSig === '1~2' || (isHSBMA && isYangsan)) return 'HSBMA 1~2Line 양산대응';
+        if (lineSig === '3' || isJC) return 'HSBMA 3Line J/C 양산대응';
+
+        return clean;
     };
 
     // 작업내용 텍스트에서 [프로젝트명] 블록들을 분리 추출하고 정규화하는 파서 함수
-    const splitProjectsFromText = (text) => {
+    const splitProjectsFromText = (text, projectList = []) => {
         if (!text || typeof text !== 'string') return [];
         
-        const lines = text.split(/\r?\n/);
-        const projects = [];
-        let currentProj = null;
-        let currentRawProj = null;
-        let currentLines = [];
+        // 1. 엑셀 셀 내 줄바꿈(Alt+Enter)으로 대괄호가 쪼개진 경우 결합
+        const rawLines = text.split(/\r?\n/);
+        const lines = [];
+        let accumulatingBracket = false;
+        let bracketBuffer = '';
 
-        // 대괄호로 묶여 있어도 프로젝트명으로 취소할 단어들
+        for (let i = 0; i < rawLines.length; i++) {
+            const line = rawLines[i];
+            const trimmed = line.trim();
+
+            if (!accumulatingBracket) {
+                if (/^[■●▶◆【\[]/.test(trimmed) && !/[】\]]/.test(trimmed)) {
+                    accumulatingBracket = true;
+                    bracketBuffer = trimmed;
+                } else {
+                    lines.push(line);
+                }
+            } else {
+                bracketBuffer += ' ' + trimmed;
+                if (/[】\]]/.test(trimmed)) {
+                    lines.push(bracketBuffer);
+                    accumulatingBracket = false;
+                    bracketBuffer = '';
+                }
+            }
+        }
+        if (accumulatingBracket) lines.push(bracketBuffer);
+
+        // 2. 프로젝트 블록 단위 파싱
+        const rawBlocks = [];
+        let curHeader = null;
+        let curLines = [];
         const excludeTitles = /^(참고|비고|특이사항|이슈|이슈사항|주의|알림|공지|진행중|완료|대기|예정|취소|긴급|설비|설비기술|제어|비전|설계|소장|pm)$/i;
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             const trimmed = line.trim();
-
-            // [프로젝트명] 또는 【프로젝트명】 또는 ■ [프로젝트명] 패턴 매칭
-            const m = trimmed.match(/^[■●▶◆【\[]\s*([^\]】]+)[】\]]?[:\s]*(.*)$/);
+            const m = trimmed.match(/^[■●▶◆【\[]\s*([^\]】]+)[】\]][:.\s-]*(.*)$/);
             const isDate = m ? normalizeReportDate(m[1]) : null;
             const candidate = m ? m[1].trim() : null;
 
             if (candidate && !isDate && !excludeTitles.test(candidate) && candidate.length >= 2) {
-                if (currentProj) {
-                    projects.push({
-                        name: currentProj,
-                        rawName: currentRawProj,
-                        content: currentLines.join('\n').trim()
-                    });
-                } else if (currentLines.join('\n').trim()) {
-                    projects.push({
-                        name: '기타/공통',
-                        rawName: '기타/공통',
-                        content: currentLines.join('\n').trim()
-                    });
+                if (curHeader) {
+                    rawBlocks.push({ header: curHeader, lines: curLines });
+                } else if (curLines.some(l => l.trim())) {
+                    rawBlocks.push({ header: '기타/공통', lines: curLines });
                 }
-                currentRawProj = candidate;
-                currentProj = normalizeProjectName(candidate);
-                currentLines = [];
-                if (m[2] && m[2].trim()) {
-                    currentLines.push(m[2].trim());
-                }
+                curHeader = candidate;
+                curLines = [];
+                if (m[2] && m[2].trim()) curLines.push(m[2].trim());
             } else {
-                currentLines.push(line);
+                curLines.push(line);
             }
         }
-
-        if (currentProj) {
-            projects.push({
-                name: currentProj,
-                rawName: currentRawProj,
-                content: currentLines.join('\n').trim()
-            });
-        } else if (currentLines.join('\n').trim()) {
-            projects.push({
-                name: '일보 전체',
-                rawName: '일보 전체',
-                content: currentLines.join('\n').trim()
-            });
+        if (curHeader) {
+            rawBlocks.push({ header: curHeader, lines: curLines });
+        } else if (curLines.some(l => l.trim())) {
+            rawBlocks.push({ header: '일보 전체', lines: curLines });
         }
 
-        return projects;
+        return rawBlocks.map(b => {
+            const bodyPreview = b.lines.slice(0, 3).join('\n');
+            const normalizedName = (b.header === '기타/공통' || b.header === '일보 전체')
+                ? b.header
+                : normalizeProjectName(b.header, bodyPreview, projectList);
+            return {
+                name: normalizedName,
+                rawName: b.header,
+                content: b.lines.join('\n').trim()
+            };
+        });
     };
 
     // 엑셀 표(목록형 + 일일 보고서 양식 블록형 모두 지원) 종합 파서
@@ -602,7 +679,7 @@ ${allText.substring(0, 30000)}
             if (targetProj === '__ALL__') {
                 targetMap[date] = { ...w };
             } else {
-                const projs = splitProjectsFromText(w.work_details);
+                const projs = splitProjectsFromText(w.work_details, projects);
                 // 정규화된 프로젝트명으로 매칭되는 모든 블록을 수집
                 const matches = projs.filter(p => p.name === targetProj);
                 if (matches.length > 0) {
@@ -851,19 +928,25 @@ ${allText.substring(0, 30000)}
                 return;
             }
 
-            // 고유 프로젝트 목록 추출
-            const projectFreq = {};
+            // 고유 프로젝트 목록 및 일자 수 집계
+            const projectDays = {};
             const projectSamples = {};
             Object.values(workMap).forEach(w => {
-                const projs = splitProjectsFromText(w.work_details);
+                const projs = splitProjectsFromText(w.work_details, projects);
+                const seenOnThisDay = new Set();
                 projs.forEach(p => {
                     if (p.name !== '일보 전체' && p.name !== '기타/공통') {
-                        projectFreq[p.name] = (projectFreq[p.name] || 0) + 1;
-                        if (!projectSamples[p.name]) projectSamples[p.name] = p.content;
+                        if (!seenOnThisDay.has(p.name)) {
+                            seenOnThisDay.add(p.name);
+                            projectDays[p.name] = (projectDays[p.name] || 0) + 1;
+                        }
+                        if (!projectSamples[p.name] && p.content) {
+                            projectSamples[p.name] = p.content;
+                        }
                     }
                 });
             });
-            const uniqueProjects = Object.keys(projectFreq);
+            const uniqueProjects = Object.keys(projectDays);
 
             // 2개 이상의 복수 프로젝트가 감지된 경우 -> 사용자 선택 모달 오픈!
             if (uniqueProjects.length >= 2) {
@@ -873,37 +956,44 @@ ${allText.substring(0, 30000)}
 
                 if (curProjectObj) {
                     const curName = (curProjectObj.name || '').toLowerCase();
-                    const curNo = (curProjectObj.manufacturingNo || '').toLowerCase();
-                    const combinedTarget = `${curNo} ${curName}`;
-
-                    // 라인 번호(Line Number) 추출 (예: "5~8", "5-8", "3", "1, 2")
-                    const extractLineNumbers = (str) => {
-                        const m = str.match(/([0-9]+[\s~,-]+[0-9]+|[0-9]+)\s*(?:line|라인|호기)?/i);
-                        return m ? m[1].replace(/\s+/g, '') : null;
-                    };
-
-                    const targetLine = extractLineNumbers(combinedTarget);
+                    const curClean = (curProjectObj.name || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+                    const curLine = extractLineSignature(curClean);
                     let bestScore = -999;
 
                     uniqueProjects.forEach(cand => {
-                        const candLower = cand.toLowerCase();
-                        const candLine = extractLineNumbers(candLower);
+                        const candClean = cand.replace(/\s*\([^)]*\)\s*$/, '').trim();
+                        const candLine = extractLineSignature(candClean);
                         let score = 0;
 
-                        // 1. 라인 번호 일치 시 최우선 가중치 (5~8 vs 1,2 등 불일치 감점)
-                        if (targetLine && candLine) {
-                            if (targetLine === candLine) score += 60;
-                            else score -= 40;
+                        // 1. 프로젝트 정규화 명칭 완전 일치 시 최우선
+                        if (candClean === curClean || cand.includes(curClean) || curClean.includes(candClean)) {
+                            score += 100;
                         }
 
-                        // 2. 프로젝트명 / 제번 포함 여부
-                        if (curName && candLower.includes(curName)) score += 20;
-                        if (curNo && candLower.includes(curNo)) score += 20;
+                        // 2. 라인 번호/범위 일치 여부
+                        if (curLine && candLine) {
+                            if (curLine === candLine) score += 60;
+                            else if (isLineInRange(candLine, curLine) || isLineInRange(curLine, candLine)) score += 40;
+                            else score -= 50;
+                        }
 
-                        // 3. 주요 토큰 매칭
+                        // 3. 공정/단계(Stage) 일치 여부
+                        const candIsSetup = /set-?up|셋업|설치/i.test(cand);
+                        const curIsSetup = /set-?up|셋업|설치/i.test(curClean);
+                        if (candIsSetup && curIsSetup) score += 20;
+
+                        const candIsYangsan = /양산/i.test(cand);
+                        const curIsYangsan = /양산/i.test(curClean);
+                        if (candIsYangsan && curIsYangsan) score += 20;
+
+                        const candIsJC = /j\/?c|형교환/i.test(cand);
+                        const curIsJC = /j\/?c|형교환/i.test(curClean);
+                        if (candIsJC && curIsJC) score += 25;
+
+                        // 4. 단어 토큰 매칭
                         const tokens = curName.split(/[\s,()_~-]+/).filter(t => t.length >= 2);
                         tokens.forEach(t => {
-                            if (candLower.includes(t)) score += 5;
+                            if (cand.toLowerCase().includes(t)) score += 5;
                         });
 
                         if (score > bestScore) {
@@ -916,9 +1006,10 @@ ${allText.substring(0, 30000)}
                 setSplitProjectModal({
                     isOpen: true,
                     uniqueProjects,
-                    projectFreq,
+                    projectFreq: projectDays,
                     projectSamples,
                     selectedChoice: defaultChoice,
+                    recommendedProject: defaultChoice,
                     currentProjectName: curProjDisp,
                     workMap
                 });
@@ -1759,7 +1850,7 @@ ${compiledText.substring(0, 30000)}
                                     const count = splitProjectModal.projectFreq[pName] || 0;
                                     const sample = splitProjectModal.projectSamples[pName] || '';
                                     const isSelected = splitProjectModal.selectedChoice === pName;
-                                    const isCurProj = splitProjectModal.currentProjectName && splitProjectModal.currentProjectName.toLowerCase().includes(pName.split(' ')[0].toLowerCase());
+                                    const isCurProj = splitProjectModal.recommendedProject === pName;
 
                                     return (
                                         <label

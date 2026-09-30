@@ -1043,7 +1043,17 @@ ${allText.substring(0, 30000)}
             delete item._totalFromSheet;
         });
 
-        return finalMap;
+        // 사용자가 넓은 범위를 복사하더라도 데이터(공수/인원)가 없는 일자는 자동 제외하여 일보 추가 방지
+        const filteredMap = {};
+        Object.entries(finalMap).forEach(([dateStr, item]) => {
+            const totalMD = (item.pm_count || 0) + (item.design_count || 0) + (item.facility_count || 0) +
+                            (item.control_count || 0) + (item.vision_count || 0) + (item.personnel_count || 0);
+            if (totalMD > 0) {
+                filteredMap[dateStr] = item;
+            }
+        });
+
+        return filteredMap;
     };
 
     const handlePasteReportSheet = (e, type) => {
@@ -1166,7 +1176,7 @@ ${allText.substring(0, 30000)}
             const mpMap = parseManpowerSheetGrid(grid);
             const dates = Object.keys(mpMap).sort();
             if (dates.length === 0) {
-                setMsg('공수 시트에서 날짜나 인원 수치를 찾을 수 없습니다. 일자 및 직종별 인원 열이 포함되어 있는지 확인해주세요.');
+                setMsg('공수 시트에서 유효한 인원/공수 데이터(0 초과)를 찾을 수 없습니다. (데이터가 없는 일자는 자동으로 제외됩니다)');
                 return;
             }
 
@@ -1181,18 +1191,24 @@ ${allText.substring(0, 30000)}
 
                 dates.forEach(d => {
                     const m = mpMap[d];
+                    const totalMD = (m.pm_count || 0) + (m.design_count || 0) + (m.facility_count || 0) +
+                                    (m.control_count || 0) + (m.vision_count || 0) + (m.personnel_count || 0);
+
                     if (!currentMap[d]) {
-                        currentMap[d] = {
-                            date: d,
-                            work_details: '',
-                            special_notes: '',
-                            personnel_count: m.personnel_count || 0,
-                            pm_count: m.pm_count || 0,
-                            design_count: m.design_count || 0,
-                            facility_count: m.facility_count || 0,
-                            control_count: m.control_count || 0,
-                            vision_count: m.vision_count || 0
-                        };
+                        // 공수 데이터가 있는 날짜만 신규 일보로 추가 (데이터 없는 일자 자동 배제)
+                        if (totalMD > 0) {
+                            currentMap[d] = {
+                                date: d,
+                                work_details: '',
+                                special_notes: '',
+                                personnel_count: m.personnel_count || 0,
+                                pm_count: m.pm_count || 0,
+                                design_count: m.design_count || 0,
+                                facility_count: m.facility_count || 0,
+                                control_count: m.control_count || 0,
+                                vision_count: m.vision_count || 0
+                            };
+                        }
                     } else {
                         currentMap[d].pm_count = m.pm_count ?? currentMap[d].pm_count;
                         currentMap[d].design_count = m.design_count ?? currentMap[d].design_count;
@@ -1208,7 +1224,7 @@ ${allText.substring(0, 30000)}
             });
 
             setCollapsedSections(prev => ({ ...prev, inputForm: false }));
-            setMsg(`👥 공수 시트 붙여넣기 완료: ${dates.length}일치 데이터(${dates[0]} ~ ${dates[dates.length - 1]})를 직접입력 폼에 병합 반영했습니다.`);
+            setMsg(`👥 공수 시트 붙여넣기 완료: 유효 인원 데이터가 있는 ${dates.length}일치(${dates[0]} ~ ${dates[dates.length - 1]})를 직접입력 폼에 반영했습니다. (데이터 없는 일자는 자동 제외)`);
         }
     };
 

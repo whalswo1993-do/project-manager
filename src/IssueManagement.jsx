@@ -203,9 +203,11 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
             let manpowerSheetName = '';
 
             for (const sheetName of workbook.SheetNames) {
-                // 간트차트, 설치현황 등 순수 일정 시트는 제외 (단, 일보/보고/인원/공수 키워드 시트는 유지)
-                if ((sheetName.includes('설치현황') || sheetName.includes('공정현황') || sheetName.includes('진도')) 
-                    && !sheetName.includes('일보') && !sheetName.includes('보고') && !sheetName.includes('인원') && !sheetName.includes('공수')) {
+                // 간트차트, 설치현황 등 순수 일정 시트는 제외 (단, 일보/보고/인원/공수/출역/근태 키워드 시트는 유지)
+                if ((sheetName.includes('설치현황') || sheetName.includes('공정현황') || sheetName.includes('진도') || 
+                     sheetName.includes('Schedule') || sheetName.includes('Actual') || sheetName.includes('Plan') || 
+                     sheetName.includes('그래프') || sheetName.includes('Utility') || sheetName.includes('비자보유')) 
+                    && !sheetName.includes('일보') && !sheetName.includes('보고') && !sheetName.includes('작업') && !sheetName.includes('인원') && !sheetName.includes('공수') && !sheetName.includes('근태') && !sheetName.includes('출역')) {
                     continue;
                 }
 
@@ -213,8 +215,8 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
                 const grid = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
                 if (!grid || grid.length === 0) continue;
 
-                const isExplicitManpower = /(인원|공수|투입|manpower)/i.test(sheetName) && !/(일보|보고|작업|공사|업무)/i.test(sheetName);
-                const isExplicitWork = /(일보|보고|작업|공사|업무)/i.test(sheetName) && !/(인원|공수)/i.test(sheetName);
+                const isExplicitManpower = /(인원|공수|투입|출역|근태|manpower|attendance)/i.test(sheetName) && !/(일보|보고|작업|공사|업무)/i.test(sheetName);
+                const isExplicitWork = /(일보|보고|작업|공사|업무)/i.test(sheetName) && !/(인원|공수|근태|출역)/i.test(sheetName);
 
                 // 작업내용 시트 검사 (명시적 공수 시트 제외 및 더 많은 일자 데이터를 가진 시트 우선 채택)
                 if (!isExplicitManpower) {
@@ -579,6 +581,29 @@ ${allText.substring(0, 100000)}
             return `${m8[1]}-${m8[2]}-${m8[3]}`;
         }
 
+        // 1-2. 영문 월명 포맷 (예: Sep/29/26, Sep 29, 2026, 29-Sep-2026)
+        const engMonthMap = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+        let mEng = cleanStr.match(/(?:^|[^\w])(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[.\s/-]+([12]\d|3[01]|0?[1-9])[,\s/-]+(20\d{2}|\d{2})(?:$|[^\w])/i);
+        if (mEng) {
+            const mon = engMonthMap[mEng[1].toLowerCase().slice(0, 3)];
+            const day = parseInt(mEng[2], 10);
+            let yr = parseInt(mEng[3], 10);
+            if (yr < 100) yr += 2000;
+            return `${yr}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+
+        // 1-3. 미국식 포맷 MM.DD.YYYY, MM/DD/YYYY, (MM.DD.YYYY) (예: (07.10.2026))
+        let mUS = cleanStr.match(/(?:^|[^\d])(1[0-2]|0?[1-9])[-./]([12]\d|3[01]|0?[1-9])[-./](20\d{2})(?:$|[^\d])/);
+        if (mUS) {
+            return `${mUS[3]}-${String(mUS[1]).padStart(2, '0')}-${String(mUS[2]).padStart(2, '0')}`;
+        }
+
+        // 1-4. 미국식 2자리 연도 포맷 M/D/YY (예: 9/29/26, 09/29/26)
+        let mUS2 = cleanStr.match(/(?:^|[^\d])(1[0-2]|0?[1-9])[/.-]([12]\d|3[01]|0?[1-9])[/.-](2[4-9])(?:$|[^\d])/);
+        if (mUS2) {
+            return `20${mUS2[3]}-${String(mUS2[1]).padStart(2, '0')}-${String(mUS2[2]).padStart(2, '0')}`;
+        }
+
         // 2. 2자리 연도 YY-MM-DD, YY/MM/DD, YY.MM.DD (예: 26/07/20, 26. 7. 20, 26-7-20)
         m = cleanStr.match(/(?:^|[^\d])(2[4-9])[-./\s년]+(1[0-2]|0?[1-9])[-./\s월]+([12]\d|3[01]|0?[1-9])[일]?(?:$|[^\d])/);
         if (m) {
@@ -658,7 +683,7 @@ ${allText.substring(0, 100000)}
         return [];
     };
 
-    // 사이트 / 고객사 식별 시그니처 (HSBMA, SKOJ, SKOH2, SKOY, SKBA, SKBM, SKON, SDI, 현대차 아산 등 사이트 간 오연결 원천 차단)
+    // 사이트 / 고객사 식별 시그니처 (HSBMA, SKOJ, SKOH2, SKOY, SKBA, SKBM, SKON, SK대전연구소, SDI, 현대차 아산 등 사이트 간 오연결 원천 차단)
     const extractSiteSignature = (str) => {
         if (!str) return null;
         const s = String(str).toLowerCase();
@@ -669,7 +694,8 @@ ${allText.substring(0, 100000)}
         if (/skba|sk\s*ba|조지아/i.test(s)) return 'SKBA';
         if (/skbm|sk\s*bm|코마롬/i.test(s)) return 'SKBM';
         if (/skon|sk\s*on/i.test(s)) return 'SKON';
-        if (/삼성\s*sdi|sdi|울산\s*m/i.test(s)) return 'SDI';
+        if (/대전\s*연구소|sk\s*대전|대전/i.test(s)) return 'SK_DAEJEON';
+        if (/삼성\s*sdi|sdi|울산\s*m|울산/i.test(s)) return 'SDI';
         if (/현대차\s*아산|아산/i.test(s)) return 'HY_ASAN';
         return null;
     };
@@ -788,6 +814,10 @@ ${allText.substring(0, 100000)}
 
             if (candSite === 'HSBMA' && /hsbma/i.test(pName)) score += 15;
             if (candSite === 'SKOJ' && /skoj|oj/i.test(pName)) score += 15;
+            if (candSite === 'SK_DAEJEON' && /대전/i.test(pName)) score += 20;
+            if (candSite === 'SDI' && /sdi|울산/i.test(pName)) score += 20;
+            if (candSite === 'SKOY' && /skoy|옌청/i.test(pName)) score += 20;
+            if (candSite === 'SKBA' && /skba|조지아/i.test(pName)) score += 20;
             if (isSTK && /5~8|set-?up|셋업/i.test(pName)) score += 20;
 
             // 키워드 단어 매칭
@@ -807,6 +837,21 @@ ${allText.substring(0, 100000)}
         // 4. 범용 폴백 표준화 규칙 (등록되지 않은 법인 계약건 등 사이트별 표준 명칭 통일)
         const curProjObjFallback = (projects || []).find(p => p.id === selectedProject);
         const sitePrefix = candSite || (curProjObjFallback?.name ? curProjObjFallback.name.split(/[\s-]+/)[0] : 'HSBMA');
+        if (candSite === 'SK_DAEJEON') return 'SK대전 연구소 ST 고속화 개조';
+        if (candSite === 'SDI') return '삼성SDI 울산M라인 LFP 일체형 Stack';
+        if (candSite === 'SKOY') {
+            if (lineSig === '10' || lineSig === '12' || lineSig === '10~12') return `SKOY ${lineSig}Line Job Change`;
+            return 'SKOY Job Change';
+        }
+        if (candSite === 'SKBA') {
+            if (lineSig === '1~6' || /1~6/i.test(clean)) return 'SKBA 1 (1~6라인)';
+            if (lineSig === '7~12' || /7~12/i.test(clean)) return 'SKBA 2 (7~12라인)';
+            return 'SKBA CS 작업일보';
+        }
+        if (candSite === 'SKOH2') {
+            if (lineSig === '9' || /9L|9라인/i.test(clean)) return 'SKOH2 9Line Job Change';
+            return 'SKOH2 BPD JC';
+        }
         if (lineSig === '7') return detectedMfgCode ? `${sitePrefix} 7Line (${detectedMfgCode})` : `${sitePrefix} 7Line`;
         if (lineSig === '3' || isJC) return `${sitePrefix} 3Line J/C 양산대응`;
         if (lineSig === '5~8' || (isSTK && isSetup)) return `${sitePrefix} 5~8Line Set-up`;
@@ -966,18 +1011,49 @@ ${allText.substring(0, 100000)}
                 }
             }
         } else {
-            // 2. 일일 업무 보고서 블록형 양식 (Sequential Date Block Scanner)
+            // 2. 일일 업무 보고서 블록형 양식 (Sequential Date Block Scanner: HSBMA, SKBA, Samsung SDI, SKOH2 BPD JC, SK대전연구소 등 전 양식 지원)
             let currentDate = null;
+            let manpowerSectionStarted = false;
+
+            // 가로형 헤더 구조(HSBMA Report 양식: Today vs Tomorrow vs Remark) 사전 분석
+            let hTodayCol = -1;
+            let hFutureCol = -1;
+            let hRemarkCol = -1;
+
+            for (let r = 0; r < Math.min(25, grid.length); r++) {
+                const row = grid[r];
+                if (!row) continue;
+                let tCol = -1, fCol = -1, rCol = -1;
+                row.forEach((cell, c) => {
+                    const s = String(cell).replace(/\s+/g, '');
+                    if (/Today|금일진행|당일진행/i.test(s) && !/Tomorrow|명일|예정/i.test(s) && tCol === -1) tCol = c;
+                    if (/Tomorrow|명일진행|익일진행/i.test(s) && fCol === -1) fCol = c;
+                    if (/Remark|특이사항|비고|이슈/i.test(s) && rCol === -1) rCol = c;
+                });
+                if (tCol !== -1 && fCol !== -1) {
+                    hTodayCol = tCol;
+                    hFutureCol = fCol;
+                    hRemarkCol = rCol !== -1 ? rCol : 12;
+                    break;
+                }
+            }
 
             for (let r = 0; r < grid.length; r++) {
                 const row = grid[r];
                 if (!row || row.length === 0) continue;
 
+                const rowText = row.map(c => String(c || '')).join(' ');
+                // 인원/공수 테이블(Manpower Table) 영역에 도달하면 작업내용 수집 중단
+                if (/Manpower|인원현황|출역현황/i.test(rowText) && /Company|업체|직종|Position/i.test(grid[r + 1] ? grid[r + 1].join(' ') : '')) {
+                    manpowerSectionStarted = true;
+                }
+                if (manpowerSectionStarted) continue;
+
                 // 이 행에서 날짜가 감지되는지 확인 (단, 명일 진행/예정 셀은 제외)
                 let detectedDate = null;
                 for (let c = 0; c < row.length; c++) {
-                    const cell = row[c] || '';
-                    if (/명일|익일|예정/i.test(cell)) continue;
+                    const cell = String(row[c] || '');
+                    if (/명일|익일|예정|tomorrow/i.test(cell)) continue;
                     const d = normalizeReportDate(cell);
                     if (d) {
                         detectedDate = d;
@@ -994,36 +1070,65 @@ ${allText.substring(0, 100000)}
 
                 if (!currentDate) continue;
 
-                // 행에서 라벨과 실질적인 내용 텍스트 수집
-                const firstCol = (row[0] || '').replace(/\s+/g, '');
-                const rowText = row.join(' ');
+                // 가로형 헤더 구조에서 차일 날짜(d > currentDate) 감지 시 해당 열을 명일 계획 열로 지정
+                if (hFutureCol === -1) {
+                    row.forEach((cell, c) => {
+                        const d = normalizeReportDate(cell);
+                        if (d && d > currentDate && c > 3) {
+                            hFutureCol = c;
+                        }
+                        if (/Remark|특이사항|이슈|비고/i.test(String(cell)) && hRemarkCol === -1) {
+                            hRemarkCol = c;
+                        }
+                    });
+                }
 
-                // 행 자체가 명일/익일 예정 행인 경우(단, 이슈/특이사항 행 제외) 전체 건너뜀
-                const isPlanRow = /명일|익일|예정/i.test(firstCol) && !/이슈|특이사항|문제점|건의|비고/i.test(firstCol);
+                const firstCol = String(row[0] || '').replace(/\s+/g, '');
+
+                // 행 자체가 명일/익일 예정 행인 경우 전체 건너뜀
+                const isPlanRow = /명일|익일|예정/i.test(firstCol) && !/이슈|특이사항|문제점|건의|비고|Remark/i.test(firstCol);
                 if (isPlanRow) continue;
 
-                const isSpecialNoteRow = /이슈|특이사항|문제점|건의|비고/i.test(firstCol) || /이슈\s*사항/i.test(rowText);
+                const isSpecialNoteRow = /이슈|특이사항|문제점|건의|비고|Remark/i.test(firstCol) || /이슈\s*사항/i.test(rowText);
+                const deptPrefix = /^(기구|제어|비전|설비|전장|전기|공압|배관)$/i.test(firstCol) ? `[${String(row[0]).trim()}] ` : '';
 
-                // 행 내의 모든 의미 있는 프로젝트/업무 셀 수집 (기존 단일 bestText 선택 방식 탈피 -> 모든 열/셀의 프로젝트 작업내용 전원 누적)
                 for (let c = 0; c < row.length; c++) {
-                    const cellVal = (row[c] || '').trim();
+                    const cellVal = String(row[c] || '').trim();
                     if (!cellVal) continue;
-                    // 구분용 라벨이나 날짜 셀은 건너뜀
-                    if (/^(구분|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|주요\s*진행\s*예정|명일\s*진행\s*예정|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고|주요\s*업무|일자|날짜)$/i.test(cellVal.replace(/\s+/g, ''))) continue;
+                    if (/^(구분|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|주요\s*진행\s*예정|명일\s*진행\s*예정|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고|주요\s*업무|일자|날짜|Activity|Remark|Today|Tomorrow|기구|제어|비전|설비|Time|Weather|Temperature|Cut off)$/i.test(cellVal.replace(/[\s\(\),:]/g, ''))) continue;
+                    if (/지연항목|안해도\s*됨|불러와야\s*함|Progress Behind|Progress\s*Guide/i.test(cellVal)) continue;
+                    if (/^(Time|Weather|Temperature|Sunny|Cloudy|Rainy|26℃|\d{1,2}℃|\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})$/i.test(cellVal)) continue;
+                    if (/^(Project|Work Scope|Main Contractor|Daily Progress Report|Cut off)\s*:/i.test(cellVal) || /Daily Progress Report/i.test(cellVal)) continue;
                     if (normalizeReportDate(cellVal)) continue;
 
                     // 명일/예정 열은 일보 기록 시 제외 (작업내용이나 특이사항 어디에도 넣지 않고 순수 당일 내용만 보존)
-                    const isPlanCol = (c >= 1 && /명일|예정/i.test(row[c - 1] || ''));
+                    let isPlanCol = false;
+                    let isRemarkCol = false;
+                    if (hFutureCol !== -1) {
+                        if (c >= hFutureCol && (hRemarkCol === -1 || c < hRemarkCol)) isPlanCol = true;
+                        if (hRemarkCol !== -1 && c >= hRemarkCol) isRemarkCol = true;
+                    } else {
+                        isPlanCol = (c >= 1 && /명일|예정|tomorrow/i.test(String(row[c - 1] || '')));
+                    }
                     if (isPlanCol) continue;
 
                     // 특이사항 또는 작업내용으로 분류하여 누적
-                    if (isSpecialNoteRow || /^(특이사항|이슈):/i.test(cellVal)) {
-                        if (!result[currentDate].special_notes.includes(cellVal)) {
-                            result[currentDate].special_notes.push(cellVal);
+                    const isNoteCell = isSpecialNoteRow || isRemarkCol || /^(특이사항|이슈):/i.test(cellVal);
+                    if (isNoteCell) {
+                        const noteToAdd = deptPrefix ? `${deptPrefix}${cellVal}` : cellVal;
+                        if (!result[currentDate].special_notes.includes(noteToAdd)) {
+                            result[currentDate].special_notes.push(noteToAdd);
                         }
                     } else if (cellVal.length >= 4 || /\[.*\]|<.*>|\d\./.test(cellVal)) {
-                        if (!result[currentDate].work_details.includes(cellVal)) {
-                            result[currentDate].work_details.push(cellVal);
+                        let textToAdd = deptPrefix ? `${deptPrefix}${cellVal}` : cellVal;
+                        if (grid[0] && grid[0][c] && /라인|line|cs|일보/i.test(grid[0][c]) && !/비고|비전/i.test(grid[0][c])) {
+                            const colHdr = String(grid[0][c]).trim().replace(/\s+/g, ' ');
+                            if (!textToAdd.includes(colHdr)) {
+                                textToAdd = `[${colHdr}]\n${textToAdd}`;
+                            }
+                        }
+                        if (!result[currentDate].work_details.includes(textToAdd)) {
+                            result[currentDate].work_details.push(textToAdd);
                         }
                     }
                 }
@@ -1136,126 +1241,274 @@ ${allText.substring(0, 100000)}
         const finalMap = {};
         if (!grid || grid.length === 0) return finalMap;
 
-        // 근무 시간(Hours) 또는 출퇴근 시간을 MD(Man-Day) 공수로 자동 환산하는 스마트 헬퍼
-        // 1인 8시간 = 1.0 MD, 8시간 초과~16시간 미만 = 1.5 MD, 16시간 이상 = 2.0 MD
-        // 야간 근무: 8시간 = 1.5 MD 시작, 8시간 초과~16시간 미만 = 2.0 MD, 16시간 이상 = 2.5 MD
-        const convertWorkHoursToMD = (hours, isNight = false) => {
-            const h = parseFloat(hours);
-            if (isNaN(h) || h <= 0) return 0;
-            if (!isNight) {
-                if (h <= 8) return 1.0;
-                if (h < 16) return 1.5;
-                return 2.0;
-            } else {
-                if (h <= 8) return 1.5;
-                if (h < 16) return 2.0;
-                return 2.5;
+        const initDate = (d) => {
+            if (!finalMap[d]) {
+                finalMap[d] = {
+                    date: d,
+                    pm_count: 0,
+                    design_count: 0,
+                    facility_count: 0,
+                    control_count: 0,
+                    vision_count: 0,
+                    personnel_count: 0,
+                    _totalFromSheet: 0
+                };
             }
         };
 
-        const parseCellToMD = (val, colHeader = '', rowLabel = '') => {
-            if (!val) return 0;
-            const str = String(val).trim();
-            if (!str || /휴무|휴가|병가|귀국|공가|결근/i.test(str)) return 0;
-
-            const isNight = /야간|심야|night/i.test(colHeader + ' ' + rowLabel);
-            const isExplicitHours = /시간|hour|근무시간/i.test(colHeader + ' ' + rowLabel) || /[0-9]+(?:\.[0-9]+)?\s*(?:시간|h)/i.test(str);
-
-            // 출퇴근 시간 형식 (예: "08:00~21:00", "08:00-21:00")
-            const timeRangeMatch = str.match(/([0-9]{1,2}):([0-9]{2})\s*[-~]\s*([0-9]{1,2}):([0-9]{2})/);
-            if (timeRangeMatch) {
-                const startH = parseInt(timeRangeMatch[1], 10) + parseInt(timeRangeMatch[2], 10) / 60;
-                let endH = parseInt(timeRangeMatch[3], 10) + parseInt(timeRangeMatch[4], 10) / 60;
-                if (endH < startH) endH += 24;
-                const workHours = endH - startH;
-                return convertWorkHoursToMD(workHours, isNight || startH >= 20 || endH <= 6);
-            }
-
-            const n = parseFloat(str.replace(/[^0-9.]/g, ''));
-            if (isNaN(n) || n <= 0) return 0;
-
-            // 명시적 시간 단위이거나, 단일 인원 셀에서 7.5~24시간이 입력된 경우 (단, 합계/총원 행 제외)
-            if (isExplicitHours || (n >= 7.5 && n <= 24 && !/합계|총원|계|총합/i.test(rowLabel))) {
-                return convertWorkHoursToMD(n, isNight);
-            }
-
-            // 이미 MD/인원수 단위 (예: 1, 1.5, 2, 0.5 등)
-            return n;
-        };
-
+        // 직종 자동 판별기 (현장별 다양한 직종 및 조직 명칭 통합)
         const classifyDept = (text) => {
             const clean = String(text || '').replace(/\s+/g, '');
-            if (/소장|PM|현장소장|관리자|현장대리/i.test(clean)) return 'pm_count';
+            if (/소장|PM|현장소장|관리자|현장대리|Supervisor/i.test(clean)) return 'pm_count';
             if (/설계|도면|설계팀/i.test(clean)) return 'design_count';
-            if (/설비|기구|기계|배관/i.test(clean)) return 'facility_count';
+            if (/설비|기구|생기|생산기술|설비기술|기계|배관|공압/i.test(clean)) return 'facility_count';
             if (/제어|전장|전기|PLC/i.test(clean)) return 'control_count';
             if (/비전|Vision|검사/i.test(clean)) return 'vision_count';
-            if (/^기타$/i.test(clean)) return 'personnel_count';
+            if (/안전|통역|법인|CS|외주|^기타$/i.test(clean)) return 'personnel_count';
             if (/합계|총원|투입|인원|공수|총합|total|^계$/i.test(clean)) return '__TOTAL__';
             return null;
         };
 
-        // 가로 달력형 검사 (행 0~4에 날짜가 2개 이상 연속/배열되는지)
-        let isHorizontal = false;
-        let dateRowIdx = -1;
-        const dateColMap = {};
+        // 사용자 지침 기반 정밀 MD 환산 함수:
+        // 주간 기준: 8시간 근무 시 1.0 MD, 8시간 초과~16시간 미만 = 1.5 MD, 16시간 이상 = 2.0 MD (4시간 반일 = 0.5 MD)
+        // 야간 기준: 기본 1.5 MD부터 시작하여 동일하게 증가 (<=8시간 = 1.5 MD, 8시간 초과~16시간 미만 = 2.0 MD, 16시간 이상 = 2.5 MD)
+        const calculateWorkedHoursToMD = (hours, isNight = false) => {
+            const h = parseFloat(hours);
+            if (isNaN(h) || h <= 0) return 0;
+            if (!isNight) {
+                if (h <= 4.5) return 0.5;
+                if (h <= 8.5) return 1.0;
+                if (h < 16.0) return 1.5;
+                return 2.0;
+            } else {
+                if (h <= 8.5) return 1.5;
+                if (h < 16.0) return 2.0;
+                return 2.5;
+            }
+        };
 
-        for (let r = 0; r < Math.min(5, grid.length); r++) {
-            let validDatesInRow = 0;
-            const tempCols = {};
-            grid[r].forEach((cell, cIdx) => {
+        // 1. 유효 일자 열(Date Columns) 자동 감지 (단일행 일자 + 2행 분할 월/일 모두 지원)
+        let bestDateRowIdx = -1;
+        let maxDateCount = 0;
+        let bestDateColMap = {};
+
+        // A. 단일 행 내 일자(엑셀 일련번호, YYYY-MM-DD, M/D 등) 최다 보유 행 탐색
+        for (let r = 0; r < Math.min(8, grid.length); r++) {
+            const row = grid[r];
+            let count = 0;
+            const temp = {};
+            row.forEach((cell, c) => {
                 const d = normalizeReportDate(cell);
                 if (d) {
-                    validDatesInRow++;
-                    tempCols[cIdx] = d;
+                    count++;
+                    temp[c] = d;
                 }
             });
-            if (validDatesInRow >= 2) {
-                isHorizontal = true;
-                dateRowIdx = r;
-                Object.assign(dateColMap, tempCols);
-                break;
+            if (count > maxDateCount && count >= 2) {
+                maxDateCount = count;
+                bestDateRowIdx = r;
+                bestDateColMap = temp;
             }
         }
 
-        if (isHorizontal) {
-            for (let r = dateRowIdx + 1; r < grid.length; r++) {
+        // B. 2행 분할 헤더(상단 월 마커 + 하단 1~31 일수, 예: SKOY 양식) 검사
+        if (maxDateCount < 5) {
+            let monthRowIdx = -1;
+            const monthCols = {};
+            for (let r = 0; r < Math.min(6, grid.length); r++) {
+                const row = grid[r];
+                let currentYM = null;
+                row.forEach((cell, c) => {
+                    const s = String(cell).trim();
+                    const mMonth = s.match(/(?:(20\d{2})년\s*)?(1[0-2]|0?[1-9])월/);
+                    if (mMonth) {
+                        const yr = mMonth[1] || new Date().getFullYear();
+                        currentYM = `${yr}-${String(mMonth[2]).padStart(2, '0')}`;
+                    }
+                    if (currentYM) {
+                        monthCols[c] = currentYM;
+                    }
+                });
+                if (Object.keys(monthCols).length >= 5) {
+                    monthRowIdx = r;
+                    break;
+                }
+            }
+
+            if (monthRowIdx !== -1) {
+                for (let r = monthRowIdx + 1; r < Math.min(monthRowIdx + 4, grid.length); r++) {
+                    const row = grid[r];
+                    let dayCount = 0;
+                    const temp = {};
+                    row.forEach((cell, c) => {
+                        const n = parseInt(String(cell).trim(), 10);
+                        if (!isNaN(n) && n >= 1 && n <= 31 && monthCols[c]) {
+                            temp[c] = `${monthCols[c]}-${String(n).padStart(2, '0')}`;
+                            dayCount++;
+                        }
+                    });
+                    if (dayCount > maxDateCount) {
+                        maxDateCount = dayCount;
+                        bestDateRowIdx = r;
+                        bestDateColMap = temp;
+                    }
+                }
+            }
+        }
+
+        const dateCols = Object.keys(bestDateColMap).map(c => parseInt(c, 10));
+
+        // 2-Row Attendance (출근 행 + 퇴근 행) 양식 여부 판별
+        let isTwoRowAttendance = false;
+        if (dateCols.length > 0) {
+            for (let r = bestDateRowIdx + 1; r < Math.min(bestDateRowIdx + 20, grid.length); r++) {
+                const rowText = grid[r].map(c => String(c)).join(' ');
+                if (/출근/i.test(rowText) && grid[r + 1] && /퇴근/i.test(grid[r + 1].map(c => String(c)).join(' '))) {
+                    isTwoRowAttendance = true;
+                    break;
+                }
+            }
+        }
+
+        if (dateCols.length > 0 && isTwoRowAttendance) {
+            // [패턴 1] 2행 출퇴근 기록 양식 (SK대전연구소, 헝가리근태, 삼성SDI, SKBA 등)
+            for (let r = bestDateRowIdx + 1; r < grid.length; r++) {
+                const rowIn = grid[r];
+                if (!rowIn || rowIn.length === 0) continue;
+
+                const textIn = rowIn.slice(0, 6).map(c => String(c)).join(' ');
+                if (!/출근/i.test(textIn)) continue;
+
+                const rowOut = grid[r + 1] || [];
+                let deptKey = 'personnel_count';
+                for (let c = 0; c < 6; c++) {
+                    const dk = classifyDept(rowIn[c] || rowOut[c]);
+                    if (dk && dk !== '__TOTAL__') {
+                        deptKey = dk;
+                        break;
+                    }
+                }
+
+                dateCols.forEach(col => {
+                    const dateStr = bestDateColMap[col];
+                    const inVal = rowIn[col];
+                    const outVal = rowOut[col];
+
+                    if (!inVal && !outVal) return;
+                    const inStr = String(inVal).trim();
+                    const outStr = String(outVal).trim();
+                    if (/휴무|휴일|휴가|병가|귀국|공가|결근|LEAVE/i.test(inStr + ' ' + outStr)) return;
+
+                    let startH = 0;
+                    let endH = 0;
+                    let hasIn = false;
+                    let hasOut = false;
+
+                    if (typeof inVal === 'number' && inVal > 0 && inVal < 1) {
+                        startH = inVal * 24;
+                        hasIn = true;
+                    } else if (/^\d{1,2}(:\d{2})?$/.test(inStr)) {
+                        const parts = inStr.split(':');
+                        startH = parseInt(parts[0], 10) + (parts[1] ? parseInt(parts[1], 10) / 60 : 0);
+                        hasIn = true;
+                    }
+
+                    if (typeof outVal === 'number' && outVal > 0 && outVal < 1) {
+                        endH = outVal * 24;
+                        hasOut = true;
+                    } else if (/^\d{1,2}(:\d{2})?$/.test(outStr)) {
+                        const parts = outStr.split(':');
+                        endH = parseInt(parts[0], 10) + (parts[1] ? parseInt(parts[1], 10) / 60 : 0);
+                        hasOut = true;
+                    }
+
+                    let md = 0;
+                    const isNight = startH >= 19 || startH <= 5 || /야간/i.test(textIn);
+
+                    if (hasIn && hasOut) {
+                        if (endH < startH) endH += 24;
+                        let duration = endH - startH;
+                        if (duration >= 8.5) duration -= 1.0;
+                        md = calculateWorkedHoursToMD(duration, isNight);
+                    } else if (hasIn || hasOut || /출근|정상|근무|출장|^1$/i.test(inStr + ' ' + outStr)) {
+                        md = isNight ? 1.5 : 1.0;
+                    }
+
+                    if (md > 0) {
+                        initDate(dateStr);
+                        finalMap[dateStr][deptKey] = (finalMap[dateStr][deptKey] || 0) + md;
+                    }
+                });
+                r++; // 퇴근 행 건너뜀
+            }
+        } else if (dateCols.length > 0) {
+            // [패턴 2] 가로 캘린더형 (근무 시간 8/10h, 시간범위 08:00~17:00, 직종별 인원수/MD 1/1.5/2 등)
+            for (let r = bestDateRowIdx + 1; r < grid.length; r++) {
                 const row = grid[r];
                 if (!row || row.length === 0) continue;
-                let deptKey = null;
-                for (let c = 0; c < Math.min(3, row.length); c++) {
-                    deptKey = classifyDept(row[c]);
-                    if (deptKey) break;
-                }
-                if (!deptKey) continue;
 
-                Object.entries(dateColMap).forEach(([colIdx, dateStr]) => {
-                    const cNum = parseInt(colIdx, 10);
-                    const rowLabel = row[0] || row[1] || '';
-                    const val = parseCellToMD(row[cNum], dateStr, rowLabel);
-                    if (!finalMap[dateStr]) {
-                        finalMap[dateStr] = {
-                            date: dateStr,
-                            pm_count: 0,
-                            design_count: 0,
-                            facility_count: 0,
-                            control_count: 0,
-                            vision_count: 0,
-                            personnel_count: 0,
-                            _totalFromSheet: 0
-                        };
-                    }
-                    if (deptKey === '__TOTAL__') {
-                        finalMap[dateStr]._totalFromSheet = val;
-                    } else if (deptKey === 'personnel_count') {
-                        finalMap[dateStr].personnel_count = val;
+                let deptKey = null;
+                let isTotalRow = false;
+                let rowLabel = '';
+                for (let c = 0; c < Math.min(6, row.length); c++) {
+                    const str = String(row[c]).trim();
+                    rowLabel += ' ' + str;
+                    const dk = classifyDept(str);
+                    if (dk === '__TOTAL__') isTotalRow = true;
+                    else if (dk && !deptKey) deptKey = dk;
+                }
+
+                if (!deptKey && !isTotalRow) continue;
+                const targetDept = isTotalRow ? '__TOTAL__' : deptKey;
+
+                dateCols.forEach(col => {
+                    const dateStr = bestDateColMap[col];
+                    const val = row[col];
+                    if (!val) return;
+                    const s = String(val).trim();
+                    if (!s || /휴무|휴일|휴가|병가|귀국|공가|결근/i.test(s)) return;
+
+                    let md = 0;
+                    const isNight = /야간|심야|night/i.test(rowLabel);
+
+                    // 1. "08:00 ~ 21:00" 형태의 출퇴근 시간 범위
+                    const timeRangeMatch = s.match(/([0-9]{1,2}):([0-9]{2})\s*[-~]\s*([0-9]{1,2}):([0-9]{2})/);
+                    if (timeRangeMatch) {
+                        const stH = parseInt(timeRangeMatch[1], 10) + parseInt(timeRangeMatch[2], 10) / 60;
+                        let etH = parseInt(timeRangeMatch[3], 10) + parseInt(timeRangeMatch[4], 10) / 60;
+                        if (etH < stH) etH += 24;
+                        let dur = etH - stH;
+                        if (dur >= 8.5) dur -= 1.0;
+                        md = calculateWorkedHoursToMD(dur, isNight || stH >= 19 || etH <= 6);
+                    } else if (typeof val === 'number' && val > 0 && val < 1.0) {
+                        // 2. 단일행 출근 시각 분수 표기 (0.375 = 09:00 출근) -> 1.0 MD 배정
+                        md = isNight ? 1.5 : 1.0;
                     } else {
-                        finalMap[dateStr][deptKey] = (finalMap[dateStr][deptKey] || 0) + val;
+                        const n = parseFloat(s.replace(/[^0-9.]/g, ''));
+                        // 엑셀 날짜 일련번호(45000~47000) 등 오기입 데이터 제외
+                        if (!isNaN(n) && n > 0 && !(n > 30000 && n < 70000)) {
+                            if (n >= 6 && n <= 24 && !isTotalRow) {
+                                // 3. 근무한 시간 (8시간, 10시간, 12시간 등)
+                                md = calculateWorkedHoursToMD(n, isNight);
+                            } else {
+                                // 4. 인원수 또는 MD 직접 표기 (1, 1.5, 2, 0.5 등)
+                                md = n;
+                            }
+                        }
+                    }
+
+                    if (md > 0) {
+                        initDate(dateStr);
+                        if (targetDept === '__TOTAL__') {
+                            finalMap[dateStr]._totalFromSheet = md;
+                        } else {
+                            finalMap[dateStr][targetDept] = (finalMap[dateStr][targetDept] || 0) + md;
+                        }
                     }
                 });
             }
         } else {
-            // 세로 일자형 (날짜가 열로 내려가고 부서가 상단 헤더)
+            // [패턴 3] 세로 일자형 목록 (날짜가 아래로 내려가고 부서가 상단 헤더에 있는 양식)
             let headerRowIdx = -1;
             let dateColIdx = -1;
             const deptColMap = {};
@@ -1302,58 +1555,52 @@ ${allText.substring(0, 100000)}
                 }
 
                 if (!rowDate) continue;
-                if (!finalMap[rowDate]) {
-                    finalMap[rowDate] = {
-                        date: rowDate,
-                        pm_count: 0,
-                        design_count: 0,
-                        facility_count: 0,
-                        control_count: 0,
-                        vision_count: 0,
-                        personnel_count: 0,
-                        _totalFromSheet: 0
-                    };
-                }
+                initDate(rowDate);
 
                 Object.entries(deptColMap).forEach(([colIdx, deptKey]) => {
                     const cNum = parseInt(colIdx, 10);
-                    const colName = (grid[headerRowIdx] && grid[headerRowIdx][cNum]) || '';
-                    const rowLabel = row[0] || '';
-                    const val = parseCellToMD(row[cNum], colName, rowLabel);
-                    if (deptKey === '__TOTAL__') {
-                        finalMap[rowDate]._totalFromSheet = val;
-                    } else if (deptKey === 'personnel_count') {
-                        finalMap[rowDate].personnel_count = val;
-                    } else {
-                        finalMap[rowDate][deptKey] = (finalMap[rowDate][deptKey] || 0) + val;
+                    const val = row[cNum];
+                    if (!val) return;
+                    const s = String(val).trim();
+                    if (!s || /휴무|휴일|휴가|병가|귀국|공가|결근/i.test(s)) return;
+
+                    let md = 0;
+                    const n = parseFloat(s.replace(/[^0-9.]/g, ''));
+                    if (!isNaN(n) && n > 0 && !(n > 30000 && n < 70000)) {
+                        if (n >= 6 && n <= 24 && deptKey !== '__TOTAL__') {
+                            md = calculateWorkedHoursToMD(n, false);
+                        } else {
+                            md = n;
+                        }
+                    }
+
+                    if (md > 0) {
+                        if (deptKey === '__TOTAL__') {
+                            finalMap[rowDate]._totalFromSheet = md;
+                        } else {
+                            finalMap[rowDate][deptKey] = (finalMap[rowDate][deptKey] || 0) + md;
+                        }
                     }
                 });
             }
         }
 
-        // 인원 합산 보정 (Total/합계가 '기타'로 오분류되지 않도록 처리)
+        // 3. 인원 합산 보정 (Total/합계가 '기타'로 오분류되지 않도록 처리)
         Object.values(finalMap).forEach(item => {
             const deptSum = (item.pm_count || 0) + (item.design_count || 0) + (item.facility_count || 0) + (item.control_count || 0) + (item.vision_count || 0);
             const totalVal = item._totalFromSheet || 0;
 
-            // 1. 직종별 인원(소장, 설계, 설비, 제어, 비전)이 입력된 경우:
             if (deptSum > 0) {
-                // 시트에 Total이 있고 직종 합계보다 크다면, 그 차이만큼만 '기타'로 처리
                 if (totalVal > deptSum && (!item.personnel_count || item.personnel_count === 0)) {
                     item.personnel_count = totalVal - deptSum;
                 }
-                // 직종 합계와 시트의 Total이 일치하거나 직종만 있는 경우: '기타'는 0으로 유지 (Total을 기타에 넣지 않음!)
-            } else {
-                // 2. 직종별 구분이 전혀 없고 오직 Total/합계(총원)만 있는 경우:
-                // 직종이 없으므로 Total 값을 '기타(personnel_count)'에 배정하여 총 인원수를 유지
-                if (totalVal > 0 && (!item.personnel_count || item.personnel_count === 0)) {
-                    item.personnel_count = totalVal;
-                }
+            } else if (totalVal > 0 && (!item.personnel_count || item.personnel_count === 0)) {
+                item.personnel_count = totalVal;
             }
             delete item._totalFromSheet;
         });
 
-        // 사용자가 넓은 범위를 복사하더라도 데이터(공수/인원)가 없는 일자는 자동 제외하여 일보 추가 방지
+        // 4. 데이터가 없는 일자는 자동 제외하여 일보 추가 방지
         const filteredMap = {};
         Object.entries(finalMap).forEach(([dateStr, item]) => {
             const totalMD = (item.pm_count || 0) + (item.design_count || 0) + (item.facility_count || 0) +

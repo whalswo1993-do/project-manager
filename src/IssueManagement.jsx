@@ -214,43 +214,121 @@ ${allText.substring(0, 30000)}
         }
     };
 
+    const handleEditReport = (report) => {
+        setExtractedReports([{
+            date: report.report_date,
+            work_details: report.work_details || report.content || '',
+            special_notes: report.special_notes || report.issues || '',
+            personnel_count: report.personnel_count || 0,
+            pm_count: report.pm_count || 0,
+            design_count: report.design_count || 0,
+            facility_count: report.facility_count || 0,
+            control_count: report.control_count || 0,
+            vision_count: report.vision_count || 0
+        }]);
+        setCollapsedSections(prev => ({ ...prev, inputForm: false }));
+        setActiveIssueSection('all');
+        setMsg(`✏️ ${report.report_date} 일보를 직접입력 폼에 불러왔습니다. 내용 수정 후 [Save All]을 눌러 저장해주세요.`);
+    };
+
     const saveReport = async () => {
         if (isGrade1) return notifyPermission('공사일보 저장');
         if (!selectedProject) return setMsg('프로젝트를 먼저 선택해주세요.');
-        const validReports = extractedReports.filter(r => r.date && r.work_details.trim());
-        if (validReports.length === 0) return setMsg('저장할 작업(업무) 내용과 날짜가 없습니다.');
 
-        setMsg('중복 데이터 확인 및 저장 중...');
+        // 유효한 일보 항목 필터링 (날짜가 있고, 작업내용/특이사항/공수 중 하나라도 입력된 경우 저장 가능)
+        const validReports = extractedReports.filter(r => {
+            if (!r.date) return false;
+            const hasWork = Boolean(r.work_details && r.work_details.trim());
+            const hasNotes = Boolean(r.special_notes && r.special_notes.trim());
+            const totalMD = (r.pm_count || 0) + (r.design_count || 0) + (r.facility_count || 0) +
+                            (r.control_count || 0) + (r.vision_count || 0) + (r.personnel_count || 0);
+            return hasWork || hasNotes || totalMD > 0;
+        });
+
+        if (validReports.length === 0) return setMsg('저장할 일보 내용(작업내용, 특이사항 또는 투입 공수)이 없습니다.');
+
+        setMsg('기존 등록 일보 확인 및 병합 저장 중...');
         const dates = validReports.map(r => r.date);
         
-        // 1. Delete overlapping dates for this project (Overwrite mechanism)
+        // 1. 해당 프로젝트와 일자에 이미 저장된 기존 일보가 있는지 조회
+        const { data: existingRows, error: fetchErr } = await supabase
+            .from('daily_reports')
+            .select('*')
+            .eq('project_id', selectedProject)
+            .in('report_date', dates);
+
+        if (fetchErr) {
+            console.warn('기존 일보 조회 경고:', fetchErr);
+        }
+
+        const existingMap = {};
+        (existingRows || []).forEach(row => {
+            existingMap[row.report_date] = row;
+        });
+
+        // 2. 기존 일보가 있으면 최신 내용으로 추가/병합, 없으면 신규 생성
+        const insertData = validReports.map(r => {
+            const existing = existingMap[r.date];
+            const rWork = (r.work_details || '').trim();
+            const rNotes = (r.special_notes || '').trim();
+            const rTotalMD = (r.pm_count || 0) + (r.design_count || 0) + (r.facility_count || 0) +
+                            (r.control_count || 0) + (r.vision_count || 0) + (r.personnel_count || 0);
+
+            // 작업내용: 이번 폼에 내용이 있으면 최신 내용 반영, 비어있고 기존 DB가 있으면 기존 내용 유지
+            const finalWork = rWork || (existing ? (existing.work_details || existing.content || '') : '');
+            
+            // 특이사항: 이번 폼에 내용이 있으면 반영, 비어있고 기존 DB가 있으면 기존 내용 유지
+            const finalNotes = rNotes || (existing ? (existing.special_notes || existing.issues || '') : '');
+
+            // 투입 인원: 이번 폼에 공수가 입력되어 있으면 반영, 0이고 기존 DB에 공수가 있었다면 기존 공수 유지
+            let pm = r.pm_count || 0;
+            let design = r.design_count || 0;
+            let facility = r.facility_count || 0;
+            let control = r.control_count || 0;
+            let vision = r.vision_count || 0;
+            let personnel = r.personnel_count || 0;
+
+            if (rTotalMD === 0 && existing) {
+                const exTotal = (existing.pm_count || 0) + (existing.design_count || 0) + (existing.facility_count || 0) +
+                                (existing.control_count || 0) + (existing.vision_count || 0) + (existing.personnel_count || 0);
+                if (exTotal > 0) {
+                    pm = existing.pm_count || 0;
+                    design = existing.design_count || 0;
+                    facility = existing.facility_count || 0;
+                    control = existing.control_count || 0;
+                    vision = existing.vision_count || 0;
+                    personnel = existing.personnel_count || 0;
+                }
+            }
+
+            return {
+                project_id: selectedProject,
+                report_date: r.date,
+                work_details: finalWork,
+                special_notes: finalNotes,
+                issues: existing?.issues || '', 
+                personnel_count: personnel,
+                pm_count: pm,
+                design_count: design,
+                facility_count: facility,
+                control_count: control,
+                vision_count: vision,
+                content: existing?.content || '' 
+            };
+        });
+
+        // 3. 해당 일자의 기존 데이터 삭제 후 병합된 최신 데이터 저장 (Overwrite/Merge)
         await supabase.from('daily_reports')
             .delete()
             .eq('project_id', selectedProject)
             .in('report_date', dates);
-
-        // 2. Insert new ones
-        const insertData = validReports.map(r => ({
-            project_id: selectedProject,
-            report_date: r.date,
-            work_details: r.work_details.trim(),
-            special_notes: r.special_notes.trim(),
-            issues: '', 
-            personnel_count: r.personnel_count || 0,
-            pm_count: r.pm_count || 0,
-            design_count: r.design_count || 0,
-            facility_count: r.facility_count || 0,
-            control_count: r.control_count || 0,
-            vision_count: r.vision_count || 0,
-            content: '' 
-        }));
 
         const { error } = await supabase.from('daily_reports').insert(insertData);
 
         if (error) {
             setMsg('저장 실패: ' + error.message);
         } else {
-            setMsg(`${validReports.length}일치의 공사일보가 성공적으로 저장(업데이트)되었습니다.`);
+            setMsg(`✅ ${insertData.length}일치의 공사일보가 성공적으로 저장(최신 반영/병합)되었습니다.`);
             setExtractedReports([{
                 date: new Date().toISOString().slice(0, 10),
                 work_details: '', special_notes: '', personnel_count: 0,
@@ -791,17 +869,19 @@ ${allText.substring(0, 30000)}
 
             validDates.forEach(d => {
                 const w = targetMap[d];
+                const existingDbReport = (projectReports || []).find(p => p.report_date === d);
+
                 if (!currentMap[d]) {
                     currentMap[d] = {
                         date: d,
-                        work_details: w.work_details || '',
-                        special_notes: w.special_notes || '',
-                        personnel_count: 0,
-                        pm_count: 0,
-                        design_count: 0,
-                        facility_count: 0,
-                        control_count: 0,
-                        vision_count: 0
+                        work_details: w.work_details || existingDbReport?.work_details || existingDbReport?.content || '',
+                        special_notes: w.special_notes || existingDbReport?.special_notes || existingDbReport?.issues || '',
+                        personnel_count: existingDbReport?.personnel_count || 0,
+                        pm_count: existingDbReport?.pm_count || 0,
+                        design_count: existingDbReport?.design_count || 0,
+                        facility_count: existingDbReport?.facility_count || 0,
+                        control_count: existingDbReport?.control_count || 0,
+                        vision_count: existingDbReport?.vision_count || 0
                     };
                 } else {
                     currentMap[d].work_details = w.work_details || currentMap[d].work_details;
@@ -809,6 +889,16 @@ ${allText.substring(0, 30000)}
                         currentMap[d].special_notes = currentMap[d].special_notes
                             ? `${currentMap[d].special_notes}\n${w.special_notes}`
                             : w.special_notes;
+                    }
+                    const curTotal = (currentMap[d].pm_count || 0) + (currentMap[d].design_count || 0) + (currentMap[d].facility_count || 0) +
+                                    (currentMap[d].control_count || 0) + (currentMap[d].vision_count || 0) + (currentMap[d].personnel_count || 0);
+                    if (curTotal === 0 && existingDbReport) {
+                        currentMap[d].pm_count = existingDbReport.pm_count || 0;
+                        currentMap[d].design_count = existingDbReport.design_count || 0;
+                        currentMap[d].facility_count = existingDbReport.facility_count || 0;
+                        currentMap[d].control_count = existingDbReport.control_count || 0;
+                        currentMap[d].vision_count = existingDbReport.vision_count || 0;
+                        currentMap[d].personnel_count = existingDbReport.personnel_count || 0;
                     }
                 }
             });
@@ -1193,14 +1283,15 @@ ${allText.substring(0, 30000)}
                     const m = mpMap[d];
                     const totalMD = (m.pm_count || 0) + (m.design_count || 0) + (m.facility_count || 0) +
                                     (m.control_count || 0) + (m.vision_count || 0) + (m.personnel_count || 0);
+                    const existingDbReport = (projectReports || []).find(p => p.report_date === d);
 
                     if (!currentMap[d]) {
-                        // 공수 데이터가 있는 날짜만 신규 일보로 추가 (데이터 없는 일자 자동 배제)
-                        if (totalMD > 0) {
+                        // 공수 데이터가 있거나 이미 DB에 등록되어 있던 일보인 경우 신규 카드로 생성
+                        if (totalMD > 0 || existingDbReport) {
                             currentMap[d] = {
                                 date: d,
-                                work_details: '',
-                                special_notes: '',
+                                work_details: existingDbReport?.work_details || existingDbReport?.content || '',
+                                special_notes: existingDbReport?.special_notes || existingDbReport?.issues || '',
                                 personnel_count: m.personnel_count || 0,
                                 pm_count: m.pm_count || 0,
                                 design_count: m.design_count || 0,
@@ -1216,6 +1307,13 @@ ${allText.substring(0, 30000)}
                         currentMap[d].control_count = m.control_count ?? currentMap[d].control_count;
                         currentMap[d].vision_count = m.vision_count ?? currentMap[d].vision_count;
                         currentMap[d].personnel_count = m.personnel_count ?? currentMap[d].personnel_count;
+
+                        if (!currentMap[d].work_details && existingDbReport) {
+                            currentMap[d].work_details = existingDbReport.work_details || existingDbReport.content || '';
+                        }
+                        if (!currentMap[d].special_notes && existingDbReport) {
+                            currentMap[d].special_notes = existingDbReport.special_notes || existingDbReport.issues || '';
+                        }
                     }
                 });
 
@@ -1736,12 +1834,30 @@ ${compiledText.substring(0, 30000)}
                                         ))}
                                     </div>
 
-                                    <button className="btn-analyze" onClick={() => {
-                                        if (isGrade1) return notifyPermission('공사일보 저장');
-                                        saveReport();
-                                    }} disabled={!selectedProject || isExtracting || extractedReports.every(r=>!r.work_details.trim())}>
-                                        {isExtracting ? 'AI 추출 중...' : 'Save All' + (isGrade1 ? ' 🔒' : '')}
-                                    </button>
+                                    {(() => {
+                                        const hasValidReportsToSave = extractedReports.some(r => {
+                                            if (!r.date) return false;
+                                            const hasWork = Boolean(r.work_details && r.work_details.trim());
+                                            const hasNotes = Boolean(r.special_notes && r.special_notes.trim());
+                                            const totalMD = (r.pm_count || 0) + (r.design_count || 0) + (r.facility_count || 0) +
+                                                            (r.control_count || 0) + (r.vision_count || 0) + (r.personnel_count || 0);
+                                            return hasWork || hasNotes || totalMD > 0;
+                                        });
+
+                                        return (
+                                            <button
+                                                className="btn-analyze"
+                                                onClick={() => {
+                                                    if (isGrade1) return notifyPermission('공사일보 저장');
+                                                    saveReport();
+                                                }}
+                                                disabled={!selectedProject || isExtracting || !hasValidReportsToSave}
+                                                title={!selectedProject ? '프로젝트를 먼저 선택해주세요' : !hasValidReportsToSave ? '저장할 일보 내용이나 공수가 입력되어야 합니다' : ''}
+                                            >
+                                                {isExtracting ? 'AI 추출 중...' : 'Save All' + (isGrade1 ? ' 🔒' : '')}
+                                            </button>
+                                        );
+                                    })()}
                                 </>
                             ) : (
                                 <div
@@ -1885,58 +2001,91 @@ ${compiledText.substring(0, 30000)}
                                     </div>
                                 </div>
                                 <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-                                    {projectReports.map(report => (
-                                        <div key={report.id} className="issue-card" style={{borderLeftColor: '#6e7781'}}>
-                                            <div className="issue-meta" onClick={() => toggleReport(report.id)} style={{cursor: 'pointer'}}>
-                                                <span><b style={{color: '#24292f'}}>{report.report_date}</b> 일보 <span style={{fontSize:'0.8rem', color:'#6e7781', marginLeft:'5px'}}>{expandedReports[report.id] ? '▲' : '▼'}</span></span>
-                                                <button onClick={(e) => { 
-                                                    e.stopPropagation(); 
-                                                    if (isGrade1) return notifyPermission('일보 삭제');
-                                                    removeReport(report.id); 
-                                                }} style={{background:'transparent', border:'none', color:isGrade1 ? '#9ca3af' : 'var(--danger)', cursor:'pointer', fontSize:'0.8rem'}} title={isGrade1 ? "삭제 권한이 없습니다 (클릭 시 권한 안내)" : ""}>삭제 {isGrade1 && "🔒"}</button>
-                                            </div>
-                                            {expandedReports[report.id] && (
-                                                <div className="issue-content" style={{background: '#f6f8fa', padding: '1rem', borderRadius: '6px', fontSize: '0.85rem'}}>
-                                                {report.work_details ? (
-                                                    <div style={{display: 'flex', flexDirection: 'column', gap: '0.8rem'}}>
-                                                        <div>
-                                                            <div style={{fontWeight: 600, color: '#0969da', marginBottom: '0.3rem'}}>작업(업무) 내용</div>
-                                                            <div style={{whiteSpace: 'pre-wrap'}}>{report.work_details}</div>
-                                                        </div>
-                                                        {report.special_notes && (
-                                                            <div>
-                                                                <div style={{fontWeight: 600, color: '#1f2328', marginBottom: '0.3rem'}}>특이/이슈사항</div>
-                                                                <div style={{whiteSpace: 'pre-wrap'}}>{report.special_notes}</div>
-                                                            </div>
+                                    {projectReports.map(report => {
+                                        const totalMD = (report.pm_count || 0) + (report.design_count || 0) + (report.facility_count || 0) +
+                                                        (report.control_count || 0) + (report.vision_count || 0) + (report.personnel_count || 0);
+
+                                        return (
+                                            <div key={report.id} className="issue-card" style={{borderLeftColor: '#6e7781'}}>
+                                                <div className="issue-meta" onClick={() => toggleReport(report.id)} style={{cursor: 'pointer'}}>
+                                                    <span style={{display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap'}}>
+                                                        <b style={{color: '#24292f'}}>{report.report_date}</b> 일보 
+                                                        {totalMD > 0 && (
+                                                            <span style={{fontSize: '0.75rem', color: '#0969da', fontWeight: 600, background: '#eff6ff', padding: '1px 6px', borderRadius: '4px', border: '1px solid #bfdbfe'}}>
+                                                                👥 {totalMD}명
+                                                            </span>
                                                         )}
-                                                        {report.issues && (
-                                                            <div>
-                                                                <div style={{fontWeight: 600, color: 'var(--danger)', marginBottom: '0.3rem'}}>이슈사항 (과거 데이터)</div>
-                                                                <div style={{whiteSpace: 'pre-wrap'}}>{report.issues}</div>
-                                                            </div>
-                                                        )}
-                                                        <div>
-                                                            <div style={{fontWeight: 600, color: '#1f2328', marginBottom: '0.3rem'}}>투입 인원 실적 (총 {(report.pm_count||0)+(report.design_count||0)+(report.facility_count||0)+(report.control_count||0)+(report.vision_count||0)+(report.personnel_count||0)}명)</div>
-                                                            <div style={{display:'flex', gap:'8px', flexWrap:'wrap', fontSize:'0.75rem', background:'#fff', padding:'6px', borderRadius:'4px', border:'1px solid #e1e4e8'}}>
-                                                                {report.pm_count > 0 && <span>소장: {report.pm_count}</span>}
-                                                                {report.design_count > 0 && <span>설계: {report.design_count}</span>}
-                                                                {report.facility_count > 0 && <span>설비: {report.facility_count}</span>}
-                                                                {report.control_count > 0 && <span>제어: {report.control_count}</span>}
-                                                                {report.vision_count > 0 && <span>비전: {report.vision_count}</span>}
-                                                                {report.personnel_count > 0 && <span>기타: {report.personnel_count}</span>}
-                                                                {(!report.pm_count && !report.design_count && !report.facility_count && !report.control_count && !report.vision_count && !report.personnel_count) && <span>없음</span>}
-                                                            </div>
-                                                        </div>
+                                                        <span style={{fontSize:'0.8rem', color:'#6e7781'}}>{expandedReports[report.id] ? '▲' : '▼'}</span>
+                                                    </span>
+                                                    <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                                                        <button 
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation(); 
+                                                                if (isGrade1) return notifyPermission('일보 수정');
+                                                                handleEditReport(report); 
+                                                            }} 
+                                                            style={{
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                color: isGrade1 ? '#9ca3af' : '#0969da',
+                                                                cursor: isGrade1 ? 'not-allowed' : 'pointer',
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: 600
+                                                            }} 
+                                                            title="이 일보를 직접입력 폼으로 불러와 수정합니다"
+                                                        >
+                                                            ✏️ 수정
+                                                        </button>
+                                                        <button 
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation(); 
+                                                                if (isGrade1) return notifyPermission('일보 삭제');
+                                                                removeReport(report.id); 
+                                                            }} 
+                                                            style={{background:'transparent', border:'none', color:isGrade1 ? '#9ca3af' : 'var(--danger)', cursor:'pointer', fontSize:'0.8rem'}} 
+                                                            title={isGrade1 ? "삭제 권한이 없습니다 (클릭 시 권한 안내)" : ""}
+                                                        >
+                                                            삭제 {isGrade1 && "🔒"}
+                                                        </button>
                                                     </div>
-                                                ) : (
-                                                    <div style={{whiteSpace: 'pre-wrap', maxHeight: '150px', overflowY: 'auto'}}>
-                                                        {report.content}
+                                                </div>
+                                                {expandedReports[report.id] && (
+                                                    <div className="issue-content" style={{background: '#f6f8fa', padding: '1rem', borderRadius: '6px', fontSize: '0.85rem'}}>
+                                                        <div style={{display: 'flex', flexDirection: 'column', gap: '0.8rem'}}>
+                                                            <div>
+                                                                <div style={{fontWeight: 600, color: '#0969da', marginBottom: '0.3rem'}}>작업(업무) 내용</div>
+                                                                <div style={{whiteSpace: 'pre-wrap'}}>
+                                                                    {report.work_details || report.content || (
+                                                                        <span style={{color: '#94a3b8', fontStyle: 'italic'}}>(작업 내용 미입력 · 공수 등록됨)</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            {(report.special_notes || report.issues) && (
+                                                                <div>
+                                                                    <div style={{fontWeight: 600, color: '#1f2328', marginBottom: '0.3rem'}}>특이/이슈사항</div>
+                                                                    <div style={{whiteSpace: 'pre-wrap'}}>{report.special_notes || report.issues}</div>
+                                                                </div>
+                                                            )}
+                                                            <div>
+                                                                <div style={{fontWeight: 600, color: '#1f2328', marginBottom: '0.3rem'}}>
+                                                                    투입 인원 실적 (총 {totalMD}명)
+                                                                </div>
+                                                                <div style={{display:'flex', gap:'8px', flexWrap:'wrap', fontSize:'0.75rem', background:'#fff', padding:'6px', borderRadius:'4px', border:'1px solid #e1e4e8'}}>
+                                                                    {report.pm_count > 0 && <span>소장: {report.pm_count}</span>}
+                                                                    {report.design_count > 0 && <span>설계: {report.design_count}</span>}
+                                                                    {report.facility_count > 0 && <span>설비: {report.facility_count}</span>}
+                                                                    {report.control_count > 0 && <span>제어: {report.control_count}</span>}
+                                                                    {report.vision_count > 0 && <span>비전: {report.vision_count}</span>}
+                                                                    {report.personnel_count > 0 && <span>기타: {report.personnel_count}</span>}
+                                                                    {totalMD === 0 && <span style={{color: '#94a3b8'}}>투입 인원 없음</span>}
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}

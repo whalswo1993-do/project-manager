@@ -333,13 +333,61 @@ ${allText.substring(0, 30000)}
         return [];
     };
 
-    // 작업내용 텍스트에서 [프로젝트명] 블록들을 분리 추출하는 파서 함수
+    // 프로젝트명 정규화 (변형 명칭, 작업내용 꼬리표 등을 통일된 핵심 프로젝트명으로 그룹화)
+    const normalizeProjectName = (rawTitle) => {
+        if (!rawTitle) return '';
+        let clean = rawTitle.trim();
+        // 외곽 대괄호 및 불릿 기호 제거
+        clean = clean.replace(/^[■●▶◆【\[\s]+/, '').replace(/[】\]\s]+$/, '').trim();
+
+        // 1. 핵심 라인 패턴 인식 및 그룹 통일
+        // STK Line 5~8 / 5-8 / 5~8라인 / 5~8Line 계열 -> 'STK Line 5~8'
+        if (/(?:Line\s*5\s*[-~]\s*8|5\s*[-~]\s*8\s*Line|5\s*[-~]\s*8\s*라인|5\s*[-~]\s*8\s*호기)/i.test(clean)) {
+            return 'STK Line 5~8';
+        }
+        // STK Line 3 / 3Line / 3라인 계열 -> 'STK Line 3'
+        if (/(?:Line\s*3|3\s*Line|3\s*라인|3\s*호기)/i.test(clean)) {
+            return 'STK Line 3';
+        }
+        // HSBMA 1, 2라인 계열 -> 'HSBMA 양산 대응 (1, 2라인)'
+        if (/(?:1\s*[,~-]\s*2\s*라인|1\s*[,~-]\s*2\s*Line)/i.test(clean) && /HSBMA/i.test(clean)) {
+            return 'HSBMA 양산 대응 (1, 2라인)';
+        }
+
+        // 2. 일반 규칙: 괄호 보호 후 콤마/콜론/대시 뒤 작업내용 설명 분리
+        const parenMap = [];
+        clean = clean.replace(/\([^)]+\)/g, (m) => {
+            parenMap.push(m);
+            return `__PAREN_${parenMap.length - 1}__`;
+        });
+
+        // 콤마, 콜론, 슬래시 등으로 세부 작업내용이 이어진 경우 앞부분의 프로젝트명만 취함
+        const prefixMatch = clean.match(/^([A-Za-z0-9가-힣_\s~-]+?)(?:[,:\-/]\s*(?:Line\s*Marking|Unloading|Installation|Setting|Set-up|하역|반입|설치|셋업|양산|점검|테스트|생산).*|$)/i);
+        let result = prefixMatch ? prefixMatch[1].trim() : clean;
+
+        if (result.includes(',')) {
+            const parts = result.split(',');
+            if (parts.length > 1 && /(?:Line|라인|양산|Set-up|STK|HSBMA)/i.test(parts[0])) {
+                result = parts[0].trim();
+            }
+        }
+
+        // 괄호 복원
+        parenMap.forEach((p, idx) => {
+            result = result.replace(`__PAREN_${idx}__`, p);
+        });
+
+        return result.replace(/\s+/g, ' ').trim();
+    };
+
+    // 작업내용 텍스트에서 [프로젝트명] 블록들을 분리 추출하고 정규화하는 파서 함수
     const splitProjectsFromText = (text) => {
         if (!text || typeof text !== 'string') return [];
         
         const lines = text.split(/\r?\n/);
         const projects = [];
         let currentProj = null;
+        let currentRawProj = null;
         let currentLines = [];
 
         // 대괄호로 묶여 있어도 프로젝트명으로 취소할 단어들
@@ -349,24 +397,31 @@ ${allText.substring(0, 30000)}
             const line = lines[i];
             const trimmed = line.trim();
 
-            // [프로젝트명] 패턴 매칭 (예: [HSBMA 양산 대응 (1 ,2라인)])
-            const m = trimmed.match(/^\[([^\]]+)\]$/);
+            // [프로젝트명] 또는 【프로젝트명】 또는 ■ [프로젝트명] 패턴 매칭
+            const m = trimmed.match(/^[■●▶◆【\[]\s*([^\]】]+)[】\]]?[:\s]*(.*)$/);
             const isDate = m ? normalizeReportDate(m[1]) : null;
+            const candidate = m ? m[1].trim() : null;
 
-            if (m && !isDate && !excludeTitles.test(m[1].trim())) {
+            if (candidate && !isDate && !excludeTitles.test(candidate) && candidate.length >= 2) {
                 if (currentProj) {
                     projects.push({
                         name: currentProj,
+                        rawName: currentRawProj,
                         content: currentLines.join('\n').trim()
                     });
                 } else if (currentLines.join('\n').trim()) {
                     projects.push({
                         name: '기타/공통',
+                        rawName: '기타/공통',
                         content: currentLines.join('\n').trim()
                     });
                 }
-                currentProj = m[1].trim();
+                currentRawProj = candidate;
+                currentProj = normalizeProjectName(candidate);
                 currentLines = [];
+                if (m[2] && m[2].trim()) {
+                    currentLines.push(m[2].trim());
+                }
             } else {
                 currentLines.push(line);
             }
@@ -375,11 +430,13 @@ ${allText.substring(0, 30000)}
         if (currentProj) {
             projects.push({
                 name: currentProj,
+                rawName: currentRawProj,
                 content: currentLines.join('\n').trim()
             });
         } else if (currentLines.join('\n').trim()) {
             projects.push({
                 name: '일보 전체',
+                rawName: '일보 전체',
                 content: currentLines.join('\n').trim()
             });
         }
@@ -546,13 +603,17 @@ ${allText.substring(0, 30000)}
                 targetMap[date] = { ...w };
             } else {
                 const projs = splitProjectsFromText(w.work_details);
-                const matched = projs.find(p => p.name === targetProj);
-                if (matched && matched.content.trim()) {
-                    targetMap[date] = {
-                        date,
-                        work_details: matched.content.trim(),
-                        special_notes: w.special_notes || ''
-                    };
+                // 정규화된 프로젝트명으로 매칭되는 모든 블록을 수집
+                const matches = projs.filter(p => p.name === targetProj);
+                if (matches.length > 0) {
+                    const combined = matches.map(m => m.content.trim()).filter(Boolean).join('\n\n');
+                    if (combined) {
+                        targetMap[date] = {
+                            date,
+                            work_details: combined,
+                            special_notes: w.special_notes || ''
+                        };
+                    }
                 }
             }
         });
@@ -811,14 +872,45 @@ ${allText.substring(0, 30000)}
                 const curProjDisp = curProjectObj ? (curProjectObj.manufacturingNo ? `[${curProjectObj.manufacturingNo}] ${curProjectObj.name}` : curProjectObj.name) : '선택된 프로젝트 없음';
 
                 if (curProjectObj) {
-                    const pName = (curProjectObj.name || '').toLowerCase();
-                    const pNo = (curProjectObj.manufacturingNo || '').toLowerCase();
-                    const matched = uniqueProjects.find(up => {
-                        const lower = up.toLowerCase();
-                        return (pName && lower.includes(pName)) || (pNo && lower.includes(pNo)) ||
-                               (pName.length >= 2 && lower.split(/[\s,()_-]+/).some(token => token.length >= 2 && pName.includes(token)));
+                    const curName = (curProjectObj.name || '').toLowerCase();
+                    const curNo = (curProjectObj.manufacturingNo || '').toLowerCase();
+                    const combinedTarget = `${curNo} ${curName}`;
+
+                    // 라인 번호(Line Number) 추출 (예: "5~8", "5-8", "3", "1, 2")
+                    const extractLineNumbers = (str) => {
+                        const m = str.match(/([0-9]+[\s~,-]+[0-9]+|[0-9]+)\s*(?:line|라인|호기)?/i);
+                        return m ? m[1].replace(/\s+/g, '') : null;
+                    };
+
+                    const targetLine = extractLineNumbers(combinedTarget);
+                    let bestScore = -999;
+
+                    uniqueProjects.forEach(cand => {
+                        const candLower = cand.toLowerCase();
+                        const candLine = extractLineNumbers(candLower);
+                        let score = 0;
+
+                        // 1. 라인 번호 일치 시 최우선 가중치 (5~8 vs 1,2 등 불일치 감점)
+                        if (targetLine && candLine) {
+                            if (targetLine === candLine) score += 60;
+                            else score -= 40;
+                        }
+
+                        // 2. 프로젝트명 / 제번 포함 여부
+                        if (curName && candLower.includes(curName)) score += 20;
+                        if (curNo && candLower.includes(curNo)) score += 20;
+
+                        // 3. 주요 토큰 매칭
+                        const tokens = curName.split(/[\s,()_~-]+/).filter(t => t.length >= 2);
+                        tokens.forEach(t => {
+                            if (candLower.includes(t)) score += 5;
+                        });
+
+                        if (score > bestScore) {
+                            bestScore = score;
+                            defaultChoice = cand;
+                        }
                     });
-                    if (matched) defaultChoice = matched;
                 }
 
                 setSplitProjectModal({

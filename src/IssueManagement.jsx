@@ -59,6 +59,17 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
     const [projectReports, setProjectReports] = useState([]);
     const [expandedReports, setExpandedReports] = useState({});
     
+    // 다중 프로젝트 일보 분류 모달 상태
+    const [splitProjectModal, setSplitProjectModal] = useState({
+        isOpen: false,
+        uniqueProjects: [],
+        projectFreq: {},
+        projectSamples: {},
+        selectedChoice: '',
+        currentProjectName: '',
+        workMap: null
+    });
+    
     // Analyze Tab States
     const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10));
     const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
@@ -328,91 +339,167 @@ ${allText.substring(0, 30000)}
         return [];
     };
 
+    // 작업내용 텍스트에서 [프로젝트명] 블록들을 분리 추출하는 파서 함수
+    const splitProjectsFromText = (text) => {
+        if (!text || typeof text !== 'string') return [];
+        
+        const lines = text.split(/\r?\n/);
+        const projects = [];
+        let currentProj = null;
+        let currentLines = [];
+
+        // 대괄호로 묶여 있어도 프로젝트명으로 취소할 단어들
+        const excludeTitles = /^(참고|비고|특이사항|이슈|이슈사항|주의|알림|공지|진행중|완료|대기|예정|취소|긴급|설비|설비기술|제어|비전|설계|소장|pm)$/i;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+
+            // [프로젝트명] 패턴 매칭 (예: [HSBMA 양산 대응 (1 ,2라인)])
+            const m = trimmed.match(/^\[([^\]]+)\]$/);
+            const isDate = m ? normalizeReportDate(m[1]) : null;
+
+            if (m && !isDate && !excludeTitles.test(m[1].trim())) {
+                if (currentProj) {
+                    projects.push({
+                        name: currentProj,
+                        content: currentLines.join('\n').trim()
+                    });
+                } else if (currentLines.join('\n').trim()) {
+                    projects.push({
+                        name: '기타/공통',
+                        content: currentLines.join('\n').trim()
+                    });
+                }
+                currentProj = m[1].trim();
+                currentLines = [];
+            } else {
+                currentLines.push(line);
+            }
+        }
+
+        if (currentProj) {
+            projects.push({
+                name: currentProj,
+                content: currentLines.join('\n').trim()
+            });
+        } else if (currentLines.join('\n').trim()) {
+            projects.push({
+                name: '일보 전체',
+                content: currentLines.join('\n').trim()
+            });
+        }
+
+        return projects;
+    };
+
+    // 엑셀 표(목록형 + 일일 보고서 양식 블록형 모두 지원) 종합 파서
     const parseWorkSheetGrid = (grid) => {
         const result = {};
         if (!grid || grid.length === 0) return result;
 
-        let headerRowIdx = -1;
-        let dateCol = -1;
-        let workCol = -1;
-        let noteCol = -1;
-        let deptCol = -1;
+        // 1. 표준 테이블 목록형 양식인지 확인 ([일자, 작업내용, 특이사항...])
+        let standardHeaderIdx = -1;
+        let sDateCol = -1;
+        let sWorkCol = -1;
+        let sNoteCol = -1;
+        let sDeptCol = -1;
 
         for (let r = 0; r < Math.min(12, grid.length); r++) {
             const row = grid[r];
             let dCol = -1, wCol = -1, nCol = -1, dpCol = -1;
             row.forEach((cell, cIdx) => {
                 const clean = cell.replace(/\s+/g, '');
-                if (/일자|날짜|일시|Date/i.test(clean) && dCol === -1) dCol = cIdx;
-                if (/작업내용|업무내용|공정|진행사항|작업현황|주요작업|작업상세|작업|업무|내용/i.test(clean) && wCol === -1) wCol = cIdx;
+                if (/^(일자|날짜|일시|Date)$/i.test(clean) && dCol === -1) dCol = cIdx;
+                if (/^(작업내용|업무내용|공정|진행사항|작업현황|주요작업|작업상세|작업|업무|내용)$/i.test(clean) && wCol === -1) wCol = cIdx;
                 if (/특이사항|이슈|비고|건의사항|문제점|특기사항|비고란|참고/i.test(clean) && nCol === -1) nCol = cIdx;
                 if (/부서|팀|담당|구분|직종|소속/i.test(clean) && dpCol === -1) dpCol = cIdx;
             });
 
             if (dCol !== -1 && wCol !== -1) {
-                headerRowIdx = r;
-                dateCol = dCol;
-                workCol = wCol;
-                noteCol = nCol;
-                deptCol = dpCol;
+                standardHeaderIdx = r;
+                sDateCol = dCol;
+                sWorkCol = wCol;
+                sNoteCol = nCol;
+                sDeptCol = dpCol;
                 break;
             }
         }
 
-        const startRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
-        let lastDate = null;
+        if (standardHeaderIdx !== -1) {
+            // 표준 목록형 파싱
+            let lastDate = null;
+            for (let r = standardHeaderIdx + 1; r < grid.length; r++) {
+                const row = grid[r];
+                if (!row || row.length === 0) continue;
 
-        for (let r = startRow; r < grid.length; r++) {
-            const row = grid[r];
-            if (!row || row.length === 0) continue;
-
-            let rowDate = null;
-            if (dateCol !== -1 && row[dateCol]) {
-                rowDate = normalizeReportDate(row[dateCol]);
-            } else {
-                for (let c = 0; c < Math.min(3, row.length); c++) {
-                    const testDate = normalizeReportDate(row[c]);
-                    if (testDate) {
-                        rowDate = testDate;
-                        if (dateCol === -1) dateCol = c;
-                        break;
+                let rowDate = null;
+                if (sDateCol !== -1 && row[sDateCol]) {
+                    rowDate = normalizeReportDate(row[sDateCol]);
+                } else {
+                    for (let c = 0; c < Math.min(3, row.length); c++) {
+                        const testDate = normalizeReportDate(row[c]);
+                        if (testDate) {
+                            rowDate = testDate;
+                            break;
+                        }
                     }
                 }
+
+                const currentDate = rowDate || lastDate;
+                if (!currentDate) continue;
+                if (rowDate) lastDate = rowDate;
+
+                let workText = (sWorkCol !== -1 && row[sWorkCol]) ? row[sWorkCol].trim() : '';
+                let noteText = (sNoteCol !== -1 && row[sNoteCol]) ? row[sNoteCol].trim() : '';
+                const deptText = (sDeptCol !== -1 && row[sDeptCol]) ? row[sDeptCol].trim() : '';
+                const prefix = deptText ? `[${deptText}] ` : '';
+
+                if (!result[currentDate]) {
+                    result[currentDate] = { date: currentDate, work_details: [], special_notes: [] };
+                }
+                if (workText && !/^(작업내용|공정|업무|내용)$/i.test(workText)) {
+                    result[currentDate].work_details.push(`${prefix}${workText}`);
+                }
+                if (noteText && !/^(특이사항|이슈|비고)$/i.test(noteText)) {
+                    result[currentDate].special_notes.push(noteText);
+                }
             }
+        } else {
+            // 2. 일일 업무 보고서 블록형 양식 (헤더에 "금일 진행 사항 [YYYY/MM/DD]" 등이 포함된 양식)
+            for (let r = 0; r < grid.length; r++) {
+                const row = grid[r];
+                for (let c = 0; c < row.length; c++) {
+                    const cell = row[c] || '';
+                    const dateMatch = cell.match(/(\d{4}[-./]\d{1,2}[-./]\d{1,2})/);
+                    if (dateMatch && /금일|진행|업무|보고|일보|Date/i.test(cell)) {
+                        const parsedDate = normalizeReportDate(dateMatch[1]);
+                        if (parsedDate) {
+                            if (!result[parsedDate]) {
+                                result[parsedDate] = { date: parsedDate, work_details: [], special_notes: [] };
+                            }
 
-            const currentDate = rowDate || lastDate;
-            if (!currentDate) continue;
-            if (rowDate) lastDate = rowDate;
+                            // 헤더 아래 행들에서 작업내용과 이슈사항 수집
+                            for (let nr = r + 1; nr < Math.min(r + 15, grid.length); nr++) {
+                                const nextRow = grid[nr];
+                                const labelCell = (nextRow[0] || '').replace(/\s+/g, '');
+                                const contentCell = (nextRow[c] || '').trim();
 
-            let workText = '';
-            if (workCol !== -1 && row[workCol]) {
-                workText = row[workCol].trim();
-            } else {
-                const others = row.filter((c, idx) => idx !== dateCol && c.length > 1);
-                if (others.length > 0) workText = others.join(' | ');
-            }
+                                if (/금일\s*진행|명일\s*진행|일일\s*업무/i.test(nextRow.join(' '))) break;
 
-            let noteText = '';
-            if (noteCol !== -1 && row[noteCol]) {
-                noteText = row[noteCol].trim();
-            }
-
-            const deptText = (deptCol !== -1 && row[deptCol]) ? row[deptCol].trim() : '';
-            const prefix = deptText ? `[${deptText}] ` : '';
-
-            if (!result[currentDate]) {
-                result[currentDate] = {
-                    date: currentDate,
-                    work_details: [],
-                    special_notes: []
-                };
-            }
-
-            if (workText && !/^(작업내용|공정|업무|내용)$/i.test(workText)) {
-                result[currentDate].work_details.push(`${prefix}${workText}`);
-            }
-            if (noteText && !/^(특이사항|이슈|비고)$/i.test(noteText)) {
-                result[currentDate].special_notes.push(noteText);
+                                if (/주요진행|진행사항|금일작업|작업내용/i.test(labelCell) || (nr === r + 1 && contentCell)) {
+                                    if (contentCell && !result[parsedDate].work_details.includes(contentCell)) {
+                                        result[parsedDate].work_details.push(contentCell);
+                                    }
+                                } else if (/이슈|특이사항|문제점|건의/i.test(labelCell)) {
+                                    if (contentCell && !result[parsedDate].special_notes.includes(contentCell)) {
+                                        result[parsedDate].special_notes.push(contentCell);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -431,6 +518,75 @@ ${allText.substring(0, 30000)}
         });
 
         return finalMap;
+    };
+
+    // 선택된 프로젝트 내용만 필터링하여 일보 직접입력 폼에 반영하는 함수
+    const applyFilteredWorkMap = (targetProj, workMap) => {
+        if (!workMap || Object.keys(workMap).length === 0) return;
+
+        const targetMap = {};
+        Object.entries(workMap).forEach(([date, w]) => {
+            if (targetProj === '__ALL__') {
+                targetMap[date] = { ...w };
+            } else {
+                const projs = splitProjectsFromText(w.work_details);
+                const matched = projs.find(p => p.name === targetProj);
+                if (matched && matched.content.trim()) {
+                    targetMap[date] = {
+                        date,
+                        work_details: matched.content.trim(),
+                        special_notes: w.special_notes || ''
+                    };
+                }
+            }
+        });
+
+        const validDates = Object.keys(targetMap).sort();
+        if (validDates.length === 0) {
+            setMsg(`선택한 프로젝트 [${targetProj}]에 해당하는 작업내용이 없습니다.`);
+            return;
+        }
+
+        setExtractedReports(prev => {
+            const isInitialEmpty = prev.length === 1 && !prev[0].work_details.trim() && !prev[0].special_notes.trim() && (prev[0].personnel_count || 0) === 0;
+            const currentMap = {};
+            if (!isInitialEmpty) {
+                prev.forEach(r => {
+                    if (r.date) currentMap[r.date] = { ...r };
+                });
+            }
+
+            validDates.forEach(d => {
+                const w = targetMap[d];
+                if (!currentMap[d]) {
+                    currentMap[d] = {
+                        date: d,
+                        work_details: w.work_details || '',
+                        special_notes: w.special_notes || '',
+                        personnel_count: 0,
+                        pm_count: 0,
+                        design_count: 0,
+                        facility_count: 0,
+                        control_count: 0,
+                        vision_count: 0
+                    };
+                } else {
+                    currentMap[d].work_details = w.work_details || currentMap[d].work_details;
+                    if (w.special_notes) {
+                        currentMap[d].special_notes = currentMap[d].special_notes
+                            ? `${currentMap[d].special_notes}\n${w.special_notes}`
+                            : w.special_notes;
+                    }
+                }
+            });
+
+            const mergedList = Object.values(currentMap).sort((a, b) => a.date.localeCompare(b.date));
+            return mergedList.length > 0 ? mergedList : prev;
+        });
+
+        setCollapsedSections(prev => ({ ...prev, inputForm: false }));
+        const label = targetProj === '__ALL__' ? '전체 내용' : `[${targetProj}]`;
+        setMsg(`📋 작업내용 시트 붙여넣기 완료: ${label} ${validDates.length}일치 데이터(${validDates[0]} ~ ${validDates[validDates.length - 1]})를 직접입력 폼에 반영했습니다.`);
     };
 
     const parseManpowerSheetGrid = (grid) => {
@@ -618,45 +774,51 @@ ${allText.substring(0, 30000)}
                 return;
             }
 
-            setExtractedReports(prev => {
-                const isInitialEmpty = prev.length === 1 && !prev[0].work_details.trim() && !prev[0].special_notes.trim() && (prev[0].personnel_count || 0) === 0;
-                const currentMap = {};
-                if (!isInitialEmpty) {
-                    prev.forEach(r => {
-                        if (r.date) currentMap[r.date] = { ...r };
-                    });
-                }
-
-                dates.forEach(d => {
-                    const w = workMap[d];
-                    if (!currentMap[d]) {
-                        currentMap[d] = {
-                            date: d,
-                            work_details: w.work_details || '',
-                            special_notes: w.special_notes || '',
-                            personnel_count: 0,
-                            pm_count: 0,
-                            design_count: 0,
-                            facility_count: 0,
-                            control_count: 0,
-                            vision_count: 0
-                        };
-                    } else {
-                        currentMap[d].work_details = w.work_details || currentMap[d].work_details;
-                        if (w.special_notes) {
-                            currentMap[d].special_notes = currentMap[d].special_notes
-                                ? `${currentMap[d].special_notes}\n${w.special_notes}`
-                                : w.special_notes;
-                        }
+            // 고유 프로젝트 목록 추출
+            const projectFreq = {};
+            const projectSamples = {};
+            Object.values(workMap).forEach(w => {
+                const projs = splitProjectsFromText(w.work_details);
+                projs.forEach(p => {
+                    if (p.name !== '일보 전체' && p.name !== '기타/공통') {
+                        projectFreq[p.name] = (projectFreq[p.name] || 0) + 1;
+                        if (!projectSamples[p.name]) projectSamples[p.name] = p.content;
                     }
                 });
-
-                const mergedList = Object.values(currentMap).sort((a, b) => a.date.localeCompare(b.date));
-                return mergedList.length > 0 ? mergedList : prev;
             });
+            const uniqueProjects = Object.keys(projectFreq);
 
-            setCollapsedSections(prev => ({ ...prev, inputForm: false }));
-            setMsg(`📋 작업내용 시트 붙여넣기 완료: ${dates.length}일치 데이터(${dates[0]} ~ ${dates[dates.length - 1]})를 직접입력 폼에 반영했습니다.`);
+            // 2개 이상의 복수 프로젝트가 감지된 경우 -> 사용자 선택 모달 오픈!
+            if (uniqueProjects.length >= 2) {
+                const curProjectObj = (projects || []).find(p => p.id === selectedProject);
+                let defaultChoice = uniqueProjects[0];
+                const curProjDisp = curProjectObj ? (curProjectObj.manufacturingNo ? `[${curProjectObj.manufacturingNo}] ${curProjectObj.name}` : curProjectObj.name) : '선택된 프로젝트 없음';
+
+                if (curProjectObj) {
+                    const pName = (curProjectObj.name || '').toLowerCase();
+                    const pNo = (curProjectObj.manufacturingNo || '').toLowerCase();
+                    const matched = uniqueProjects.find(up => {
+                        const lower = up.toLowerCase();
+                        return (pName && lower.includes(pName)) || (pNo && lower.includes(pNo)) ||
+                               (pName.length >= 2 && lower.split(/[\s,()_-]+/).some(token => token.length >= 2 && pName.includes(token)));
+                    });
+                    if (matched) defaultChoice = matched;
+                }
+
+                setSplitProjectModal({
+                    isOpen: true,
+                    uniqueProjects,
+                    projectFreq,
+                    projectSamples,
+                    selectedChoice: defaultChoice,
+                    currentProjectName: curProjDisp,
+                    workMap
+                });
+                return;
+            }
+
+            // 단일 프로젝트거나 분리할 프로젝트가 없는 경우 바로 적용
+            applyFilteredWorkMap('__ALL__', workMap);
         } else if (type === 'manpower') {
             const mpMap = parseManpowerSheetGrid(grid);
             const dates = Object.keys(mpMap).sort();
@@ -1451,6 +1613,127 @@ ${compiledText.substring(0, 30000)}
                                 {analyzeMsg}
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* 다중 프로젝트 일보 분류 모달 (SPM) */}
+            {splitProjectModal.isOpen && (
+                <div className="spm-overlay" onClick={() => setSplitProjectModal(prev => ({ ...prev, isOpen: false }))}>
+                    <div className="spm-modal" onClick={e => e.stopPropagation()}>
+                        <div className="spm-header">
+                            <div className="spm-header-title">
+                                <span style={{ fontSize: '1.25rem' }}>📑</span>
+                                <span>다중 프로젝트 일보 분류 선택</span>
+                            </div>
+                            <button
+                                type="button"
+                                className="spm-close-btn"
+                                onClick={() => setSplitProjectModal(prev => ({ ...prev, isOpen: false }))}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        
+                        <div className="spm-body">
+                            <div className="spm-info-box">
+                                <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '4px' }}>
+                                    🏢 현재 선택된 앱 프로젝트: <span style={{ color: '#0284c7' }}>{splitProjectModal.currentProjectName}</span>
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                    붙여넣은 일보에서 <b>{splitProjectModal.uniqueProjects.length}개</b>의 프로젝트 작업내용이 함께 감지되었습니다.<br/>
+                                    현재 프로젝트의 공사일보로 등록할 작업내용을 선택해주세요.
+                                </div>
+                            </div>
+
+                            <div className="spm-options-list">
+                                {splitProjectModal.uniqueProjects.map((pName) => {
+                                    const count = splitProjectModal.projectFreq[pName] || 0;
+                                    const sample = splitProjectModal.projectSamples[pName] || '';
+                                    const isSelected = splitProjectModal.selectedChoice === pName;
+                                    const isCurProj = splitProjectModal.currentProjectName && splitProjectModal.currentProjectName.toLowerCase().includes(pName.split(' ')[0].toLowerCase());
+
+                                    return (
+                                        <label
+                                            key={pName}
+                                            className={`spm-option-card ${isSelected ? 'selected' : ''}`}
+                                            onClick={() => setSplitProjectModal(prev => ({ ...prev, selectedChoice: pName }))}
+                                        >
+                                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                                <input
+                                                    type="radio"
+                                                    name="spm-project-choice"
+                                                    checked={isSelected}
+                                                    onChange={() => setSplitProjectModal(prev => ({ ...prev, selectedChoice: pName }))}
+                                                    style={{ marginTop: '3px', cursor: 'pointer', accentColor: '#10b981' }}
+                                                />
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                        <span style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>
+                                                            [{pName}]
+                                                        </span>
+                                                        <span className="spm-badge-count">{count}일치 감지</span>
+                                                        {isCurProj && <span className="spm-badge-recommend">⭐ 현재 프로젝트 추천</span>}
+                                                    </div>
+                                                    {sample && (
+                                                        <div className="spm-preview-box">
+                                                            {sample.split('\n').slice(0, 3).join('\n')}
+                                                            {sample.split('\n').length > 3 ? '\n...' : ''}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </label>
+                                    );
+                                })}
+
+                                {/* 원본 전체 등록 옵션 */}
+                                <label
+                                    className={`spm-option-card ${splitProjectModal.selectedChoice === '__ALL__' ? 'selected' : ''}`}
+                                    onClick={() => setSplitProjectModal(prev => ({ ...prev, selectedChoice: '__ALL__' }))}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                        <input
+                                            type="radio"
+                                            name="spm-project-choice"
+                                            checked={splitProjectModal.selectedChoice === '__ALL__'}
+                                            onChange={() => setSplitProjectModal(prev => ({ ...prev, selectedChoice: '__ALL__' }))}
+                                            style={{ marginTop: '3px', cursor: 'pointer', accentColor: '#10b981' }}
+                                        />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>
+                                                    🌐 일보상 내용 전체 등록 (분리하지 않고 원본 전체 저장)
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                                                감지된 모든 프로젝트 작업내용을 구분 없이 통째로 일보 폼에 반영합니다.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="spm-footer">
+                            <button
+                                type="button"
+                                className="spm-btn-cancel"
+                                onClick={() => setSplitProjectModal(prev => ({ ...prev, isOpen: false }))}
+                            >
+                                취소
+                            </button>
+                            <button
+                                type="button"
+                                className="spm-btn-apply"
+                                onClick={() => {
+                                    applyFilteredWorkMap(splitProjectModal.selectedChoice, splitProjectModal.workMap);
+                                    setSplitProjectModal(prev => ({ ...prev, isOpen: false }));
+                                }}
+                            >
+                                ✓ 선택한 프로젝트 내용으로 폼에 반영
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

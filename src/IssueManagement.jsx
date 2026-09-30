@@ -880,7 +880,8 @@ ${allText.substring(0, 30000)}
             if (/설비|기구|기계|배관/i.test(clean)) return 'facility_count';
             if (/제어|전장|전기|PLC/i.test(clean)) return 'control_count';
             if (/비전|Vision|검사/i.test(clean)) return 'vision_count';
-            if (/합계|계|총원|투입|인원|공수|총합/i.test(clean)) return 'personnel_count';
+            if (/^기타$/i.test(clean)) return 'personnel_count';
+            if (/합계|총원|투입|인원|공수|총합|total|^계$/i.test(clean)) return '__TOTAL__';
             return null;
         };
 
@@ -930,10 +931,13 @@ ${allText.substring(0, 30000)}
                             facility_count: 0,
                             control_count: 0,
                             vision_count: 0,
-                            personnel_count: 0
+                            personnel_count: 0,
+                            _totalFromSheet: 0
                         };
                     }
-                    if (deptKey === 'personnel_count') {
+                    if (deptKey === '__TOTAL__') {
+                        finalMap[dateStr]._totalFromSheet = val;
+                    } else if (deptKey === 'personnel_count') {
                         finalMap[dateStr].personnel_count = val;
                     } else {
                         finalMap[dateStr][deptKey] = (finalMap[dateStr][deptKey] || 0) + val;
@@ -996,7 +1000,8 @@ ${allText.substring(0, 30000)}
                         facility_count: 0,
                         control_count: 0,
                         vision_count: 0,
-                        personnel_count: 0
+                        personnel_count: 0,
+                        _totalFromSheet: 0
                     };
                 }
 
@@ -1005,7 +1010,9 @@ ${allText.substring(0, 30000)}
                     const colName = (grid[headerRowIdx] && grid[headerRowIdx][cNum]) || '';
                     const rowLabel = row[0] || '';
                     const val = parseCellToMD(row[cNum], colName, rowLabel);
-                    if (deptKey === 'personnel_count') {
+                    if (deptKey === '__TOTAL__') {
+                        finalMap[rowDate]._totalFromSheet = val;
+                    } else if (deptKey === 'personnel_count') {
                         finalMap[rowDate].personnel_count = val;
                     } else {
                         finalMap[rowDate][deptKey] = (finalMap[rowDate][deptKey] || 0) + val;
@@ -1014,12 +1021,26 @@ ${allText.substring(0, 30000)}
             }
         }
 
-        // 인원 합산 자동 보정
+        // 인원 합산 보정 (Total/합계가 '기타'로 오분류되지 않도록 처리)
         Object.values(finalMap).forEach(item => {
-            const sum = (item.pm_count || 0) + (item.design_count || 0) + (item.facility_count || 0) + (item.control_count || 0) + (item.vision_count || 0);
-            if ((!item.personnel_count || item.personnel_count === 0) && sum > 0) {
-                item.personnel_count = sum;
+            const deptSum = (item.pm_count || 0) + (item.design_count || 0) + (item.facility_count || 0) + (item.control_count || 0) + (item.vision_count || 0);
+            const totalVal = item._totalFromSheet || 0;
+
+            // 1. 직종별 인원(소장, 설계, 설비, 제어, 비전)이 입력된 경우:
+            if (deptSum > 0) {
+                // 시트에 Total이 있고 직종 합계보다 크다면, 그 차이만큼만 '기타'로 처리
+                if (totalVal > deptSum && (!item.personnel_count || item.personnel_count === 0)) {
+                    item.personnel_count = totalVal - deptSum;
+                }
+                // 직종 합계와 시트의 Total이 일치하거나 직종만 있는 경우: '기타'는 0으로 유지 (Total을 기타에 넣지 않음!)
+            } else {
+                // 2. 직종별 구분이 전혀 없고 오직 Total/합계(총원)만 있는 경우:
+                // 직종이 없으므로 Total 값을 '기타(personnel_count)'에 배정하여 총 인원수를 유지
+                if (totalVal > 0 && (!item.personnel_count || item.personnel_count === 0)) {
+                    item.personnel_count = totalVal;
+                }
             }
+            delete item._totalFromSheet;
         });
 
         return finalMap;
@@ -1683,7 +1704,9 @@ ${compiledText.substring(0, 30000)}
                                                     }}></textarea>
                                                 </div>
                                                 <div>
-                                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom:'4px', display:'block'}}>투입 인원 실적</label>
+                                                    <label style={{fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom:'4px', display:'block'}}>
+                                                        투입 인원 실적 (합계: {(report.pm_count||0)+(report.design_count||0)+(report.facility_count||0)+(report.control_count||0)+(report.vision_count||0)+(report.personnel_count||0)}명)
+                                                    </label>
                                                     <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'4px'}}>
                                                         <div style={{fontSize:'0.7rem'}}>소장 <input type="number" value={report.pm_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].pm_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>
                                                         <div style={{fontSize:'0.7rem'}}>설계 <input type="number" value={report.design_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].design_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'40px', padding:'2px'}}/></div>

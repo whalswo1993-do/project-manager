@@ -699,6 +699,11 @@ ${allText.substring(0, 30000)}
                 // 행에서 라벨과 실질적인 내용 텍스트 수집
                 const firstCol = (row[0] || '').replace(/\s+/g, '');
                 const rowText = row.join(' ');
+
+                // 행 자체가 명일/익일 예정 행인 경우(단, 이슈/특이사항 행 제외) 전체 건너뜀
+                const isPlanRow = /명일|익일|예정/i.test(firstCol) && !/이슈|특이사항|문제점|건의|비고/i.test(firstCol);
+                if (isPlanRow) continue;
+
                 const isSpecialNoteRow = /이슈|특이사항|문제점|건의|비고/i.test(firstCol) || /이슈\s*사항/i.test(rowText);
 
                 // 행 내의 모든 의미 있는 프로젝트/업무 셀 수집 (기존 단일 bestText 선택 방식 탈피 -> 모든 열/셀의 프로젝트 작업내용 전원 누적)
@@ -706,21 +711,17 @@ ${allText.substring(0, 30000)}
                     const cellVal = (row[c] || '').trim();
                     if (!cellVal) continue;
                     // 구분용 라벨이나 날짜 셀은 건너뜀
-                    if (/^(구분|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|주요\s*진행\s*예정|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고|주요\s*업무|일자|날짜)$/i.test(cellVal.replace(/\s+/g, ''))) continue;
+                    if (/^(구분|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|주요\s*진행\s*예정|명일\s*진행\s*예정|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고|주요\s*업무|일자|날짜)$/i.test(cellVal.replace(/\s+/g, ''))) continue;
                     if (normalizeReportDate(cellVal)) continue;
 
-                    // 명일/예정 열은 작업내용 대신 특이사항에 보존
-                    const isPlanCol = (c >= 2 && row.length >= 4 && /명일|예정/i.test(row[c - 1] || ''));
+                    // 명일/예정 열은 일보 기록 시 제외 (작업내용이나 특이사항 어디에도 넣지 않고 순수 당일 내용만 보존)
+                    const isPlanCol = (c >= 1 && /명일|예정/i.test(row[c - 1] || ''));
+                    if (isPlanCol) continue;
 
                     // 특이사항 또는 작업내용으로 분류하여 누적
                     if (isSpecialNoteRow || /^(특이사항|이슈):/i.test(cellVal)) {
                         if (!result[currentDate].special_notes.includes(cellVal)) {
                             result[currentDate].special_notes.push(cellVal);
-                        }
-                    } else if (isPlanCol) {
-                        const planText = `[명일 진행 예정]\n${cellVal}`;
-                        if (!result[currentDate].special_notes.includes(planText)) {
-                            result[currentDate].special_notes.push(planText);
                         }
                     } else if (cellVal.length >= 4 || /\[.*\]|<.*>|\d\./.test(cellVal)) {
                         if (!result[currentDate].work_details.includes(cellVal)) {

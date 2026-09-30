@@ -124,26 +124,216 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
         if (file) await handleFileUpload(file);
     };
 
+    // 공수 맵 데이터를 직접입력 폼(extractedReports)에 병합 반영하는 공통 유틸
+    const mergeManpowerIntoExtracted = (mpMap) => {
+        const dates = Object.keys(mpMap || {}).sort();
+        if (dates.length === 0) return 0;
+
+        setExtractedReports(prev => {
+            const isInitialEmpty = prev.length === 1 && !prev[0].work_details.trim() && !prev[0].special_notes.trim() && (prev[0].personnel_count || 0) === 0;
+            const currentMap = {};
+            if (!isInitialEmpty) {
+                prev.forEach(r => {
+                    if (r.date) currentMap[r.date] = { ...r };
+                });
+            }
+
+            dates.forEach(d => {
+                const m = mpMap[d];
+                const totalMD = (m.pm_count || 0) + (m.design_count || 0) + (m.facility_count || 0) +
+                                (m.control_count || 0) + (m.vision_count || 0) + (m.personnel_count || 0);
+                const existingDbReport = (projectReports || []).find(p => p.report_date === d);
+
+                if (!currentMap[d]) {
+                    // 공수 데이터가 있거나 이미 DB에 등록되어 있던 일보인 경우 신규 카드로 생성
+                    if (totalMD > 0 || existingDbReport) {
+                        currentMap[d] = {
+                            date: d,
+                            work_details: existingDbReport?.work_details || existingDbReport?.content || '',
+                            special_notes: existingDbReport?.special_notes || existingDbReport?.issues || '',
+                            personnel_count: m.personnel_count || 0,
+                            pm_count: m.pm_count || 0,
+                            design_count: m.design_count || 0,
+                            facility_count: m.facility_count || 0,
+                            control_count: m.control_count || 0,
+                            vision_count: m.vision_count || 0
+                        };
+                    }
+                } else {
+                    currentMap[d].pm_count = m.pm_count ?? currentMap[d].pm_count;
+                    currentMap[d].design_count = m.design_count ?? currentMap[d].design_count;
+                    currentMap[d].facility_count = m.facility_count ?? currentMap[d].facility_count;
+                    currentMap[d].control_count = m.control_count ?? currentMap[d].control_count;
+                    currentMap[d].vision_count = m.vision_count ?? currentMap[d].vision_count;
+                    currentMap[d].personnel_count = m.personnel_count ?? currentMap[d].personnel_count;
+
+                    if (!currentMap[d].work_details && existingDbReport) {
+                        currentMap[d].work_details = existingDbReport.work_details || existingDbReport.content || '';
+                    }
+                    if (!currentMap[d].special_notes && existingDbReport) {
+                        currentMap[d].special_notes = existingDbReport.special_notes || existingDbReport.issues || '';
+                    }
+                }
+            });
+
+            const mergedList = Object.values(currentMap).sort((a, b) => a.date.localeCompare(b.date));
+            return mergedList.length > 0 ? mergedList : prev;
+        });
+
+        setCollapsedSections(prev => ({ ...prev, inputForm: false }));
+        return dates.length;
+    };
+
     const handleFileUpload = async (file) => {
         if (isGrade1) {
             notifyPermission('공사일보 파일 업로드');
             return;
         }
         if (!file) return;
-        setMsg('엑셀 파일을 읽는 중...');
+        setMsg('엑셀 파일을 읽고 시트 구조를 분석하는 중...');
         setIsExtracting(true);
         try {
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(new Uint8Array(data), { type: 'array', cellDates: false });
+
+            // 1단계: 고속 정밀 시트 스캐닝 (Work Details 및 Manpower 시트 직접 추출)
+            let detectedWorkMap = null;
+            let detectedManpowerMap = null;
+            let workSheetName = '';
+            let manpowerSheetName = '';
+
+            for (const sheetName of workbook.SheetNames) {
+                // 간트차트, 설치현황 등 순수 일정 시트는 제외 (단, 일보/보고/인원/공수 키워드 시트는 유지)
+                if ((sheetName.includes('설치현황') || sheetName.includes('공정현황') || sheetName.includes('진도')) 
+                    && !sheetName.includes('일보') && !sheetName.includes('보고') && !sheetName.includes('인원') && !sheetName.includes('공수')) {
+                    continue;
+                }
+
+                const sheet = workbook.Sheets[sheetName];
+                const grid = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' });
+                if (!grid || grid.length === 0) continue;
+
+                const isExplicitManpower = /(인원|공수|투입|manpower)/i.test(sheetName) && !/(일보|보고|작업|공사|업무)/i.test(sheetName);
+                const isExplicitWork = /(일보|보고|작업|공사|업무)/i.test(sheetName) && !/(인원|공수)/i.test(sheetName);
+
+                // 작업내용 시트 검사 (명시적 공수 시트 제외 및 더 많은 일자 데이터를 가진 시트 우선 채택)
+                if (!isExplicitManpower) {
+                    const wMap = parseWorkSheetGrid(grid);
+                    const wCount = wMap ? Object.keys(wMap).length : 0;
+                    const curCount = detectedWorkMap ? Object.keys(detectedWorkMap).length : 0;
+                    if (wCount > curCount) {
+                        detectedWorkMap = wMap;
+                        workSheetName = sheetName;
+                    }
+                }
+
+                // 공수/인원 시트 검사 (명시적 일보 시트 제외 및 더 많은 유효 인원 데이터를 가진 시트 우선 채택)
+                if (!isExplicitWork) {
+                    const mTree = parseManpowerSheetGrid(grid);
+                    const mCount = mTree ? Object.keys(mTree).length : 0;
+                    const curMCount = detectedManpowerMap ? Object.keys(detectedManpowerMap).length : 0;
+                    if (mCount > curMCount) {
+                        detectedManpowerMap = mTree;
+                        manpowerSheetName = sheetName;
+                    }
+                }
+            }
+
+            // 고속 시트 파싱으로 작업내용 또는 공수 데이터를 감지한 경우:
+            if (detectedWorkMap || detectedManpowerMap) {
+                if (detectedWorkMap) {
+                    const workDates = Object.keys(detectedWorkMap).sort();
+                    const projectDays = {};
+                    const projectSamples = {};
+                    Object.values(detectedWorkMap).forEach(w => {
+                        const projs = splitProjectsFromText(w.work_details, projects);
+                        const seenOnThisDay = new Set();
+                        projs.forEach(p => {
+                            if (p.name !== '일보 전체' && p.name !== '기타/공통') {
+                                if (!seenOnThisDay.has(p.name)) {
+                                    seenOnThisDay.add(p.name);
+                                    projectDays[p.name] = (projectDays[p.name] || 0) + 1;
+                                }
+                                if (!projectSamples[p.name] && p.content) {
+                                    projectSamples[p.name] = p.content;
+                                }
+                            }
+                        });
+                    });
+                    const uniqueProjects = Object.keys(projectDays);
+
+                    // 복수 프로젝트 감지 시 모달 오픈
+                    if (uniqueProjects.length >= 2) {
+                        let defaultChoice = uniqueProjects[0];
+                        const curProjectObj = (projects || []).find(p => p.id === selectedProject);
+                        const curProjDisp = curProjectObj ? (curProjectObj.manufacturingNo ? `[${curProjectObj.manufacturingNo}] ${curProjectObj.name}` : curProjectObj.name) : '선택된 프로젝트 없음';
+
+                        if (curProjectObj) {
+                            const curClean = (curProjectObj.name || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+                            const curLine = extractLineSignature(curClean);
+                            let bestScore = -999;
+
+                            uniqueProjects.forEach(cand => {
+                                const candClean = cand.replace(/\s*\([^)]*\)\s*$/, '').trim();
+                                const candLine = extractLineSignature(candClean);
+                                let score = 0;
+                                if (curProjectObj.manufacturingNo && cand.toUpperCase().includes(curProjectObj.manufacturingNo.toUpperCase())) score += 150;
+                                if (candClean === curClean || cand.includes(curClean) || curClean.includes(candClean)) score += 100;
+                                if (curLine && candLine && (curLine === candLine || isLineInRange(candLine, curLine) || isLineInRange(curLine, candLine))) score += 50;
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    defaultChoice = cand;
+                                }
+                            });
+                        }
+
+                        setSplitProjectModal({
+                            isOpen: true,
+                            uniqueProjects,
+                            projectFreq: projectDays,
+                            projectSamples,
+                            selectedChoice: defaultChoice,
+                            recommendedProject: defaultChoice,
+                            currentProjectName: curProjDisp,
+                            workMap: detectedWorkMap,
+                            manpowerMap: detectedManpowerMap
+                        });
+
+                        setMsg(`📂 엑셀 파일 분석 완료: [${workSheetName}] 시트에서 ${workDates.length}일치의 작업내용을 감지했습니다. 반영할 프로젝트를 선택해주세요.`);
+                        setIsExtracting(false);
+                        return;
+                    }
+
+                    // 단일 프로젝트거나 분리 대상이 없는 경우 바로 적용 (예: SKOJ 7라인 H055)
+                    applyFilteredWorkMap('__ALL__', detectedWorkMap);
+                }
+
+                // 공수 데이터도 함께 병합 반영
+                if (detectedManpowerMap) {
+                    mergeManpowerIntoExtracted(detectedManpowerMap);
+                }
+
+                const msgParts = [];
+                if (detectedWorkMap) msgParts.push(`작업내용(${Object.keys(detectedWorkMap).length}일치)`);
+                if (detectedManpowerMap) msgParts.push(`공수(${Object.keys(detectedManpowerMap).length}일치)`);
+                setMsg(`📂 엑셀 파일 정밀 분석 완료: ${msgParts.join(' 및 ')} 데이터를 직접입력 폼에 정상 반영했습니다.`);
+                setIsExtracting(false);
+                return;
+            }
+
+            // 2단계: 폴백 (Gemini AI 기반 구조화 분석)
+            setMsg('AI가 엑셀 내용 구조화를 진행하고 있습니다... (약 5~10초)');
             let allText = '';
             workbook.SheetNames.forEach(sheetName => {
-                if (sheetName.includes('설치현황') || sheetName.includes('현황')) return;
+                if ((sheetName.includes('설치현황') || sheetName.includes('공정현황') || sheetName.includes('진도')) 
+                    && !sheetName.includes('일보') && !sheetName.includes('보고') && !sheetName.includes('인원') && !sheetName.includes('공수')) {
+                    return;
+                }
                 const sheet = workbook.Sheets[sheetName];
                 const text = XLSX.utils.sheet_to_csv(sheet);
                 allText += `\n[Sheet: ${sheetName}]\n` + text;
             });
-            
-            setMsg('AI가 주요 항목을 추출하고 있습니다... (약 5~10초)');
+
             const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
             if (!apiKey) throw new Error('Gemini API 키가 설정되지 않았습니다.');
             
@@ -171,7 +361,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
 ]
 
 원본 텍스트:
-${allText.substring(0, 30000)}
+${allText.substring(0, 100000)}
 `;
             const result = await model.generateContent(prompt);
             let responseText = result.response.text();
@@ -191,7 +381,7 @@ ${allText.substring(0, 30000)}
                     vision_count: Number(r.vision_count) || 0
                 })));
             }
-            setMsg(`AI가 ${parsed.length}일치의 일보 내용을 성공적으로 구조화했습니다. 저장 버튼을 눌러주세요.`);
+            setMsg(`AI가 ${parsed.length}일치의 일보 내용을 성공적으로 구조화했습니다. 내용 확인 후 저장해주세요.`);
         } catch (error) {
             console.error(error);
             let userFriendlyMsg = "파일 분석 중 알 수 없는 오류가 발생했습니다. 지속되면 담당자에게 문의해주세요.";
@@ -349,6 +539,9 @@ ${allText.substring(0, 30000)}
     // --- HTML / TSV 엑셀 표 파서 유틸리티 (모든 날짜 포맷 전천후 지원) ---
     const normalizeReportDate = (raw) => {
         if (!raw) return null;
+        if (raw instanceof Date && !isNaN(raw)) {
+            return raw.toISOString().slice(0, 10);
+        }
         if (typeof raw === 'number' && raw > 30000 && raw < 70000) {
             const date = new Date(Math.round((raw - 25569) * 86400 * 1000));
             return date.toISOString().slice(0, 10);
@@ -378,6 +571,12 @@ ${allText.substring(0, 30000)}
         let m = cleanStr.match(/(20\d{2})[-./\s년]+(1[0-2]|0?[1-9])[-./\s월]+([12]\d|3[01]|0?[1-9])[일]?/);
         if (m) {
             return `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
+        }
+
+        // 1-1. 8자리 연속 숫자 (예: 20260720)
+        let m8 = cleanStr.match(/\b(20\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\b/);
+        if (m8) {
+            return `${m8[1]}-${m8[2]}-${m8[3]}`;
         }
 
         // 2. 2자리 연도 YY-MM-DD, YY/MM/DD, YY.MM.DD (예: 26/07/20, 26. 7. 20, 26-7-20)
@@ -459,21 +658,23 @@ ${allText.substring(0, 30000)}
         return [];
     };
 
-    // 사이트 / 고객사 식별 시그니처 (HSBMA, SKOH2, SKOY, SKBA, SKBM, SDI, 현대차 아산 등 사이트 간 오연결 원천 차단)
+    // 사이트 / 고객사 식별 시그니처 (HSBMA, SKOJ, SKOH2, SKOY, SKBA, SKBM, SKON, SDI, 현대차 아산 등 사이트 간 오연결 원천 차단)
     const extractSiteSignature = (str) => {
         if (!str) return null;
         const s = String(str).toLowerCase();
         if (/hsbma|북미\s*jv|현대\s*북미|북미/i.test(s)) return 'HSBMA';
+        if (/skoj|sk\s*oj|서산|\boj[0-9]?\b/i.test(s)) return 'SKOJ';
         if (/skoh2|skoh|sk\s*oh2|이반차/i.test(s)) return 'SKOH2';
         if (/skoy|sk\s*oy|옌청/i.test(s)) return 'SKOY';
         if (/skba|sk\s*ba|조지아/i.test(s)) return 'SKBA';
         if (/skbm|sk\s*bm|코마롬/i.test(s)) return 'SKBM';
+        if (/skon|sk\s*on/i.test(s)) return 'SKON';
         if (/삼성\s*sdi|sdi|울산\s*m/i.test(s)) return 'SDI';
         if (/현대차\s*아산|아산/i.test(s)) return 'HY_ASAN';
         return null;
     };
 
-    // 라인 번호 / 범위 시그니처 추출 헬퍼 (예: "Line 5~8", "5~8라인", "1, 2라인", "3라인", "Line 3")
+    // 라인 번호 / 범위 시그니처 추출 헬퍼 (예: "Line 5~8", "5~8라인", "1, 2라인", "3라인", "Line 3", "7라인")
     const extractLineSignature = (str) => {
         if (!str) return null;
         let m = str.match(/(?:line|라인|호기)\s*([0-9]+(?:\s*[-~,]\s*[0-9]+)?)/i);
@@ -503,15 +704,15 @@ ${allText.substring(0, 30000)}
         return false;
     };
 
-    // 범용 지능형 프로젝트명 정규화 (사이트 격리 및 핵심 라인/공정 통일)
+    // 범용 지능형 프로젝트명 정규화 (사이트 격리 및 핵심 라인/공정/제조번호 통일)
     const normalizeProjectName = (rawTitle, bodyPreview = '', projectList = []) => {
         if (!rawTitle) return '';
         let clean = rawTitle.trim().replace(/^[■●▶◆【\[\s]+/, '').replace(/[】\]\s]+$/, '').trim();
 
         // 0. 사이트(Site) 시그니처 식별 (현재 앱 선택 프로젝트 및 텍스트 컨텍스트 기반 타 사이트 오연결 원천 차단)
         const curProjObj = (projects || []).find(p => p.id === selectedProject);
-        const curSite = extractSiteSignature(curProjObj?.name) || 'HSBMA';
-        const candSite = extractSiteSignature(clean) || extractSiteSignature(bodyPreview) || curSite;
+        const curSite = extractSiteSignature(curProjObj?.name);
+        const candSite = extractSiteSignature(clean) || extractSiteSignature(bodyPreview) || curSite || 'HSBMA';
 
         // 1. 라인 번호 시그니처 추출 (제목 우선 -> 본문 앞머리 보조)
         let lineSig = extractLineSignature(clean);
@@ -524,6 +725,8 @@ ${allText.substring(0, 30000)}
                 if (ind12) lineSig = '1~2';
                 const ind3 = bodyPreview.match(/(?:(?<![A-Za-z0-9])3\s*(?:line|라인|호기)|3L-)/i);
                 if (ind3) lineSig = '3';
+                const ind7 = bodyPreview.match(/(?:(?<![A-Za-z0-9])7\s*(?:line|라인|호기)|7L-)/i);
+                if (ind7) lineSig = '7';
             }
         }
 
@@ -544,6 +747,10 @@ ${allText.substring(0, 30000)}
         let bestProj = null;
         let highestScore = -999;
 
+        // 제조번호(Manufacturing No: H055, E1127, S010A 등) 감지
+        const mfgMatch = clean.match(/\b([EH]\d{3,4}|S\d{3}[A-Z]?)\b/i) || bodyPreview.match(/\b([EH]\d{3,4}|S\d{3}[A-Z]?)\b/i);
+        const detectedMfgCode = mfgMatch ? mfgMatch[1].toUpperCase() : null;
+
         for (const p of effectiveProjects) {
             const pSite = extractSiteSignature(p.name);
             // 엄격한 사이트 격리 (Site Isolation): 서로 다른 사이트(예: HSBMA vs SKOH2)는 절대 연결하지 않음!
@@ -555,6 +762,15 @@ ${allText.substring(0, 30000)}
             const pClean = pName.replace(/\s*\([^)]*\)\s*$/, '').trim();
             const pLineSig = extractLineSignature(pClean);
             let score = 0;
+
+            // 제조번호 일치 시 최우선 매칭 (+150)
+            if (detectedMfgCode) {
+                if (p.manufacturingNo && p.manufacturingNo.toUpperCase() === detectedMfgCode) {
+                    score += 150;
+                } else if (pName.toUpperCase().includes(detectedMfgCode)) {
+                    score += 150;
+                }
+            }
 
             if (lineSig && pLineSig) {
                 if (lineSig === pLineSig) {
@@ -571,6 +787,7 @@ ${allText.substring(0, 30000)}
             if (isJC && /j\/?c|형교환/i.test(pName)) score += 30;
 
             if (candSite === 'HSBMA' && /hsbma/i.test(pName)) score += 15;
+            if (candSite === 'SKOJ' && /skoj|oj/i.test(pName)) score += 15;
             if (isSTK && /5~8|set-?up|셋업/i.test(pName)) score += 20;
 
             // 키워드 단어 매칭
@@ -588,10 +805,13 @@ ${allText.substring(0, 30000)}
         if (bestProj) return bestProj;
 
         // 4. 범용 폴백 표준화 규칙 (등록되지 않은 법인 계약건 등 사이트별 표준 명칭 통일)
-        const sitePrefix = candSite === 'HSBMA' ? 'HSBMA' : (candSite || 'HSBMA');
+        const curProjObjFallback = (projects || []).find(p => p.id === selectedProject);
+        const sitePrefix = candSite || (curProjObjFallback?.name ? curProjObjFallback.name.split(/[\s-]+/)[0] : 'HSBMA');
+        if (lineSig === '7') return detectedMfgCode ? `${sitePrefix} 7Line (${detectedMfgCode})` : `${sitePrefix} 7Line`;
         if (lineSig === '3' || isJC) return `${sitePrefix} 3Line J/C 양산대응`;
         if (lineSig === '5~8' || (isSTK && isSetup)) return `${sitePrefix} 5~8Line Set-up`;
         if (lineSig === '1~2' || isYangsan) return `${sitePrefix} 1~2Line 양산대응`;
+        if (detectedMfgCode) return `${sitePrefix} (${detectedMfgCode})`;
 
         return clean;
     };
@@ -690,9 +910,9 @@ ${allText.substring(0, 30000)}
             let dCol = -1, wCol = -1, nCol = -1, dpCol = -1;
             row.forEach((cell, cIdx) => {
                 const clean = cell.replace(/\s+/g, '');
-                if (/^(일자|날짜|일시|Date)$/i.test(clean) && dCol === -1) dCol = cIdx;
-                if (/^(작업내용|업무내용|공정|진행사항|작업현황|주요작업|작업상세|작업|업무|내용)$/i.test(clean) && wCol === -1) wCol = cIdx;
-                if (/특이사항|이슈|비고|건의사항|문제점|특기사항|비고란|참고/i.test(clean) && nCol === -1) nCol = cIdx;
+                if (/^(일자|날짜|일시|작업일자|보고일자|공사일자|Date)$/i.test(clean) && dCol === -1) dCol = cIdx;
+                if (/^(작업내용|업무내용|공정|진행사항|작업현황|주요작업|작업상세|작업|업무|내용|금일작업|금일업무|업무실적|실적|진행내용|공정내용)$/i.test(clean) && wCol === -1) wCol = cIdx;
+                if (/특이사항|이슈|비고|건의사항|문제점|특기사항|비고란|참고|전달사항|협의사항/i.test(clean) && nCol === -1) nCol = cIdx;
                 if (/부서|팀|담당|구분|직종|소속/i.test(clean) && dpCol === -1) dpCol = cIdx;
             });
 
@@ -1209,19 +1429,35 @@ ${allText.substring(0, 30000)}
                         const candLine = extractLineSignature(candClean);
                         let score = 0;
 
-                        // 1. 프로젝트 정규화 명칭 완전 일치 시 최우선
+                        // 1. 제조번호(Manufacturing No: H055 등) 일치 시 최우선 가산 (+150)
+                        if (curProjectObj.manufacturingNo) {
+                            const curMfg = curProjectObj.manufacturingNo.toUpperCase();
+                            if (cand.toUpperCase().includes(curMfg) || candClean.toUpperCase().includes(curMfg)) {
+                                score += 150;
+                            }
+                        }
+
+                        // 2. 사이트 시그니처 일치 (+30) 또는 타 사이트 오연결 차단 (-100)
+                        const candSite = extractSiteSignature(cand);
+                        const curSite = extractSiteSignature(curClean);
+                        if (candSite && curSite) {
+                            if (candSite === curSite) score += 30;
+                            else score -= 100;
+                        }
+
+                        // 3. 프로젝트 정규화 명칭 완전 일치 시 최우선
                         if (candClean === curClean || cand.includes(curClean) || curClean.includes(candClean)) {
                             score += 100;
                         }
 
-                        // 2. 라인 번호/범위 일치 여부
+                        // 4. 라인 번호/범위 일치 여부
                         if (curLine && candLine) {
                             if (curLine === candLine) score += 60;
                             else if (isLineInRange(candLine, curLine) || isLineInRange(curLine, candLine)) score += 40;
                             else score -= 50;
                         }
 
-                        // 3. 공정/단계(Stage) 일치 여부
+                        // 5. 공정/단계(Stage) 일치 여부
                         const candIsSetup = /set-?up|셋업|설치/i.test(cand);
                         const curIsSetup = /set-?up|셋업|설치/i.test(curClean);
                         if (candIsSetup && curIsSetup) score += 20;
@@ -1234,7 +1470,7 @@ ${allText.substring(0, 30000)}
                         const curIsJC = /j\/?c|형교환/i.test(curClean);
                         if (candIsJC && curIsJC) score += 25;
 
-                        // 4. 단어 토큰 매칭
+                        // 6. 단어 토큰 매칭
                         const tokens = curName.split(/[\s,()_~-]+/).filter(t => t.length >= 2);
                         tokens.forEach(t => {
                             if (cand.toLowerCase().includes(t)) score += 5;
@@ -1270,57 +1506,7 @@ ${allText.substring(0, 30000)}
                 return;
             }
 
-            setExtractedReports(prev => {
-                const isInitialEmpty = prev.length === 1 && !prev[0].work_details.trim() && !prev[0].special_notes.trim() && (prev[0].personnel_count || 0) === 0;
-                const currentMap = {};
-                if (!isInitialEmpty) {
-                    prev.forEach(r => {
-                        if (r.date) currentMap[r.date] = { ...r };
-                    });
-                }
-
-                dates.forEach(d => {
-                    const m = mpMap[d];
-                    const totalMD = (m.pm_count || 0) + (m.design_count || 0) + (m.facility_count || 0) +
-                                    (m.control_count || 0) + (m.vision_count || 0) + (m.personnel_count || 0);
-                    const existingDbReport = (projectReports || []).find(p => p.report_date === d);
-
-                    if (!currentMap[d]) {
-                        // 공수 데이터가 있거나 이미 DB에 등록되어 있던 일보인 경우 신규 카드로 생성
-                        if (totalMD > 0 || existingDbReport) {
-                            currentMap[d] = {
-                                date: d,
-                                work_details: existingDbReport?.work_details || existingDbReport?.content || '',
-                                special_notes: existingDbReport?.special_notes || existingDbReport?.issues || '',
-                                personnel_count: m.personnel_count || 0,
-                                pm_count: m.pm_count || 0,
-                                design_count: m.design_count || 0,
-                                facility_count: m.facility_count || 0,
-                                control_count: m.control_count || 0,
-                                vision_count: m.vision_count || 0
-                            };
-                        }
-                    } else {
-                        currentMap[d].pm_count = m.pm_count ?? currentMap[d].pm_count;
-                        currentMap[d].design_count = m.design_count ?? currentMap[d].design_count;
-                        currentMap[d].facility_count = m.facility_count ?? currentMap[d].facility_count;
-                        currentMap[d].control_count = m.control_count ?? currentMap[d].control_count;
-                        currentMap[d].vision_count = m.vision_count ?? currentMap[d].vision_count;
-                        currentMap[d].personnel_count = m.personnel_count ?? currentMap[d].personnel_count;
-
-                        if (!currentMap[d].work_details && existingDbReport) {
-                            currentMap[d].work_details = existingDbReport.work_details || existingDbReport.content || '';
-                        }
-                        if (!currentMap[d].special_notes && existingDbReport) {
-                            currentMap[d].special_notes = existingDbReport.special_notes || existingDbReport.issues || '';
-                        }
-                    }
-                });
-
-                const mergedList = Object.values(currentMap).sort((a, b) => a.date.localeCompare(b.date));
-                return mergedList.length > 0 ? mergedList : prev;
-            });
-
+            mergeManpowerIntoExtracted(mpMap);
             setCollapsedSections(prev => ({ ...prev, inputForm: false }));
             setMsg(`👥 공수 시트 붙여넣기 완료: 유효 인원 데이터가 있는 ${dates.length}일치(${dates[0]} ~ ${dates[dates.length - 1]})를 직접입력 폼에 반영했습니다. (데이터 없는 일자는 자동 제외)`);
         }
@@ -2235,6 +2421,9 @@ ${compiledText.substring(0, 30000)}
                                 className="spm-btn-apply"
                                 onClick={() => {
                                     applyFilteredWorkMap(splitProjectModal.selectedChoice, splitProjectModal.workMap);
+                                    if (splitProjectModal.manpowerMap) {
+                                        mergeManpowerIntoExtracted(splitProjectModal.manpowerMap);
+                                    }
                                     setSplitProjectModal(prev => ({ ...prev, isOpen: false }));
                                 }}
                             >

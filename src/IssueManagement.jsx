@@ -276,26 +276,36 @@ ${allText.substring(0, 30000)}
             return date.toISOString().slice(0, 10);
         }
 
-        const str = String(raw).trim();
+        let str = String(raw).trim();
         if (!str) return null;
 
+        // 엑셀 일련번호(문자열 형태 예: "46224") 지원
+        if (/^\d{5}$/.test(str)) {
+            const num = parseInt(str, 10);
+            if (num > 30000 && num < 70000) {
+                const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+                return date.toISOString().slice(0, 10);
+            }
+        }
+
+        // 0. 앞뒤 특수문자, 불릿, 괄호 내 요일(월/화/수/목/금/토/일/Mon/Tue...) 사전 정규화
+        str = str.replace(/\s*\([월화수목금토일A-Za-z\s]+\)\s*/g, ' ').trim();
+        str = str.replace(/^[■●▶◆【\[\s]+/, '').replace(/[】\]\s]+$/, '').trim();
+
         // 1. 4자리 연도 YYYY-MM-DD, YYYY.MM.DD, YYYY/MM/DD, YYYY년 M월 D일
-        let m = str.match(/(20\d{2})[-./\s년]+(1[0-2]|0?[1-9])[-./\s월]+([12]\d|3[01]|0?[1-9])/);
+        let m = str.match(/(20\d{2})[-./\s년]+(1[0-2]|0?[1-9])[-./\s월]+([12]\d|3[01]|0?[1-9])[일]?/);
         if (m) {
             return `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
         }
 
-        // 2. 2자리 연도 YY-MM-DD, YY/MM/DD, YY.MM.DD (예: 26/07/20, 26.7.20)
-        m = str.match(/(?:^|[^\d])(2[4-9])[-./](1[0-2]|0?[1-9])[-./]([12]\d|3[01]|0?[1-9])(?:$|[^\d])/);
+        // 2. 2자리 연도 YY-MM-DD, YY/MM/DD, YY.MM.DD (예: 26/07/20, 26. 7. 20, 26-7-20)
+        m = str.match(/(?:^|[^\d])(2[4-9])[-./\s년]+(1[0-2]|0?[1-9])[-./\s월]+([12]\d|3[01]|0?[1-9])[일]?(?:$|[^\d])/);
         if (m) {
             return `20${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
         }
 
-        // 3. 월/일 포맷: [07/20], [7/20], (07/20), 7월 20일, 7/20 (연도 없으면 올해 연도 부여)
-        m = str.match(/\[\s*(1[0-2]|0?[1-9])[-./월\s]+([12]\d|3[01]|0?[1-9])[일\s]*\]/) ||
-            str.match(/\(\s*(1[0-2]|0?[1-9])[-./월\s]+([12]\d|3[01]|0?[1-9])[일\s]*\)/) ||
-            str.match(/(?:금일|일보|진행|일자|보고)\D*(1[0-2]|0?[1-9])[-./월\s]+([12]\d|3[01]|0?[1-9])/i) ||
-            str.match(/^0?(1[0-2]|0?[1-9])[-./월\s]+([12]\d|3[01]|0?[1-9])[일]?$/);
+        // 3. 월/일 포맷: [07/20], 7/20, 7.20, 7-20, 7월 20일 (연도 없으면 올해 연도 부여)
+        m = str.match(/(?:^|[^\d]|금일|일보|진행|일자|보고\s*)(1[0-2]|0?[1-9])[-./\s월]+([12]\d|3[01]|0?[1-9])[일]?(?:$|[^\d])/);
         if (m) {
             const currentYear = new Date().getFullYear();
             return `${currentYear}-${String(m[1]).padStart(2, '0')}-${String(m[2]).padStart(2, '0')}`;
@@ -648,32 +658,28 @@ ${allText.substring(0, 30000)}
 
                 if (!currentDate) continue;
 
-                // 행에서 라벨과 가장 실질적인 내용 텍스트 탐색
+                // 행에서 라벨과 실질적인 내용 텍스트 수집
                 const firstCol = (row[0] || '').replace(/\s+/g, '');
                 const rowText = row.join(' ');
+                const isSpecialNoteRow = /이슈|특이사항|문제점|건의|비고/i.test(firstCol) || /이슈\s*사항/i.test(rowText);
 
-                // 가장 긴 의미 있는 내용 셀 탐색 (단, 라벨이나 날짜 셀 제외)
-                let bestText = '';
+                // 행 내의 모든 의미 있는 프로젝트/업무 셀 수집 (기존 단일 bestText 선택 방식 탈피 -> 모든 열/셀의 프로젝트 작업내용 전원 누적)
                 for (let c = 0; c < row.length; c++) {
                     const cellVal = (row[c] || '').trim();
                     if (!cellVal) continue;
-                    if (/^(구분|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고)$/i.test(cellVal.replace(/\s+/g, ''))) continue;
+                    // 구분용 라벨이나 날짜 셀은 건너뜀
+                    if (/^(구분|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고|주요\s*업무|일자|날짜)$/i.test(cellVal.replace(/\s+/g, ''))) continue;
                     if (normalizeReportDate(cellVal)) continue;
-                    if (cellVal.length > bestText.length) {
-                        bestText = cellVal;
-                    }
-                }
 
-                if (!bestText) continue;
-
-                // 특이사항 또는 작업내용으로 분류하여 누적
-                if (/이슈|특이사항|문제점|건의|비고/i.test(firstCol) || /이슈\s*사항/i.test(rowText)) {
-                    if (!result[currentDate].special_notes.includes(bestText)) {
-                        result[currentDate].special_notes.push(bestText);
-                    }
-                } else if (bestText.length >= 4 || /\[.*\]|<.*>|\d\./.test(bestText)) {
-                    if (!result[currentDate].work_details.includes(bestText)) {
-                        result[currentDate].work_details.push(bestText);
+                    // 특이사항 또는 작업내용으로 분류하여 누적
+                    if (isSpecialNoteRow || /^(특이사항|이슈):/i.test(cellVal)) {
+                        if (!result[currentDate].special_notes.includes(cellVal)) {
+                            result[currentDate].special_notes.push(cellVal);
+                        }
+                    } else if (cellVal.length >= 4 || /\[.*\]|<.*>|\d\./.test(cellVal)) {
+                        if (!result[currentDate].work_details.includes(cellVal)) {
+                            result[currentDate].work_details.push(cellVal);
+                        }
                     }
                 }
             }

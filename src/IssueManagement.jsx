@@ -4,6 +4,7 @@ import { supabase } from './supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as XLSX from 'xlsx';
 import pptxgen from 'pptxgenjs';
+import SmartProjectSelector from './SmartProjectSelector';
 
 export default function IssueManagement({ projects, role, onPermissionDenied }) {
     const [activeIssueSection, setActiveIssueSection] = useState(() => {
@@ -2203,14 +2204,17 @@ ${compiledText.substring(0, 30000)}
                                 프로젝트 선택 후 등록된 일보 내역 조회만 가능하며, 일보 등록/삭제 및 AI 분석 기능은 제한됩니다.
                             </div>
                         )}
-                        <div>
-                            <div className="panel-title">프로젝트 및 날짜 *</div>
-                            <select className="project-select" value={selectedProject} onChange={(e) => setSelectedProject(e.target.value)} style={{marginBottom: '0.5rem'}}>
-                                <option value="">프로젝트를 선택하세요</option>
-                                {projectOptions.map(p => (
-                                    <option key={p.id} value={p.id}>{p.manufacturingNo ? `${p.manufacturingNo} · ` : ''}{p.name}</option>
-                                ))}
-                            </select>
+                        <div style={{ marginBottom: '0.75rem' }}>
+                            <div className="panel-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                <span>프로젝트 및 날짜 *</span>
+                                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'normal' }}>연도별 필터 & 스마트 검색 🔍</span>
+                            </div>
+                            <SmartProjectSelector
+                                projects={projects}
+                                selectedProjectId={selectedProject}
+                                onSelectProject={(id) => setSelectedProject(id)}
+                                placeholder="프로젝트를 검색하여 선택하세요..."
+                            />
                         </div>
 
                         <div style={{marginTop: '1rem', marginBottom: '1rem'}}>
@@ -2604,17 +2608,14 @@ ${compiledText.substring(0, 30000)}
                                     <span style={{ fontSize: '2.8rem', display: 'block', marginBottom: '10px' }}>📂</span>
                                     <h3 style={{ margin: '0 0 8px 0', color: '#1e293b' }}>프로젝트를 선택해주세요</h3>
                                     <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '16px' }}>조회할 프로젝트를 선택하면 등록된 일보 목록이 표시됩니다.</p>
-                                    <select 
-                                        className="project-select" 
-                                        value={selectedProject} 
-                                        onChange={(e) => setSelectedProject(e.target.value)} 
-                                        style={{ width: '100%', padding: '8px 12px', fontSize: '0.9rem' }}
-                                    >
-                                        <option value="">프로젝트를 선택하세요</option>
-                                        {projectOptions.map(p => (
-                                            <option key={p.id} value={p.id}>{p.manufacturingNo ? `${p.manufacturingNo} · ` : ''}{p.name}</option>
-                                        ))}
-                                    </select>
+                                    <div style={{ width: '100%', margin: '0 auto' }}>
+                                        <SmartProjectSelector 
+                                            projects={projects}
+                                            selectedProjectId={selectedProject} 
+                                            onSelectProject={(id) => setSelectedProject(id)} 
+                                            placeholder="조회할 프로젝트를 검색하여 선택하세요..."
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         ) : projectReports.length === 0 ? (
@@ -2623,17 +2624,13 @@ ${compiledText.substring(0, 30000)}
                                     <span style={{ fontSize: '2.8rem', display: 'block', marginBottom: '10px' }}>📄</span>
                                     <h3 style={{ margin: '0 0 8px 0', color: '#1e293b' }}>등록된 일보가 없습니다</h3>
                                     <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '16px' }}>공사일보를 업로드하고 저장해보세요.</p>
-                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                        <select 
-                                            className="project-select" 
-                                            value={selectedProject} 
-                                            onChange={(e) => setSelectedProject(e.target.value)} 
-                                            style={{ width: 'auto', padding: '6px 12px', fontSize: '0.85rem' }}
-                                        >
-                                            {projectOptions.map(p => (
-                                                <option key={p.id} value={p.id}>{p.manufacturingNo ? `${p.manufacturingNo} · ` : ''}{p.name}</option>
-                                            ))}
-                                        </select>
+                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                                        <SmartProjectSelector 
+                                            projects={projects}
+                                            selectedProjectId={selectedProject} 
+                                            onSelectProject={(id) => setSelectedProject(id)} 
+                                            compact={true}
+                                        />
                                         {activeIssueSection === 'list' && (
                                             <button
                                                 type="button"
@@ -2662,16 +2659,13 @@ ${compiledText.substring(0, 30000)}
                                         <h2 className="section-title">
                                             {projects.find(p => p.id === selectedProject)?.name || '등록된'} 일보 ({projectReports.length}건)
                                         </h2>
-                                        <select 
-                                            className="project-select" 
-                                            value={selectedProject} 
-                                            onChange={(e) => setSelectedProject(e.target.value)} 
-                                            style={{ width: 'auto', minWidth: '220px', maxWidth: '320px', padding: '4px 8px', fontSize: '0.85rem' }}
-                                        >
-                                            {projectOptions.map(p => (
-                                                <option key={p.id} value={p.id}>{p.manufacturingNo ? `${p.manufacturingNo} · ` : ''}{p.name}</option>
-                                            ))}
-                                        </select>
+                                        <SmartProjectSelector 
+                                            projects={projects}
+                                            selectedProjectId={selectedProject} 
+                                            onSelectProject={(id) => setSelectedProject(id)} 
+                                            compact={true}
+                                            style={{ minWidth: '260px', maxWidth: '380px' }}
+                                        />
                                     </div>
                                     <div style={{display: 'flex', gap: '6px'}}>
                                         <button

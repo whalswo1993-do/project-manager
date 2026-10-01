@@ -262,28 +262,72 @@ export default function App() {
   const [siteFilter, setSiteFilter] = useState("전체");
   const [personFilter, setPersonFilter] = useState("전체");
   
-  // 연간 단위 프로젝트 조회 시스템 (Year Filter)
+  // 복수 연간 단위 프로젝트 조회 시스템 (Multi-Year Filter: 1년, 2년치, 3년치, 전체 등 복수 선택 가능)
   const currentYearStr = String(new Date().getFullYear());
-  const [yearFilter, setYearFilter] = useState(() => {
+  const [selectedYears, setSelectedYears] = useState(() => {
     try {
-      const saved = localStorage.getItem("pm_year_filter");
-      if (saved) return saved;
+      const saved = localStorage.getItem("pm_selected_years");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      const oldSingle = localStorage.getItem("pm_year_filter");
+      if (oldSingle) return oldSingle === "전체" ? ["ALL"] : [oldSingle];
     } catch (e) {}
-    return currentYearStr; // 기본값: 현재 연도 (예: "2026")
+    return [currentYearStr]; // 기본값: 현재 연도 (예: ["2026"])
   });
 
-  const handleYearFilterChange = (yr) => {
-    setYearFilter(yr);
+  const isAllYears = selectedYears.includes("ALL");
+
+  // 개별 연도 토글 (다중 선택/해제)
+  const handleToggleYear = (yr) => {
+    let next;
+    if (yr === "ALL") {
+      next = ["ALL"];
+    } else {
+      if (isAllYears) {
+        next = [yr];
+      } else if (selectedYears.includes(yr)) {
+        if (selectedYears.length === 1) {
+          next = ["ALL"]; // 마지막 선택 해제 시 전체 연도로 전환
+        } else {
+          next = selectedYears.filter(y => y !== yr);
+        }
+      } else {
+        next = [...selectedYears, yr].sort((a, b) => b.localeCompare(a));
+      }
+    }
+    setSelectedYears(next);
     try {
-      localStorage.setItem("pm_year_filter", yr);
+      localStorage.setItem("pm_selected_years", JSON.stringify(next));
     } catch (e) {}
-    // 연도 변경 시 달력도 해당 연도로 부드럽게 동기화
-    if (yr !== "전체") {
+
+    // 달력 연도 동기화
+    if (yr !== "ALL") {
       const targetYearNum = parseInt(yr, 10);
       if (!isNaN(targetYearNum) && month.getFullYear() !== targetYearNum) {
         setMonth(new Date(targetYearNum, month.getMonth(), 1));
       }
     }
+  };
+
+  // 원클릭 프리셋 핸들러 (당해년도, 최근 2개년, 최근 3개년, 전체 연도)
+  const handlePresetYears = (presetType) => {
+    const curY = parseInt(currentYearStr, 10);
+    let next;
+    if (presetType === "current") {
+      next = [currentYearStr];
+    } else if (presetType === "2years") {
+      next = [String(curY - 1), currentYearStr];
+    } else if (presetType === "3years") {
+      next = [String(curY - 2), String(curY - 1), currentYearStr];
+    } else {
+      next = ["ALL"];
+    }
+    setSelectedYears(next);
+    try {
+      localStorage.setItem("pm_selected_years", JSON.stringify(next));
+    } catch (e) {}
   };
 
   const [msg, setMsg] = useState("");
@@ -868,20 +912,26 @@ export default function App() {
         overdue: currentStatus !== "완료" && dt(p.endDate) < dt(iso())
       };
     }).filter(p => {
-      // 1. 연도 필터링: 프로젝트 진행 기간(startDate ~ endDate)이 선택한 연도(yearFilter)에 걸치는지 검사
+      // 1. 복수 연도 필터링: 프로젝트 진행 기간(startDate ~ endDate)이 선택한 복수 연도(selectedYears)에 걸치는지 검사
       let yearMatch = true;
-      if (yearFilter !== "전체") {
-        const yStart = `${yearFilter}-01-01`;
-        const yEnd = `${yearFilter}-12-31`;
+      if (!isAllYears && selectedYears.length > 0) {
         const pStart = p.startDate || "";
         const pEnd = p.endDate || "";
-        if (pStart && pEnd) {
-          yearMatch = (pStart <= yEnd && pEnd >= yStart);
-        } else if (pStart) {
-          yearMatch = (pStart <= yEnd);
-        } else if (pEnd) {
-          yearMatch = (pEnd >= yStart);
-        }
+        const sYr = pStart && pStart.length >= 4 ? parseInt(pStart.slice(0, 4), 10) : null;
+        const eYr = pEnd && pEnd.length >= 4 ? parseInt(pEnd.slice(0, 4), 10) : null;
+
+        yearMatch = selectedYears.some(yrStr => {
+          const targetYr = parseInt(yrStr, 10);
+          if (isNaN(targetYr)) return true;
+          if (sYr && eYr) {
+            return targetYr >= sYr && targetYr <= eYr;
+          } else if (sYr) {
+            return targetYr >= sYr;
+          } else if (eYr) {
+            return targetYr <= eYr;
+          }
+          return true;
+        });
       }
 
       const text = [p.manufacturingNo, p.site, p.line, p.name, p.pm, p.design, p.facilityTechnology, p.control, p.vision].join(" ").toLowerCase();
@@ -909,7 +959,7 @@ export default function App() {
 
     // 동시 진행 프로젝트 간 중복 및 유사 색상을 방지하는 지능형 색상 분산 적용
     return assignDistinctColors(list, COLORS);
-  }, [projects, search, filter, siteFilter, personFilter, yearFilter]);
+  }, [projects, search, filter, siteFilter, personFilter, selectedYears, isAllYears]);
 
   // 등록된 프로젝트들의 기간에서 추출한 고유 연도 목록 (최신순)
   const availableYears = useMemo(() => {
@@ -931,7 +981,7 @@ export default function App() {
     return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
   }, [projects]);
 
-  // 선택된 연도(또는 전체)에 대한 연간 프로젝트 현황 통계
+  // 선택된 복수 연도(또는 전체)에 대한 연간 프로젝트 현황 통계
   const yearStats = useMemo(() => {
     let ongoing = 0;
     let completed = 0;
@@ -947,7 +997,8 @@ export default function App() {
         totalManpower += Number(p.manpower.totalManday) || 0;
       } else if (p.manpower?.dailyTotal) {
         Object.entries(p.manpower.dailyTotal).forEach(([dStr, val]) => {
-          if (yearFilter === "전체" || dStr.startsWith(yearFilter)) {
+          const dYr = dStr.slice(0, 4);
+          if (isAllYears || selectedYears.includes(dYr)) {
             totalManpower += Number(val) || 0;
           }
         });
@@ -961,7 +1012,7 @@ export default function App() {
       delayed,
       totalManpower
     };
-  }, [view, yearFilter]);
+  }, [view, selectedYears, isAllYears]);
 
   // 간트차트 기간 필터가 적용된 프로젝트 목록
   const ganttView = useMemo(() => {
@@ -1784,14 +1835,158 @@ JSON 출력 예시:
         </div>
       </div>
 
+      {/* 글로벌 복수 연간 단위 선택기 (Global Multi-Year Toolbar: 당해년도, 최근 2개년, 최근 3개년, 전체 및 복수 토글) */}
+      <div className="global-multi-year-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', margin: '8px 0', flexWrap: 'wrap', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', color: '#1e293b', marginRight: '4px' }}>
+            <span style={{ fontSize: '15px' }}>📅</span>
+            <span>조회 연도:</span>
+          </div>
+
+          {/* 1. 빠른 프리셋 버튼 (원클릭) */}
+          <div style={{ display: 'flex', gap: '3px', background: '#e2e8f0', padding: '2px', borderRadius: '8px' }}>
+            <button
+              type="button"
+              onClick={() => handlePresetYears('current')}
+              style={{
+                padding: '3px 9px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: (!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? 700 : 500,
+                background: (!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? '#2563eb' : 'transparent',
+                color: (!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? '#fff' : '#475569',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+              title="현재 진행 중인 당해 연도 프로젝트만 조회합니다"
+            >
+              당해년도({currentYearStr})
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePresetYears('2years')}
+              style={{
+                padding: '3px 9px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: (!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? 700 : 500,
+                background: (!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? '#2563eb' : 'transparent',
+                color: (!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? '#fff' : '#475569',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+              title="최근 2년간(작년+올해)의 프로젝트를 묶어서 조회합니다"
+            >
+              최근 2개년
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePresetYears('3years')}
+              style={{
+                padding: '3px 9px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: (!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? 700 : 500,
+                background: (!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? '#2563eb' : 'transparent',
+                color: (!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? '#fff' : '#475569',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+              title="최근 3년간의 프로젝트를 묶어서 조회합니다"
+            >
+              최근 3개년
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePresetYears('all')}
+              style={{
+                padding: '3px 9px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: isAllYears ? 700 : 500,
+                background: isAllYears ? '#0f172a' : 'transparent',
+                color: isAllYears ? '#fff' : '#475569',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+              title="전체 연도의 모든 프로젝트를 조회합니다"
+            >
+              전체 연도
+            </button>
+          </div>
+
+          <span style={{ color: '#cbd5e1', margin: '0 2px' }}>|</span>
+
+          {/* 2. 개별 연도 복수 토글 버튼 */}
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {availableYears.map(yr => {
+              const isSelected = !isAllYears && selectedYears.includes(yr);
+              const isCurrent = (yr === currentYearStr);
+              return (
+                <button
+                  key={yr}
+                  type="button"
+                  onClick={() => handleToggleYear(yr)}
+                  style={{
+                    padding: '3px 10px',
+                    borderRadius: '16px',
+                    fontSize: '11.5px',
+                    fontWeight: isSelected ? '700' : '500',
+                    border: isSelected ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                    background: isSelected ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#fff',
+                    color: isSelected ? '#fff' : '#475569',
+                    cursor: 'pointer',
+                    boxShadow: isSelected ? '0 1px 3px rgba(37, 99, 235, 0.25)' : 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title={`클릭하여 ${yr}년도를 선택/해제(다중 선택)합니다`}
+                >
+                  <span>{yr}년</span>
+                  {isSelected && <span style={{ fontSize: '10px' }}>✓</span>}
+                  {isCurrent && !isSelected && (
+                    <span style={{ fontSize: '9px', background: '#e0e7ff', color: '#4338ca', padding: '1px 4px', borderRadius: '6px' }}>현재</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 연간 통계 요약 (우측) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', flexWrap: 'wrap' }}>
+          <span style={{ color: '#475569' }}>
+            <b>{isAllYears ? "전체 연도" : selectedYears.length === 1 ? `${selectedYears[0]}년` : `${selectedYears.slice().sort().join(', ')}년 (${selectedYears.length}개년)`}</b> 프로젝트: <b style={{ color: '#0f172a', fontSize: '13px' }}>{yearStats.total}건</b>
+          </span>
+          <span style={{ color: '#cbd5e1' }}>|</span>
+          <span style={{ color: '#059669', fontWeight: 600 }}>진행중 <b>{yearStats.ongoing}</b></span>
+          <span style={{ color: '#cbd5e1' }}>|</span>
+          <span style={{ color: '#2563eb', fontWeight: 600 }}>완료 <b>{yearStats.completed}</b></span>
+          {yearStats.delayed > 0 && (
+            <>
+              <span style={{ color: '#cbd5e1' }}>|</span>
+              <span style={{ color: '#dc2626', fontWeight: 600 }}>지연 <b>{yearStats.delayed}</b></span>
+            </>
+          )}
+          {yearStats.totalManpower > 0 && (
+            <>
+              <span style={{ color: '#cbd5e1' }}>|</span>
+              <span style={{ color: '#7c3aed', fontWeight: 600 }}>총공수 <b>{yearStats.totalManpower.toLocaleString()} M/D</b></span>
+            </>
+          )}
+        </div>
+      </div>
+
       {currentView === "vision-spc" ? (
         <ErrorBoundary><VisionSPC /></ErrorBoundary>
       ) : currentView === "issues" ? (
-        <IssueManagement projects={projects} role={role} onPermissionDenied={showPermissionModal} />
+        <IssueManagement projects={view} role={role} onPermissionDenied={showPermissionModal} selectedYears={selectedYears} />
       ) : currentView === "quotations" ? (
         <Quotations projects={projects} session={session} role={role} onPermissionDenied={showPermissionModal} />
       ) : currentView === "manpower" ? (
-        <ManpowerManagement projects={projects} sites={sites} onSelectProject={setSelectedManpowerProject} />
+        <ManpowerManagement projects={view} allProjects={projects} sites={sites} onSelectProject={setSelectedManpowerProject} selectedYears={selectedYears} availableYears={availableYears} onToggleYear={handleToggleYear} onPresetYears={handlePresetYears} />
       ) : (
         <>
           {/* 프로젝트 일정 관리 시스템 메인 헤더 카드 (틀고정) */}
@@ -1831,101 +2026,6 @@ JSON 출력 예시:
               </div>
             </div>
 
-            {/* 글로벌 연간 단위 선택기 (Year Tabs) 및 연간 핵심 통계 요약 바 */}
-            <div className="system-year-selector-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', margin: '8px 0', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', color: '#1e293b', marginRight: '6px' }}>
-                  <span style={{ fontSize: '15px' }}>📅</span>
-                  <span>기준 연도:</span>
-                </div>
-                {availableYears.map(yr => {
-                  const isSelected = (yearFilter === yr);
-                  const isCurrent = (yr === currentYearStr);
-                  return (
-                    <button
-                      key={yr}
-                      type="button"
-                      onClick={() => handleYearFilterChange(yr)}
-                      style={{
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '12px',
-                        fontWeight: isSelected ? '700' : '600',
-                        border: isSelected ? '1px solid #2563eb' : '1px solid #cbd5e1',
-                        background: isSelected ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#fff',
-                        color: isSelected ? '#fff' : '#475569',
-                        cursor: 'pointer',
-                        boxShadow: isSelected ? '0 2px 4px rgba(37, 99, 235, 0.25)' : 'none',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        transition: 'all 0.15s ease'
-                      }}
-                      title={`${yr}년도에 진행되는 프로젝트만 선별 조회합니다.`}
-                    >
-                      <span>{yr}년</span>
-                      {isCurrent && (
-                        <span style={{
-                          fontSize: '10px',
-                          background: isSelected ? 'rgba(255,255,255,0.3)' : '#e0e7ff',
-                          color: isSelected ? '#fff' : '#4338ca',
-                          padding: '1px 5px',
-                          borderRadius: '8px',
-                          fontWeight: 'bold'
-                        }}>
-                          현재
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  onClick={() => handleYearFilterChange("전체")}
-                  style={{
-                    padding: '4px 12px',
-                    borderRadius: '20px',
-                    fontSize: '12px',
-                    fontWeight: yearFilter === "전체" ? '700' : '600',
-                    border: yearFilter === "전체" ? '1px solid #0f172a' : '1px solid #cbd5e1',
-                    background: yearFilter === "전체" ? '#0f172a' : '#fff',
-                    color: yearFilter === "전체" ? '#fff' : '#475569',
-                    cursor: 'pointer',
-                    boxShadow: yearFilter === "전체" ? '0 2px 4px rgba(15, 23, 42, 0.25)' : 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="과거부터 현재까지의 모든 연도 프로젝트를 누적 통합 조회합니다."
-                >
-                  <span>🌐 전체 연도</span>
-                </button>
-              </div>
-
-              {/* 연간 핵심 KPI 통계 배지 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', flexWrap: 'wrap' }}>
-                <span style={{ color: '#475569' }}>
-                  {yearFilter === "전체" ? "전체 대상" : `${yearFilter}년 프로젝트`}: <b style={{ color: '#0f172a', fontSize: '13px' }}>{yearStats.total}건</b>
-                </span>
-                <span style={{ color: '#cbd5e1' }}>|</span>
-                <span style={{ color: '#059669', fontWeight: 600 }}>진행중 <b>{yearStats.ongoing}</b></span>
-                <span style={{ color: '#cbd5e1' }}>|</span>
-                <span style={{ color: '#2563eb', fontWeight: 600 }}>완료 <b>{yearStats.completed}</b></span>
-                {yearStats.delayed > 0 && (
-                  <>
-                    <span style={{ color: '#cbd5e1' }}>|</span>
-                    <span style={{ color: '#dc2626', fontWeight: 600 }}>지연 <b>{yearStats.delayed}</b></span>
-                  </>
-                )}
-                {yearStats.totalManpower > 0 && (
-                  <>
-                    <span style={{ color: '#cbd5e1' }}>|</span>
-                    <span style={{ color: '#7c3aed', fontWeight: 600 }}>총공수 <b>{yearStats.totalManpower.toLocaleString()} M/D</b></span>
-                  </>
-                )}
-              </div>
-            </div>
 
             {/* 소항목 필터 버튼 그룹 */}
             <div className="system-sub-nav">

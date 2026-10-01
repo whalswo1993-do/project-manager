@@ -4,6 +4,7 @@ import ExcelJS from "exceljs";
 import PptxGenJS from "pptxgenjs";
 import { normalizeJVName } from "./utils";
 import { supabase } from "./supabase";
+import SmartProjectSelector from "./SmartProjectSelector";
 
 const BASE_DEPT_ORDER = [
   "mechanical",
@@ -392,7 +393,7 @@ export function MonthNavigator({ currentDate, onPrev, onNext, onToday }) {
   );
 }
 
-export default function ManpowerManagement({ projects = [], sites = [], onSelectProject }) {
+export default function ManpowerManagement({ projects = [], allProjects = [], sites = [], onSelectProject, selectedYears = ['ALL'], availableYears = [], onToggleYear, onPresetYears }) {
   const [currentDate, setCurrentDate] = useState(() => {
     for (const p of projects) {
       if (p.manpower?.dailyTotal) {
@@ -497,6 +498,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const [selectedCompProject, setSelectedCompProject] = useState("");
   const [compSearch, setCompSearch] = useState("");
+  const [compYearFilter, setCompYearFilter] = useState("ALL");
   const [onlyReported, setOnlyReported] = useState(true);
   const [compSort, setCompSort] = useState("diffDesc");
   const [expandedDailyDetails, setExpandedDailyDetails] = useState({});
@@ -1848,22 +1850,44 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
     };
   };
 
-  // 3. 전체 프로젝트 비교 목록
+  // 3. 전체 프로젝트 비교 목록 (전체 프로젝트 풀 대상)
+  const compProjectPool = useMemo(() => {
+    return (allProjects && allProjects.length > 0) ? allProjects : projects;
+  }, [allProjects, projects]);
+
   const allComparisonData = useMemo(() => {
-    return (projects || []).map(p => computeCompData(p));
-  }, [projects, reportsByProject]);
+    return compProjectPool.map(p => computeCompData(p));
+  }, [compProjectPool, reportsByProject]);
 
   // 첫 진입 시 일보 등록 프로젝트 우선 선택
   useEffect(() => {
-    if (!selectedCompProject && projects.length > 0) {
-      const withRep = projects.find(p => reportsByProject[p.id]?.length > 0);
-      setSelectedCompProject(withRep ? withRep.id : projects[0].id);
+    if (!selectedCompProject && compProjectPool.length > 0) {
+      const withRep = compProjectPool.find(p => reportsByProject[p.id]?.length > 0);
+      setSelectedCompProject(withRep ? withRep.id : compProjectPool[0].id);
     }
-  }, [projects, reportsByProject, selectedCompProject]);
+  }, [compProjectPool, reportsByProject, selectedCompProject]);
 
   // 4. 필터링 및 정렬된 비교 목록
   const filteredCompData = useMemo(() => {
     let list = [...allComparisonData];
+
+    // 연도 필터링
+    if (compYearFilter !== "ALL") {
+      const targetY = parseInt(compYearFilter, 10);
+      if (!isNaN(targetY)) {
+        list = list.filter(item => {
+          const p = item.project;
+          const s = p?.startDate || p?.start_date || '';
+          const e = p?.endDate || p?.end_date || '';
+          const sYr = s.length >= 4 ? parseInt(s.slice(0, 4), 10) : null;
+          const eYr = e.length >= 4 ? parseInt(e.slice(0, 4), 10) : null;
+          if (sYr && eYr) return targetY >= sYr && targetY <= eYr;
+          if (sYr) return targetY >= sYr;
+          if (eYr) return targetY <= eYr;
+          return true;
+        });
+      }
+    }
 
     if (onlyReported) {
       list = list.filter(item => item.reportCount > 0 || item.planTotal > 0);
@@ -2814,6 +2838,46 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                   <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'normal' }}>({filteredCompData.length}건)</span>
                 </h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                  {/* 연도 탭 필터 바 */}
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: '#f1f5f9', padding: '2px 4px', borderRadius: '14px', border: '1px solid #cbd5e1' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569', marginLeft: '4px', marginRight: '2px' }}>📅 연도:</span>
+                    <button
+                      type="button"
+                      onClick={() => setCompYearFilter("ALL")}
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        fontSize: '11px',
+                        fontWeight: compYearFilter === "ALL" ? 'bold' : 'normal',
+                        background: compYearFilter === "ALL" ? '#2563eb' : 'transparent',
+                        color: compYearFilter === "ALL" ? '#fff' : '#475569',
+                        border: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      전체
+                    </button>
+                    {(availableYears && availableYears.length > 0 ? availableYears : [String(new Date().getFullYear())]).map(yr => (
+                      <button
+                        key={yr}
+                        type="button"
+                        onClick={() => setCompYearFilter(yr)}
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          fontSize: '11px',
+                          fontWeight: compYearFilter === yr ? 'bold' : 'normal',
+                          background: compYearFilter === yr ? '#2563eb' : 'transparent',
+                          color: compYearFilter === yr ? '#fff' : '#475569',
+                          border: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {yr}년
+                      </button>
+                    ))}
+                  </div>
+
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     <input
                       type="checkbox"
@@ -2982,26 +3046,14 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                     <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e293b' }}>
                       🔍 프로젝트 공수 상세 분석:
                     </span>
-                    <select
-                      value={selectedCompProject}
-                      onChange={e => setSelectedCompProject(e.target.value)}
-                      style={{
-                        padding: '5px 10px',
-                        fontSize: '12px',
-                        border: '1.5px solid #3b82f6',
-                        borderRadius: '6px',
-                        background: '#eff6ff',
-                        fontWeight: 'bold',
-                        color: '#1e3a8a',
-                        maxWidth: '380px'
-                      }}
-                    >
-                      {projects.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.manufacturingNo ? `[${p.manufacturingNo}] ` : ""}{p.name}
-                        </option>
-                      ))}
-                    </select>
+                    <SmartProjectSelector
+                      projects={compProjectPool}
+                      selectedProjectId={selectedCompProject}
+                      onSelectProject={(id) => setSelectedCompProject(id)}
+                      compact={true}
+                      placeholder="분석할 프로젝트를 검색하세요..."
+                      style={{ minWidth: '280px', maxWidth: '420px' }}
+                    />
                   </div>
                   <div style={{ fontSize: '12px', color: '#64748b' }}>
                     Site: <b>{selectedProjectComp.site || "-"}</b> | Line: <b>{selectedProjectComp.line || "-"}</b> | 등록 일보: <b style={{ color: '#10b981' }}>{selectedProjectComp.reportCount}건</b>

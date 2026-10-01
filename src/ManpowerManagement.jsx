@@ -1624,7 +1624,7 @@ export default function ManpowerManagement({
       if (visDiff !== 0) deptChanges.push(`비전 ${visDiff > 0 ? `+${visDiff}` : visDiff}`);
       if (visSubDiff !== 0) deptChanges.push(`비전외주 ${visSubDiff > 0 ? `+${visSubDiff}` : visSubDiff}`);
       if (mgrDiff !== 0) deptChanges.push(`소장 ${mgrDiff > 0 ? `+${mgrDiff}` : mgrDiff}`);
-      if (safetyDiff !== 0) deptChanges.push(`안전/CS ${safetyDiff > 0 ? `+${safetyDiff}` : safetyDiff}`);
+      if (safetyDiff !== 0) deptChanges.push(`안전 ${safetyDiff > 0 ? `+${safetyDiff}` : safetyDiff}`);
 
       const allCustomKeys = new Set([...Object.keys(r.custom_depts || {}), ...Object.keys(prevReport.custom_depts || {})]);
       allCustomKeys.forEach(k => {

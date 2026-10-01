@@ -60,7 +60,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
         electrical_outsource: 0,
         vision_count: 0,
         vision_outsource: 0,
-        personnel_count: 0, // 안전/CS (기타 대체)
+        personnel_count: 0, // 안전
         custom_depts: {}
     });
 
@@ -191,7 +191,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
                             electrical_outsource: m.electrical_outsource || 0,
                             vision_count: m.vision_count || 0,
                             vision_outsource: m.vision_outsource || 0,
-                            personnel_count: m.personnel_count || 0, // 안전/CS
+                            personnel_count: m.personnel_count || 0, // 안전
                             custom_depts: { ...(existingDbReport?.custom_depts || {}), ...(m.custom_depts || {}) }
                         };
                     }
@@ -385,7 +385,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
             const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
             const prompt = `
 다음은 현장 공사일보(엑셀)의 원본 텍스트입니다. 이 내용에서 일자별로 데이터를 분류하여 3가지 주요 정보(작업내용, 특이사항, 투입인원)를 추출해주세요.
-특히 투입인원은 부서별(소장, 설계, 기구, 기구외주, 제어, 제어외주, 전장, 전장외주, 비전, 비전외주, 안전/CS)로 세분화하여 파악해주세요. 전장(전기/배선)과 제어(PLC/로봇제어)는 반드시 별개 부서로 구분하세요. 안전, 통역, 법인, 기타 지원인력은 안전/CS(personnel_count)로 합산하세요. 그 외 도비, 레이저용접 등 명시된 특수 부서는 custom_depts 객체에 담으세요.
+특히 투입인원은 부서별(소장, 설계, 기구, 기구외주, 제어, 제어외주, 전장, 전장외주, 비전, 비전외주, 안전)로 세분화하여 파악해주세요. 전장(전기/배선)과 제어(PLC/로봇제어)는 반드시 별개 부서로 구분하세요. 순수 안전(Safety/HSE) 관리 인원만 안전(personnel_count)으로 반영하세요. (※ 우리 회사 CS팀은 폐지되었으므로 CS 분류는 일체 사용하지 않습니다.) 통역, 법인, 지원, 본사, 도비, 레이저용접 등 일보에 기재된 다른 모든 부서/직무는 절대로 안전에 합산하지 말고, 반드시 일보에 기재된 원래 부서명 그대로 custom_depts 객체에 담으세요 (예: { "통역": 1, "지원": 1 }).
 결과는 반드시 아래 JSON 배열 포맷으로만 반환해주세요. (마크다운 포맷이나 백틱을 절대로 포함하지 마세요.)
 **중요: 텍스트에 연도(Year)가 표기되어 있지 않은 경우, 반드시 올해(${new Date().getFullYear()}년)를 기준으로 날짜를 작성하세요.**
 
@@ -393,7 +393,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
 [
   {
     "date": "YYYY-MM-DD",
-    "work_details": "해당 일자의 진행 작업(업무) 내용 요약 (다중 라인은 \n 사용)",
+    "work_details": "해당 일자의 진행 작업(업무) 내용 요약 (다중 라인은 \\n 사용)",
     "special_notes": "특이사항, 이슈사항, 문제점, 지연 사유 등 요약 (없으면 빈 문자열)",
     "pm_count": 소장(Manager/PM) 투입 인원 (숫자),
     "design_count": 설계 투입 인원 (숫자),
@@ -405,8 +405,8 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
     "electrical_outsource": 전장외주 투입 인원 (숫자),
     "vision_count": 비전 투입 인원 (숫자),
     "vision_outsource": 비전외주 투입 인원 (숫자),
-    "personnel_count": 안전/CS/지원 투입 인원 (숫자),
-    "custom_depts": { "도비": 0 }
+    "personnel_count": 순수 안전(Safety) 관리자 투입 인원 (숫자, 다른 부서 합산 절대 금지),
+    "custom_depts": { "통역": 0, "도비": 0 }
   }
 ]
 
@@ -478,7 +478,7 @@ ${allText.substring(0, 100000)}
             electrical_outsource: report.electrical_outsource ?? extra.electrical_outsource ?? 0,
             vision_count: report.vision_count || 0,
             vision_outsource: report.vision_outsource ?? extra.vision_outsource ?? 0,
-            personnel_count: report.personnel_count || 0, // 안전/CS
+            personnel_count: report.personnel_count || 0, // 안전
             custom_depts: report.custom_depts || extra.custom_depts || {}
         }]);
         setCollapsedSections(prev => ({ ...prev, inputForm: false }));
@@ -604,7 +604,7 @@ ${allText.substring(0, 100000)}
                 work_details: finalWork,
                 special_notes: finalNotes,
                 issues: existing?.issues || '', 
-                personnel_count: personnel, // 안전/CS
+                personnel_count: personnel, // 안전
                 pm_count: pm,
                 design_count: design,
                 facility_count: facility,
@@ -1323,7 +1323,7 @@ ${allText.substring(0, 100000)}
                         electrical_outsource: existingDbReport?.electrical_outsource || 0,
                         vision_count: existingDbReport?.vision_count || 0,
                         vision_outsource: existingDbReport?.vision_outsource || 0,
-                        personnel_count: existingDbReport?.personnel_count || 0, // 안전/CS
+                        personnel_count: existingDbReport?.personnel_count || 0, // 안전
                         custom_depts: existingDbReport?.custom_depts || {}
                     };
                 } else {
@@ -1434,13 +1434,15 @@ ${allText.substring(0, 100000)}
         if (/비전|비젼|vision|검사|이물비전|치수비전/i.test(clean)) {
             return { key: 'vision_count', label: '비전' };
         }
-        if (/안전|Safety|HSE|EHS|CS|고객지원|지원|통역|법인|본사|우원기술/i.test(clean)) {
-            return { key: 'personnel_count', label: '안전/CS' };
+        // 1. 순수 안전(Safety/HSE/EHS)만 안전(personnel_count)으로 매핑 (CS 폐지됨)
+        if (/안전|Safety|HSE|EHS/i.test(clean)) {
+            return { key: 'personnel_count', label: '안전' };
         }
 
-        if (isStrictDeptCol || /도비|레이저|용접|로보트|로봇|가공|조립공정|해체|반입|교체|세팅|setting|인증|양산/i.test(clean)) {
+        // 2. CS는 폐지되었으므로 제외하고, 일보에 기재된 기타 부서(통역, 법인, 본사, 고객지원, 도비, 레이저용접 등)는 원래 부서명 그대로 custom으로 분리
+        if (isStrictDeptCol || /도비|레이저|용접|로보트|로봇|가공|조립공정|해체|반입|교체|세팅|setting|인증|양산|통역|법인|지원|본사|우원기술/i.test(clean)) {
             if (clean.length >= 2 && clean.length <= 15 && !/\d{2,}|http|file|row|col/i.test(clean)) {
-                if (!isStrictDeptCol && /^[가-힣]{2,4}$/.test(clean) && !/공정|작업|기술|팀|부|조|파트/.test(clean)) {
+                if (!isStrictDeptCol && /^[가-힣]{2,4}$/.test(clean) && !/공정|작업|기술|팀|부|조|파트|통역|법인|지원|본사/.test(clean)) {
                     return null;
                 }
                 return { key: 'custom', name: clean, label: clean };
@@ -1589,7 +1591,12 @@ ${allText.substring(0, 100000)}
                     }
 
                     if (!deptInfo) {
-                        deptInfo = { key: 'personnel_count', label: '안전/CS' };
+                        const rawDeptStr = deptHeaderColIdx !== -1 ? String((inRow || outRow)[deptHeaderColIdx] || '').trim() : '';
+                        if (rawDeptStr && !/^(No\.?|구분|성명|이름|합계|총원)$/i.test(rawDeptStr)) {
+                            deptInfo = { key: 'custom', name: rawDeptStr, label: rawDeptStr };
+                        } else {
+                            deptInfo = { key: 'custom', name: '기타부서', label: '기타부서' };
+                        }
                     }
 
                     dateCols.forEach(col => {
@@ -2478,7 +2485,7 @@ ${compiledText.substring(0, 30000)}
                                                                     <input type="number" step="0.5" value={report.vision_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].vision_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'38px', padding:'2px'}}/>
                                                                 </div>
                                                                 <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px', gridColumn: 'span 2'}}>
-                                                                    <span style={{color: '#e11d48', minWidth: '45px'}}>안전/CS</span>
+                                                                    <span style={{color: '#e11d48', minWidth: '45px'}}>안전</span>
                                                                     <input type="number" step="0.5" value={report.personnel_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].personnel_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'38px', padding:'2px'}}/>
                                                                 </div>
                                                             </div>
@@ -2776,7 +2783,7 @@ ${compiledText.substring(0, 30000)}
                                                                     {report.electrical_outsource > 0 && <span style={{color:'#fb923c', fontWeight:600}}>전장외주: {report.electrical_outsource}</span>}
                                                                     {report.vision_count > 0 && <span style={{color:'#a855f7', fontWeight:600}}>비전: {report.vision_count}</span>}
                                                                     {report.vision_outsource > 0 && <span style={{color:'#c084fc', fontWeight:600}}>비전외주: {report.vision_outsource}</span>}
-                                                                    {report.personnel_count > 0 && <span style={{color:'#f43f5e', fontWeight:600}}>안전/CS: {report.personnel_count}</span>}
+                                                                    {report.personnel_count > 0 && <span style={{color:'#f43f5e', fontWeight:600}}>안전: {report.personnel_count}</span>}
                                                                     {report.custom_depts && Object.entries(report.custom_depts).map(([k, v]) => Number(v) > 0 && (
                                                                         <span key={k} style={{color:'#818cf8', fontWeight:600}}>{k}: {v}</span>
                                                                     ))}

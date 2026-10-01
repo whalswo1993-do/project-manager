@@ -538,42 +538,6 @@ export default function VisionSPC() {
                     <div>
                         <div className="panel-title" style={{ marginBottom: '10px' }}>데이터 입력</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginBottom: '1.25rem' }}>
-                            {/* 양식 다운로드 버튼 (사이드바 콤팩트 링크) */}
-                            <a
-                                href={`${import.meta.env.BASE_URL || '/'}vision-spc-template.xlsx`.replace('//', '/')}
-                                download="Vision SPC 양식.xlsx"
-                                style={{
-                                    width: '100%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '6px',
-                                    padding: '7px 10px',
-                                    background: '#f0fdf4',
-                                    border: '1.5px dashed #10b981',
-                                    borderRadius: '8px',
-                                    color: '#065f46',
-                                    textDecoration: 'none',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    cursor: 'pointer',
-                                    boxSizing: 'border-box',
-                                    transition: 'all 0.15s ease'
-                                }}
-                                onMouseOver={e => {
-                                    e.currentTarget.style.background = '#dcfce7';
-                                    e.currentTarget.style.borderColor = '#059669';
-                                }}
-                                onMouseOut={e => {
-                                    e.currentTarget.style.background = '#f0fdf4';
-                                    e.currentTarget.style.borderColor = '#10b981';
-                                }}
-                                title="클릭 시 'Vision SPC 양식.xlsx' 파일이 다운로드됩니다."
-                            >
-                                <span>📥</span>
-                                <span>Vision SPC 양식 다운로드</span>
-                                <span style={{ fontSize: '10px', background: '#bbf7d0', color: '#166534', padding: '1px 5px', borderRadius: '4px', border: '1px solid #86efac' }}>Excel</span>
-                            </a>
                             {/* 1. 파일 첨부 버튼 (표 붙여넣기 칸 크기만큼 width: 100%로 확장) */}
                             <button
                                 type="button"
@@ -666,24 +630,50 @@ export default function VisionSPC() {
 
                 <main className="content-area">
                     <div className="config-bar">
-                        <div style={{display:'flex', gap:'1rem'}}>
+                        <div style={{display:'flex', gap:'1.25rem', alignItems: 'center', flexWrap: 'wrap'}}>
                             <div className="config-item">
-                                <span>표준편차(σ):</span>
+                                <span style={{whiteSpace: 'nowrap'}}>표준편차(σ):</span>
                                 <select className="config-select" value={sigmaMethod} onChange={(e) => handleSigmaMethodChange(e.target.value)}>
                                     <option value="moving_range">군내 (MR / d2)</option>
                                     <option value="sample_std">전체 (Sample Std)</option>
                                 </select>
                             </div>
                             <div className="config-item">
-                                <span>타겟 Cp:</span>
-                                <select className="config-select" value={targetCp} onChange={(e) => setTargetCp(e.target.value)}>
-                                    <option value="1.33">1.33</option>
-                                    <option value="1.67">1.67</option>
-                                    <option value="2.00">2.00</option>
-                                </select>
+                                <span style={{whiteSpace: 'nowrap'}}>타겟 Cp:</span>
+                                <div style={{display: 'inline-flex', alignItems: 'center', gap: '4px'}}>
+                                    <input 
+                                        type="number"
+                                        step="0.01"
+                                        min="0.1"
+                                        max="10"
+                                        className="config-select"
+                                        value={targetCp}
+                                        onChange={(e) => setTargetCp(e.target.value)}
+                                        style={{width: '62px', textAlign: 'center', fontWeight: 'bold'}}
+                                        title="타겟 Cp 직접 입력"
+                                    />
+                                    <select 
+                                        className="config-select" 
+                                        value={['1.33', '1.67', '2.00'].includes(String(targetCp)) ? targetCp : 'custom'} 
+                                        onChange={(e) => {
+                                            if (e.target.value !== 'custom') {
+                                                setTargetCp(e.target.value);
+                                            }
+                                        }}
+                                        title="자주 쓰는 타겟 Cp 선택 (1.33, 1.67, 2.00)"
+                                        style={{cursor: 'pointer'}}
+                                    >
+                                        <option value="1.33">1.33</option>
+                                        <option value="1.67">1.67</option>
+                                        <option value="2.00">2.00</option>
+                                        {!['1.33', '1.67', '2.00'].includes(String(targetCp)) && (
+                                            <option value="custom">직접입력</option>
+                                        )}
+                                    </select>
+                                </div>
                             </div>
                             <div className="config-item">
-                                <span>프리셋 로드:</span>
+                                <span style={{whiteSpace: 'nowrap'}}>프리셋 로드:</span>
                                 <select className="config-select" value={presetSelect} onChange={(e) => handleLoadPreset(e.target.value)}>
                                     <option value="">모델 선택...</option>
                                     {Object.keys(customPresets).map(k => (

@@ -725,9 +725,19 @@
 }
 
 .vision-spc-container .config-item {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.vision-spc-container .config-item span {
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-color);
 }
 
 .vision-spc-container .config-select {
@@ -744,3 +754,4 @@
     border-color: var(--primary);
     box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2);
 }
+

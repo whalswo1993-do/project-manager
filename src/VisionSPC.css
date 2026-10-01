@@ -560,8 +560,8 @@
 }
 
 .vision-spc-container .stat-card-title {
-  font-size: 10.5px;
-  color: var(--text-muted);
+  font-size: 11px;
+  color: var(--text-secondary);
   font-weight: 700;
   margin-bottom: 6px;
   text-transform: uppercase;
@@ -571,7 +571,7 @@
 .vision-spc-container .stat-card-value {
   font-size: 2.2rem;
   font-weight: 800;
-  color: var(--text-color);
+  color: var(--text-primary);
   line-height: 1.1;
   letter-spacing: -0.04em;
 }
@@ -593,17 +593,23 @@
 
 .vision-spc-container .spec-table th,
 .vision-spc-container .spec-table td {
-  padding: 8px 12px;
+  padding: 10px 14px;
   text-align: left;
   border-bottom: 1px solid var(--border-color);
 }
 
 .vision-spc-container .spec-table th {
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 10.5px;
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 11.5px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  background: var(--bg-card-subtle);
+}
+
+.vision-spc-container .spec-table td {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 /* THIS IS THE KEY FIX - spec-input was #ffffff */
@@ -652,9 +658,9 @@
 /* THIS IS THE KEY FIX - batch th was #f6f8fa */
 .vision-spc-container .batch-grid-table th {
   background: var(--bg-card-subtle);
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-weight: 700;
-  font-size: 10.5px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   position: sticky;
@@ -687,9 +693,9 @@
 }
 
 .vision-spc-container .batch-tool-item label {
-  font-size: 10.5px;
-  color: var(--text-muted);
-  font-weight: 600;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }

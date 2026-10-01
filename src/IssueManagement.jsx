@@ -2580,10 +2580,10 @@ ${compiledText.substring(0, 30000)}
                                     style={{
                                         padding: '10px',
                                         background: 'var(--bg-card-subtle)',
-                                        border: '1px dashed var(--border-subtle)',
+                                        border: '1px dashed var(--border-medium)',
                                         borderRadius: '8px',
                                         textAlign: 'center',
-                                        color: '#64748b',
+                                        color: 'var(--text-secondary)',
                                         fontSize: '12px',
                                         whiteSpace: 'nowrap',
                                         overflow: 'hidden',
@@ -2611,8 +2611,8 @@ ${compiledText.substring(0, 30000)}
                             <div className="empty-state">
                                 <div style={{ maxWidth: '420px', margin: '0 auto', textAlign: 'center' }}>
                                     <span style={{ fontSize: '2.8rem', display: 'block', marginBottom: '10px' }}>📂</span>
-                                    <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-color)' }}>프로젝트를 선택해주세요</h3>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '16px' }}>조회할 프로젝트를 선택하면 등록된 일보 목록이 표시됩니다.</p>
+                                    <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>프로젝트를 선택해주세요</h3>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>조회할 프로젝트를 선택하면 등록된 일보 목록이 표시됩니다.</p>
                                     <div style={{ width: '100%', margin: '0 auto' }}>
                                         <SmartProjectSelector 
                                             projects={projects}
@@ -2627,8 +2627,8 @@ ${compiledText.substring(0, 30000)}
                             <div className="empty-state">
                                 <div style={{ maxWidth: '420px', margin: '0 auto', textAlign: 'center' }}>
                                     <span style={{ fontSize: '2.8rem', display: 'block', marginBottom: '10px' }}>📄</span>
-                                    <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-color)' }}>등록된 일보가 없습니다</h3>
-                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '16px' }}>공사일보를 업로드하고 저장해보세요.</p>
+                                    <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>등록된 일보가 없습니다</h3>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>공사일보를 업로드하고 저장해보세요.</p>
                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
                                         <SmartProjectSelector 
                                             projects={projects}
@@ -2643,7 +2643,7 @@ ${compiledText.substring(0, 30000)}
                                                 style={{
                                                     padding: '6px 12px',
                                                     fontSize: '0.85rem',
-                                                    background: '#0969da',
+                                                    background: 'var(--accent)',
                                                     color: '#fff',
                                                     border: 'none',
                                                     borderRadius: '6px',
@@ -2683,7 +2683,7 @@ ${compiledText.substring(0, 30000)}
                                                 border: '1px solid var(--border-subtle)',
                                                 borderRadius: '6px',
                                                 cursor: 'pointer',
-                                                color: '#334155'
+                                                color: 'var(--text-primary)'
                                             }}
                                         >
                                             ▾ 전체 일보 펼치기
@@ -2698,7 +2698,7 @@ ${compiledText.substring(0, 30000)}
                                                 border: '1px solid var(--border-subtle)',
                                                 borderRadius: '6px',
                                                 cursor: 'pointer',
-                                                color: '#334155'
+                                                color: 'var(--text-primary)'
                                             }}
                                         >
                                             ▴ 전체 일보 접기
@@ -2714,16 +2714,17 @@ ${compiledText.substring(0, 30000)}
                                                         Object.values(report.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
 
                                         return (
-                                            <div key={report.id} className="issue-card" style={{borderLeftColor: 'var(--primary)'}}>
+                                            <div key={report.id} className="issue-card" style={{borderLeftColor: 'var(--accent)'}}>
                                                 <div className="issue-meta" onClick={() => toggleReport(report.id)} style={{cursor: 'pointer'}}>
-                                                    <span style={{display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap'}}>
-                                                        <b style={{color: 'var(--text-color)'}}>{report.report_date}</b> 일보 
+                                                    <span style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
+                                                        <b style={{color: 'var(--text-primary)', fontSize: '13.5px'}}>{report.report_date}</b> 
+                                                        <span style={{color: 'var(--text-secondary)', fontWeight: 500}}>일보</span>
                                                         {totalMD > 0 && (
-                                                            <span style={{fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700, background: 'rgba(37, 99, 235, 0.12)', padding: '1px 7px', borderRadius: '4px', border: '1px solid rgba(56, 189, 248, 0.25)'}}>
+                                                            <span style={{fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 700, background: 'var(--accent-muted)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--accent-border)'}}>
                                                                 👥 {totalMD}명
                                                             </span>
                                                         )}
-                                                        <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>{expandedReports[report.id] ? '▲' : '▼'}</span>
+                                                        <span style={{fontSize:'0.8rem', color:'var(--text-secondary)'}}>{expandedReports[report.id] ? '▲' : '▼'}</span>
                                                     </span>
                                                     <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
                                                         <button 
@@ -2735,7 +2736,7 @@ ${compiledText.substring(0, 30000)}
                                                             style={{
                                                                 background: 'transparent',
                                                                 border: 'none',
-                                                                color: !canEditReport ? 'var(--text-muted)' : 'var(--primary)',
+                                                                color: !canEditReport ? 'var(--text-muted)' : 'var(--accent)',
                                                                 cursor: !canEditReport ? 'not-allowed' : 'pointer',
                                                                 fontSize: '0.8rem',
                                                                 fontWeight: 600

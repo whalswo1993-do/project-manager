@@ -2937,15 +2937,15 @@ export default function ManpowerManagement({
                 </div>
               </div>
 
-              <div style={{ overflowX: 'auto', border: '1px solid var(--border-faint)', borderRadius: '8px' }}>
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border-subtle)', borderRadius: '8px', background: 'var(--bg-card)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                   <thead>
-                    <tr style={{ background: 'var(--bg-card-subtle)', color: '#334155', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <tr style={{ background: 'var(--bg-card-subtle)', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)' }}>
                       <th style={{ padding: '9px 12px', textAlign: 'left', whiteSpace: 'nowrap' }}>제조번호</th>
                       <th style={{ padding: '9px 12px', textAlign: 'left', whiteSpace: 'nowrap' }}>Site · Line</th>
                       <th style={{ padding: '9px 12px', textAlign: 'left' }}>프로젝트명</th>
                       <th style={{ padding: '9px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>계획 공수</th>
-                      <th style={{ padding: '9px 12px', textAlign: 'right', whiteSpace: 'nowrap', color: '#10b981' }}>실투입 공수</th>
+                      <th style={{ padding: '9px 12px', textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--success)' }}>실투입 공수</th>
                       <th style={{ padding: '9px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>가감 / 차이</th>
                       <th style={{ padding: '9px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>소진율</th>
                       <th style={{ padding: '9px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>일보 건수</th>
@@ -2955,7 +2955,7 @@ export default function ManpowerManagement({
                   <tbody>
                     {filteredCompData.length === 0 ? (
                       <tr>
-                        <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                        <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
                           조건에 일치하는 프로젝트가 없습니다.
                         </td>
                       </tr>
@@ -2970,35 +2970,38 @@ export default function ManpowerManagement({
                             key={item.projectId}
                             onClick={() => setSelectedCompProject(item.projectId)}
                             style={{
-                              borderBottom: '1px solid var(--bg-card-subtle)',
-                              background: isSelected ? '#eff6ff' : (isOver ? '#fffbfb' : '#fff'),
+                              borderBottom: '1px solid var(--border-faint)',
+                              background: isSelected 
+                                ? 'var(--accent-muted)' 
+                                : (isOver ? 'rgba(239, 68, 68, 0.06)' : 'var(--bg-card)'),
                               cursor: 'pointer',
                               transition: 'background 0.15s'
                             }}
                           >
-                            <td style={{ padding: '9px 12px', fontWeight: 'bold', color: isSelected ? '#1d4ed8' : '#334155', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '9px 12px', fontWeight: 'bold', color: isSelected ? 'var(--accent)' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                               {normalizeJVName(item.manufacturingNo) || "-"}
                             </td>
-                            <td style={{ padding: '9px 12px', color: '#64748b', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '9px 12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                               {normalizeJVName(item.site) || "-"} {item.line ? `· ${normalizeJVName(item.line)}` : ""}
                             </td>
                             <td style={{ padding: '9px 12px' }}>
-                              <span style={{ fontWeight: 600, color: isSelected ? '#1d4ed8' : '#0969da' }}>
+                              <span style={{ fontWeight: 600, color: isSelected ? 'var(--accent)' : 'var(--accent)' }}>
                                 {normalizeJVName(item.projectName)}
                               </span>
                             </td>
-                            <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                               {item.planTotal > 0 ? `${item.planTotal.toLocaleString()} M/D` : "-"}
                             </td>
-                            <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 'bold', color: item.actualTotal > 0 ? '#10b981' : '#94a3b8', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '9px 12px', textAlign: 'right', fontWeight: 'bold', color: item.actualTotal > 0 ? 'var(--success)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                               {item.actualTotal > 0 ? `${item.actualTotal.toLocaleString()} M/D` : "-"}
                             </td>
                             <td style={{ padding: '9px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               <span style={{
                                 fontSize: '11px',
                                 fontWeight: 'bold',
-                                color: isOver ? '#dc2626' : isUnder ? '#16a34a' : '#64748b',
-                                background: isOver ? '#fee2e2' : isUnder ? '#dcfce7' : 'var(--bg-card-subtle)',
+                                color: isOver ? 'var(--danger)' : isUnder ? 'var(--success)' : 'var(--text-secondary)',
+                                background: isOver ? 'var(--danger-muted)' : isUnder ? 'var(--success-muted)' : 'var(--bg-card-subtle)',
+                                border: `1px solid ${isOver ? 'rgba(239,68,68,0.25)' : isUnder ? 'rgba(16,185,129,0.25)' : 'var(--border-subtle)'}`,
                                 padding: '2px 6px',
                                 borderRadius: '4px'
                               }}>
@@ -3008,22 +3011,22 @@ export default function ManpowerManagement({
                             <td style={{ padding: '9px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                               {item.planTotal > 0 ? (
                                 <div style={{ display: 'inline-block', width: '80px' }}>
-                                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: item.totalRate > 100 ? '#dc2626' : '#334155', marginBottom: '2px' }}>
+                                  <div style={{ fontSize: '11px', fontWeight: 'bold', color: item.totalRate > 100 ? 'var(--danger)' : 'var(--text-primary)', marginBottom: '2px' }}>
                                     {item.totalRate.toFixed(1)}%
                                   </div>
-                                  <div style={{ background: 'var(--border-faint)', borderRadius: '3px', height: '4px', overflow: 'hidden' }}>
+                                  <div style={{ background: 'var(--border-subtle)', borderRadius: '3px', height: '4px', overflow: 'hidden' }}>
                                     <div style={{
                                       width: `${Math.min(100, item.totalRate)}%`,
                                       height: '100%',
-                                      background: item.totalRate > 100 ? '#dc2626' : item.totalRate > 80 ? '#f59e0b' : '#10b981'
+                                      background: item.totalRate > 100 ? 'var(--danger)' : item.totalRate > 80 ? 'var(--warning)' : 'var(--success)'
                                     }} />
                                   </div>
                                 </div>
                               ) : (
-                                <span style={{ color: '#94a3b8', fontSize: '11px' }}>-</span>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>-</span>
                               )}
                             </td>
-                            <td style={{ padding: '9px 12px', textAlign: 'center', color: item.reportCount > 0 ? '#0f172a' : 'var(--border-subtle)', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '9px 12px', textAlign: 'center', color: item.reportCount > 0 ? 'var(--text-primary)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                               {item.reportCount > 0 ? `${item.reportCount}건` : "-"}
                             </td>
                             <td style={{ padding: '9px 12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
@@ -3033,9 +3036,9 @@ export default function ManpowerManagement({
                                 style={{
                                   padding: '3px 8px',
                                   fontSize: '11px',
-                                  background: isSelected ? '#1d4ed8' : (item.reportCount > 0 ? '#eff6ff' : 'var(--bg-card-subtle)'),
-                                  color: isSelected ? '#fff' : (item.reportCount > 0 ? '#1d4ed8' : '#64748b'),
-                                  border: isSelected ? '1px solid #1d4ed8' : '1px solid var(--border-subtle)',
+                                  background: isSelected ? 'var(--accent)' : 'var(--bg-card-subtle)',
+                                  color: isSelected ? '#fff' : 'var(--text-secondary)',
+                                  border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
                                   borderRadius: '4px',
                                   cursor: 'pointer',
                                   fontWeight: 600
@@ -3070,7 +3073,7 @@ export default function ManpowerManagement({
                   border: '1px solid var(--border-faint)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e293b' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
                       🔍 프로젝트 공수 상세 분석:
                     </span>
                     <SmartProjectSelector
@@ -3082,8 +3085,8 @@ export default function ManpowerManagement({
                       style={{ minWidth: '280px', maxWidth: '420px' }}
                     />
                   </div>
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>
-                    Site: <b>{selectedProjectComp.site || "-"}</b> | Line: <b>{selectedProjectComp.line || "-"}</b> | 등록 일보: <b style={{ color: '#10b981' }}>{selectedProjectComp.reportCount}건</b>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    Site: <b>{selectedProjectComp.site || "-"}</b> | Line: <b>{selectedProjectComp.line || "-"}</b> | 등록 일보: <b style={{ color: 'var(--success)' }}>{selectedProjectComp.reportCount}건</b>
                   </div>
                 </div>
 
@@ -3095,51 +3098,51 @@ export default function ManpowerManagement({
                   marginBottom: '16px'
                 }}>
                   {/* 총 계획 공수 */}
-                  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-faint)', borderLeft: '4px solid #0284c7', borderRadius: '8px', padding: '12px 16px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderLeft: '4px solid #0284c7', borderRadius: '8px', padding: '12px 16px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span>📌</span> 총 계획 공수
                     </div>
-                    <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '4px 0' }}>
-                      {selectedProjectComp.planTotal.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 'normal', color: '#64748b' }}>M/D</span>
+                    <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>
+                      {selectedProjectComp.planTotal.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 'normal', color: 'var(--text-tertiary)' }}>M/D</span>
                     </div>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                       프로젝트 마스터플랜 기준
                     </div>
                   </div>
 
                   {/* 총 실투입 공수 */}
-                  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-faint)', borderLeft: '4px solid #10b981', borderRadius: '8px', padding: '12px 16px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderLeft: '4px solid #10b981', borderRadius: '8px', padding: '12px 16px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span>⏱️</span> 총 실투입 공수
                     </div>
-                    <div style={{ fontSize: '22px', fontWeight: 800, color: '#10b981', margin: '4px 0' }}>
-                      {selectedProjectComp.actualTotal.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 'normal', color: '#64748b' }}>M/D</span>
+                    <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--success)', margin: '4px 0' }}>
+                      {selectedProjectComp.actualTotal.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 'normal', color: 'var(--text-tertiary)' }}>M/D</span>
                     </div>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                       프로젝트 이슈관리 등록 일보 <b>{selectedProjectComp.reportCount}건</b> 합산
                     </div>
                   </div>
 
                   {/* 가감 / 차이 */}
                   <div style={{
-                    background: selectedProjectComp.totalDiff > 0 ? '#fef2f2' : selectedProjectComp.totalDiff < 0 ? '#f0fdf4' : '#fff',
-                    border: '1px solid var(--border-faint)',
-                    borderLeft: `4px solid ${selectedProjectComp.totalDiff > 0 ? '#dc2626' : selectedProjectComp.totalDiff < 0 ? '#16a34a' : '#94a3b8'}`,
+                    background: selectedProjectComp.totalDiff > 0 ? 'var(--danger-muted)' : selectedProjectComp.totalDiff < 0 ? 'var(--success-muted)' : 'var(--bg-card)',
+                    border: '1px solid var(--border-subtle)',
+                    borderLeft: `4px solid ${selectedProjectComp.totalDiff > 0 ? 'var(--danger)' : selectedProjectComp.totalDiff < 0 ? 'var(--success)' : 'var(--text-muted)'}`,
                     borderRadius: '8px',
                     padding: '12px 16px'
                   }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span>⚖️</span> 가감 / 차이 (실투입 - 계획)
                     </div>
                     <div style={{
                       fontSize: '22px',
                       fontWeight: 800,
-                      color: selectedProjectComp.totalDiff > 0 ? '#dc2626' : selectedProjectComp.totalDiff < 0 ? '#16a34a' : '#64748b',
+                      color: selectedProjectComp.totalDiff > 0 ? 'var(--danger)' : selectedProjectComp.totalDiff < 0 ? 'var(--success)' : 'var(--text-primary)',
                       margin: '4px 0'
                     }}>
                       {selectedProjectComp.totalDiff > 0 ? `+${selectedProjectComp.totalDiff.toLocaleString()}` : selectedProjectComp.totalDiff.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 'normal' }}>M/D</span>
                     </div>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: selectedProjectComp.totalDiff > 0 ? '#b91c1c' : selectedProjectComp.totalDiff < 0 ? '#15803d' : '#64748b' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: selectedProjectComp.totalDiff > 0 ? 'var(--danger)' : selectedProjectComp.totalDiff < 0 ? 'var(--success)' : 'var(--text-secondary)' }}>
                       {selectedProjectComp.totalDiff > 0
                         ? `⚠️ 계획 대비 ${selectedProjectComp.totalDiff.toLocaleString()} M/D 초과 투입`
                         : selectedProjectComp.totalDiff < 0
@@ -3149,26 +3152,26 @@ export default function ManpowerManagement({
                   </div>
 
                   {/* 소진율 */}
-                  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-faint)', borderLeft: '4px solid #f59e0b', borderRadius: '8px', padding: '12px 16px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderLeft: '4px solid #f59e0b', borderRadius: '8px', padding: '12px 16px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span>📊</span> 공수 소진율
                     </div>
-                    <div style={{ fontSize: '22px', fontWeight: 800, color: selectedProjectComp.totalRate > 100 ? '#dc2626' : '#d97706', margin: '4px 0' }}>
+                    <div style={{ fontSize: '22px', fontWeight: 800, color: selectedProjectComp.totalRate > 100 ? 'var(--danger)' : 'var(--warning)', margin: '4px 0' }}>
                       {selectedProjectComp.planTotal > 0 ? `${selectedProjectComp.totalRate.toFixed(1)}%` : "-"}
                     </div>
                     <div style={{ background: 'var(--border-faint)', borderRadius: '4px', height: '6px', overflow: 'hidden', margin: '6px 0 2px' }}>
                       <div style={{
                         width: `${Math.min(100, selectedProjectComp.totalRate)}%`,
                         height: '100%',
-                        background: selectedProjectComp.totalRate > 100 ? '#dc2626' : selectedProjectComp.totalRate > 80 ? '#f59e0b' : '#10b981'
+                        background: selectedProjectComp.totalRate > 100 ? 'var(--danger)' : selectedProjectComp.totalRate > 80 ? 'var(--warning)' : 'var(--success)'
                       }} />
                     </div>
                   </div>
                 </div>
 
                 {/* 👥 부서별 계획공수 vs 실투입공수 비교 */}
-                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-faint)', borderRadius: '8px', padding: '14px 16px', marginBottom: '16px' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: 'bold', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '14px 16px', marginBottom: '16px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span>👥</span> 부서별 계획공수 vs 실투입공수 비교
                   </h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px' }}>
@@ -3178,24 +3181,24 @@ export default function ManpowerManagement({
                       return (
                         <div key={dept.key} style={{
                           background: 'var(--bg-card-subtle)',
-                          border: '1px solid var(--border-faint)',
+                          border: '1px solid var(--border-subtle)',
                           borderLeft: `4px solid ${dept.color}`,
                           borderRadius: '6px',
                           padding: '10px 12px'
                         }}>
-                          <div style={{ fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
                             {dept.name}
                           </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#64748b' }}>
-                            <span>계획: <b style={{ color: '#1e293b' }}>{dept.plan.toLocaleString()}</b></span>
-                            <span>실투입: <b style={{ color: dept.actual > 0 ? '#10b981' : '#94a3b8' }}>{dept.actual.toLocaleString()}</b></span>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--text-secondary)' }}>
+                            <span>계획: <b style={{ color: 'var(--text-primary)' }}>{dept.plan.toLocaleString()}</b></span>
+                            <span>실투입: <b style={{ color: dept.actual > 0 ? 'var(--success)' : 'var(--text-muted)' }}>{dept.actual.toLocaleString()}</b></span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed var(--border-subtle)' }}>
-                            <span style={{ fontSize: '11px', color: '#64748b' }}>가감:</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>가감:</span>
                             <span style={{
                               fontSize: '11px',
                               fontWeight: 'bold',
-                              color: isOver ? '#dc2626' : isUnder ? '#16a34a' : '#64748b'
+                              color: isOver ? 'var(--danger)' : isUnder ? 'var(--success)' : 'var(--text-secondary)'
                             }}>
                               {isOver ? `+${dept.diff}` : dept.diff} M/D
                               {dept.plan > 0 && ` (${dept.rate.toFixed(0)}%)`}

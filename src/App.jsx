@@ -1769,7 +1769,11 @@ JSON 출력 예시:
       <div id="app-fixed-top" className="system-fixed-top-bar">
         <header className="system-main-header">
           <div className="system-brand-left">
-            <img src="/tw-logo.png" alt="TW Logo" className="system-brand-logo" />
+            <img 
+              src={theme === 'dark' ? `${import.meta.env.BASE_URL || '/'}tw-logo-dark.png`.replace('//', '/') : `${import.meta.env.BASE_URL || '/'}tw-logo.png`.replace('//', '/')} 
+              alt="TW Logo" 
+              className="system-brand-logo" 
+            />
             <div className="system-brand-info">
               <div className="system-brand-meta">
                 <span className="system-brand-title">TW Project</span>

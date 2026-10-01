@@ -78,7 +78,8 @@ button { cursor: pointer; }
 
 [data-theme="dark"] .system-brand-logo,
 body.theme-dark .system-brand-logo {
-  filter: brightness(1.05) drop-shadow(0 0 6px rgba(59,130,246,0.3));
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+  background: transparent;
 }
 
 .system-brand-info {

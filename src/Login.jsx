@@ -175,8 +175,11 @@ export default function Login() {
   return (
     <main className="login-page">
       <form className="login-card" onSubmit={submit}>
-        <img src="/tw-logo.png" alt="TW 로고" />
-        <h1 style={{ fontSize: "22px", margin: "0 0 4px", textAlign: "center", color: "#1e293b" }}>
+        <picture>
+          <source srcSet={`${import.meta.env.BASE_URL || '/'}tw-logo-dark.png`.replace('//', '/')} media="(prefers-color-scheme: dark)" />
+          <img src={`${import.meta.env.BASE_URL || '/'}tw-logo.png`.replace('//', '/')} alt="TW 로고" />
+        </picture>
+        <h1 style={{ fontSize: "22px", margin: "0 0 4px", textAlign: "center", color: "var(--text-primary)" }}>
           Project Management
         </h1>
 

@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import './Quotations.css';
 import { supabase } from './supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -1178,25 +1178,25 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                                                             {item.normCategory}
                                                         </span>
                                                     </td>
-                                                    <td style={{ fontWeight: 600, color: '#1e293b' }}>
+                                                    <td style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '12.5px' }}>
                                                         {item.projectKey}
                                                     </td>
-                                                    <td style={{ color: item.unit_name ? '#334155' : '#94a3b8' }}>
+                                                    <td style={{ color: item.unit_name ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
                                                         {item.unit_name || '-'}
                                                     </td>
-                                                    <td style={{ fontWeight: 600, color: '#0f172a' }}>
+                                                    <td style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>
                                                         {item.item_name}
                                                     </td>
-                                                    <td style={{ textAlign: 'center' }}>
+                                                    <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                                                         {item.quantity}
                                                     </td>
-                                                    <td className="money-cell" style={{ fontWeight: 700, color: '#1e40af' }}>
+                                                    <td className="money-cell" style={{ fontWeight: 700, color: 'var(--accent)' }}>
                                                         {item.unit_price.toLocaleString()}
                                                     </td>
-                                                    <td className="money-cell">
+                                                    <td className="money-cell" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                                                         {item.total_price.toLocaleString()}
                                                     </td>
-                                                    <td style={{ color: '#64748b', fontSize: '12px', textAlign: 'center' }}>
+                                                    <td style={{ color: 'var(--text-tertiary)', fontSize: '12px', textAlign: 'center' }}>
                                                         {new Date(item.created_at).toLocaleDateString()}
                                                     </td>
                                                 </tr>
@@ -1206,7 +1206,7 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                                         <tr>
                                             <td colSpan="9" style={{ textAlign: 'center', color: '#64748b', padding: '36px 20px' }}>
                                                 <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔍</div>
-                                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#334155' }}>선택하신 조건에 해당하는 견적 품목이 없습니다.</div>
+                                                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>선택하신 조건에 해당하는 견적 품목이 없습니다.</div>
                                                 <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>공정, 프로젝트 또는 구분 조건을 변경하거나 초기화해 보세요.</div>
                                             </td>
                                         </tr>

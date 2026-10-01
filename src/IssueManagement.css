@@ -222,8 +222,8 @@
 .issue-management-container .issue-meta {
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: 13px;
+  color: var(--text-secondary);
   margin-bottom: 6px;
   align-items: center;
 }

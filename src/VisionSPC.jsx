@@ -478,28 +478,28 @@ export default function VisionSPC() {
                             gap: '10px',
                             padding: '8px 14px',
                             height: '56px',
-                            background: '#ffffff',
-                            border: '2px solid #10b981',
+                            background: 'var(--bg-card)',
+                            border: '1.5px solid #10b981',
                             borderRadius: '12px',
-                            color: '#065f46',
+                            color: 'var(--text-primary)',
                             textDecoration: 'none',
                             cursor: 'pointer',
-                            boxShadow: '0 2px 5px rgba(16, 185, 129, 0.15)',
+                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)',
                             boxSizing: 'border-box',
                             transition: 'all 0.2s ease',
                             flexShrink: 0
                         }}
                         onMouseOver={e => {
-                            e.currentTarget.style.background = '#f0fdf4';
+                            e.currentTarget.style.background = 'var(--bg-hover)';
                             e.currentTarget.style.borderColor = '#059669';
                             e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = '0 4px 8px rgba(16, 185, 129, 0.25)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
                         }}
                         onMouseOut={e => {
-                            e.currentTarget.style.background = '#ffffff';
+                            e.currentTarget.style.background = 'var(--bg-card)';
                             e.currentTarget.style.borderColor = '#10b981';
                             e.currentTarget.style.transform = 'none';
-                            e.currentTarget.style.boxShadow = '0 2px 5px rgba(16, 185, 129, 0.15)';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.15)';
                         }}
                         title="클릭 시 'Vision SPC 양식.xlsx' 파일이 다운로드됩니다."
                     >
@@ -519,10 +519,10 @@ export default function VisionSPC() {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <b style={{ fontSize: '13px', color: '#0f172a' }}>Vision SPC 양식</b>
-                                <span style={{ fontSize: '10px', fontWeight: 'bold', background: '#dcfce7', color: '#15803d', padding: '1px 5px', borderRadius: '4px', border: '1px solid #bbf7d0' }}>Excel</span>
+                                <b style={{ fontSize: '13px', color: 'var(--text-primary)' }}>Vision SPC 양식</b>
+                                <span style={{ fontSize: '10px', fontWeight: 'bold', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '1px 5px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>Excel</span>
                             </div>
-                            <span style={{ fontSize: '11px', color: '#059669', fontWeight: '600', marginTop: '2px' }}>
+                            <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '600', marginTop: '2px' }}>
                                 양식 다운로드 받기 ⇩
                             </span>
                         </div>
@@ -589,8 +589,8 @@ export default function VisionSPC() {
                                     boxSizing: 'border-box',
                                     fontSize: '13px',
                                     fontFamily: 'inherit',
-                                    background: '#ffffff',
-                                    color: '#1e293b',
+                                    background: 'var(--bg-card)',
+                                    color: 'var(--text-primary)',
                                     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
                                     textAlign: 'left'
                                 }}

@@ -79,8 +79,8 @@ export default function PasswordChangeModal({
           padding: "28px 24px",
           borderRadius: "16px",
           boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-          background: "#ffffff",
-          border: "1px solid #e2e8f0",
+          background: "var(--bg-card)",
+          border: "1px solid var(--border-faint)",
         }}
       >
         {mode !== "recovery" && (
@@ -144,7 +144,7 @@ export default function PasswordChangeModal({
                   paddingRight: "40px",
                   fontSize: "14px",
                   borderRadius: "8px",
-                  borderColor: newPassword && !isLengthValid ? "#f87171" : "#cbd5e1",
+                  borderColor: newPassword && !isLengthValid ? "#f87171" : "var(--border-subtle)",
                 }}
               />
               <button
@@ -183,7 +183,7 @@ export default function PasswordChangeModal({
               style={{
                 fontSize: "14px",
                 borderRadius: "8px",
-                borderColor: confirmPassword && !isMatch ? "#f87171" : "#cbd5e1",
+                borderColor: confirmPassword && !isMatch ? "#f87171" : "var(--border-subtle)",
               }}
             />
             <div style={{ marginTop: "4px", fontSize: "11px", color: isMatch ? "#16a34a" : confirmPassword ? "#dc2626" : "#94a3b8" }}>
@@ -238,7 +238,7 @@ export default function PasswordChangeModal({
                 disabled={submitting}
                 style={{
                   flex: 1,
-                  background: "#f1f5f9",
+                  background: "var(--bg-card-subtle)",
                   color: "#475569",
                   fontWeight: 600,
                   fontSize: "14px",

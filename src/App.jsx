@@ -2301,7 +2301,7 @@ JSON 출력 예시:
                       <button
                         type="button"
                         onClick={() => { setEditing(null); setForm(blank()); setMilestones(newMs()); setMsg(""); }}
-                        style={{ fontSize: '12px', padding: '4px 10px', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer' }}
+                        style={{ fontSize: '12px', padding: '4px 10px', background: 'var(--bg-card-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', cursor: 'pointer' }}
                       >
                         수정 취소
                       </button>
@@ -2315,11 +2315,11 @@ JSON 출력 예시:
                     style={{
                       padding: '6px 12px',
                       borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      background: '#fff',
+                      border: '1px solid var(--border-subtle)',
+                      background: 'var(--bg-card)',
                       fontSize: '12px',
                       fontWeight: 600,
-                      color: '#475569',
+                      color: 'var(--text-secondary)',
                       cursor: 'pointer'
                     }}
                   >
@@ -2334,28 +2334,28 @@ JSON 출력 예시:
                       gap: '10px',
                       padding: '8px 14px',
                       height: '66px',
-                      background: '#ffffff',
-                      border: '2px solid #10b981',
+                      background: 'var(--bg-card)',
+                      border: '1.5px solid #10b981',
                       borderRadius: '12px',
-                      color: '#065f46',
+                      color: 'var(--text-primary)',
                       textDecoration: 'none',
                       cursor: 'pointer',
-                      boxShadow: '0 2px 5px rgba(16, 185, 129, 0.15)',
+                      boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)',
                       boxSizing: 'border-box',
                       transition: 'all 0.2s ease',
                       flexShrink: 0
                     }}
                     onMouseOver={e => {
-                      e.currentTarget.style.background = '#f0fdf4';
+                      e.currentTarget.style.background = 'var(--bg-hover)';
                       e.currentTarget.style.borderColor = '#059669';
                       e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(16, 185, 129, 0.25)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
                     }}
                     onMouseOut={e => {
-                      e.currentTarget.style.background = '#ffffff';
+                      e.currentTarget.style.background = 'var(--bg-card)';
                       e.currentTarget.style.borderColor = '#10b981';
                       e.currentTarget.style.transform = 'none';
-                      e.currentTarget.style.boxShadow = '0 2px 5px rgba(16, 185, 129, 0.15)';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.15)';
                     }}
                     title="클릭 시 'Master Schedule 양식.xlsx' 파일이 다운로드됩니다."
                   >
@@ -2375,18 +2375,18 @@ JSON 출력 예시:
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <b style={{ fontSize: '13px', color: '#0f172a' }}>Master Schedule 양식</b>
-                        <span style={{ fontSize: '10px', fontWeight: 'bold', background: '#dcfce7', color: '#15803d', padding: '1px 5px', borderRadius: '4px', border: '1px solid #bbf7d0' }}>Excel</span>
+                        <b style={{ fontSize: '13px', color: 'var(--text-primary)' }}>Master Schedule 양식</b>
+                        <span style={{ fontSize: '10px', fontWeight: 'bold', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '1px 5px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>Excel</span>
                       </div>
-                      <span style={{ fontSize: '11px', color: '#059669', fontWeight: '600', marginTop: '3px' }}>
+                      <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '600', marginTop: '3px' }}>
                         양식 다운로드 받기 ⇩
                       </span>
                     </div>
                   </a>
-                  <div style={{ border: '2px solid #38bdf8', borderRadius: '12px', padding: '6px 12px', background: '#f0f9ff', boxShadow: '0 1px 4px rgba(56, 189, 248, 0.15)' }}>
+                  <div style={{ border: '1.5px solid rgba(56, 189, 248, 0.35)', borderRadius: '12px', padding: '6px 12px', background: 'rgba(56, 189, 248, 0.06)', boxShadow: '0 1px 4px rgba(56, 189, 248, 0.10)' }}>
                     <div style={{ textAlign: 'center', marginBottom: '6px', fontSize: '13px' }}>
-                      <b style={{ color: '#0f172a' }}>{editing ? "최신 Master Schedule 등록 (최신화)" : "Master Schedule 등록"}</b>{" "}
-                      <span style={{ color: '#2563eb', fontWeight: 600, fontSize: '12px' }}>
+                      <b style={{ color: 'var(--text-primary)' }}>{editing ? "최신 Master Schedule 등록 (최신화)" : "Master Schedule 등록"}</b>{" "}
+                      <span style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '12px' }}>
                         {editing ? "※마스터 스케줄 첨부 시 일정 및 공수 데이터가 최신 버전으로 즉시 갱신됩니다" : "※공수 포함 등록시 공수 통합 관리 자동 반영"}
                       </span>
                     </div>
@@ -2408,7 +2408,8 @@ JSON 출력 예시:
                           boxSizing: 'border-box',
                           fontSize: '13px',
                           fontFamily: 'inherit',
-                          background: '#fff'
+                          background: 'var(--input-bg)',
+                          color: 'var(--input-text)'
                         }}
                         onPaste={(e) => {
                           const html = e.clipboardData?.getData("text/html") || "";
@@ -2506,15 +2507,15 @@ JSON 출력 예시:
                         padding: '6px 14px',
                         fontSize: '12px',
                         fontWeight: 600,
-                        background: '#f8fafc',
-                        border: '1px solid #cbd5e1',
+                        background: 'var(--bg-card-subtle)',
+                        border: '1px solid var(--border-subtle)',
                         borderRadius: '6px',
-                        color: '#334155',
+                        color: 'var(--text-primary)',
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '5px',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                        boxShadow: 'var(--shadow-xs)'
                       }}
                       title="Site 관리 (Site 목록 추가, 수정, 삭제)"
                     >
@@ -2527,15 +2528,15 @@ JSON 출력 예시:
                         padding: '6px 14px',
                         fontSize: '12px',
                         fontWeight: 600,
-                        background: '#f8fafc',
-                        border: '1px solid #cbd5e1',
+                        background: 'var(--bg-card-subtle)',
+                        border: '1px solid var(--border-subtle)',
                         borderRadius: '6px',
-                        color: '#334155',
+                        color: 'var(--text-primary)',
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '5px',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                        boxShadow: 'var(--shadow-xs)'
                       }}
                       title="담당자 관리 (부서별 인원 추가, 수정, 삭제)"
                     >
@@ -2654,11 +2655,11 @@ JSON 출력 예시:
                 style={{
                   padding: '4px 10px',
                   borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  background: '#fff',
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--bg-card)',
                   fontSize: '12px',
                   fontWeight: 600,
-                  color: '#475569',
+                  color: 'var(--text-secondary)',
                   cursor: 'pointer'
                 }}
               >
@@ -2699,11 +2700,11 @@ JSON 출력 예시:
                 onClick={() => toggleSection('filter')}
                 style={{
                   padding: '10px 14px',
-                  background: '#f8fafc',
-                  border: '1px dashed #cbd5e1',
+                  background: 'var(--bg-card-subtle)',
+                  border: '1px dashed var(--border-medium)',
                   borderRadius: '8px',
                   textAlign: 'center',
-                  color: '#64748b',
+                  color: 'var(--text-secondary)',
                   fontSize: '13px',
                   cursor: 'pointer',
                   marginTop: '8px'
@@ -2726,9 +2727,9 @@ JSON 출력 예시:
                   type="button"
                   onClick={(e) => { e.stopPropagation(); toggleSection('gantt'); }}
                   style={{
-                    background: collapsedSections.gantt ? '#3b82f6' : '#f1f5f9',
-                    color: collapsedSections.gantt ? '#fff' : '#475569',
-                    border: '1px solid #cbd5e1',
+                    background: collapsedSections.gantt ? 'var(--accent)' : 'var(--bg-card-subtle)',
+                    color: collapsedSections.gantt ? '#fff' : 'var(--text-secondary)',
+                    border: '1px solid var(--border-subtle)',
                     borderRadius: '4px',
                     padding: '2px 8px',
                     fontSize: '11px',
@@ -2771,13 +2772,13 @@ JSON 출력 예시:
                   flexWrap: 'wrap',
                   gap: '8px',
                   alignItems: 'center',
-                  background: '#f8fafc',
+                  background: 'var(--bg-card-subtle)',
                   padding: '8px 12px',
                   borderRadius: '8px',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid var(--border-subtle)',
                   marginBottom: '10px'
                 }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#334155', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                     📅 <b>진행 기간 설정:</b>
                   </span>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
@@ -2785,15 +2786,15 @@ JSON 출력 예시:
                       type="date"
                       value={ganttStartDate}
                       onChange={e => setGanttStartDate(e.target.value)}
-                      style={{ padding: '3px 8px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '4px', height: '28px', background: '#fff' }}
+                      style={{ padding: '3px 8px', fontSize: '12px', border: '1px solid var(--input-border)', borderRadius: '4px', height: '28px', background: 'var(--input-bg)', color: 'var(--input-text)' }}
                       title="간트차트 조회 시작일"
                     />
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>~</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>~</span>
                     <input
                       type="date"
                       value={ganttEndDate}
                       onChange={e => setGanttEndDate(e.target.value)}
-                      style={{ padding: '3px 8px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '4px', height: '28px', background: '#fff' }}
+                      style={{ padding: '3px 8px', fontSize: '12px', border: '1px solid var(--input-border)', borderRadius: '4px', height: '28px', background: 'var(--input-bg)', color: 'var(--input-text)' }}
                       title="간트차트 조회 종료일"
                     />
                   </div>
@@ -2802,28 +2803,28 @@ JSON 출력 예시:
                     <button
                       type="button"
                       onClick={() => setQuickRange('thisMonth')}
-                      style={{ padding: '3px 8px', fontSize: '11px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#475569' }}
+                      style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
                     >
                       이번 달
                     </button>
                     <button
                       type="button"
                       onClick={() => setQuickRange('nextMonth')}
-                      style={{ padding: '3px 8px', fontSize: '11px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#475569' }}
+                      style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
                     >
                       다음 달
                     </button>
                     <button
                       type="button"
                       onClick={() => setQuickRange('thisQuarter')}
-                      style={{ padding: '3px 8px', fontSize: '11px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#475569' }}
+                      style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
                     >
                       이번 분기
                     </button>
                     <button
                       type="button"
                       onClick={() => setQuickRange('thisYear')}
-                      style={{ padding: '3px 8px', fontSize: '11px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', color: '#475569' }}
+                      style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
                     >
                       올해 전체
                     </button>
@@ -2831,7 +2832,7 @@ JSON 출력 예시:
                       <button
                         type="button"
                         onClick={() => { setGanttStartDate(''); setGanttEndDate(''); }}
-                        style={{ padding: '3px 8px', fontSize: '11px', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}
+                        style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--danger-muted)', color: 'var(--danger)', border: '1px solid var(--danger-muted)', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}
                       >
                         ✕ 기간 초기화
                       </button>
@@ -2865,16 +2866,16 @@ JSON 출력 예시:
                     <div style={{
                       padding: '36px 16px',
                       textAlign: 'center',
-                      color: '#64748b',
-                      background: '#f8fafc',
+                      color: 'var(--text-secondary)',
+                      background: 'var(--bg-card-subtle)',
                       borderRadius: '8px',
-                      border: '1px dashed #cbd5e1',
+                      border: '1px dashed var(--border-medium)',
                       margin: '12px 0'
                     }}>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
                         🔍 설정하신 기간 동안 진행되는 프로젝트가 없습니다.
                       </div>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                         설정 기간: <b>{ganttStartDate || '처음'}</b> ~ <b>{ganttEndDate || '끝'}</b>
                       </div>
                       <button
@@ -3276,11 +3277,11 @@ JSON 출력 예시:
                 onClick={() => toggleSection('list')}
                 style={{
                   padding: '12px 16px',
-                  background: '#f8fafc',
-                  border: '1px dashed #cbd5e1',
+                  background: 'var(--bg-card-subtle)',
+                  border: '1px dashed var(--border-medium)',
                   borderRadius: '8px',
                   textAlign: 'center',
-                  color: '#64748b',
+                  color: 'var(--text-secondary)',
                   fontSize: '13px',
                   cursor: 'pointer',
                   margin: '8px 14px 14px'

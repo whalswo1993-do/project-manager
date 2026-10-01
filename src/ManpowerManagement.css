@@ -1,119 +1,97 @@
-/* Manpower Management Dashboard Styles */
+/* ========================================================
+   MANPOWER MANAGEMENT CSS v3.0
+   Full CSS-variable system — zero hardcoded light colors
+   ======================================================== */
 
-/* ── Theme-aware local variables ── */
-.manpower-dashboard {
-  --mp-bg:        var(--bg-canvas, #f4f6f9);
-  --mp-card:      var(--bg-card, #ffffff);
-  --mp-card-sub:  var(--bg-card-subtle, #f1f4f8);
-  --mp-border:    var(--border-subtle, #dde3ed);
-  --mp-border-md: var(--border-medium, #c5cdd9);
-  --mp-text:      var(--text-primary, #0d1117);
-  --mp-text-sub:  var(--text-secondary, #3d4a5c);
-  --mp-muted:     var(--text-muted, #9eaab8);
-  --mp-accent:    var(--accent, #2563eb);
-  --mp-shadow:    var(--shadow-xs, 0 1px 2px rgba(0,0,0,0.04));
-}
-
-[data-theme="dark"] .manpower-dashboard,
-body.theme-dark .manpower-dashboard {
-  --mp-bg:        var(--bg-canvas, #0a0e1a);
-  --mp-card:      var(--bg-card, #111826);
-  --mp-card-sub:  var(--bg-card-subtle, #0d1220);
-  --mp-border:    var(--border-subtle, rgba(148,163,184,0.11));
-  --mp-border-md: var(--border-medium, rgba(148,163,184,0.18));
-  --mp-text:      var(--text-primary, #e8edf5);
-  --mp-text-sub:  var(--text-secondary, #94a3b8);
-  --mp-muted:     var(--text-muted, #475569);
-  --mp-accent:    var(--accent, #3b82f6);
-  --mp-shadow:    var(--shadow-xs, 0 1px 3px rgba(0,0,0,0.4));
-}
-
+/* ── Layout ── */
 .manpower-dashboard {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   width: 100%;
+  color: var(--text-primary);
 }
 
+/* ── Header Card ── */
 .mp-header-card {
-  background: var(--mp-card);
-  backdrop-filter: blur(12px);
-  color: var(--mp-text);
-  border: 1px solid var(--mp-border);
-  border-radius: 14px;
-  padding: 1rem 1.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl, 20px);
+  padding: 14px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
-  box-shadow: var(--mp-shadow);
+  gap: 14px;
+  box-shadow: var(--shadow-xs);
+  color: var(--text-primary);
 }
-
 
 .mp-title-group {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 12px;
 }
 
 .mp-logo-icon {
-  width: 36px;
-  height: 36px;
-  background: linear-gradient(135deg, #0969da, #0284c7);
-  border-radius: 8px;
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, var(--accent), #0284c7);
+  border-radius: var(--radius-md, 10px);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-weight: 700;
-  font-size: 1.25rem;
-  box-shadow: 0 2px 6px rgba(9, 105, 218, 0.25);
+  font-size: 1.1rem;
+  box-shadow: 0 2px 6px var(--accent-glow);
+  flex-shrink: 0;
 }
 
 .mp-title-text h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: var(--mp-text);
+  color: var(--text-primary);
 }
 
 .mp-title-text p {
   margin: 3px 0 0 0;
-  font-size: 0.75rem;
-  color: var(--mp-muted);
+  font-size: 11.5px;
+  color: var(--text-muted);
 }
 
+/* ── Month Navigator ── */
 .mp-month-navigator {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--mp-card-sub);
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--mp-border);
+  background: var(--bg-card-subtle);
+  padding: 5px 10px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-subtle);
 }
 
 .mp-nav-btn {
-  background: var(--mp-card);
-  color: var(--mp-text);
-  border: 1px solid var(--mp-border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
   width: 30px;
   height: 30px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm, 6px);
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 700;
   font-size: 14px;
   display: grid;
   place-items: center;
-  transition: all 0.15s ease;
+  transition: all var(--dur-fast) var(--ease-in-out);
 }
 
 .mp-nav-btn:hover {
-  background: var(--mp-card-sub);
-  border-color: var(--mp-accent);
-  color: var(--mp-accent);
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .mp-month-text {
@@ -121,31 +99,29 @@ body.theme-dark .manpower-dashboard {
   font-weight: 700;
   min-width: 120px;
   text-align: center;
-  color: var(--mp-text);
+  color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
 .mp-today-btn {
-  background: var(--mp-accent);
-  color: white;
+  background: var(--accent);
+  color: #fff;
   padding: 5px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm, 6px);
   font-size: 11px;
   font-weight: 700;
   border: none;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: all var(--dur-fast);
 }
 
-.mp-today-btn:hover {
-  filter: brightness(1.1);
-}
+.mp-today-btn:hover { filter: brightness(1.1); }
 
-/* Controls bar */
+/* ── Controls Bar ── */
 .mp-controls-bar {
-  background: var(--mp-card);
-  border: 1px solid var(--mp-border);
-  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl, 20px);
   padding: 14px 18px;
   display: flex;
   flex-direction: column;
@@ -162,35 +138,38 @@ body.theme-dark .manpower-dashboard {
 
 .mp-mode-toggle {
   display: inline-flex;
-  background: var(--mp-card-sub);
-  border-radius: 8px;
+  background: var(--bg-card-subtle);
+  border-radius: var(--radius-md, 10px);
   padding: 3px;
-  gap: 4px;
-  border: 1px solid var(--mp-border);
+  gap: 2px;
+  border: 1px solid var(--border-faint);
 }
 
 .mp-mode-btn {
   padding: 6px 14px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm, 6px);
   border: none;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
   background: transparent;
-  color: var(--mp-muted);
-  transition: all 0.15s ease;
+  color: var(--text-muted);
+  transition: all var(--dur-fast) var(--ease-in-out);
   display: inline-flex;
   align-items: center;
   gap: 5px;
 }
 
+.mp-mode-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+
 .mp-mode-btn.active {
-  background: var(--mp-card);
-  color: var(--mp-accent);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--bg-card);
+  color: var(--accent);
+  box-shadow: var(--shadow-xs);
   font-weight: 700;
 }
 
+/* ── Date Range ── */
 .mp-date-range-group {
   display: inline-flex;
   align-items: center;
@@ -202,12 +181,12 @@ body.theme-dark .manpower-dashboard {
 .mp-date-range-label {
   font-size: 12px;
   font-weight: 700;
-  color: #334155;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 
 .mp-date-sep {
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 600;
 }
 
@@ -218,20 +197,22 @@ body.theme-dark .manpower-dashboard {
   max-width: 128px;
   height: 32px;
   padding: 4px 8px;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm, 6px);
   font-size: 12px;
-  background: #ffffff;
-  color: #1e293b;
+  background: var(--input-bg);
+  color: var(--input-text);
   box-sizing: border-box;
+  outline: none;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
 }
 
 .mp-date-input:focus {
-  border-color: #0969da;
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.15);
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
 }
 
+/* ── Quick Buttons ── */
 .mp-quick-btns {
   display: inline-flex;
   align-items: center;
@@ -239,27 +220,29 @@ body.theme-dark .manpower-dashboard {
 }
 
 .mp-quick-btn {
-  height: 32px;
-  padding: 0 9px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
-  border-radius: 6px;
+  height: 30px;
+  padding: 0 10px;
+  background: var(--accent-muted);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm, 6px);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: all var(--dur-fast) var(--ease-in-out);
 }
 
 .mp-quick-btn:hover {
-  background: #dbeafe;
-  border-color: #93c5fd;
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
+/* ── Filter Group ── */
 .mp-filter-group {
   display: flex;
   align-items: center;
@@ -269,128 +252,140 @@ body.theme-dark .manpower-dashboard {
 
 .mp-filter-group select,
 .mp-filter-group input {
-  padding: 8px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md, 10px);
   font-size: 13px;
   outline: none;
-  background: #f8fafc;
+  background: var(--input-bg);
+  color: var(--input-text);
+  transition: border-color var(--dur-fast);
 }
 
-.mp-filter-group input {
-  width: 220px;
+.mp-filter-group select:focus,
+.mp-filter-group input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
 }
 
+.mp-filter-group input { width: 220px; }
+
+/* ── Action Buttons ── */
 .mp-ppt-btn {
   background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
   color: #ffffff;
   font-weight: 700;
   font-size: 13px;
-  padding: 9px 18px;
-  border-radius: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md, 10px);
   border: none;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 7px;
   box-shadow: 0 2px 8px rgba(234, 88, 12, 0.28);
-  transition: all 0.15s ease;
+  transition: all var(--dur-fast) var(--ease-in-out);
 }
 
 .mp-ppt-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(234, 88, 12, 0.38);
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  filter: brightness(1.08);
 }
 
-.mp-ppt-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-}
+.mp-ppt-btn:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
 
 .mp-excel-btn {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: linear-gradient(135deg, var(--success), #059669);
   color: #ffffff;
   font-weight: 700;
   font-size: 13px;
-  padding: 9px 16px;
-  border-radius: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md, 10px);
   border: none;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
-  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px var(--success-muted);
+  transition: all var(--dur-fast) var(--ease-in-out);
 }
 
 .mp-excel-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 4px 12px var(--success-muted);
+  filter: brightness(1.08);
 }
 
-/* KPI Summary Cards */
+/* ── KPI Grid ── */
 .mp-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
 }
 
 .mp-kpi-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg, 14px);
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+  gap: 5px;
+  box-shadow: var(--shadow-xs);
   position: relative;
   overflow: hidden;
+  transition: all var(--dur-base) var(--ease-out);
+}
+
+.mp-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-medium);
 }
 
 .mp-kpi-card::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
+  top: 0; left: 0; right: 0;
+  height: 3px;
 }
 
-.mp-kpi-card.total::before { background: #3b82f6; }
-.mp-kpi-card.peak::before { background: #ef4444; }
-.mp-kpi-card.projects::before { background: #10b981; }
+.mp-kpi-card.total::before { background: var(--accent); }
+.mp-kpi-card.peak::before  { background: var(--danger); }
+.mp-kpi-card.projects::before { background: var(--success); }
 .mp-kpi-card.depts::before { background: #8b5cf6; }
 
 .mp-kpi-label {
-  font-size: 12px;
+  font-size: 10.5px;
   font-weight: 700;
-  color: #64748b;
+  color: var(--text-tertiary);
   display: flex;
   align-items: center;
   gap: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .mp-kpi-val {
   font-size: 28px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   line-height: 1.1;
+  letter-spacing: -0.04em;
 }
 
 .mp-kpi-sub {
-  font-size: 12px;
-  color: #94a3b8;
+  font-size: 11.5px;
+  color: var(--text-muted);
 }
 
-/* Dept breakdown banner */
+/* ── Dept Banner ── */
 .mp-dept-banner {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg, 14px);
+  padding: 14px 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -398,8 +393,9 @@ body.theme-dark .manpower-dashboard {
 
 .mp-dept-banner h3 {
   margin: 0;
-  font-size: 14px;
-  color: #334155;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -408,38 +404,43 @@ body.theme-dark .manpower-dashboard {
 .mp-dept-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
 .mp-dept-tag {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 10px);
   padding: 8px 14px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 130px;
+  min-width: 120px;
+  transition: border-color var(--dur-fast);
 }
 
+.mp-dept-tag:hover { border-color: var(--border-medium); }
+
 .mp-dept-tag-name {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
-  color: #64748b;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .mp-dept-tag-val {
   font-size: 16px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
 }
 
-/* Calendar View */
+/* ── Calendar Section ── */
 .mp-calendar-section {
-  background: #ffffff;
-  border: 1px solid #d5e1eb;
-  border-radius: 16px;
-  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl, 20px);
+  padding: 18px;
   overflow-x: auto;
 }
 
@@ -452,9 +453,10 @@ body.theme-dark .manpower-dashboard {
 
 .mp-cal-head h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-primary);
+  letter-spacing: -0.015em;
 }
 
 .mp-cal-weekdays {
@@ -462,60 +464,62 @@ body.theme-dark .manpower-dashboard {
   grid-template-columns: repeat(7, 1fr);
   text-align: center;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 11px;
   padding-bottom: 8px;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .mp-cal-weekdays span {
-  padding: 6px;
-  color: #475569;
+  padding: 5px;
+  color: var(--text-tertiary);
 }
 
-.mp-cal-weekdays span:first-child { color: #dc2626; }
-.mp-cal-weekdays span:last-child { color: #2563eb; }
+.mp-cal-weekdays span:first-child { color: var(--danger); }
+.mp-cal-weekdays span:last-child  { color: var(--accent); }
 
 .mp-cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
+  gap: 5px;
   margin-top: 8px;
 }
 
 .mp-cal-day {
-  min-height: 105px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  min-height: 100px;
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-md, 10px);
   padding: 8px;
-  background: #ffffff;
+  background: var(--bg-card);
   display: flex;
   flex-direction: column;
   gap: 4px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--dur-fast) var(--ease-in-out);
   position: relative;
 }
 
 .mp-cal-day:hover {
-  border-color: #3b82f6;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12);
+  border-color: var(--accent-border);
+  box-shadow: 0 4px 12px var(--accent-glow);
   transform: translateY(-1px);
 }
 
 .mp-cal-day.other-month {
-  background: #f8fafc;
-  color: #94a3b8;
+  background: var(--bg-card-subtle);
+  color: var(--text-muted);
   opacity: 0.6;
 }
 
 .mp-cal-day.is-today {
-  border: 2px solid #3b82f6;
-  background: #f0f7ff;
+  border: 2px solid var(--accent);
+  background: var(--accent-muted);
 }
 
 .mp-cal-day.has-peak {
-  background: #fff1f2;
-  border-color: #fecdd3;
+  background: var(--danger-muted);
+  border-color: rgba(220, 38, 38, 0.25);
 }
 
 .mp-day-top {
@@ -527,26 +531,30 @@ body.theme-dark .manpower-dashboard {
 .mp-day-num {
   font-size: 12px;
   font-weight: 700;
+  color: var(--text-primary);
 }
 
 .mp-headcount-badge {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 800;
   padding: 2px 7px;
-  border-radius: 12px;
-  background: #dbeafe;
-  color: #1e40af;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--accent-muted);
+  color: var(--accent);
   white-space: nowrap;
+  border: 1px solid var(--accent-border);
 }
 
 .mp-headcount-badge.high {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: var(--danger-muted);
+  color: var(--danger);
+  border-color: rgba(220, 38, 38, 0.25);
 }
 
 .mp-headcount-badge.mid {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--warning-muted);
+  color: var(--warning);
+  border-color: rgba(217, 119, 6, 0.25);
 }
 
 .mp-day-depts {
@@ -554,254 +562,193 @@ body.theme-dark .manpower-dashboard {
   flex-wrap: wrap;
   gap: 3px;
   font-size: 10px;
-  color: #475569;
+  color: var(--text-tertiary);
   line-height: 1.2;
 }
 
 .mp-day-depts span {
-  background: #f1f5f9;
-  padding: 1px 4px;
-  border-radius: 4px;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-faint);
+  padding: 1px 5px;
+  border-radius: 3px;
 }
 
 .mp-day-projs {
   margin-top: auto;
   font-size: 10px;
-  color: #64748b;
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Table Section */
+/* ── Table Section ── */
 .mp-table-section {
-  background: #ffffff;
-  border: 1px solid #d5e1eb;
-  border-radius: 16px;
-  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl, 20px);
+  padding: 18px;
 }
 
 .mp-table-section h3 {
   margin: 0 0 14px 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-primary);
+  letter-spacing: -0.015em;
 }
 
-.mp-table-wrapper {
-  overflow-x: auto;
-}
+.mp-table-wrapper { overflow-x: auto; }
 
 .mp-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
   text-align: left;
+  color: var(--text-primary);
 }
 
 .mp-table th {
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--bg-card-subtle);
+  color: var(--text-tertiary);
   font-weight: 700;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   padding: 10px 12px;
-  border-bottom: 2px solid #cbd5e1;
+  border-bottom: 1px solid var(--border-subtle);
   white-space: nowrap;
 }
 
 .mp-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #e2e8f0;
-  color: #1e293b;
+  border-bottom: 1px solid var(--border-faint);
+  color: var(--text-primary);
   white-space: nowrap;
 }
 
-.mp-table tr:hover {
-  background: #f8fafc;
-}
+.mp-table tr:hover td { background: var(--bg-hover); }
 
-/* Modal Styles */
+/* ── Modal ── */
 .mp-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: var(--bg-overlay);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
   display: grid;
   place-items: center;
-  z-index: 99999 !important;
+  z-index: 99999;
   padding: 20px;
+  animation: fadeIn 0.2s var(--ease-out);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .mp-modal-card {
-  background: #ffffff;
-  border-radius: 18px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-radius: var(--radius-xl, 20px);
   width: min(980px, 96vw);
-  max-height: 88vh;
+  max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-medium);
   padding: 26px;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  z-index: 100000 !important;
+  z-index: 100000;
+  animation: slideUp 0.25s var(--ease-out);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(16px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
 }
 
 .mp-modal-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-subtle);
   padding-bottom: 14px;
   gap: 16px;
 }
 
 .mp-modal-head h3 {
-  margin: 0 0 5px 0;
-  font-size: 18px;
+  margin: 0 0 4px 0;
+  font-size: 17px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-primary);
   white-space: nowrap;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.025em;
 }
 
 .mp-modal-head p {
   margin: 0;
-  font-size: 13px;
-  color: #64748b;
-  white-space: nowrap;
+  font-size: 12.5px;
+  color: var(--text-muted);
 }
 
 .mp-close-btn {
-  background: transparent;
-  border: none;
-  font-size: 24px;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  font-size: 16px;
   cursor: pointer;
-  color: #64748b;
-  padding: 4px;
+  color: var(--text-tertiary);
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm, 6px);
+  display: grid;
+  place-items: center;
+  transition: all var(--dur-fast);
+  flex-shrink: 0;
 }
 
+.mp-close-btn:hover {
+  background: var(--danger-muted);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ── Timeline Table ── */
 .mp-timeline-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 12.5px;
+  color: var(--text-primary);
 }
 
 .mp-timeline-table th {
-  background: #f8fafc;
+  background: var(--bg-card-subtle);
   padding: 8px 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle);
   font-weight: 700;
-  color: #475569;
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   position: sticky;
   top: 0;
   z-index: 2;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .mp-timeline-table td {
   padding: 7px 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-faint);
   text-align: center;
+  color: var(--text-primary);
 }
 
-.mp-timeline-table tr:hover td {
-  background: #f1f5f9;
-}
+.mp-timeline-table tr:hover td { background: var(--bg-hover); }
 
 .mp-peak-cell {
-  background: #fef2f2 !important;
-  color: #dc2626 !important;
+  background: var(--danger-muted) !important;
+  color: var(--danger) !important;
   font-weight: 800;
-}
-
-/* ========================================================
-   DARK THEME OVERRIDES FOR MANPOWER DASHBOARD
-   ======================================================== */
-[data-theme="dark"] .manpower-dashboard,
-body.theme-dark .manpower-dashboard {
-  --bg-color: #07090e;
-  --panel-bg: #0d121f;
-  --border-color: rgba(56, 189, 248, 0.14);
-  --text-color: #f8fafc;
-  --text-muted: #94a3b8;
-}
-
-[data-theme="dark"] .mp-header-card,
-[data-theme="dark"] .mp-content-card,
-[data-theme="dark"] .mp-stat-card,
-[data-theme="dark"] .mp-summary-card,
-[data-theme="dark"] .mp-calendar-card,
-[data-theme="dark"] .mp-detail-modal-card {
-  background: #0d121f !important;
-  border-color: rgba(56, 189, 248, 0.14) !important;
-  color: #f8fafc !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-}
-
-[data-theme="dark"] .mp-title-text h2 {
-  color: #f8fafc !important;
-  background: none !important;
-  -webkit-text-fill-color: initial !important;
-}
-
-[data-theme="dark"] .mp-title-text p {
-  color: #94a3b8 !important;
-}
-
-[data-theme="dark"] .mp-month-navigator,
-[data-theme="dark"] .mp-filter-bar,
-[data-theme="dark"] .mp-search-box {
-  background: #111726 !important;
-  border-color: rgba(56, 189, 248, 0.18) !important;
-  color: #f8fafc !important;
-}
-
-[data-theme="dark"] .mp-month-text {
-  color: #f8fafc !important;
-}
-
-[data-theme="dark"] .mp-nav-btn {
-  background: #182236 !important;
-  color: #f8fafc !important;
-  border-color: rgba(56, 189, 248, 0.2) !important;
-}
-
-[data-theme="dark"] .mp-nav-btn:hover {
-  background: #202d44 !important;
-  border-color: #38bdf8 !important;
-  color: #38bdf8 !important;
-}
-
-[data-theme="dark"] .mp-timeline-table th,
-[data-theme="dark"] .mp-table th {
-  background: #111726 !important;
-  color: #94a3b8 !important;
-  border-color: rgba(56, 189, 248, 0.12) !important;
-}
-
-[data-theme="dark"] .mp-timeline-table td,
-[data-theme="dark"] .mp-table td {
-  border-color: rgba(56, 189, 248, 0.08) !important;
-  color: #e2e8f0 !important;
-}
-
-[data-theme="dark"] .mp-timeline-table tr:hover td,
-[data-theme="dark"] .mp-table tr:hover td {
-  background: #162032 !important;
-}
-
-[data-theme="dark"] .mp-day-cell {
-  background: #0d121f !important;
-  border-color: rgba(56, 189, 248, 0.1) !important;
-  color: #f8fafc !important;
-}
-
-[data-theme="dark"] .mp-day-cell.other {
-  background: #090d15 !important;
-  color: #64748b !important;
-}
-
-[data-theme="dark"] .mp-peak-cell {
-  background: rgba(239, 68, 68, 0.25) !important;
-  color: #f87171 !important;
 }

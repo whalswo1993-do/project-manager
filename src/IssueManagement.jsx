@@ -2228,9 +2228,9 @@ ${compiledText.substring(0, 30000)}
                                     type="button"
                                     onClick={() => toggleSection('upload')}
                                     style={{
-                                        background: collapsedSections.upload ? '#3b82f6' : '#f1f5f9',
+                                        background: collapsedSections.upload ? '#3b82f6' : 'var(--bg-card-subtle)',
                                         color: collapsedSections.upload ? '#fff' : '#475569',
-                                        border: '1px solid #cbd5e1',
+                                        border: '1px solid var(--border-subtle)',
                                         borderRadius: '4px',
                                         padding: '2px 8px',
                                         fontSize: '11px',
@@ -2498,30 +2498,30 @@ ${compiledText.substring(0, 30000)}
                                                             </div>
 
                                                             {/* 외주 부서 그리드 */}
-                                                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:'4px', background:'#fffbeb', padding:'4px', borderRadius:'4px', border:'1px solid #fef3c7', marginBottom:'4px'}}>
+                                                            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:'4px', background:'var(--bg-card-subtle)', padding:'4px', borderRadius:'4px', border:'1px solid var(--border-subtle)', marginBottom:'4px'}}>
                                                                 <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
-                                                                    <span style={{color: '#b45309', fontSize:'0.65rem'}}>기구외주</span>
+                                                                    <span style={{color: 'var(--warning)', fontSize:'0.65rem'}}>기구외주</span>
                                                                     <input type="number" step="0.5" value={report.facility_outsource} onChange={e=>{const newR=[...extractedReports]; newR[idx].facility_outsource=Number(e.target.value); setExtractedReports(newR);}} style={{width:'34px', padding:'2px'}}/>
                                                                 </div>
                                                                 <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
-                                                                    <span style={{color: '#b45309', fontSize:'0.65rem'}}>제어외주</span>
+                                                                    <span style={{color: 'var(--warning)', fontSize:'0.65rem'}}>제어외주</span>
                                                                     <input type="number" step="0.5" value={report.control_outsource} onChange={e=>{const newR=[...extractedReports]; newR[idx].control_outsource=Number(e.target.value); setExtractedReports(newR);}} style={{width:'34px', padding:'2px'}}/>
                                                                 </div>
                                                                 <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
-                                                                    <span style={{color: '#b45309', fontSize:'0.65rem'}}>전장외주</span>
+                                                                    <span style={{color: 'var(--warning)', fontSize:'0.65rem'}}>전장외주</span>
                                                                     <input type="number" step="0.5" value={report.electrical_outsource} onChange={e=>{const newR=[...extractedReports]; newR[idx].electrical_outsource=Number(e.target.value); setExtractedReports(newR);}} style={{width:'34px', padding:'2px'}}/>
                                                                 </div>
                                                                 <div style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px'}}>
-                                                                    <span style={{color: '#b45309', fontSize:'0.65rem'}}>비전외주</span>
+                                                                    <span style={{color: 'var(--warning)', fontSize:'0.65rem'}}>비전외주</span>
                                                                     <input type="number" step="0.5" value={report.vision_outsource} onChange={e=>{const newR=[...extractedReports]; newR[idx].vision_outsource=Number(e.target.value); setExtractedReports(newR);}} style={{width:'34px', padding:'2px'}}/>
                                                                 </div>
                                                             </div>
 
                                                             {/* 동적 커스텀 부서 표시 */}
                                                             {report.custom_depts && Object.keys(report.custom_depts).length > 0 && (
-                                                                <div style={{display:'flex', gap:'4px', flexWrap:'wrap', background:'#f5f3ff', padding:'4px', borderRadius:'4px', border:'1px solid #ede9fe'}}>
+                                                                <div style={{display:'flex', gap:'4px', flexWrap:'wrap', background:'var(--bg-card-subtle)', padding:'4px', borderRadius:'4px', border:'1px solid var(--border-subtle)'}}>
                                                                     {Object.entries(report.custom_depts).map(([deptName, cnt]) => (
-                                                                        <div key={deptName} style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px', background:'#fff', padding:'2px 4px', borderRadius:'3px', border:'1px solid #ddd6fe'}}>
+                                                                        <div key={deptName} style={{fontSize:'0.7rem', display:'flex', alignItems:'center', gap:'2px', background:'var(--bg-card)', padding:'2px 4px', borderRadius:'3px', border:'1px solid var(--border-subtle)'}}>
                                                                             <span style={{color: '#6366f1', fontWeight: 600}}>{deptName}</span>
                                                                             <input type="number" step="0.5" value={cnt} onChange={e => {
                                                                                 const newR = [...extractedReports];
@@ -2579,8 +2579,8 @@ ${compiledText.substring(0, 30000)}
                                     onClick={() => toggleSection('inputForm')}
                                     style={{
                                         padding: '10px',
-                                        background: '#f8fafc',
-                                        border: '1px dashed #cbd5e1',
+                                        background: 'var(--bg-card-subtle)',
+                                        border: '1px dashed var(--border-subtle)',
                                         borderRadius: '8px',
                                         textAlign: 'center',
                                         color: '#64748b',
@@ -2679,8 +2679,8 @@ ${compiledText.substring(0, 30000)}
                                             style={{
                                                 padding: '4px 10px',
                                                 fontSize: '12px',
-                                                background: '#f8fafc',
-                                                border: '1px solid #cbd5e1',
+                                                background: 'var(--bg-card-subtle)',
+                                                border: '1px solid var(--border-subtle)',
                                                 borderRadius: '6px',
                                                 cursor: 'pointer',
                                                 color: '#334155'
@@ -2694,8 +2694,8 @@ ${compiledText.substring(0, 30000)}
                                             style={{
                                                 padding: '4px 10px',
                                                 fontSize: '12px',
-                                                background: '#f8fafc',
-                                                border: '1px solid #cbd5e1',
+                                                background: 'var(--bg-card-subtle)',
+                                                border: '1px solid var(--border-subtle)',
                                                 borderRadius: '6px',
                                                 cursor: 'pointer',
                                                 color: '#334155'

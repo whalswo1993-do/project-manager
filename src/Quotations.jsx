@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+﻿import { useState, useRef, useEffect, useMemo } from 'react';
 import './Quotations.css';
 import { supabase } from './supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -16,14 +16,14 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
 
     if (!canManage) {
         return (
-            <div style={{ padding: '48px 24px', textAlign: 'center', background: 'var(--bg-card, #fff)', borderRadius: '24px', border: '1px solid var(--border-subtle, #e2e8f0)', margin: '40px auto', maxWidth: '440px', boxShadow: 'var(--shadow-md, 0 4px 20px rgba(0,0,0,0.06))' }}>
+            <div style={{ padding: '48px 24px', textAlign: 'center', background: 'var(--bg-card, #fff)', borderRadius: '24px', border: '1px solid var(--border-subtle, var(--border-faint))', margin: '40px auto', maxWidth: '440px', boxShadow: 'var(--shadow-md, 0 4px 20px rgba(0,0,0,0.06))' }}>
                 <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', fontSize: '28px' }}>🔒</div>
                 <h3 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary, #0f172a)', margin: '0 0 12px' }}>견적 관리 접근 권한 제한</h3>
                 <p style={{ fontSize: '14.5px', color: 'var(--text-secondary, #64748b)', lineHeight: 1.65, margin: '0 0 20px' }}>
                     견적 조회 및 관리 기능은 <b>Grade 3(PM/소장) 이상</b> 등급만 이용할 수 있습니다.<br />
                     해당 기능을 이용하시려면 운영자에게 권한을 부여받으시기 바랍니다.
                 </p>
-                <div style={{ background: 'var(--bg-card-subtle, #f1f5f9)', border: '1px solid var(--border-medium, #cbd5e1)', borderRadius: '14px', padding: '16px 20px', textAlign: 'left', fontSize: '13.5px', color: 'var(--text-secondary, #334155)', margin: '0 auto' }}>
+                <div style={{ background: 'var(--bg-card-subtle, var(--bg-card-subtle))', border: '1px solid var(--border-medium, var(--border-subtle))', borderRadius: '14px', padding: '16px 20px', textAlign: 'left', fontSize: '13.5px', color: 'var(--text-secondary, #334155)', margin: '0 auto' }}>
                     <div style={{ fontWeight: 700, color: 'var(--text-primary, #0f172a)', marginBottom: '10px', fontSize: '14.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span>📌</span><span>권한 부여 및 시스템 문의</span>
                     </div>
@@ -708,9 +708,9 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                             type="button"
                             onClick={() => toggleSection('newQuote')}
                             style={{
-                                background: collapsedSections.newQuote ? '#3b82f6' : '#f1f5f9',
+                                background: collapsedSections.newQuote ? '#3b82f6' : 'var(--bg-card-subtle)',
                                 color: collapsedSections.newQuote ? '#fff' : '#475569',
-                                border: '1px solid #cbd5e1',
+                                border: '1px solid var(--border-subtle)',
                                 borderRadius: '4px',
                                 padding: '2px 8px',
                                 fontSize: '11px',
@@ -822,8 +822,8 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                         onClick={() => toggleSection('newQuote')}
                         style={{
                             padding: '10px 14px',
-                            background: '#f8fafc',
-                            border: '1px dashed #cbd5e1',
+                            background: 'var(--bg-card-subtle)',
+                            border: '1px dashed var(--border-subtle)',
                             borderRadius: '8px',
                             textAlign: 'center',
                             color: '#64748b',
@@ -851,9 +851,9 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                                 type="button"
                                 onClick={() => toggleSection('itemSearch')}
                                 style={{
-                                    background: collapsedSections.itemSearch ? '#3b82f6' : '#f1f5f9',
+                                    background: collapsedSections.itemSearch ? '#3b82f6' : 'var(--bg-card-subtle)',
                                     color: collapsedSections.itemSearch ? '#fff' : '#475569',
-                                    border: '1px solid #cbd5e1',
+                                    border: '1px solid var(--border-subtle)',
                                     borderRadius: '4px',
                                     padding: '2px 8px',
                                     fontSize: '11px',
@@ -871,8 +871,8 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                         <button 
                             onClick={handleResetFilters}
                             style={{
-                                background: '#f8fafc',
-                                border: '1px solid #cbd5e1',
+                                background: 'var(--bg-card-subtle)',
+                                border: '1px solid var(--border-subtle)',
                                 padding: '6px 14px',
                                 borderRadius: '8px',
                                 fontSize: '12.5px',
@@ -1036,7 +1036,7 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                                 style={{
                                     padding: '7px 12px',
                                     borderRadius: '8px',
-                                    border: '1px solid #cbd5e1',
+                                    border: '1px solid var(--border-subtle)',
                                     fontSize: '13px',
                                     outline: 'none',
                                     width: '100%',
@@ -1240,8 +1240,8 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                 onClick={() => toggleSection('itemSearch')}
                 style={{
                     padding: '12px 16px',
-                    background: '#f8fafc',
-                    border: '1px dashed #cbd5e1',
+                    background: 'var(--bg-card-subtle)',
+                    border: '1px dashed var(--border-subtle)',
                     borderRadius: '8px',
                     textAlign: 'center',
                     color: '#64748b',
@@ -1266,9 +1266,9 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                                 type="button"
                                 onClick={() => toggleSection('projectSummary')}
                                 style={{
-                                    background: collapsedSections.projectSummary ? '#3b82f6' : '#f1f5f9',
+                                    background: collapsedSections.projectSummary ? '#3b82f6' : 'var(--bg-card-subtle)',
                                     color: collapsedSections.projectSummary ? '#fff' : '#475569',
-                                    border: '1px solid #cbd5e1',
+                                    border: '1px solid var(--border-subtle)',
                                     borderRadius: '4px',
                                     padding: '2px 8px',
                                     fontSize: '11px',
@@ -1290,8 +1290,8 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                                 style={{
                                     padding: '4px 10px',
                                     fontSize: '12px',
-                                    background: '#f8fafc',
-                                    border: '1px solid #cbd5e1',
+                                    background: 'var(--bg-card-subtle)',
+                                    border: '1px solid var(--border-subtle)',
                                     borderRadius: '6px',
                                     cursor: 'pointer',
                                     color: '#334155'
@@ -1305,8 +1305,8 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                                 style={{
                                     padding: '4px 10px',
                                     fontSize: '12px',
-                                    background: '#f8fafc',
-                                    border: '1px solid #cbd5e1',
+                                    background: 'var(--bg-card-subtle)',
+                                    border: '1px solid var(--border-subtle)',
                                     borderRadius: '6px',
                                     cursor: 'pointer',
                                     color: '#334155'
@@ -1427,8 +1427,8 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                         onClick={() => toggleSection('projectSummary')}
                         style={{
                             padding: '12px 16px',
-                            background: '#f8fafc',
-                            border: '1px dashed #cbd5e1',
+                            background: 'var(--bg-card-subtle)',
+                            border: '1px dashed var(--border-subtle)',
                             borderRadius: '8px',
                             textAlign: 'center',
                             color: '#64748b',

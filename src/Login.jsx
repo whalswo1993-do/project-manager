@@ -323,9 +323,15 @@ export default function Login() {
           <div style={{
             padding: "10px 14px",
             borderRadius: "8px",
-            background: message.includes("완료") || message.includes("발송") || message.includes("성공") ? "#eff6ff" : "#fef2f2",
-            border: `1px solid ${message.includes("완료") || message.includes("발송") || message.includes("성공") ? "#bfdbfe" : "#fecaca"}`,
-            color: message.includes("완료") || message.includes("발송") || message.includes("성공") ? "#1d4ed8" : "#dc2626",
+            background: message.includes("완료") || message.includes("발송") || message.includes("성공")
+              ? "var(--info-muted)"
+              : "var(--danger-muted)",
+            border: `1px solid ${message.includes("완료") || message.includes("발송") || message.includes("성공")
+              ? "rgba(2,132,199,0.25)"
+              : "rgba(220,38,38,0.25)"}`,
+            color: message.includes("완료") || message.includes("발송") || message.includes("성공")
+              ? "var(--info)"
+              : "var(--danger)",
             fontSize: "13px",
             lineHeight: "1.4",
             fontWeight: 500,

@@ -1,781 +1,810 @@
-/* CSS variables for Design System - Light Theme */
+/* ========================================================
+   VISION SPC CSS v3.0 — Full Token-Based Design
+   Zero hardcoded colors — all via CSS variables
+   ======================================================== */
+
+/* ── Local variable bridge ── */
 .vision-spc-container {
-    --bg-color: #f6f8fa;
-    --panel-bg: #ffffff;
-    --border-color: #d0d7de;
-    --text-color: #24292f;
-    --text-muted: #57606a;
-    --primary: #0969da;
-    --accent: #2da44e;
-    --accent-bg: rgba(45, 164, 78, 0.15);
-    --danger: #cf222e;
-    --danger-bg: rgba(207, 34, 46, 0.15);
-    --warning: #bf8700;
-    --warning-bg: rgba(191, 135, 0, 0.15);
-    --card-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.05);
-    --font-display: var(--font-sans, 'Inter', sans-serif);
-    --font-body: var(--font-sans, 'Inter', sans-serif);
+  /* Bridge local to global tokens */
+  --bg-color:   var(--bg-card-subtle);
+  --panel-bg:   var(--bg-card);
+  --border-color: var(--border-subtle);
+  --text-color: var(--text-primary);
+  --text-muted: var(--text-muted);
+  --primary:    var(--accent);
+  --accent:     var(--success);
+  --accent-bg:  var(--success-muted);
+  --danger:     var(--danger);
+  --danger-bg:  var(--danger-muted);
+  --warning:    var(--warning);
+  --warning-bg: var(--warning-muted);
+  --card-shadow: var(--shadow-sm);
+  --font-display: var(--font-sans);
+  --font-body:    var(--font-sans);
 }
 
-[data-theme="dark"] .vision-spc-container,
-body.theme-dark .vision-spc-container {
-    --bg-color: #07090e;
-    --panel-bg: #0d121f;
-    --border-color: rgba(56, 189, 248, 0.14);
-    --text-color: #f8fafc;
-    --text-muted: #94a3b8;
-    --primary: #38bdf8;
-    --accent: #10b981;
-    --accent-bg: rgba(16, 185, 129, 0.2);
-    --danger: #ef4444;
-    --danger-bg: rgba(239, 68, 68, 0.2);
-    --warning: #f59e0b;
-    --warning-bg: rgba(245, 158, 11, 0.2);
-    --card-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.4);
-}
+/* No dark overrides needed — uses global vars directly */
 
-[data-theme="dark"] .vision-spc-header {
-    background: rgba(13, 18, 31, 0.85) !important;
-}
-
+/* ── Base Container ── */
 .vision-spc-container {
-
-    background-color: var(--panel-bg);
-    color: var(--text-color);
-    font-family: var(--font-body);
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    height: calc(100vh - 220px);
-    min-height: 550px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    border: 1px solid var(--border-color);
-    border-radius: 14px;
-    margin: 10px 0;
+  background-color: var(--panel-bg);
+  color: var(--text-color);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  height: calc(100vh - 220px);
+  min-height: 550px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl, 20px);
+  margin: 10px 0;
 }
 
-.vision-spc-container * {
-    box-sizing: border-box;
-}
+.vision-spc-container * { box-sizing: border-box; }
 
+/* ── Header ── */
 .vision-spc-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 2rem;
-    border-bottom: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(12px);
-    z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--header-bg);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  z-index: 100;
+  flex-shrink: 0;
 }
 
 .vision-spc-container .logo-area {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .vision-spc-container .logo-icon {
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, #0969da, #db2777);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.2rem;
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  border-radius: var(--radius-md, 10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
 }
 
 .vision-spc-container .logo-text h1 {
-    font-family: var(--font-display);
-    font-size: 1.25rem;
-    font-weight: 600;
-    background: linear-gradient(90deg, #24292f 0%, #57606a 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0;
+  letter-spacing: -0.015em;
 }
 
 .vision-spc-container .logo-text p {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin: 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin: 2px 0 0 0;
 }
 
 .vision-spc-container .header-actions {
-    display: flex;
-    gap: 0.75rem;
+  display: flex;
+  gap: 8px;
 }
 
+/* ── Buttons ── */
 .vision-spc-container .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.6rem 1.2rem;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid var(--border-color);
-    background-color: #f6f8fa;
-    color: var(--text-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-md, 10px);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--dur-fast, 120ms) var(--ease-in-out);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card-subtle);
+  color: var(--text-color);
+  line-height: 1;
 }
 
 .vision-spc-container .btn:hover {
-    background-color: #f3f4f6;
-    border-color: #24292f;
+  background: var(--bg-hover);
+  border-color: var(--border-medium);
 }
 
 .vision-spc-container .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .vision-spc-container .btn-primary {
-    background: linear-gradient(135deg, #0969da, #0550ae);
-    border-color: #0969da;
-    color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 .vision-spc-container .btn-primary:hover:not(:disabled) {
-    background: #0969da;
-    border-color: #0550ae;
-    box-shadow: 0 0 12px rgba(9, 105, 218, 0.3);
+  filter: brightness(1.1);
+  box-shadow: 0 4px 14px var(--accent-glow);
+  transform: translateY(-1px);
 }
 
 .vision-spc-container .btn-accent {
-    background: linear-gradient(135deg, #2da44e, #238636);
-    border-color: #2da44e;
-    color: #ffffff;
+  background: var(--success);
+  border-color: var(--success);
+  color: #ffffff;
+  box-shadow: 0 2px 8px var(--success-muted);
 }
 
 .vision-spc-container .btn-accent:hover:not(:disabled) {
-    background: #2da44e;
-    border-color: #238636;
-    box-shadow: 0 0 12px rgba(45, 164, 78, 0.3);
+  filter: brightness(1.1);
+  transform: translateY(-1px);
 }
 
 .vision-spc-container .btn-danger {
-    background: linear-gradient(135deg, #cf222e, #a40e26);
-    border-color: #cf222e;
-    color: #ffffff;
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #ffffff;
+  box-shadow: 0 2px 8px var(--danger-muted);
 }
 
 .vision-spc-container .btn-danger:hover:not(:disabled) {
-    background: #cf222e;
-    border-color: #a40e26;
-    box-shadow: 0 0 12px rgba(207, 34, 46, 0.3);
+  filter: brightness(1.1);
+  transform: translateY(-1px);
 }
 
+/* ── Main layout ── */
 .vision-spc-container .main-container {
-    display: grid;
-    grid-template-columns: 350px 1fr;
-    flex-grow: 1;
-    overflow: hidden;
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  flex-grow: 1;
+  overflow: hidden;
 }
 
-/* Sidebar styling */
+/* ── Sidebar ── */
 .vision-spc-container .sidebar {
-    border-right: 1px solid var(--border-color);
-    background: var(--panel-bg);
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    overflow-y: auto;
+  border-right: 1px solid var(--border-color);
+  background: var(--bg-card-subtle);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
 }
 
 .vision-spc-container .panel-title {
-    font-family: var(--font-display);
-    font-size: 0.95rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    margin-bottom: 0.75rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-/* Drag & Drop Zone */
+/* ── Dropzone ── */
 .vision-spc-container .dropzone {
-    border: 2px dashed var(--border-color);
-    border-radius: 10px;
-    padding: 2rem 1rem;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: #f6f8fa;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
+  border: 2px dashed var(--border-medium);
+  border-radius: var(--radius-lg, 14px);
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--bg-canvas);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
 }
 
-.vision-spc-container .dropzone:hover, .vision-spc-container .dropzone.dragover {
-    border-color: var(--primary);
-    background-color: rgba(9, 105, 218, 0.05);
+.vision-spc-container .dropzone:hover,
+.vision-spc-container .dropzone.dragover {
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  color: var(--accent);
 }
 
 .vision-spc-container .dropzone-icon {
-    font-size: 2.2rem;
-    color: var(--text-muted);
+  font-size: 2rem;
+  line-height: 1;
 }
 
 .vision-spc-container .dropzone-text {
-    font-size: 0.85rem;
-    color: var(--text-color);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .vision-spc-container .dropzone-subtext {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+  font-size: 11.5px;
+  color: var(--text-muted);
 }
 
-/* Copy & Paste Area */
+/* ── Paste area ── */
 .vision-spc-container .paste-area {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .vision-spc-container .paste-textarea {
-    width: 100%;
-    height: 80px;
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-color);
-    padding: 0.6rem;
-    font-family: monospace;
-    font-size: 0.75rem;
-    resize: none;
-    outline: none;
-    transition: border-color 0.2s;
+  width: 100%;
+  height: 80px;
+  background: var(--input-bg) !important;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md, 10px);
+  color: var(--input-text) !important;
+  padding: 8px 10px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11.5px;
+  resize: none;
+  outline: none;
+  transition: border-color 0.15s;
 }
 
 .vision-spc-container .paste-textarea:focus {
-    border-color: var(--primary);
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
 }
 
-/* Items List sidebar */
+/* ── Items List ── */
 .vision-spc-container .items-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    max-height: 380px;
-    overflow-y: auto;
-    padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
-.vision-spc-container .items-container::-webkit-scrollbar {
-    width: 4px;
-}
-
+.vision-spc-container .items-container::-webkit-scrollbar { width: 4px; }
 .vision-spc-container .items-container::-webkit-scrollbar-thumb {
-    background-color: var(--border-color);
-    border-radius: 2px;
+  background: var(--border-medium);
+  border-radius: 2px;
 }
 
-/* Top Action Bar (Config Bar) */
-.vision-spc-container .config-bar {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
+/* ── Item rows ── */
 .vision-spc-container .item-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 0.8rem;
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 10px);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-in-out);
 }
 
 .vision-spc-container .item-row:hover {
-    background-color: #f6f8fa;
-    border-color: var(--text-muted);
+  background: var(--bg-hover);
+  border-color: var(--border-medium);
 }
 
 .vision-spc-container .item-row.active {
-    background-color: rgba(9, 105, 218, 0.08);
-    border-color: var(--primary);
-    color: var(--primary);
-    font-weight: 500;
+  background: var(--accent-muted);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .vision-spc-container .item-row.batch-settings-item {
-    background: linear-gradient(135deg, rgba(9, 105, 218, 0.05) 0%, rgba(45, 164, 78, 0.05) 100%);
-    border: 1px solid rgba(9, 105, 218, 0.2);
-    margin-bottom: 0.5rem;
+  background: var(--bg-card);
+  border: 1px solid var(--accent-border);
+  margin-bottom: 6px;
 }
 
 .vision-spc-container .item-row.batch-settings-item:hover {
-    background: linear-gradient(135deg, rgba(9, 105, 218, 0.1) 0%, rgba(45, 164, 78, 0.1) 100%);
-    border-color: var(--primary);
+  background: var(--accent-muted);
+  border-color: var(--accent);
 }
 
 .vision-spc-container .item-row.batch-settings-item.active {
-    background: linear-gradient(135deg, rgba(9, 105, 218, 0.15) 0%, rgba(5, 80, 174, 0.1) 100%);
-    border-color: var(--primary);
-    box-shadow: 0 0 12px rgba(9, 105, 218, 0.1);
+  background: var(--accent-muted);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
 }
 
 .vision-spc-container .item-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
 }
 
 .vision-spc-container .item-name {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-color);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color);
 }
 
 .vision-spc-container .item-subtext {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    font-family: var(--font-display);
+  font-size: 10.5px;
+  color: var(--text-muted);
 }
 
+/* ── Badges ── */
 .vision-spc-container .badge {
-    font-size: 0.7rem;
-    padding: 0.15rem 0.4rem;
-    border-radius: 12px;
-    font-weight: 600;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill, 999px);
+  font-weight: 700;
 }
 
 .vision-spc-container .badge-success {
-    background-color: var(--accent-bg);
-    color: var(--accent);
+  background: var(--success-muted);
+  color: var(--success);
 }
 
 .vision-spc-container .badge-danger {
-    background-color: var(--danger-bg);
-    color: var(--danger);
+  background: var(--danger-muted);
+  color: var(--danger);
 }
 
 .vision-spc-container .badge-warning {
-    background-color: var(--warning-bg);
-    color: var(--warning);
+  background: var(--warning-muted);
+  color: var(--warning);
 }
 
-/* Content Area Styling */
+/* ── Content Area ── */
 .vision-spc-container .content-area {
-    margin: 0; 
-    padding: 2rem;
-    background-color: var(--panel-bg);
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-    overflow-y: auto;
-    overflow-x: hidden;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    min-width: 0;
+  margin: 0;
+  padding: 24px;
+  background: var(--panel-bg);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
 }
 
-/* Tabs styling */
+/* ── Tabs ── */
 .vision-spc-container .tabs-header {
-    display: flex;
-    border-bottom: 1px solid var(--border-color);
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  gap: 4px;
+  margin-bottom: 4px;
 }
 
 .vision-spc-container .tab-btn {
-    padding: 0.6rem 1.2rem;
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    font-family: var(--font-display);
-    font-weight: 500;
-    font-size: 0.95rem;
-    transition: all 0.2s;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 13px;
+  transition: all 0.2s;
 }
 
-.vision-spc-container .tab-btn:hover {
-    color: var(--text-color);
-}
+.vision-spc-container .tab-btn:hover { color: var(--text-color); }
 
 .vision-spc-container .tab-btn.active {
-    color: var(--primary);
-    border-bottom-color: var(--primary);
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 700;
 }
 
-/* Welcome Message Screen */
+/* ── Welcome Screen ── */
 .vision-spc-container .welcome-screen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 2rem;
-    flex-grow: 1;
-    gap: 1.5rem;
-    min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  flex-grow: 1;
+  gap: 20px;
+  min-height: 0;
 }
 
 .vision-spc-container .welcome-icon {
-    font-size: 4rem;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: spc-float 4s ease-in-out infinite;
+  font-size: 3.5rem;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: spc-float 4s ease-in-out infinite;
 }
 
 @keyframes spc-float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
 .vision-spc-container .welcome-screen h2 {
-    font-family: var(--font-display);
-    font-size: 1.8rem;
-    font-weight: 600;
-    margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-color);
+  letter-spacing: -0.02em;
 }
 
 .vision-spc-container .welcome-screen p {
-    max-width: 500px;
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    margin: 0;
+  max-width: 480px;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  margin: 0;
+  line-height: 1.65;
 }
 
 .vision-spc-container .welcome-steps {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1.5rem;
-    margin-top: 1rem;
-    width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 8px;
+  width: 100%;
 }
 
+/* THIS IS THE KEY FIX - welcome-step was hardcoded #ffffff */
 .vision-spc-container .welcome-step {
-    flex: 1 1 150px;
-    max-width: 200px;
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1rem;
-    font-size: 0.8rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
+  flex: 1 1 140px;
+  max-width: 185px;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg, 14px);
+  padding: 16px;
+  font-size: 12.5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.vision-spc-container .welcome-step:hover {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-sm);
 }
 
 .vision-spc-container .welcome-step-num {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background-color: var(--border-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 0.75rem;
-    color: var(--text-color);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-muted);
+  border: 1px solid var(--accent-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--accent);
 }
 
-/* Dashboard layout when data loaded */
+/* ── Dashboard Grid ── */
 .vision-spc-container .dashboard-grid {
-    display: grid;
-    grid-template-columns: 2fr 3fr;
-    gap: 1.5rem;
-    align-items: start;
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: 18px;
+  align-items: start;
 }
 
-/* Cards */
+/* ── Cards ── */
 .vision-spc-container .card {
-    background-color: var(--panel-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    box-shadow: var(--card-shadow);
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    position: relative;
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg, 14px);
+  box-shadow: var(--card-shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.vision-spc-container .card:hover {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-md);
 }
 
 .vision-spc-container .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
 }
 
 .vision-spc-container .card-title {
-    font-family: var(--font-display);
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-color);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  letter-spacing: -0.01em;
 }
 
-/* Stat Grid (Cp, Cpk) */
+/* ── Stat Cards (Cp, Cpk) ── */
 .vision-spc-container .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
+/* THIS IS THE KEY FIX - stat-card was hardcoded #ffffff */
 .vision-spc-container .stat-card {
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1rem;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 10px);
+  padding: 16px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--dur-fast) var(--ease-in-out);
+}
+
+.vision-spc-container .stat-card:hover {
+  border-color: var(--border-medium);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 
 .vision-spc-container .stat-card-title {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    font-weight: 500;
-    margin-bottom: 0.3rem;
-    text-transform: uppercase;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .vision-spc-container .stat-card-value {
-    font-family: var(--font-display);
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: var(--text-color);
-    line-height: 1.1;
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--text-color);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
 }
 
 .vision-spc-container .stat-card.pass {
-    border-left: 4px solid var(--accent);
+  border-left: 3px solid var(--success);
 }
 
 .vision-spc-container .stat-card.fail {
-    border-left: 4px solid var(--danger);
+  border-left: 3px solid var(--danger);
 }
 
-/* Spec settings Editor Table */
+/* ── Spec Table ── */
 .vision-spc-container .spec-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
 }
 
-.vision-spc-container .spec-table th, .vision-spc-container .spec-table td {
-    padding: 0.6rem 0.8rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
+.vision-spc-container .spec-table th,
+.vision-spc-container .spec-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .vision-spc-container .spec-table th {
-    color: var(--text-muted);
-    font-weight: 500;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
+/* THIS IS THE KEY FIX - spec-input was #ffffff */
 .vision-spc-container .spec-input {
-    width: 100%;
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    color: var(--text-color);
-    padding: 0.35rem 0.5rem;
-    outline: none;
-    transition: border-color 0.15s;
-    font-family: var(--font-display);
-    font-size: 0.85rem;
+  width: 100%;
+  background: var(--input-bg) !important;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--input-text) !important;
+  padding: 5px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+  font-size: 13px;
 }
 
 .vision-spc-container .spec-input:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2);
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
 }
 
-/* Batch Editor CSS */
+/* ── Batch Editor ── */
+/* THIS IS THE KEY FIX - batch-grid-wrapper was #ffffff */
 .vision-spc-container .batch-grid-wrapper {
-    overflow-x: auto;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background-color: #ffffff;
-    max-height: 480px;
-    overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 10px);
+  background: var(--bg-card);
+  max-height: 480px;
+  overflow-y: auto;
 }
 
 .vision-spc-container .batch-grid-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
-    text-align: left;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
 }
 
-.vision-spc-container .batch-grid-table th, .vision-spc-container .batch-grid-table td {
-    padding: 0.6rem 0.8rem;
-    border-bottom: 1px solid var(--border-color);
+.vision-spc-container .batch-grid-table th,
+.vision-spc-container .batch-grid-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
 }
 
+/* THIS IS THE KEY FIX - batch th was #f6f8fa */
 .vision-spc-container .batch-grid-table th {
-    background-color: #f6f8fa;
-    color: var(--text-muted);
-    font-weight: 600;
-    position: sticky;
-    top: 0;
-    z-index: 10;
+  background: var(--bg-card-subtle);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
+/* THIS IS THE KEY FIX - batch tr:hover was #f6f8fa */
 .vision-spc-container .batch-grid-table tbody tr:hover {
-    background-color: #f6f8fa;
+  background: var(--bg-hover);
 }
 
-/* Tool Panels inside Batch settings */
+/* ── Batch Tool Panel ── */
 .vision-spc-container .batch-tool-panel {
-    background-color: rgba(9, 105, 218, 0.03);
-    border: 1px dashed rgba(9, 105, 218, 0.3);
-    border-radius: 8px;
-    padding: 1rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    align-items: flex-end;
-    margin-bottom: 0.8rem;
+  background: var(--accent-muted);
+  border: 1px dashed var(--accent-border);
+  border-radius: var(--radius-md, 10px);
+  padding: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: flex-end;
+  margin-bottom: 10px;
 }
 
 .vision-spc-container .batch-tool-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .vision-spc-container .batch-tool-item label {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    font-weight: 500;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-/* Chart Canvas wrapper */
+/* ── Chart Wrapper ── */
+/* THIS IS THE KEY FIX - chart-wrapper was #ffffff */
 .vision-spc-container .chart-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1rem;
-    width: 100%;
-    height: 380px;
-    position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 10px);
+  padding: 14px;
+  width: 100%;
+  height: 380px;
+  position: relative;
 }
 
-/* Stats list table at the bottom */
+/* ── Summary Table ── */
+/* THIS IS THE KEY FIX - summary-table-wrapper was #ffffff */
 .vision-spc-container .summary-table-wrapper {
-    overflow-x: auto;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    background-color: #ffffff;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md, 10px);
+  background: var(--bg-card);
 }
 
 .vision-spc-container .summary-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.85rem;
-    text-align: left;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text-primary);
 }
 
-.vision-spc-container .summary-table th, .vision-spc-container .summary-table td {
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--border-color);
+.vision-spc-container .summary-table th,
+.vision-spc-container .summary-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
 }
 
+/* THIS IS THE KEY FIX - summary th was #f6f8fa */
 .vision-spc-container .summary-table th {
-    background-color: #f6f8fa;
-    color: var(--text-muted);
-    font-weight: 500;
+  background: var(--bg-card-subtle);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .vision-spc-container .summary-table tr:last-child td {
-    border-bottom: none;
+  border-bottom: none;
 }
 
 .vision-spc-container .summary-table tbody tr {
-    cursor: pointer;
-    transition: background-color 0.15s;
+  cursor: pointer;
+  transition: background var(--dur-fast);
 }
 
+/* THIS IS THE KEY FIX - tbody tr:hover was #f6f8fa */
 .vision-spc-container .summary-table tbody tr:hover {
-    background-color: #f6f8fa;
+  background: var(--bg-hover);
 }
 
 .vision-spc-container .summary-table tbody tr.active {
-    background-color: rgba(9, 105, 218, 0.05);
-    font-weight: 500;
+  background: var(--accent-muted);
+  font-weight: 600;
 }
 
-/* Settings configuration toggles */
+/* ── Config Bar ── */
+/* THIS IS THE KEY FIX - config-bar was #ffffff */
 .vision-spc-container .config-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.5rem;
-    padding: 0.8rem 1.2rem;
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 0.85rem;
-    align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 14px;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 10px);
+  font-size: 13px;
+  align-items: center;
 }
 
 .vision-spc-container .config-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    white-space: nowrap;
-    flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .vision-spc-container .config-item span {
-    white-space: nowrap;
-    flex-shrink: 0;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text-color);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-color);
 }
 
+/* THIS IS THE KEY FIX - config-select was #ffffff */
 .vision-spc-container .config-select {
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    color: var(--text-color);
-    padding: 0.25rem 0.5rem;
-    outline: none;
-    font-size: 0.85rem;
+  background: var(--input-bg) !important;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--input-text) !important;
+  padding: 4px 8px;
+  outline: none;
+  font-size: 13px;
+  transition: border-color 0.15s;
 }
 
 .vision-spc-container .config-select:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2);
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
 }
-

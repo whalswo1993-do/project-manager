@@ -2014,46 +2014,112 @@ JSON 출력 예시:
         </div>
       )}
 
-      {/* 글로벌 복수 연간 단위 선택기 (Global Multi-Year Toolbar: 당해년도, 최근 2개년, 최근 3개년, 전체 및 복수 토글) */}
-      <div className="global-multi-year-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 14px', borderRadius: '12px', margin: '8px 0', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', marginRight: '4px' }}>
-            <span style={{ fontSize: '15px' }}>📅</span>
+      {/* ========================================================
+          PREVAX / PINTEL EXECUTIVE KPI STATS SECTION
+          ======================================================== */}
+      <section className="prevax-kpi-grid" aria-label="Executive KPI Overview" style={{ padding: 0, background: 'transparent', border: 'none', boxShadow: 'none' }}>
+        {/* KPI 1: 전체 프로젝트 */}
+        <div className="prevax-kpi-card">
+          <div className="prevax-kpi-header">
+            <span>Total Projects</span>
+            <span style={{ fontSize: '13px' }}>📊</span>
+          </div>
+          <div className="prevax-kpi-value">
+            {yearStats.total}
+            <span className="kpi-unit">건</span>
+          </div>
+          <div className="prevax-kpi-sub">
+            <span>{isAllYears ? "전체 등록 프로젝트" : `${selectedYears.length === 1 ? selectedYears[0] : `${selectedYears.length}개년`} 대상`}</span>
+          </div>
+        </div>
+
+        {/* KPI 2: 진행중 */}
+        <div className="prevax-kpi-card">
+          <div className="prevax-kpi-header">
+            <span>Active Ongoing</span>
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+          </div>
+          <div className="prevax-kpi-value" style={{ color: '#10b981' }}>
+            {yearStats.ongoing}
+            <span className="kpi-unit">건</span>
+          </div>
+          <div className="prevax-kpi-sub">
+            <span>실시간 가동 현장</span>
+          </div>
+        </div>
+
+        {/* KPI 3: 정상 완료 */}
+        <div className="prevax-kpi-card">
+          <div className="prevax-kpi-header">
+            <span>Completed</span>
+            <span style={{ fontSize: '13px', color: '#38bdf8' }}>✓</span>
+          </div>
+          <div className="prevax-kpi-value" style={{ color: '#38bdf8' }}>
+            {yearStats.completed}
+            <span className="kpi-unit">건</span>
+          </div>
+          <div className="prevax-kpi-sub">
+            <span>목표 달성 완료</span>
+          </div>
+        </div>
+
+        {/* KPI 4: 지연 및 이슈 관리 */}
+        <div className="prevax-kpi-card">
+          <div className="prevax-kpi-header">
+            <span>Delayed / Attention</span>
+            <span style={{ fontSize: '12px' }}>{yearStats.delayed > 0 ? '⚠️' : '🛡️'}</span>
+          </div>
+          <div className="prevax-kpi-value" style={{ color: yearStats.delayed > 0 ? '#ef4444' : 'var(--text-primary)' }}>
+            {yearStats.delayed}
+            <span className="kpi-unit">건</span>
+          </div>
+          <div className="prevax-kpi-sub">
+            <span style={{ color: yearStats.delayed > 0 ? '#ef4444' : 'var(--text-muted)' }}>
+              {yearStats.delayed > 0 ? "집중 관리 필요" : "지연 일정 없음 (정상)"}
+            </span>
+          </div>
+        </div>
+
+        {/* KPI 5: PREVAX Electric Blue Accent Card (누적 투입공수) */}
+        <div className="prevax-kpi-card prevax-accent-card">
+          <div className="prevax-kpi-header">
+            <span>Total Manpower</span>
+            <span style={{ fontSize: '13px' }}>⚡</span>
+          </div>
+          <div className="prevax-kpi-value">
+            {yearStats.totalManpower.toLocaleString()}
+            <span className="kpi-unit">M/D</span>
+          </div>
+          <div className="prevax-kpi-sub">
+            <span>누적 투입 공수 총계</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================
+          PINTEL / PREVAX FLOATING YEAR SELECTOR TOOLBAR
+          ======================================================== */}
+      <div className="prevax-year-toolbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)', marginRight: '2px' }}>
+            <span style={{ color: 'var(--neon-cyan)' }}>📅</span>
             <span>조회 연도:</span>
           </div>
 
-          {/* 1. 빠른 프리셋 버튼 (원클릭) */}
-          <div style={{ display: 'flex', gap: '3px', background: 'var(--pill-bg)', padding: '2px', borderRadius: '8px' }}>
+          {/* 1. 빠른 프리셋 캡슐 버튼 */}
+          <div className="prevax-year-pill-group">
             <button
               type="button"
               onClick={() => handlePresetYears('current')}
-              style={{
-                padding: '3px 9px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: (!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? 700 : 500,
-                background: (!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? 'var(--primary-blue)' : 'transparent',
-                color: (!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? '#fff' : 'var(--text-secondary)',
-                border: 'none',
-                cursor: 'pointer'
-              }}
+              className={`prevax-year-pill-btn ${(!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? 'active' : ''}`}
               title="현재 진행 중인 당해 연도 프로젝트만 조회합니다"
             >
-              당해년도({currentYearStr})
+              당해년도 ({currentYearStr})
             </button>
             <button
               type="button"
               onClick={() => handlePresetYears('2years')}
-              style={{
-                padding: '3px 9px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: (!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? 700 : 500,
-                background: (!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? 'var(--primary-blue)' : 'transparent',
-                color: (!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? '#fff' : 'var(--text-secondary)',
-                border: 'none',
-                cursor: 'pointer'
-              }}
+              className={`prevax-year-pill-btn ${(!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? 'active' : ''}`}
               title="최근 2년간(작년+올해)의 프로젝트를 묶어서 조회합니다"
             >
               최근 2개년
@@ -2061,16 +2127,7 @@ JSON 출력 예시:
             <button
               type="button"
               onClick={() => handlePresetYears('3years')}
-              style={{
-                padding: '3px 9px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: (!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? 700 : 500,
-                background: (!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? 'var(--primary-blue)' : 'transparent',
-                color: (!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? '#fff' : 'var(--text-secondary)',
-                border: 'none',
-                cursor: 'pointer'
-              }}
+              className={`prevax-year-pill-btn ${(!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? 'active' : ''}`}
               title="최근 3년간의 프로젝트를 묶어서 조회합니다"
             >
               최근 3개년
@@ -2078,16 +2135,7 @@ JSON 출력 예시:
             <button
               type="button"
               onClick={() => handlePresetYears('all')}
-              style={{
-                padding: '3px 9px',
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontWeight: isAllYears ? 700 : 500,
-                background: isAllYears ? 'var(--primary-blue)' : 'transparent',
-                color: isAllYears ? '#fff' : 'var(--text-secondary)',
-                border: 'none',
-                cursor: 'pointer'
-              }}
+              className={`prevax-year-pill-btn ${isAllYears ? 'active' : ''}`}
               title="전체 연도의 모든 프로젝트를 조회합니다"
             >
               전체 연도
@@ -2096,8 +2144,8 @@ JSON 출력 예시:
 
           <span style={{ color: 'var(--border-medium)', margin: '0 2px' }}>|</span>
 
-          {/* 2. 개별 연도 복수 토글 버튼 */}
-          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* 2. 개별 연도 복수 토글 알약 태그 */}
+          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center' }}>
             {availableYears.map(yr => {
               const isSelected = !isAllYears && selectedYears.includes(yr);
               const isCurrent = (yr === currentYearStr);
@@ -2106,27 +2154,15 @@ JSON 출력 예시:
                   key={yr}
                   type="button"
                   onClick={() => handleToggleYear(yr)}
-                  style={{
-                    padding: '3px 10px',
-                    borderRadius: '16px',
-                    fontSize: '11.5px',
-                    fontWeight: isSelected ? '700' : '500',
-                    border: isSelected ? '1px solid var(--primary-blue)' : '1px solid var(--border-medium)',
-                    background: isSelected ? 'var(--primary-blue)' : 'var(--bg-card)',
-                    color: isSelected ? '#fff' : 'var(--text-secondary)',
-                    cursor: 'pointer',
-                    boxShadow: isSelected ? '0 1px 4px rgba(37, 99, 235, 0.3)' : 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '3px',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title={`클릭하여 ${yr}년도를 선택/해제(다중 선택)합니다`}
+                  className={`prevax-tag-btn ${isSelected ? 'active' : ''}`}
+                  title={`클릭하여 ${yr}년도를 다중 선택/해제합니다`}
                 >
                   <span>{yr}년</span>
                   {isSelected && <span style={{ fontSize: '10px' }}>✓</span>}
                   {isCurrent && !isSelected && (
-                    <span style={{ fontSize: '9px', background: 'rgba(37, 99, 235, 0.12)', color: 'var(--primary-blue)', padding: '1px 4px', borderRadius: '6px' }}>현재</span>
+                    <span style={{ fontSize: '9px', background: 'rgba(56, 189, 248, 0.15)', color: 'var(--neon-cyan)', padding: '0 4px', borderRadius: '4px' }}>
+                      당해
+                    </span>
                   )}
                 </button>
               );
@@ -2134,27 +2170,21 @@ JSON 출력 예시:
           </div>
         </div>
 
-        {/* 연간 통계 요약 (우측) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', flexWrap: 'wrap' }}>
-          <span style={{ color: 'var(--text-secondary)' }}>
-            <b>{isAllYears ? "전체 연도" : selectedYears.length === 1 ? `${selectedYears[0]}년` : `${selectedYears.slice().sort().join(', ')}년 (${selectedYears.length}개년)`}</b> 프로젝트: <b style={{ color: 'var(--text-primary)', fontSize: '13px' }}>{yearStats.total}건</b>
+        {/* 현재 조회 범위 칩 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+          <span style={{ color: 'var(--text-muted)' }}>현재 범위:</span>
+          <span style={{ 
+            background: 'var(--bg-card-subtle)', 
+            border: '1px solid var(--border-medium)', 
+            padding: '3px 10px', 
+            borderRadius: '12px', 
+            fontWeight: 700, 
+            color: 'var(--text-primary)',
+            fontSize: '11.5px'
+          }}>
+            {isAllYears ? "전체 연도" : selectedYears.length === 1 ? `${selectedYears[0]}년` : `${selectedYears.slice().sort().join(', ')}년 (${selectedYears.length}개년)`}
+            <span style={{ color: 'var(--neon-cyan)', marginLeft: '6px' }}>({yearStats.total}건)</span>
           </span>
-          <span style={{ color: 'var(--border-medium)' }}>|</span>
-          <span style={{ color: '#059669', fontWeight: 600 }}>진행중 <b>{yearStats.ongoing}</b></span>
-          <span style={{ color: 'var(--border-medium)' }}>|</span>
-          <span style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>완료 <b>{yearStats.completed}</b></span>
-          {yearStats.delayed > 0 && (
-            <>
-              <span style={{ color: 'var(--border-medium)' }}>|</span>
-              <span style={{ color: '#dc2626', fontWeight: 600 }}>지연 <b>{yearStats.delayed}</b></span>
-            </>
-          )}
-          {yearStats.totalManpower > 0 && (
-            <>
-              <span style={{ color: 'var(--border-medium)' }}>|</span>
-              <span style={{ color: '#7c3aed', fontWeight: 600 }}>총공수 <b>{yearStats.totalManpower.toLocaleString()} M/D</b></span>
-            </>
-          )}
         </div>
       </div>
 
@@ -3501,7 +3531,8 @@ JSON 출력 예시:
                 width: '64px',
                 height: '64px',
                 borderRadius: '50%',
-                background: '#fef2f2',
+                background: 'rgba(239, 68, 68, 0.12)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

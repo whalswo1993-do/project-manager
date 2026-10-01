@@ -4,7 +4,8 @@ import { normalizeJVName } from './utils';
 /**
  * SmartProjectSelector
  * 수백 개 이상의 프로젝트 중에서도 연도별 필터링과 실시간 다중 키워드 검색을 통해
- * 원하는 프로젝트를 1초 만에 찾아 선택할 수 있는 고성능 스마트 프로젝트 선택기 컴포넌트
+ * 원하는 프로젝트를 1초 만에 찾아 선택할 수 있는 초고성능 스마트 프로젝트 선택기 컴포넌트
+ * (PINTEL / PREVAX / Supabase 감성의 모던 커맨드 팔레트 UI)
  */
 export default function SmartProjectSelector({
   projects = [],
@@ -199,55 +200,56 @@ export default function SmartProjectSelector({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: '8px',
-          padding: compact ? '6px 10px' : '8px 12px',
-          background: '#ffffff',
-          border: isOpen ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-          borderRadius: '8px',
+          padding: compact ? '6px 12px' : '8px 14px',
+          background: 'var(--bg-card)',
+          border: isOpen ? '1.5px solid var(--neon-cyan)' : '1px solid var(--border-medium)',
+          borderRadius: '10px',
           cursor: 'pointer',
-          boxShadow: isOpen ? '0 0 0 3px rgba(37, 99, 235, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)',
-          transition: 'all 0.15s ease',
+          boxShadow: isOpen ? '0 0 14px var(--neon-cyan-glow)' : 'var(--shadow-sm)',
+          transition: 'all 0.2s ease',
           userSelect: 'none',
-          minHeight: compact ? '34px' : '40px'
+          minHeight: compact ? '34px' : '40px',
+          color: 'var(--text-primary)'
         }}
         title={selectedProject ? `${selectedProject.manufacturingNo ? `[${selectedProject.manufacturingNo}] ` : ''}${selectedProject.name}` : placeholder}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', flex: 1 }}>
-          <span style={{ fontSize: compact ? '13px' : '14px', flexShrink: 0 }}>🏢</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', flex: 1 }}>
+          <span style={{ fontSize: compact ? '13px' : '15px', flexShrink: 0 }}>🏢</span>
           {selectedProject ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
               {selectedProject.manufacturingNo && (
                 <span
                   style={{
-                    background: '#eff6ff',
-                    color: '#1d4ed8',
-                    padding: '1px 6px',
-                    borderRadius: '4px',
+                    background: 'rgba(37, 99, 235, 0.15)',
+                    color: 'var(--neon-cyan)',
+                    padding: '2px 7px',
+                    borderRadius: '5px',
                     fontSize: '11px',
                     fontWeight: 700,
-                    border: '1px solid #bfdbfe',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
                     flexShrink: 0
                   }}
                 >
                   {selectedProject.manufacturingNo}
                 </span>
               )}
-              <span style={{ fontSize: compact ? '12px' : '13px', fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontSize: compact ? '12px' : '13.5px', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {normalizeJVName(selectedProject.name)}
               </span>
               {selectedProject.site && (
-                <span style={{ fontSize: '11px', color: '#64748b', flexShrink: 0 }}>
+                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', flexShrink: 0 }}>
                   ({selectedProject.site}{selectedProject.line ? ` · ${selectedProject.line}` : ''})
                 </span>
               )}
             </div>
           ) : (
-            <span style={{ fontSize: compact ? '12px' : '13px', color: '#94a3b8' }}>
+            <span style={{ fontSize: compact ? '12px' : '13px', color: 'var(--text-muted)' }}>
               {placeholder}
             </span>
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
           {selectedProject && (
             <button
               type="button"
@@ -255,52 +257,66 @@ export default function SmartProjectSelector({
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#94a3b8',
+                color: 'var(--text-muted)',
                 cursor: 'pointer',
-                padding: '2px 4px',
+                padding: '2px 5px',
                 fontSize: '12px',
                 borderRadius: '4px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                transition: 'all 0.15s ease'
               }}
               title="선택 해제"
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.backgroundColor = '#fee2e2'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
             >
               ✕
             </button>
           )}
-          <span style={{ fontSize: '11px', color: '#64748b', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
             ▼
           </span>
         </div>
       </div>
 
-      {/* 2. 드롭다운 팝오버 */}
+      {/* 2. 드롭다운 팝오버 (모던 커맨드 팔레트) */}
       {isOpen && (
         <div
           style={{
             position: 'absolute',
-            top: 'calc(100% + 6px)',
+            top: 'calc(100% + 8px)',
             left: 0,
-            width: compact ? '380px' : '100%',
+            width: compact ? '400px' : '100%',
             minWidth: '320px',
-            maxWidth: '540px',
-            background: '#ffffff',
-            border: '1px solid #cbd5e1',
-            borderRadius: '10px',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+            maxWidth: '560px',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-medium)',
+            borderRadius: '14px',
+            boxShadow: 'var(--shadow-lg)',
             zIndex: 9999,
             overflow: 'hidden',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            backdropFilter: 'blur(16px)',
+            color: 'var(--text-primary)'
           }}
         >
           {/* 헤더: 검색창 & 빠른 닫기 */}
-          <div style={{ padding: '10px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#ffffff', border: '1.5px solid #3b82f6', borderRadius: '6px', padding: '6px 10px' }}>
-              <span style={{ fontSize: '14px', color: '#3b82f6' }}>🔍</span>
+          <div style={{ padding: '12px 14px', background: 'var(--bg-card-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'var(--input-bg)',
+                border: '1.5px solid var(--primary-blue)',
+                borderRadius: '8px',
+                padding: '7px 12px',
+                boxShadow: '0 0 10px rgba(37, 99, 235, 0.15)'
+              }}
+            >
+              <span style={{ fontSize: '14px', color: 'var(--neon-cyan)' }}>🔍</span>
               <input
                 ref={searchInputRef}
                 type="text"
@@ -312,7 +328,8 @@ export default function SmartProjectSelector({
                   outline: 'none',
                   width: '100%',
                   fontSize: '13px',
-                  color: '#1e293b'
+                  background: 'transparent',
+                  color: 'var(--text-primary)'
                 }}
               />
               {search && (
@@ -322,7 +339,7 @@ export default function SmartProjectSelector({
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: '#94a3b8',
+                    color: 'var(--text-muted)',
                     cursor: 'pointer',
                     fontSize: '12px',
                     padding: 0
@@ -334,20 +351,22 @@ export default function SmartProjectSelector({
             </div>
 
             {/* 연도 탭 필터 바 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569', marginRight: '4px' }}>연도:</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '10px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginRight: '4px' }}>연도:</span>
               <button
                 type="button"
                 onClick={() => setYearFilter('ALL')}
                 style={{
-                  padding: '2px 8px',
-                  borderRadius: '12px',
+                  padding: '3px 9px',
+                  borderRadius: '14px',
                   fontSize: '11px',
                   fontWeight: yearFilter === 'ALL' ? 700 : 500,
-                  background: yearFilter === 'ALL' ? '#2563eb' : '#ffffff',
-                  color: yearFilter === 'ALL' ? '#ffffff' : '#64748b',
-                  border: yearFilter === 'ALL' ? '1px solid #2563eb' : '1px solid #cbd5e1',
-                  cursor: 'pointer'
+                  background: yearFilter === 'ALL' ? 'var(--primary-blue)' : 'var(--bg-card)',
+                  color: yearFilter === 'ALL' ? '#ffffff' : 'var(--text-secondary)',
+                  border: yearFilter === 'ALL' ? '1px solid var(--primary-blue)' : '1px solid var(--border-subtle)',
+                  cursor: 'pointer',
+                  boxShadow: yearFilter === 'ALL' ? '0 0 10px rgba(37, 99, 235, 0.35)' : 'none',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 전체
@@ -358,14 +377,16 @@ export default function SmartProjectSelector({
                   type="button"
                   onClick={() => setYearFilter(yr)}
                   style={{
-                    padding: '2px 8px',
-                    borderRadius: '12px',
+                    padding: '3px 9px',
+                    borderRadius: '14px',
                     fontSize: '11px',
                     fontWeight: yearFilter === yr ? 700 : 500,
-                    background: yearFilter === yr ? '#2563eb' : '#ffffff',
-                    color: yearFilter === yr ? '#ffffff' : '#64748b',
-                    border: yearFilter === yr ? '1px solid #2563eb' : '1px solid #cbd5e1',
-                    cursor: 'pointer'
+                    background: yearFilter === yr ? 'var(--primary-blue)' : 'var(--bg-card)',
+                    color: yearFilter === yr ? '#ffffff' : 'var(--text-secondary)',
+                    border: yearFilter === yr ? '1px solid var(--primary-blue)' : '1px solid var(--border-subtle)',
+                    cursor: 'pointer',
+                    boxShadow: yearFilter === yr ? '0 0 10px rgba(37, 99, 235, 0.35)' : 'none',
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   {yr}년
@@ -376,19 +397,20 @@ export default function SmartProjectSelector({
             {/* Site 필터 바 (Site가 있을 때) */}
             {availableSites.length > 1 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '6px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569', marginRight: '4px' }}>Site:</span>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginRight: '4px' }}>Site:</span>
                 <button
                   type="button"
                   onClick={() => setSiteFilter('ALL')}
                   style={{
-                    padding: '1px 6px',
-                    borderRadius: '10px',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
                     fontSize: '10.5px',
                     fontWeight: siteFilter === 'ALL' ? 700 : 500,
-                    background: siteFilter === 'ALL' ? '#0891b2' : '#ffffff',
-                    color: siteFilter === 'ALL' ? '#ffffff' : '#64748b',
-                    border: siteFilter === 'ALL' ? '1px solid #0891b2' : '1px solid #cbd5e1',
-                    cursor: 'pointer'
+                    background: siteFilter === 'ALL' ? '#0891b2' : 'var(--bg-card)',
+                    color: siteFilter === 'ALL' ? '#ffffff' : 'var(--text-secondary)',
+                    border: siteFilter === 'ALL' ? '1px solid #0891b2' : '1px solid var(--border-subtle)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   전체
@@ -399,14 +421,15 @@ export default function SmartProjectSelector({
                     type="button"
                     onClick={() => setSiteFilter(s)}
                     style={{
-                      padding: '1px 6px',
-                      borderRadius: '10px',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
                       fontSize: '10.5px',
                       fontWeight: siteFilter === s ? 700 : 500,
-                      background: siteFilter === s ? '#0891b2' : '#ffffff',
-                      color: siteFilter === s ? '#ffffff' : '#64748b',
-                      border: siteFilter === s ? '1px solid #0891b2' : '1px solid #cbd5e1',
-                      cursor: 'pointer'
+                      background: siteFilter === s ? '#0891b2' : 'var(--bg-card)',
+                      color: siteFilter === s ? '#ffffff' : 'var(--text-secondary)',
+                      border: siteFilter === s ? '1px solid #0891b2' : '1px solid var(--border-subtle)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
                     }}
                   >
                     {s}
@@ -417,10 +440,10 @@ export default function SmartProjectSelector({
           </div>
 
           {/* 검색 결과 건수 표시 */}
-          <div style={{ padding: '6px 12px', background: '#f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#64748b' }}>
-            <span>검색 결과: <b>{filteredList.length}</b>건 (전체 {projects.length}개)</span>
+          <div style={{ padding: '7px 14px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+            <span>검색 결과: <b style={{ color: 'var(--text-primary)' }}>{filteredList.length}</b>건 (전체 {projects.length}개)</span>
             {selectedProject && (
-              <span style={{ color: '#2563eb', fontWeight: 600 }}>현재 선택됨 ✓</span>
+              <span style={{ color: 'var(--neon-cyan)', fontWeight: 700 }}>현재 선택됨 ✓</span>
             )}
           </div>
 
@@ -433,12 +456,12 @@ export default function SmartProjectSelector({
             }}
           >
             {filteredList.length === 0 ? (
-              <div style={{ padding: '30px 16px', textAlign: 'center', color: '#94a3b8' }}>
-                <span style={{ fontSize: '24px', display: 'block', marginBottom: '6px' }}>🔍</span>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>
+              <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <span style={{ fontSize: '26px', display: 'block', marginBottom: '8px' }}>🔍</span>
+                <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
                   일치하는 프로젝트가 없습니다.
                 </div>
-                <div style={{ fontSize: '11px', marginTop: '4px' }}>
+                <div style={{ fontSize: '11.5px', marginTop: '4px' }}>
                   검색어나 연도 필터를 변경해 보세요.
                 </div>
               </div>
@@ -453,21 +476,21 @@ export default function SmartProjectSelector({
                     key={p.id}
                     onClick={() => handleSelect(p.id)}
                     style={{
-                      padding: '8px 12px',
-                      borderBottom: '1px solid #f1f5f9',
+                      padding: '10px 14px',
+                      borderBottom: '1px solid var(--border-subtle)',
                       cursor: 'pointer',
-                      background: isSelected ? '#eff6ff' : '#ffffff',
-                      borderLeft: isSelected ? '4px solid #2563eb' : '4px solid transparent',
-                      transition: 'background-color 0.1s ease',
+                      background: isSelected ? 'rgba(37, 99, 235, 0.16)' : 'transparent',
+                      borderLeft: isSelected ? '4px solid var(--neon-cyan)' : '4px solid transparent',
+                      transition: 'all 0.12s ease',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '3px'
+                      gap: '4px'
                     }}
                     onMouseEnter={(e) => {
-                      if (!isSelected) e.currentTarget.style.backgroundColor = '#f8fafc';
+                      if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
                     }}
                     onMouseLeave={(e) => {
-                      if (!isSelected) e.currentTarget.style.backgroundColor = '#ffffff';
+                      if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                   >
                     {/* 상단 라인: 제조번호, Site, Line, 선택 상태 */}
@@ -476,39 +499,39 @@ export default function SmartProjectSelector({
                         {p.manufacturingNo ? (
                           <span
                             style={{
-                              background: '#e0f2fe',
-                              color: '#0369a1',
-                              padding: '1px 5px',
-                              borderRadius: '3px',
+                              background: 'rgba(37, 99, 235, 0.15)',
+                              color: 'var(--neon-cyan)',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
                               fontSize: '11px',
                               fontWeight: 700,
-                              border: '1px solid #bae6fd'
+                              border: '1px solid rgba(56, 189, 248, 0.25)'
                             }}
                           >
                             {p.manufacturingNo}
                           </span>
                         ) : (
-                          <span style={{ fontSize: '11px', color: '#94a3b8' }}>번호미등록</span>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>번호미등록</span>
                         )}
-                        <span style={{ fontSize: '11px', color: '#475569', fontWeight: 600 }}>
+                        <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)', fontWeight: 600 }}>
                           {normalizeJVName(p.site || '')}{p.line ? ` · ${normalizeJVName(p.line)}` : ''}
                         </span>
                       </div>
 
                       {isSelected && (
-                        <span style={{ color: '#2563eb', fontWeight: 800, fontSize: '12px' }}>
+                        <span style={{ color: 'var(--neon-cyan)', fontWeight: 800, fontSize: '12px' }}>
                           ✓ 선택됨
                         </span>
                       )}
                     </div>
 
                     {/* 프로젝트명 */}
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: isSelected ? '#1d4ed8' : '#1e293b', lineHeight: 1.35 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.35 }}>
                       {normalizeJVName(p.name)}
                     </div>
 
                     {/* 하단 정보: 기간 및 담당자 */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                       <span>
                         📅 {sDate || '미정'} ~ {eDate || '미정'}
                       </span>

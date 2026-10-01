@@ -209,15 +209,33 @@ main {
   color: #0284c7;
 }
 
+[data-theme="dark"] .system-btn-pwd {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+}
+
 .system-btn-cache {
   background: rgba(217, 119, 6, 0.1);
   border-color: rgba(217, 119, 6, 0.35);
   color: #d97706;
 }
 
+[data-theme="dark"] .system-btn-cache {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+
 .system-btn-logout {
   background: var(--bg-hover);
   color: var(--text-secondary);
+}
+
+[data-theme="dark"] .system-btn-logout {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #f87171;
 }
 
 .system-btn-admin {
@@ -227,10 +245,17 @@ main {
   font-weight: 600;
 }
 
+[data-theme="dark"] .system-btn-admin {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
 .system-btn-admin.has-new {
   background: #1d4ed8;
   color: #ffffff;
   border-color: #1d4ed8;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
 }
 
 .admin-badge-count {
@@ -370,8 +395,179 @@ body.theme-dark .nav-tab-btn.active {
 }
 
 /* ========================================================
-   GLOBAL TOOLBARS & SECTIONS
+   PREVAX / PINTEL EXECUTIVE KPI GRID & FLOATING YEAR TOOLBAR
    ======================================================== */
+.prevax-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin: 12px 0 10px 0;
+}
+
+.prevax-kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .prevax-kpi-card {
+  background: rgba(11, 17, 32, 0.85);
+  border-color: rgba(56, 189, 248, 0.16);
+  backdrop-filter: blur(12px);
+}
+
+.prevax-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 8px 24px -4px rgba(37, 99, 235, 0.18);
+}
+
+.prevax-kpi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.prevax-kpi-value {
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin: 6px 0 2px 0;
+  line-height: 1.15;
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.prevax-kpi-value .kpi-unit {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.prevax-kpi-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* PREVAX High-Voltage Electric Blue Accent Card */
+.prevax-accent-card {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%) !important;
+  border: 1px solid #60a5fa !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4) !important;
+}
+
+.prevax-accent-card .prevax-kpi-header,
+.prevax-accent-card .prevax-kpi-sub,
+.prevax-accent-card .kpi-unit {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.prevax-accent-card .prevax-kpi-value {
+  color: #ffffff !important;
+}
+
+/* PREVAX Floating Year Toolbar */
+.prevax-year-toolbar {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 8px 16px;
+  margin: 8px 0 14px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .prevax-year-toolbar {
+  background: rgba(11, 17, 32, 0.9);
+  border-color: rgba(56, 189, 248, 0.18);
+  backdrop-filter: blur(14px);
+}
+
+.prevax-year-pill-group {
+  display: flex;
+  gap: 3px;
+  background: var(--pill-bg);
+  padding: 3px;
+  border-radius: 10px;
+}
+
+.prevax-year-pill-btn {
+  padding: 4px 11px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--pill-text);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.prevax-year-pill-btn:hover {
+  color: var(--text-primary);
+}
+
+.prevax-year-pill-btn.active {
+  background: var(--primary-blue);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.35);
+}
+
+.prevax-tag-btn {
+  padding: 3px 11px;
+  border-radius: 16px;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.prevax-tag-btn:hover {
+  border-color: var(--neon-cyan);
+  color: var(--text-primary);
+}
+
+.prevax-tag-btn.active {
+  background: var(--primary-blue);
+  color: #ffffff;
+  border-color: var(--primary-blue);
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.35);
+}
+
 .global-multi-year-bar {
   background: var(--bg-card) !important;
   border: 1px solid var(--border-subtle) !important;
@@ -1105,6 +1301,12 @@ article aside button {
 /* ========================================================
    RESPONSIVE DESIGN
    ======================================================== */
+@media (max-width: 1100px) {
+  .prevax-kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (max-width: 1000px) {
   .grid {
     grid-template-columns: repeat(3, 1fr);
@@ -1118,6 +1320,13 @@ article aside button {
 }
 
 @media (max-width: 768px) {
+  .prevax-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .prevax-year-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
   .system-main-header {
     flex-direction: column;
     align-items: stretch;

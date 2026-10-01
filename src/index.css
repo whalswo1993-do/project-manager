@@ -1,11 +1,12 @@
 :root {
   --font-sans: 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 
-  /* Global Accent Colors */
+  /* Global Accent Colors (PINTEL / PREVAX Cybernetic Blue) */
   --primary-blue: #2563eb;
   --primary-blue-hover: #1d4ed8;
   --neon-cyan: #38bdf8;
   --neon-cyan-glow: rgba(56, 189, 248, 0.25);
+  --electric-indigo: #4f46e5;
   --danger: #ef4444;
   --danger-bg: rgba(239, 68, 68, 0.12);
   --warning: #f59e0b;
@@ -13,19 +14,19 @@
   --success: #10b981;
   --success-bg: rgba(16, 185, 129, 0.12);
 
-  /* Light Theme (Clean Executive Dashboard) */
-  --bg-canvas: #f6f8fb;
+  /* Light Theme (Clean Executive Enterprise UI) */
+  --bg-canvas: #f8fafc;
   --bg-card: #ffffff;
-  --bg-card-subtle: #f8fafc;
-  --bg-hover: #f1f5f9;
+  --bg-card-subtle: #f1f5f9;
+  --bg-hover: #e2e8f0;
   --border-subtle: #e2e8f0;
   --border-medium: #cbd5e1;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
-  --header-bar-bg: rgba(246, 248, 251, 0.9);
-  --header-bg: rgba(255, 255, 255, 0.96);
-  --header-border: #cbddeb;
+  --header-bar-bg: rgba(248, 250, 252, 0.85);
+  --header-bg: rgba(255, 255, 255, 0.95);
+  --header-border: #e2e8f0;
   --input-bg: #ffffff;
   --input-border: #cbd5e1;
   --input-text: #0f172a;
@@ -39,30 +40,30 @@
   --pill-active-shadow: 0 2px 8px rgba(37, 99, 235, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-/* Dark Theme (PINTEL / PREVAX / Supabase / GitHub Deep Sapphire Obsidian) */
+/* Dark Theme (PINTEL & PREVAX Deep Cybernetic Obsidian) */
 [data-theme="dark"],
 body.theme-dark {
-  --bg-canvas: #07090e;
-  --bg-card: #0d121f;
-  --bg-card-subtle: #111827;
-  --bg-hover: #162032;
+  --bg-canvas: #060913;
+  --bg-card: #0b1120;
+  --bg-card-subtle: #0f172a;
+  --bg-hover: #162238;
   --border-subtle: rgba(56, 189, 248, 0.12);
   --border-medium: rgba(56, 189, 248, 0.22);
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
-  --header-bar-bg: rgba(7, 9, 14, 0.9);
-  --header-bg: rgba(13, 18, 31, 0.94);
+  --header-bar-bg: rgba(6, 9, 19, 0.85);
+  --header-bg: rgba(11, 17, 32, 0.92);
   --header-border: rgba(56, 189, 248, 0.18);
-  --input-bg: #0b0f19;
-  --input-border: rgba(56, 189, 248, 0.22);
+  --input-bg: #090e1a;
+  --input-border: rgba(56, 189, 248, 0.24);
   --input-text: #f8fafc;
-  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 16px 36px -4px rgba(0, 0, 0, 0.7);
-  --pill-bg: #111726;
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 20px 40px -4px rgba(0, 0, 0, 0.8);
+  --pill-bg: #0f172a;
   --pill-text: #94a3b8;
-  --pill-active-bg: #182236;
+  --pill-active-bg: #172554;
   --pill-active-text: #38bdf8;
   --pill-active-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
 }
@@ -87,6 +88,17 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* Subtle Ambient Radiant Background in Dark Mode (PINTEL Style) */
+[data-theme="dark"] body,
+body.theme-dark {
+  background-color: #060913;
+  background-image: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(37, 99, 235, 0.15), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 100% 50%, rgba(56, 189, 248, 0.05), transparent);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
 button,
 input,
 select,
@@ -95,6 +107,7 @@ textarea {
   font-family: var(--font-sans);
 }
 
+/* Bulletproof Global Input / Select / Textarea Contract */
 input,
 select,
 textarea {
@@ -105,12 +118,40 @@ textarea {
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
 }
 
+/* Strict Dark Mode Enforcement - No Invisible Text on Stray Elements */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+body.theme-dark input,
+body.theme-dark select,
+body.theme-dark textarea {
+  background-color: #090e1a !important;
+  border-color: rgba(56, 189, 248, 0.24) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea,
+body.theme-light input,
+body.theme-light select,
+body.theme-light textarea {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
 input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25) !important;
+}
+
+::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.7;
 }
 
 /* Custom Scrollbar for sleek futuristic feel */

@@ -1,80 +1,186 @@
+/* ========================================================
+   TW PROJECT MANAGEMENT — PREMIUM DESIGN SYSTEM v3.0
+   Inspired by: PREVAX · PINTEL · Linear · Vercel · Supabase
+   Architecture: CSS Custom Properties + Semantic Token System
+   ======================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
+/* ─── GLOBAL RESET ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ─── DESIGN TOKEN SYSTEM ──────────────────────────────── */
 :root {
-  --font-sans: 'Pretendard', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  /* Typography */
+  --font-sans: 'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
 
-  /* Global Accent Colors (PINTEL / PREVAX Cybernetic Blue) */
-  --primary-blue: #2563eb;
-  --primary-blue-hover: #1d4ed8;
-  --neon-cyan: #38bdf8;
-  --neon-cyan-glow: rgba(56, 189, 248, 0.25);
-  --electric-indigo: #4f46e5;
-  --danger: #ef4444;
-  --danger-bg: rgba(239, 68, 68, 0.12);
-  --warning: #f59e0b;
-  --warning-bg: rgba(245, 158, 11, 0.12);
-  --success: #10b981;
-  --success-bg: rgba(16, 185, 129, 0.12);
+  /* Semantic Color Palette — LIGHT MODE */
+  /* Base canvas */
+  --bg-canvas:        #f4f6f9;
+  --bg-base:          #ffffff;
+  --bg-card:          #ffffff;
+  --bg-card-raised:   #f8fafd;
+  --bg-card-subtle:   #f1f4f8;
+  --bg-hover:         #edf0f5;
+  --bg-selected:      #e8effe;
+  --bg-overlay:       rgba(0, 0, 0, 0.45);
 
-  /* Light Theme (Clean Executive Enterprise UI) */
-  --bg-canvas: #f8fafc;
-  --bg-card: #ffffff;
-  --bg-card-subtle: #f1f5f9;
-  --bg-hover: #e2e8f0;
-  --border-subtle: #e2e8f0;
-  --border-medium: #cbd5e1;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
-  --header-bar-bg: rgba(248, 250, 252, 0.85);
-  --header-bg: rgba(255, 255, 255, 0.95);
-  --header-border: #e2e8f0;
-  --input-bg: #ffffff;
-  --input-border: #cbd5e1;
-  --input-text: #0f172a;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 16px 32px -4px rgba(0, 0, 0, 0.08);
-  --pill-bg: #e2e8f0;
-  --pill-text: #475569;
-  --pill-active-bg: #ffffff;
+  /* Borders */
+  --border-faint:     #eaeef4;
+  --border-subtle:    #dde3ed;
+  --border-medium:    #c5cdd9;
+  --border-strong:    #9ba8bb;
+
+  /* Text */
+  --text-primary:     #0d1117;
+  --text-secondary:   #3d4a5c;
+  --text-tertiary:    #6b7a8f;
+  --text-muted:       #9eaab8;
+  --text-on-accent:   #ffffff;
+
+  /* Header */
+  --header-bg:        rgba(255, 255, 255, 0.92);
+  --header-border:    #e5e9f0;
+  --header-shadow:    0 1px 0 rgba(0,0,0,0.06);
+
+  /* Input */
+  --input-bg:         #ffffff;
+  --input-border:     #d0d7e3;
+  --input-text:       #0d1117;
+  --input-focus-ring: rgba(37, 99, 235, 0.18);
+
+  /* Brand Accent — Electric Blue */
+  --accent:           #2563eb;
+  --accent-hover:     #1d4ed8;
+  --accent-muted:     rgba(37, 99, 235, 0.10);
+  --accent-border:    rgba(37, 99, 235, 0.28);
+  --accent-glow:      rgba(37, 99, 235, 0.22);
+
+  /* Status Colors */
+  --success:          #059669;
+  --success-muted:    rgba(5, 150, 105, 0.10);
+  --warning:          #d97706;
+  --warning-muted:    rgba(217, 119, 6, 0.10);
+  --danger:           #dc2626;
+  --danger-muted:     rgba(220, 38, 38, 0.10);
+  --info:             #0284c7;
+  --info-muted:       rgba(2, 132, 199, 0.10);
+
+  /* Elevation */
+  --shadow-xs:  0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm:  0 1px 4px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0,0,0,0.03);
+  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:  0 12px 32px rgba(0, 0, 0, 0.10), 0 4px 8px rgba(0,0,0,0.05);
+  --shadow-xl:  0 24px 64px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0,0,0,0.06);
+
+  /* Nav pills */
+  --pill-bg:          #edf0f5;
+  --pill-border:      #dde3ed;
+  --pill-text:        #6b7a8f;
+  --pill-active-bg:   #ffffff;
   --pill-active-text: #2563eb;
-  --pill-active-shadow: 0 2px 8px rgba(37, 99, 235, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05);
+  --pill-active-shadow: 0 1px 4px rgba(37,99,235,0.18), 0 0 0 1px rgba(37,99,235,0.14);
+
+  /* Transitions */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast:    120ms;
+  --dur-base:    200ms;
+  --dur-slow:    350ms;
+
+  /* Border Radius */
+  --radius-xs:  4px;
+  --radius-sm:  6px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+  --radius-xl:  20px;
+  --radius-pill: 999px;
 }
 
-/* Dark Theme (PINTEL & PREVAX Deep Cybernetic Obsidian) */
+/* ─── DARK THEME ─────────────────────────────────────────
+   Inspired by: Supabase, Linear, GitHub (dark), PREVAX
+   ─────────────────────────────────────────────────────── */
 [data-theme="dark"],
 body.theme-dark {
-  --bg-canvas: #060913;
-  --bg-card: #0b1120;
-  --bg-card-subtle: #0f172a;
-  --bg-hover: #162238;
-  --border-subtle: rgba(56, 189, 248, 0.12);
-  --border-medium: rgba(56, 189, 248, 0.22);
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --header-bar-bg: rgba(6, 9, 19, 0.85);
-  --header-bg: rgba(11, 17, 32, 0.92);
-  --header-border: rgba(56, 189, 248, 0.18);
-  --input-bg: #090e1a;
-  --input-border: rgba(56, 189, 248, 0.24);
-  --input-text: #f8fafc;
-  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.6);
-  --shadow-lg: 0 20px 40px -4px rgba(0, 0, 0, 0.8);
-  --pill-bg: #0f172a;
-  --pill-text: #94a3b8;
-  --pill-active-bg: #172554;
-  --pill-active-text: #38bdf8;
-  --pill-active-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
+  /* Base canvas — deep obsidian, not pure black */
+  --bg-canvas:        #0a0e1a;
+  --bg-base:          #0e1422;
+  --bg-card:          #111826;
+  --bg-card-raised:   #161d2e;
+  --bg-card-subtle:   #0d1220;
+  --bg-hover:         #1a2235;
+  --bg-selected:      #162040;
+  --bg-overlay:       rgba(0, 0, 0, 0.72);
+
+  /* Borders — subtle cool blue tint */
+  --border-faint:     rgba(148, 163, 184, 0.06);
+  --border-subtle:    rgba(148, 163, 184, 0.11);
+  --border-medium:    rgba(148, 163, 184, 0.18);
+  --border-strong:    rgba(148, 163, 184, 0.30);
+
+  /* Text */
+  --text-primary:     #e8edf5;
+  --text-secondary:   #94a3b8;
+  --text-tertiary:    #64748b;
+  --text-muted:       #475569;
+  --text-on-accent:   #ffffff;
+
+  /* Header */
+  --header-bg:        rgba(10, 14, 26, 0.88);
+  --header-border:    rgba(148, 163, 184, 0.10);
+  --header-shadow:    0 1px 0 rgba(0,0,0,0.4);
+
+  /* Input */
+  --input-bg:         #0c1220;
+  --input-border:     rgba(148, 163, 184, 0.18);
+  --input-text:       #e8edf5;
+  --input-focus-ring: rgba(56, 189, 248, 0.20);
+
+  /* Brand Accent — Neon Cyan Electric Blue */
+  --accent:           #3b82f6;
+  --accent-hover:     #60a5fa;
+  --accent-muted:     rgba(59, 130, 246, 0.12);
+  --accent-border:    rgba(59, 130, 246, 0.30);
+  --accent-glow:      rgba(59, 130, 246, 0.25);
+
+  /* Status Colors */
+  --success:          #10b981;
+  --success-muted:    rgba(16, 185, 129, 0.14);
+  --warning:          #f59e0b;
+  --warning-muted:    rgba(245, 158, 11, 0.14);
+  --danger:           #f87171;
+  --danger-muted:     rgba(248, 113, 113, 0.14);
+  --info:             #38bdf8;
+  --info-muted:       rgba(56, 189, 248, 0.14);
+
+  /* Elevation — deeper shadows in dark */
+  --shadow-xs:  0 1px 3px rgba(0, 0, 0, 0.40);
+  --shadow-sm:  0 1px 6px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255,255,255,0.03);
+  --shadow-md:  0 4px 16px rgba(0, 0, 0, 0.55), 0 1px 4px rgba(0,0,0,0.30);
+  --shadow-lg:  0 16px 48px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0,0,0,0.40);
+  --shadow-xl:  0 32px 80px rgba(0, 0, 0, 0.75), 0 8px 24px rgba(0,0,0,0.50);
+
+  /* Nav pills */
+  --pill-bg:          rgba(255, 255, 255, 0.05);
+  --pill-border:      rgba(148, 163, 184, 0.10);
+  --pill-text:        #64748b;
+  --pill-active-bg:   #1a2846;
+  --pill-active-text: #60a5fa;
+  --pill-active-shadow: 0 0 0 1px rgba(59,130,246,0.35), 0 2px 8px rgba(59,130,246,0.20);
 }
 
-html,
-body,
-#root {
+/* ─── BASE ELEMENT STYLES ───────────────────────────────── */
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+html, body, #root {
   width: 100%;
-  min-width: 320px;
   min-height: 100%;
   margin: 0;
+  padding: 0;
 }
 
 body {
@@ -82,54 +188,62 @@ body {
   background-color: var(--bg-canvas);
   color: var(--text-primary);
   font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: background-color var(--dur-base) var(--ease-in-out),
+              color var(--dur-base) var(--ease-in-out);
 }
 
-/* Subtle Ambient Radiant Background in Dark Mode (PINTEL Style) */
-[data-theme="dark"] body,
-body.theme-dark {
-  background-color: #060913;
-  background-image: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(37, 99, 235, 0.15), transparent 70%),
-    radial-gradient(ellipse 60% 40% at 100% 50%, rgba(56, 189, 248, 0.05), transparent);
-  background-repeat: no-repeat;
+/* Dark mode canvas with ambient radial gradient */
+body.theme-dark,
+[data-theme="dark"] body {
+  background-color: var(--bg-canvas);
+  background-image:
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(59, 130, 246, 0.10) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 85% 60%, rgba(99, 102, 241, 0.05) 0%, transparent 60%);
   background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
-button,
-input,
-select,
-textarea {
-  color: var(--text-primary);
+/* ─── FORM ELEMENTS ────────────────────────────────────── */
+button, input, select, textarea {
   font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-primary);
 }
 
-/* Bulletproof Global Input / Select / Textarea Contract */
-input,
-select,
-textarea {
+input, select, textarea {
   background-color: var(--input-bg);
   border: 1px solid var(--input-border);
   color: var(--input-text);
-  border-radius: 8px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+  border-radius: var(--radius-md);
+  transition: border-color var(--dur-fast) var(--ease-in-out),
+              box-shadow var(--dur-fast) var(--ease-in-out),
+              background-color var(--dur-base) var(--ease-in-out);
 }
 
-/* Strict Dark Mode Enforcement - No Invisible Text on Stray Elements */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
+}
+
+/* Strict dark mode input overrides */
 [data-theme="dark"] input,
 [data-theme="dark"] select,
 [data-theme="dark"] textarea,
 body.theme-dark input,
 body.theme-dark select,
 body.theme-dark textarea {
-  background-color: #090e1a !important;
-  border-color: rgba(56, 189, 248, 0.24) !important;
-  color: #f8fafc !important;
+  background-color: #0c1220 !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  color: #e8edf5 !important;
 }
 
+/* Strict light mode input overrides */
 [data-theme="light"] input,
 [data-theme="light"] select,
 [data-theme="light"] textarea,
@@ -137,38 +251,32 @@ body.theme-light input,
 body.theme-light select,
 body.theme-light textarea {
   background-color: #ffffff !important;
-  border-color: #cbd5e1 !important;
-  color: #0f172a !important;
+  border-color: #d0d7e3 !important;
+  color: #0d1117 !important;
 }
 
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none;
-  border-color: #38bdf8 !important;
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25) !important;
-}
+::placeholder { color: var(--text-muted) !important; opacity: 0.75; }
+[data-theme="dark"] ::placeholder,
+body.theme-dark ::placeholder { color: #475569 !important; opacity: 1; }
 
-::placeholder {
-  color: var(--text-muted) !important;
-  opacity: 0.7;
-}
-
-/* Custom Scrollbar for sleek futuristic feel */
-::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-canvas);
-}
-
+/* ─── SCROLLBAR ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
   background: var(--border-medium);
-  border-radius: 4px;
+  border-radius: var(--radius-pill);
 }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+/* ─── UTILITY CLASSES ───────────────────────────────────── */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }

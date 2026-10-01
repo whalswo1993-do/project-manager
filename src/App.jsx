@@ -2561,11 +2561,11 @@ JSON 출력 예시:
                   </div>
 
                   {form.isManualStatus && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fffbeb', border: '1px solid #fde68a', padding: '6px 12px', borderRadius: '6px', margin: '4px 0 8px', fontSize: '12px', color: '#b45309', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--warning-muted)', border: '1px solid rgba(217,119,6,0.30)', padding: '6px 12px', borderRadius: '6px', margin: '4px 0 8px', fontSize: '12px', color: 'var(--warning)', flexWrap: 'wrap' }}>
                       <span>수동 수정한 인원 이름:</span>
                       <input style={{ width: '140px', padding: '4px 8px', fontSize: '12px' }} value={form.manualStatusBy} onChange={e => setForm({ ...form, manualStatusBy: e.target.value })} placeholder="이름 입력" list="people-status-list" />
                       <datalist id="people-status-list">{peopleNames.map(n => <option key={n} value={n} />)}</datalist>
-                      <span style={{ fontSize: '11px', color: '#92400e' }}>* 프로젝트 목록에 '상태 확인 후 상태 변경을 해주세요' 문구와 함께 표시됩니다.</span>
+                      <span style={{ fontSize: '11px', color: 'var(--warning)' }}>* 프로젝트 목록에 '상태 확인 후 상태 변경을 해주세요' 문구와 함께 표시됩니다.</span>
                     </div>
                   )}
 
@@ -2628,17 +2628,7 @@ JSON 출력 예시:
               ) : (
                 <div 
                   onClick={() => toggleSection('form')}
-                  style={{
-                    padding: '12px 16px',
-                    background: '#f8fafc',
-                    border: '1px dashed #cbd5e1',
-                    borderRadius: '8px',
-                    textAlign: 'center',
-                    color: '#64748b',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    marginTop: '8px'
-                  }}
+                  className="section-collapsed-placeholder"
                 >
                   📝 프로젝트 {editing ? "수정" : "등록"} 입력란이 접혀 있습니다. (클릭하여 입력란 펼치기 ▾)
                 </div>
@@ -2986,17 +2976,7 @@ JSON 출력 예시:
             ) : (
               <div 
                 onClick={() => toggleSection('gantt')}
-                style={{
-                  padding: '12px 16px',
-                  background: '#f8fafc',
-                  border: '1px dashed #cbd5e1',
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                  color: '#64748b',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  margin: '8px 0'
-                }}
+                className="section-collapsed-placeholder"
               >
                 📊 프로젝트 간트차트가 접혀 있습니다.
                 {ganttStartDate || ganttEndDate ? (
@@ -3137,17 +3117,7 @@ JSON 출력 예시:
             ) : (
               <div 
                 onClick={() => toggleSection('calendar')}
-                style={{
-                  padding: '12px 16px',
-                  background: '#f8fafc',
-                  border: '1px dashed #cbd5e1',
-                  borderRadius: '8px',
-                  textAlign: 'center',
-                  color: '#64748b',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  margin: '8px 0'
-                }}
+                className="section-collapsed-placeholder"
               >
                 📅 프로젝트 일정 달력 ({month.getFullYear()}년 {month.getMonth() + 1}월)이 접혀 있습니다. (클릭하여 펼치기 ▾)
               </div>
@@ -3186,12 +3156,12 @@ JSON 출력 예시:
             {!collapsedSections.list ? (
               <>
                 {view.length === 0 ? (
-                  <div style={{ padding: '36px 20px', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1', margin: '10px 14px' }}>
+                  <div style={{ padding: '36px 20px', textAlign: 'center', background: 'var(--bg-card-subtle)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--border-medium)', margin: '10px 14px' }}>
                     <div style={{ fontSize: '28px', marginBottom: '8px' }}>📭</div>
-                    <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#334155' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
                       {isAllYears ? "조회 조건에 일치하는 프로젝트가 없습니다." : `선택하신 ${selectedYearsLabel}에 일치하는 프로젝트가 없습니다.`}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
                       다른 연도를 선택하시거나, 검색어 및 필터를 초기화해 보세요.
                     </div>
                     {!isAllYears && (
@@ -3233,7 +3203,7 @@ JSON 출력 예시:
                         {p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} &nbsp;|&nbsp; 소장 {p.pm || p.manager || "-"} · 설계 {p.design || "-"} · 설비 {p.facilityTechnology || "-"} · 제어 {p.control || "-"} · 비전 {p.vision || "-"} &nbsp;|&nbsp; {p.startDate} ~ {p.endDate} · <b style={{ color: p.isManualStatus ? (p.status === "PO대기중" ? '#dc2626' : '#d97706') : 'inherit' }}>{p.status}</b>
                       </p>
                       {p.isManualStatus && (
-                        <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#fffbeb', border: '1px solid #f59e0b', padding: '4px 9px', borderRadius: '6px', fontSize: '11px', color: '#b45309', fontWeight: '600' }}>
+                        <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--warning-muted)', border: '1px solid rgba(217,119,6,0.28)', padding: '4px 9px', borderRadius: '6px', fontSize: '11px', color: 'var(--warning)', fontWeight: '600' }}>
                           <span>⚠️ <b>수동 설정 ({p.manualStatusBy || "담당자"})</b> : 상태 확인 후 상태 변경을 해주세요</span>
                           {edit && p.status !== "PO대기중" && (
                             <button

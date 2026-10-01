@@ -1,5 +1,33 @@
 /* Manpower Management Dashboard Styles */
 
+/* ── Theme-aware local variables ── */
+.manpower-dashboard {
+  --mp-bg:        var(--bg-canvas, #f4f6f9);
+  --mp-card:      var(--bg-card, #ffffff);
+  --mp-card-sub:  var(--bg-card-subtle, #f1f4f8);
+  --mp-border:    var(--border-subtle, #dde3ed);
+  --mp-border-md: var(--border-medium, #c5cdd9);
+  --mp-text:      var(--text-primary, #0d1117);
+  --mp-text-sub:  var(--text-secondary, #3d4a5c);
+  --mp-muted:     var(--text-muted, #9eaab8);
+  --mp-accent:    var(--accent, #2563eb);
+  --mp-shadow:    var(--shadow-xs, 0 1px 2px rgba(0,0,0,0.04));
+}
+
+[data-theme="dark"] .manpower-dashboard,
+body.theme-dark .manpower-dashboard {
+  --mp-bg:        var(--bg-canvas, #0a0e1a);
+  --mp-card:      var(--bg-card, #111826);
+  --mp-card-sub:  var(--bg-card-subtle, #0d1220);
+  --mp-border:    var(--border-subtle, rgba(148,163,184,0.11));
+  --mp-border-md: var(--border-medium, rgba(148,163,184,0.18));
+  --mp-text:      var(--text-primary, #e8edf5);
+  --mp-text-sub:  var(--text-secondary, #94a3b8);
+  --mp-muted:     var(--text-muted, #475569);
+  --mp-accent:    var(--accent, #3b82f6);
+  --mp-shadow:    var(--shadow-xs, 0 1px 3px rgba(0,0,0,0.4));
+}
+
 .manpower-dashboard {
   display: flex;
   flex-direction: column;
@@ -8,10 +36,10 @@
 }
 
 .mp-header-card {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--mp-card);
   backdrop-filter: blur(12px);
-  color: #24292f;
-  border: 1px solid #d0d7de;
+  color: var(--mp-text);
+  border: 1px solid var(--mp-border);
   border-radius: 14px;
   padding: 1rem 1.5rem;
   display: flex;
@@ -19,8 +47,9 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--mp-shadow);
 }
+
 
 .mp-title-group {
   display: flex;
@@ -47,31 +76,29 @@
   font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  background: linear-gradient(90deg, #24292f 0%, #57606a 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--mp-text);
 }
 
 .mp-title-text p {
   margin: 3px 0 0 0;
   font-size: 0.75rem;
-  color: #57606a;
+  color: var(--mp-muted);
 }
 
 .mp-month-navigator {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f6f8fa;
+  background: var(--mp-card-sub);
   padding: 6px 10px;
   border-radius: 10px;
-  border: 1px solid #d0d7de;
+  border: 1px solid var(--mp-border);
 }
 
 .mp-nav-btn {
-  background: #ffffff;
-  color: #24292f;
-  border: 1px solid #d0d7de;
+  background: var(--mp-card);
+  color: var(--mp-text);
+  border: 1px solid var(--mp-border);
   width: 30px;
   height: 30px;
   border-radius: 6px;
@@ -84,9 +111,9 @@
 }
 
 .mp-nav-btn:hover {
-  background: #f3f4f6;
-  border-color: #0969da;
-  color: #0969da;
+  background: var(--mp-card-sub);
+  border-color: var(--mp-accent);
+  color: var(--mp-accent);
 }
 
 .mp-month-text {
@@ -94,12 +121,12 @@
   font-weight: 700;
   min-width: 120px;
   text-align: center;
-  color: #24292f;
+  color: var(--mp-text);
   letter-spacing: -0.01em;
 }
 
 .mp-today-btn {
-  background: #0969da;
+  background: var(--mp-accent);
   color: white;
   padding: 5px 10px;
   border-radius: 6px;
@@ -111,13 +138,13 @@
 }
 
 .mp-today-btn:hover {
-  background: #0858b9;
+  filter: brightness(1.1);
 }
 
 /* Controls bar */
 .mp-controls-bar {
-  background: #ffffff;
-  border: 1px solid #d5e1eb;
+  background: var(--mp-card);
+  border: 1px solid var(--mp-border);
   border-radius: 14px;
   padding: 14px 18px;
   display: flex;
@@ -135,11 +162,11 @@
 
 .mp-mode-toggle {
   display: inline-flex;
-  background: #f1f5f9;
+  background: var(--mp-card-sub);
   border-radius: 8px;
   padding: 3px;
   gap: 4px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--mp-border);
 }
 
 .mp-mode-btn {
@@ -150,7 +177,7 @@
   font-weight: 600;
   cursor: pointer;
   background: transparent;
-  color: #64748b;
+  color: var(--mp-muted);
   transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
@@ -158,8 +185,8 @@
 }
 
 .mp-mode-btn.active {
-  background: #ffffff;
-  color: #0969da;
+  background: var(--mp-card);
+  color: var(--mp-accent);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   font-weight: 700;
 }

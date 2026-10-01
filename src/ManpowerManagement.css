@@ -686,3 +686,95 @@
   color: #dc2626 !important;
   font-weight: 800;
 }
+
+/* ========================================================
+   DARK THEME OVERRIDES FOR MANPOWER DASHBOARD
+   ======================================================== */
+[data-theme="dark"] .manpower-dashboard,
+body.theme-dark .manpower-dashboard {
+  --bg-color: #07090e;
+  --panel-bg: #0d121f;
+  --border-color: rgba(56, 189, 248, 0.14);
+  --text-color: #f8fafc;
+  --text-muted: #94a3b8;
+}
+
+[data-theme="dark"] .mp-header-card,
+[data-theme="dark"] .mp-content-card,
+[data-theme="dark"] .mp-stat-card,
+[data-theme="dark"] .mp-summary-card,
+[data-theme="dark"] .mp-calendar-card,
+[data-theme="dark"] .mp-detail-modal-card {
+  background: #0d121f !important;
+  border-color: rgba(56, 189, 248, 0.14) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+[data-theme="dark"] .mp-title-text h2 {
+  color: #f8fafc !important;
+  background: none !important;
+  -webkit-text-fill-color: initial !important;
+}
+
+[data-theme="dark"] .mp-title-text p {
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .mp-month-navigator,
+[data-theme="dark"] .mp-filter-bar,
+[data-theme="dark"] .mp-search-box {
+  background: #111726 !important;
+  border-color: rgba(56, 189, 248, 0.18) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .mp-month-text {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .mp-nav-btn {
+  background: #182236 !important;
+  color: #f8fafc !important;
+  border-color: rgba(56, 189, 248, 0.2) !important;
+}
+
+[data-theme="dark"] .mp-nav-btn:hover {
+  background: #202d44 !important;
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
+}
+
+[data-theme="dark"] .mp-timeline-table th,
+[data-theme="dark"] .mp-table th {
+  background: #111726 !important;
+  color: #94a3b8 !important;
+  border-color: rgba(56, 189, 248, 0.12) !important;
+}
+
+[data-theme="dark"] .mp-timeline-table td,
+[data-theme="dark"] .mp-table td {
+  border-color: rgba(56, 189, 248, 0.08) !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .mp-timeline-table tr:hover td,
+[data-theme="dark"] .mp-table tr:hover td {
+  background: #162032 !important;
+}
+
+[data-theme="dark"] .mp-day-cell {
+  background: #0d121f !important;
+  border-color: rgba(56, 189, 248, 0.1) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .mp-day-cell.other {
+  background: #090d15 !important;
+  color: #64748b !important;
+}
+
+[data-theme="dark"] .mp-peak-cell {
+  background: rgba(239, 68, 68, 0.25) !important;
+  color: #f87171 !important;
+}

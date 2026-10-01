@@ -247,6 +247,26 @@ export default function App() {
   const canAccessQuotations = ["admin", "grade3"].includes(role);
   const canExportAnalysis = ["admin", "grade3", "grade2"].includes(role);
   const canViewManpowerDetail = ["admin", "grade3", "grade2"].includes(role);
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('pm_theme_mode') || 'dark';
+    } catch (e) {
+      return 'dark';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.body.className = `theme-${theme}`;
+      localStorage.setItem('pm_theme_mode', theme);
+    } catch (e) {}
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
   const [users, setUsers] = useState([]);
   const [newRegisteredUsers, setNewRegisteredUsers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -991,53 +1011,6 @@ export default function App() {
   function showPermissionModal(feature) {
     setPermissionModal({ feature, role });
   }
-
-  const handleDownloadRoleGuide = async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    const basePath = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '') + '/';
-    const candidateUrls = [
-      `${basePath}TW_Role_Guide.pptx`,
-      `${basePath}TW_프로젝트관리시스템_권한별_기능_가이드.pptx`,
-      './TW_Role_Guide.pptx',
-      '/TW_Role_Guide.pptx',
-      './TW_프로젝트관리시스템_권한별_기능_가이드.pptx',
-      '/TW_프로젝트관리시스템_권한별_기능_가이드.pptx'
-    ];
-
-    let downloaded = false;
-    for (const url of candidateUrls) {
-      try {
-        const response = await fetch(url, { method: 'GET' });
-        if (response.ok) {
-          const blob = await response.blob();
-          if (blob && blob.size > 1000) {
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.download = 'TW_프로젝트관리시스템_권한별_기능_가이드.pptx';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(downloadUrl);
-            downloaded = true;
-            break;
-          }
-        }
-      } catch (err) {
-        console.warn(`[Download] Failed from ${url}:`, err);
-      }
-    }
-
-    if (!downloaded) {
-      const link = document.createElement('a');
-      link.href = `${basePath}TW_Role_Guide.pptx`;
-      link.download = 'TW_프로젝트관리시스템_권한별_기능_가이드.pptx';
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
 
   const peopleNames = [...new Set(people.map(p => p.name))].sort();
 
@@ -1793,251 +1766,176 @@ JSON 출력 예시:
   return (
     <main>
       {/* 고정 최상단 헤더 래퍼 (틀고정 / Freeze Pane) */}
-      <div id="app-fixed-top" style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 1000,
-        background: '#eef3f8',
-        margin: '-10px -10px 8px -10px',
-        padding: '10px 10px 6px 10px',
-        borderBottom: '1px solid #d0d7de',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
-      }}>
-        <header>
-          <img src="/tw-logo.png" alt="TW Logo" />
-          <div>
-            <b>TW Project</b>
-            <h1>Project Management</h1>
-            <small>{session.user.email} · {role}</small>
-          </div>
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              {/* 업데이트 감지 안내 배너 (캐시 새로고침 버튼 좌측에 비차단형으로 배치) */}
-              {hasUpdate && !dismissUpdateNotice && (
-                <div className="app-update-notice-banner" role="alert">
-                  <div className="app-update-notice-text">
-                    <div className="app-update-title-row">
-                      <span style={{ fontSize: '13px' }}>🔔</span>
-                      <b>새로운 업데이트가 있습니다!</b>
-                    </div>
-                    <span className="app-update-subtext">
-                      (진행 중인 업무를 마무리하신 후 천천히 새로고침하셔도 됩니다)
-                    </span>
-                  </div>
-                  <div style={{ display: 'inline-flex', gap: '4px', alignItems: 'center', marginLeft: 'auto', flexShrink: 0 }}>
-                    <button
-                      type="button"
-                      onClick={handlePerformUpdate}
-                      className="app-update-btn-refresh"
-                      title="최신 코드를 반영하여 페이지를 새로고침합니다"
-                    >
-                      🚀 지금 새로고침
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDismissUpdate}
-                      className="app-update-btn-later"
-                      title="알림을 닫고 현재 작업을 계속합니다 (언제든 캐시 새로고침 버튼으로 반영 가능)"
-                    >
-                      나중에
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="cache-refresh-btn-wrapper">
-                <button
-                  onClick={handlePerformUpdate}
-                  style={{ background: '#d97706', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
-                  title="브라우저 캐시를 완전히 비우고 최신 화면으로 새로고침합니다"
-                >
-                  ⚡ 캐시 새로고침
-                </button>
-                {hasUpdate && <span className="update-badge-dot" title="새로운 시스템 업데이트가 있습니다 (클릭하여 새로고침 가능)" />}
+      <div id="app-fixed-top" ref={fixedHeaderRef} className="system-fixed-top-bar">
+        <header className="system-main-header">
+          <div className="system-brand-left">
+            <img src="/tw-logo.png" alt="TW Logo" className="system-brand-logo" />
+            <div className="system-brand-info">
+              <div className="system-brand-meta">
+                <span className="system-brand-title">TW Project</span>
+                <span className="system-badge-ax">AX INTELLIGENCE</span>
               </div>
-              <button
-                onClick={() => setShowPasswordModal(true)}
-                style={{ background: '#0284c7', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
-                title="현재 로그인된 계정의 비밀번호를 변경합니다"
-              >
-                🔑 비밀번호 변경
-              </button>
-              <button onClick={handleSignOut}>로그아웃</button>
+              <h1 className="system-title-heading">Project Management</h1>
             </div>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <button
-                type="button"
-                onClick={handleDownloadRoleGuide}
-                style={{
-                  background: '#f8fafc',
-                  border: '1px solid #cbd5e1',
-                  color: '#334155',
-                  fontSize: '11px',
-                  fontWeight: '600',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  cursor: 'pointer'
-                }}
-                title="시스템 권한별 상세 기능 가이드 PPT를 다운로드합니다"
-              >
-                📥 권한 가이드 PPT
-              </button>
-              {role === "admin" && (
+          </div>
+
+          <div className="system-user-and-tools">
+            <div className="system-user-profile-card">
+              <div className="user-avatar-indicator" />
+              <div className="user-info-text">
+                <span className="user-display-name">
+                  {session?.user?.email?.toLowerCase() === "cmj1012@twgroup.co.kr"
+                    ? "조민재 선임 (PM팀)"
+                    : session?.user?.email}
+                </span>
+                <span className="user-role-tag">
+                  {role === "admin" ? "최고 관리자" : (role || 'GRADE 1').toUpperCase()}
+                </span>
+              </div>
+            </div>
+
+            <nav className="system-header-actions-nav">
+              <div className="system-action-buttons-group">
+                {/* 업데이트 감지 안내 배너 */}
+                {hasUpdate && !dismissUpdateNotice && (
+                  <div className="app-update-notice-banner" role="alert">
+                    <div className="app-update-notice-text">
+                      <div className="app-update-title-row">
+                        <span style={{ fontSize: '13px' }}>🔔</span>
+                        <b>새로운 업데이트가 있습니다!</b>
+                      </div>
+                      <span className="app-update-subtext">
+                        (진행 중인 업무를 마무리하신 후 천천히 새로고침하셔도 됩니다)
+                      </span>
+                    </div>
+                    <div style={{ display: 'inline-flex', gap: '4px', alignItems: 'center', marginLeft: 'auto', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={handlePerformUpdate}
+                        className="app-update-btn-refresh"
+                        title="최신 코드를 반영하여 페이지를 새로고침합니다"
+                      >
+                        🚀 지금 새로고침
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDismissUpdate}
+                        className="app-update-btn-later"
+                        title="알림을 닫고 현재 작업을 계속합니다"
+                      >
+                        나중에
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="cache-refresh-btn-wrapper">
+                  <button
+                    onClick={handlePerformUpdate}
+                    className="system-btn-tool system-btn-cache"
+                    title="브라우저 캐시를 완전히 비우고 최신 화면으로 새로고침합니다"
+                  >
+                    ⚡ 캐시 새로고침
+                  </button>
+                  {hasUpdate && <span className="update-badge-dot" title="새로운 시스템 업데이트가 있습니다" />}
+                </div>
+
                 <button
-                  onClick={() => {
-                    setModal("users");
-                    markUsersAsChecked();
-                  }}
-                  style={{
-                    position: 'relative',
-                    background: newRegisteredUsers.length > 0 ? '#1d4ed8' : '',
-                    color: newRegisteredUsers.length > 0 ? '#fff' : '',
-                    fontWeight: newRegisteredUsers.length > 0 ? '700' : 'normal'
-                  }}
-                  title={newRegisteredUsers.length > 0 ? `신규 가입자 ${newRegisteredUsers.length}명이 있습니다.` : "사용자 권한 관리"}
+                  onClick={() => setShowPasswordModal(true)}
+                  className="system-btn-tool system-btn-pwd"
+                  title="현재 로그인된 계정의 비밀번호를 변경합니다"
                 >
-                  사용자 권한 관리
-                  {newRegisteredUsers.length > 0 && (
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: '-7px',
-                        right: '-7px',
-                        background: '#ef4444',
-                        color: '#fff',
-                        borderRadius: '10px',
-                        padding: '1px 6px',
-                        fontSize: '10px',
-                        fontWeight: '800',
-                        border: '2px solid #fff',
-                        boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)'
-                      }}
-                    >
-                      {newRegisteredUsers.length}
-                    </span>
-                  )}
+                  🔑 비밀번호 변경
                 </button>
-              )}
-            </div>
-          </nav>
+
+                <button
+                  onClick={handleSignOut}
+                  className="system-btn-tool system-btn-logout"
+                  title="로그아웃합니다"
+                >
+                  로그아웃
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="theme-toggle-btn"
+                  title={theme === 'dark' ? '밝은 화면(화이트 모드)으로 전환' : '편안한 화면(다크 모드)으로 전환'}
+                >
+                  {theme === 'dark' ? '☀️ 라이트 모드' : '🌙 다크 모드'}
+                </button>
+
+                {role === "admin" && (
+                  <button
+                    onClick={() => {
+                      setModal("users");
+                      markUsersAsChecked();
+                    }}
+                    className={`system-btn-tool system-btn-admin ${newRegisteredUsers.length > 0 ? 'has-new' : ''}`}
+                    title={newRegisteredUsers.length > 0 ? `신규 가입자 ${newRegisteredUsers.length}명이 있습니다.` : "사용자 권한 관리"}
+                  >
+                    사용자 권한 관리
+                    {newRegisteredUsers.length > 0 && (
+                      <span className="admin-badge-count">
+                        {newRegisteredUsers.length}
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
+            </nav>
+          </div>
         </header>
 
-        <div className="top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '8px 0 0 0' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div className="system-nav-bar-row">
+          <div className="system-nav-capsule">
             <button
+              type="button"
+              className={`nav-tab-btn ${currentView === "projects" ? "active" : ""}`}
               onClick={() => switchView("projects")}
-              style={{
-                background: currentView === "projects" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
-                color: currentView === "projects" ? "#fff" : "#24292e",
-                border: currentView === "projects" ? "1px solid #388bfd" : "1px solid #d1d5da",
-                padding: "0.45rem 1.15rem",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontWeight: 600,
-                height: "44px",
-                display: "inline-flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                boxSizing: "border-box",
-                fontSize: "13px"
-              }}
             >
-              <span>프로젝트 일정 📅</span>
+              <span className="nav-tab-icon">📅</span>
+              <span className="nav-tab-label">프로젝트 일정</span>
             </button>
             <button
+              type="button"
+              className={`nav-tab-btn ${currentView === "manpower" ? "active" : ""}`}
               onClick={() => switchView("manpower")}
-              style={{
-                background: currentView === "manpower" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
-                color: currentView === "manpower" ? "#fff" : "#24292e",
-                border: currentView === "manpower" ? "1px solid #388bfd" : "1px solid #d1d5da",
-                padding: "0.45rem 1.15rem",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontWeight: 600,
-                height: "44px",
-                display: "inline-flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                boxSizing: "border-box",
-                fontSize: "13px"
-              }}
             >
-              <span>공수 통합 관리 📊</span>
+              <span className="nav-tab-icon">📊</span>
+              <span className="nav-tab-label">공수 통합 관리</span>
             </button>
             <button
+              type="button"
+              className={`nav-tab-btn ${currentView === "issues" ? "active" : ""}`}
               onClick={() => switchView("issues")}
-              style={{
-                background: currentView === "issues" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
-                color: currentView === "issues" ? "#fff" : "#24292e",
-                border: currentView === "issues" ? "1px solid #388bfd" : "1px solid #d1d5da",
-                padding: "0.45rem 1.15rem",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontWeight: 600,
-                height: "44px",
-                display: "inline-flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                boxSizing: "border-box",
-                fontSize: "13px"
-              }}
             >
-              <span>프로젝트 이슈 관리 📋</span>
+              <span className="nav-tab-icon">📋</span>
+              <span className="nav-tab-label">프로젝트 이슈 관리</span>
             </button>
             <button
+              type="button"
+              className={`nav-tab-btn ${currentView === "quotations" ? "active" : ""} ${!canAccessQuotations ? "restricted" : ""}`}
               onClick={() => {
                 if (!canAccessQuotations) return showPermissionModal("견적 조회");
                 switchView("quotations");
               }}
-              style={{
-                background: currentView === "quotations" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
-                color: currentView === "quotations" ? "#fff" : "#24292e",
-                border: currentView === "quotations" ? "1px solid #388bfd" : "1px solid #d1d5da",
-                padding: "0.45rem 1.15rem",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontWeight: 600,
-                height: "44px",
-                display: "inline-flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                boxSizing: "border-box",
-                fontSize: "13px",
-                opacity: !canAccessQuotations ? 0.85 : 1
-              }}
               title={!canAccessQuotations ? "견적 기능은 Grade 3(PM/소장) 이상만 이용할 수 있습니다 (클릭 시 권한 안내)" : ""}
             >
-              <span>견적 조회 💰 {!canAccessQuotations && "🔒"}</span>
+              <span className="nav-tab-icon">💰</span>
+              <span className="nav-tab-label">견적 조회</span>
+              {!canAccessQuotations && <span className="nav-tab-lock">🔒</span>}
             </button>
             <button
+              type="button"
+              className={`nav-tab-btn ${currentView === "vision-spc" ? "active" : ""}`}
               onClick={() => switchView("vision-spc")}
-              style={{
-                background: currentView === "vision-spc" ? "linear-gradient(135deg, #1f6feb, #1152b3)" : "#e1e4e8",
-                color: currentView === "vision-spc" ? "#fff" : "#24292e",
-                border: currentView === "vision-spc" ? "1px solid #388bfd" : "1px solid #d1d5da",
-                padding: "0.35rem 1.15rem",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontWeight: 600,
-                height: "44px",
-                display: "inline-flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                boxSizing: "border-box",
-                fontSize: "13px",
-                lineHeight: 1.15
-              }}
             >
-              <span>Vision SPC 📈</span>
-              <span style={{ fontSize: "10px", fontWeight: 500, opacity: currentView === "vision-spc" ? 0.9 : 0.75, marginTop: "2px" }}>
-                (Cp,Cpk분석)
-              </span>
+              <span className="nav-tab-icon">📈</span>
+              <div className="nav-tab-text-col">
+                <span className="nav-tab-label">Vision SPC</span>
+                <span className="nav-tab-sub">Cp·Cpk 분석</span>
+              </div>
             </button>
           </div>
         </div>
@@ -2047,15 +1945,15 @@ JSON 출력 예시:
       {role === "admin" && newRegisteredUsers.length > 0 && (
         <div
           style={{
-            background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
-            border: '1.5px solid #3b82f6',
-            borderRadius: '10px',
+            background: 'var(--bg-card)',
+            border: '1.5px solid var(--primary-blue)',
+            borderRadius: '12px',
             padding: '12px 18px',
             margin: '8px 0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.15)',
+            boxShadow: 'var(--shadow-sm)',
             flexWrap: 'wrap',
             gap: '10px'
           }}
@@ -2063,14 +1961,14 @@ JSON 출력 예시:
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '24px' }}>🔔</span>
             <div>
-              <div style={{ fontWeight: 800, color: '#1e3a8a', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>신규 가입자가 있습니다!</span>
                 <span style={{ background: '#2563eb', color: '#fff', fontSize: '11px', padding: '1px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
                   {newRegisteredUsers.length}명 대기중
                 </span>
               </div>
-              <div style={{ fontSize: '12.5px', color: '#1e40af', marginTop: '3px' }}>
-                가입자 메일주소: <b style={{ color: '#0f172a' }}>{newRegisteredUsers.map(u => u.email).join(', ')}</b>
+              <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                가입자 메일주소: <b style={{ color: 'var(--text-primary)' }}>{newRegisteredUsers.map(u => u.email).join(', ')}</b>
               </div>
             </div>
           </div>
@@ -2099,9 +1997,9 @@ JSON 출력 예시:
               type="button"
               onClick={markUsersAsChecked}
               style={{
-                background: '#ffffff',
-                border: '1px solid #bfdbfe',
-                color: '#1e40af',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-medium)',
+                color: 'var(--text-secondary)',
                 padding: '7px 12px',
                 borderRadius: '6px',
                 fontSize: '12px',
@@ -2117,15 +2015,15 @@ JSON 출력 예시:
       )}
 
       {/* 글로벌 복수 연간 단위 선택기 (Global Multi-Year Toolbar: 당해년도, 최근 2개년, 최근 3개년, 전체 및 복수 토글) */}
-      <div className="global-multi-year-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', margin: '8px 0', flexWrap: 'wrap', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+      <div className="global-multi-year-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 14px', borderRadius: '12px', margin: '8px 0', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', color: '#1e293b', marginRight: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', marginRight: '4px' }}>
             <span style={{ fontSize: '15px' }}>📅</span>
             <span>조회 연도:</span>
           </div>
 
           {/* 1. 빠른 프리셋 버튼 (원클릭) */}
-          <div style={{ display: 'flex', gap: '3px', background: '#e2e8f0', padding: '2px', borderRadius: '8px' }}>
+          <div style={{ display: 'flex', gap: '3px', background: 'var(--pill-bg)', padding: '2px', borderRadius: '8px' }}>
             <button
               type="button"
               onClick={() => handlePresetYears('current')}
@@ -2134,8 +2032,8 @@ JSON 출력 예시:
                 borderRadius: '6px',
                 fontSize: '11px',
                 fontWeight: (!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? 700 : 500,
-                background: (!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? '#2563eb' : 'transparent',
-                color: (!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? '#fff' : '#475569',
+                background: (!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? 'var(--primary-blue)' : 'transparent',
+                color: (!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? '#fff' : 'var(--text-secondary)',
                 border: 'none',
                 cursor: 'pointer'
               }}
@@ -2151,8 +2049,8 @@ JSON 출력 예시:
                 borderRadius: '6px',
                 fontSize: '11px',
                 fontWeight: (!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? 700 : 500,
-                background: (!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? '#2563eb' : 'transparent',
-                color: (!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? '#fff' : '#475569',
+                background: (!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? 'var(--primary-blue)' : 'transparent',
+                color: (!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? '#fff' : 'var(--text-secondary)',
                 border: 'none',
                 cursor: 'pointer'
               }}
@@ -2168,8 +2066,8 @@ JSON 출력 예시:
                 borderRadius: '6px',
                 fontSize: '11px',
                 fontWeight: (!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? 700 : 500,
-                background: (!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? '#2563eb' : 'transparent',
-                color: (!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? '#fff' : '#475569',
+                background: (!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? 'var(--primary-blue)' : 'transparent',
+                color: (!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? '#fff' : 'var(--text-secondary)',
                 border: 'none',
                 cursor: 'pointer'
               }}
@@ -2185,8 +2083,8 @@ JSON 출력 예시:
                 borderRadius: '6px',
                 fontSize: '11px',
                 fontWeight: isAllYears ? 700 : 500,
-                background: isAllYears ? '#0f172a' : 'transparent',
-                color: isAllYears ? '#fff' : '#475569',
+                background: isAllYears ? 'var(--primary-blue)' : 'transparent',
+                color: isAllYears ? '#fff' : 'var(--text-secondary)',
                 border: 'none',
                 cursor: 'pointer'
               }}
@@ -2196,7 +2094,7 @@ JSON 출력 예시:
             </button>
           </div>
 
-          <span style={{ color: '#cbd5e1', margin: '0 2px' }}>|</span>
+          <span style={{ color: 'var(--border-medium)', margin: '0 2px' }}>|</span>
 
           {/* 2. 개별 연도 복수 토글 버튼 */}
           <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -2213,11 +2111,11 @@ JSON 출력 예시:
                     borderRadius: '16px',
                     fontSize: '11.5px',
                     fontWeight: isSelected ? '700' : '500',
-                    border: isSelected ? '1px solid #2563eb' : '1px solid #cbd5e1',
-                    background: isSelected ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#fff',
-                    color: isSelected ? '#fff' : '#475569',
+                    border: isSelected ? '1px solid var(--primary-blue)' : '1px solid var(--border-medium)',
+                    background: isSelected ? 'var(--primary-blue)' : 'var(--bg-card)',
+                    color: isSelected ? '#fff' : 'var(--text-secondary)',
                     cursor: 'pointer',
-                    boxShadow: isSelected ? '0 1px 3px rgba(37, 99, 235, 0.25)' : 'none',
+                    boxShadow: isSelected ? '0 1px 4px rgba(37, 99, 235, 0.3)' : 'none',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '3px',
@@ -2228,7 +2126,7 @@ JSON 출력 예시:
                   <span>{yr}년</span>
                   {isSelected && <span style={{ fontSize: '10px' }}>✓</span>}
                   {isCurrent && !isSelected && (
-                    <span style={{ fontSize: '9px', background: '#e0e7ff', color: '#4338ca', padding: '1px 4px', borderRadius: '6px' }}>현재</span>
+                    <span style={{ fontSize: '9px', background: 'rgba(37, 99, 235, 0.12)', color: 'var(--primary-blue)', padding: '1px 4px', borderRadius: '6px' }}>현재</span>
                   )}
                 </button>
               );
@@ -2238,22 +2136,22 @@ JSON 출력 예시:
 
         {/* 연간 통계 요약 (우측) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', flexWrap: 'wrap' }}>
-          <span style={{ color: '#475569' }}>
-            <b>{isAllYears ? "전체 연도" : selectedYears.length === 1 ? `${selectedYears[0]}년` : `${selectedYears.slice().sort().join(', ')}년 (${selectedYears.length}개년)`}</b> 프로젝트: <b style={{ color: '#0f172a', fontSize: '13px' }}>{yearStats.total}건</b>
+          <span style={{ color: 'var(--text-secondary)' }}>
+            <b>{isAllYears ? "전체 연도" : selectedYears.length === 1 ? `${selectedYears[0]}년` : `${selectedYears.slice().sort().join(', ')}년 (${selectedYears.length}개년)`}</b> 프로젝트: <b style={{ color: 'var(--text-primary)', fontSize: '13px' }}>{yearStats.total}건</b>
           </span>
-          <span style={{ color: '#cbd5e1' }}>|</span>
+          <span style={{ color: 'var(--border-medium)' }}>|</span>
           <span style={{ color: '#059669', fontWeight: 600 }}>진행중 <b>{yearStats.ongoing}</b></span>
-          <span style={{ color: '#cbd5e1' }}>|</span>
-          <span style={{ color: '#2563eb', fontWeight: 600 }}>완료 <b>{yearStats.completed}</b></span>
+          <span style={{ color: 'var(--border-medium)' }}>|</span>
+          <span style={{ color: 'var(--primary-blue)', fontWeight: 600 }}>완료 <b>{yearStats.completed}</b></span>
           {yearStats.delayed > 0 && (
             <>
-              <span style={{ color: '#cbd5e1' }}>|</span>
+              <span style={{ color: 'var(--border-medium)' }}>|</span>
               <span style={{ color: '#dc2626', fontWeight: 600 }}>지연 <b>{yearStats.delayed}</b></span>
             </>
           )}
           {yearStats.totalManpower > 0 && (
             <>
-              <span style={{ color: '#cbd5e1' }}>|</span>
+              <span style={{ color: 'var(--border-medium)' }}>|</span>
               <span style={{ color: '#7c3aed', fontWeight: 600 }}>총공수 <b>{yearStats.totalManpower.toLocaleString()} M/D</b></span>
             </>
           )}
@@ -3420,30 +3318,8 @@ JSON 출력 예시:
             <button className="close" onClick={() => setModal(null)}>×</button>
             {modal === "users" && (
               <div style={{ maxWidth: "720px", margin: "0 auto" }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                  <h2 style={{ margin: 0, fontSize: "20px", color: "#0f172a" }}>사용자 계정·권한 관리</h2>
-                  <button
-                    type="button"
-                    onClick={handleDownloadRoleGuide}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      padding: '6px 14px',
-                      background: 'linear-gradient(135deg, #d97706, #b45309)',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      boxShadow: '0 2px 4px rgba(180, 83, 9, 0.25)',
-                      transition: 'all 0.15s ease'
-                    }}
-                    title="시스템 전체 권한별 기능 및 제한 안내 PPT를 다운로드합니다"
-                  >
-                    📥 권한 가이드 PPT 다운로드
-                  </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                  <h2 style={{ margin: 0, fontSize: "20px", color: "var(--text-primary, #0f172a)" }}>사용자 계정·권한 관리</h2>
                 </div>
                 <div style={{
                   padding: "10px 14px",
@@ -3604,53 +3480,124 @@ JSON 출력 예시:
       )}
 
       {permissionModal && (
-        <div className="back" onMouseDown={() => setPermissionModal(null)} style={{ zIndex: 9999 }}>
-          <div className="modal" onMouseDown={e => e.stopPropagation()} style={{ maxWidth: '440px', textAlign: 'center', padding: '28px 24px', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '28px', background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '26px' }}>🔒</div>
-            <h3 style={{ margin: '0 0 10px', fontSize: '19px', color: '#111827', fontWeight: 'bold' }}>접근 권한 제한 안내</h3>
-            <p style={{ margin: '0 0 14px', fontSize: '14px', color: '#4b5563', lineHeight: '1.6' }}>
-              <b style={{ color: '#dc2626' }}>[{permissionModal.feature}]</b> 기능은 현재 등급에서 이용할 수 없습니다.<br />
-              해당 기능을 이용하시려면 <b>운영자에게 권한을 부여</b>받으시기 바랍니다.
-            </p>
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px 16px', marginBottom: '14px', textAlign: 'left', fontSize: '13px', color: '#334155' }}>
-              <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-                <span>📌</span><span>권한 부여 및 시스템 문의</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', lineHeight: '1.5' }}>
-                <div>• <b>담당자</b>: 조민재 선임</div>
-                <div>• <b>E-mail</b>: cmj1012@twgroup.co.kr</div>
-                <div>• <b>Tel</b>: +82 10 5506 8739</div>
-              </div>
-            </div>
-            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '9px 14px', marginBottom: '18px', fontSize: '12px', color: '#6b7280', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>로그인: <b>{session?.user?.email}</b></span>
-              <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold', fontSize: '11px' }}>{(role || 'grade1').toUpperCase()}</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleDownloadRoleGuide}
+        <div className="back" onMouseDown={() => setPermissionModal(null)} style={{ zIndex: 99999 }}>
+          <div
+            className="permission-modal-card"
+            onMouseDown={e => e.stopPropagation()}
+            style={{
+              maxWidth: '430px',
+              width: '92%',
+              background: 'var(--bg-card, #ffffff)',
+              borderRadius: '24px',
+              padding: '36px 28px 28px',
+              textAlign: 'center',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+              border: '1px solid var(--border-subtle, #e2e8f0)',
+              animation: 'modalFadeIn 0.2s ease-out'
+            }}
+          >
+            <div
               style={{
-                width: '100%',
-                padding: '10px',
-                marginBottom: '8px',
-                background: '#f8fafc',
-                border: '1px solid #cbd5e1',
-                color: '#1e293b',
-                fontSize: '13px',
-                fontWeight: 600,
-                borderRadius: '8px',
-                cursor: 'pointer',
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: '#fef2f2',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '6px'
+                margin: '0 auto 20px',
+                fontSize: '28px',
+                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.12)'
               }}
-              title="시스템의 각 등급별 기능 및 차이점 가이드 문서를 다운로드합니다"
             >
-              📥 권한별 전체 기능 가이드 PPT 다운로드
-            </button>
-            <button onClick={() => setPermissionModal(null)} style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, #1f6feb, #1152b3)', color: '#fff', fontSize: '14px', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-              확인
+              🔒
+            </div>
+
+            <h3
+              style={{
+                margin: '0 0 14px',
+                fontSize: '22px',
+                fontWeight: 800,
+                color: 'var(--text-primary, #0f172a)',
+                letterSpacing: '-0.02em'
+              }}
+            >
+              접근 권한 제한 안내
+            </h3>
+
+            <p
+              style={{
+                margin: '0 0 24px',
+                fontSize: '14.5px',
+                color: 'var(--text-secondary, #475569)',
+                lineHeight: 1.65,
+                wordBreak: 'keep-all'
+              }}
+            >
+              [{permissionModal.feature}] 은 현재 등급에서 이용할 수 없습니다.<br />
+              해당 기능을 이용하시려면 운영자에게 권한을 부여받으시기 바랍니다.
+            </p>
+
+            <div
+              style={{
+                background: 'var(--bg-card-subtle, #f1f5f9)',
+                border: '1px solid var(--border-medium, #cbd5e1)',
+                borderRadius: '14px',
+                padding: '16px 20px',
+                marginBottom: '24px',
+                textAlign: 'left'
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 700,
+                  color: 'var(--text-primary, #0f172a)',
+                  fontSize: '14.5px',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>📌</span>
+                <span>권한 부여 및 시스템 문의</span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                  fontSize: '13.5px',
+                  color: 'var(--text-secondary, #334155)',
+                  lineHeight: 1.6
+                }}
+              >
+                <div>• 담당자: 조민재 선임 (PM팀)</div>
+                <div>• E-mail: cmj1012@twgroup.co.kr</div>
+                <div>• Tel: +82 10 5506 8739</div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setPermissionModal(null)}
+              style={{
+                width: '100%',
+                padding: '13px 0',
+                background: '#2563eb',
+                color: '#ffffff',
+                fontSize: '15px',
+                fontWeight: 700,
+                border: 'none',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseOver={e => e.currentTarget.style.background = '#1d4ed8'}
+              onMouseOut={e => e.currentTarget.style.background = '#2563eb'}
+            >
+              확인 (닫기)
             </button>
           </div>
         </div>

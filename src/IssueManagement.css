@@ -14,12 +14,28 @@
     --warning-bg: rgba(191, 135, 0, 0.15);
     
     color: var(--text-color);
-    font-family: 'Inter', 'Nanum Gothic', sans-serif;
+    font-family: var(--font-sans, 'Inter', sans-serif);
     line-height: 1.5;
     min-height: 600px;
     display: flex;
     flex-direction: column;
     margin: 10px 0;
+}
+
+[data-theme="dark"] .issue-management-container,
+body.theme-dark .issue-management-container {
+    --bg-color: #07090e;
+    --panel-bg: #0d121f;
+    --border-color: rgba(56, 189, 248, 0.14);
+    --text-color: #f8fafc;
+    --text-muted: #94a3b8;
+    --primary: #38bdf8;
+    --accent: #10b981;
+    --accent-bg: rgba(16, 185, 129, 0.2);
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.2);
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.2);
 }
 
 .issue-management-container * {

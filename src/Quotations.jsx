@@ -16,16 +16,22 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
 
     if (!canManage) {
         return (
-            <div style={{ padding: '60px 20px', textAlign: 'center', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '30px auto', maxWidth: '540px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '48px', marginBottom: '14px' }}>🔒</div>
-                <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginBottom: '10px' }}>견적 관리 접근 권한 제한</h3>
-                <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6, marginBottom: '20px' }}>
+            <div style={{ padding: '48px 24px', textAlign: 'center', background: 'var(--bg-card, #fff)', borderRadius: '24px', border: '1px solid var(--border-subtle, #e2e8f0)', margin: '40px auto', maxWidth: '440px', boxShadow: 'var(--shadow-md, 0 4px 20px rgba(0,0,0,0.06))' }}>
+                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', fontSize: '28px' }}>🔒</div>
+                <h3 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary, #0f172a)', margin: '0 0 12px' }}>견적 관리 접근 권한 제한</h3>
+                <p style={{ fontSize: '14.5px', color: 'var(--text-secondary, #64748b)', lineHeight: 1.65, margin: '0 0 20px' }}>
                     견적 조회 및 관리 기능은 <b>Grade 3(PM/소장) 이상</b> 등급만 이용할 수 있습니다.<br />
-                    권한이 필요하신 경우 최고 관리자(운영자)에게 승인을 요청해 주세요.
+                    해당 기능을 이용하시려면 운영자에게 권한을 부여받으시기 바랍니다.
                 </p>
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px 16px', textAlign: 'left', fontSize: '13px', color: '#334155', maxWidth: '380px', margin: '0 auto' }}>
-                    <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '4px', fontSize: '12px' }}>📌 권한 문의처</div>
-                    <div style={{ fontSize: '12px', lineHeight: '1.5' }}>조민재 선임 (cmj1012@twgroup.co.kr / +82 10 5506 8739)</div>
+                <div style={{ background: 'var(--bg-card-subtle, #f1f5f9)', border: '1px solid var(--border-medium, #cbd5e1)', borderRadius: '14px', padding: '16px 20px', textAlign: 'left', fontSize: '13.5px', color: 'var(--text-secondary, #334155)', margin: '0 auto' }}>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary, #0f172a)', marginBottom: '10px', fontSize: '14.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>📌</span><span>권한 부여 및 시스템 문의</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', lineHeight: 1.6 }}>
+                        <div>• 담당자: 조민재 선임 (PM팀)</div>
+                        <div>• E-mail: cmj1012@twgroup.co.kr</div>
+                        <div>• Tel: +82 10 5506 8739</div>
+                    </div>
                 </div>
             </div>
         );

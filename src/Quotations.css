@@ -445,3 +445,64 @@
     box-shadow: 0 1px 0 #e2e8f0;
 }
 
+/* ========================================================
+   DARK THEME OVERRIDES FOR QUOTATIONS
+   ======================================================== */
+[data-theme="dark"] .quote-table-container,
+body.theme-dark .quote-table-container {
+    background: #0d121f;
+    border-color: rgba(56, 189, 248, 0.14);
+}
+
+[data-theme="dark"] .data-table,
+body.theme-dark .data-table {
+    background: #0d121f;
+    border-color: rgba(56, 189, 248, 0.14);
+}
+
+[data-theme="dark"] .data-table th,
+[data-theme="dark"] .data-table.sticky-header thead th,
+body.theme-dark .data-table.sticky-header thead th {
+    background: #111726 !important;
+    color: #94a3b8;
+    box-shadow: 0 1px 0 rgba(56, 189, 248, 0.14);
+    border-color: rgba(56, 189, 248, 0.12);
+}
+
+[data-theme="dark"] .data-table td,
+body.theme-dark .data-table td {
+    border-color: rgba(56, 189, 248, 0.08);
+    color: #e2e8f0;
+}
+
+[data-theme="dark"] .data-table tr:hover td,
+body.theme-dark .data-table tr:hover td {
+    background: #162032;
+}
+
+[data-theme="dark"] .quote-collapsed-banner,
+body.theme-dark .quote-collapsed-banner {
+    background: #111726;
+    border-color: rgba(56, 189, 248, 0.18);
+    color: #f8fafc;
+}
+
+[data-theme="dark"] .autocomplete-dropdown,
+body.theme-dark .autocomplete-dropdown {
+    background: #0d121f;
+    border-color: rgba(56, 189, 248, 0.22);
+    color: #f8fafc;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .autocomplete-dropdown li,
+body.theme-dark .autocomplete-dropdown li {
+    border-color: rgba(56, 189, 248, 0.1);
+}
+
+[data-theme="dark"] .autocomplete-dropdown li:hover,
+body.theme-dark .autocomplete-dropdown li:hover {
+    background: #162032;
+    color: #38bdf8;
+}
+

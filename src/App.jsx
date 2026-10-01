@@ -330,6 +330,13 @@ export default function App() {
     } catch (e) {}
   };
 
+  // 연도 표시용 친절한 레이블 (예: "2026년", "2025, 2026년", "전체 연도")
+  const selectedYearsLabel = isAllYears
+    ? "전체 연도"
+    : selectedYears.length === 1
+      ? `${selectedYears[0]}년`
+      : `${selectedYears.slice().sort().join(', ')}년 (${selectedYears.length}개년)`;
+
   const [msg, setMsg] = useState("");
   const [newSite, setNewSite] = useState("");
   const [newPerson, setNewPerson] = useState("");
@@ -2454,8 +2461,19 @@ JSON 출력 예시:
             </div>
             {!collapsedSections.filter ? (
               <div className="filterbar" style={{ marginTop: '6px' }}>
-                <select value={yearFilter} onChange={e => handleYearFilterChange(e.target.value)} style={{ fontWeight: 600 }}>
-                  <option value="전체">연도: 전체</option>
+                <select
+                  value={isAllYears ? "전체" : (selectedYears.length === 1 ? selectedYears[0] : "복수선택")}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val === "전체") handlePresetYears('all');
+                    else handleToggleYear(val);
+                  }}
+                  style={{ fontWeight: 600 }}
+                >
+                  <option value="전체">연도: 전체 ({availableYears.length}개년)</option>
+                  {!isAllYears && selectedYears.length > 1 && (
+                    <option value="복수선택" disabled>연도: {selectedYearsLabel} (복수 선택중)</option>
+                  )}
                   {availableYears.map(yr => (
                     <option key={yr} value={yr}>연도: {yr}년 {yr === currentYearStr ? '(현재)' : ''}</option>
                   ))}
@@ -2468,7 +2486,7 @@ JSON 출력 예시:
                   <option>전체</option>
                   {peopleNames.map(p => <option key={p}>{p}</option>)}
                 </select>
-                <button onClick={() => { handleYearFilterChange(currentYearStr); setSiteFilter("전체"); setPersonFilter("전체"); }}>필터 초기화</button>
+                <button onClick={() => { handlePresetYears('current'); setSiteFilter("전체"); setPersonFilter("전체"); }}>필터 초기화</button>
               </div>
             ) : (
               <div 
@@ -2485,7 +2503,7 @@ JSON 출력 예시:
                   marginTop: '8px'
                 }}
               >
-                🔍 연도: <b>{yearFilter === "전체" ? "전체 연도" : `${yearFilter}년`}</b> · Site: <b>{siteFilter}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경 ▾)
+                🔍 연도: <b>{selectedYearsLabel}</b> · Site: <b>{siteFilter}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경 ▾)
               </div>
             )}
           </section>
@@ -2926,7 +2944,7 @@ JSON 출력 예시:
             <div className="tools">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <h2>
-                  {yearFilter === "전체" ? "전체 프로젝트 목록" : `${yearFilter}년 프로젝트 목록`} ({view.length}건)
+                  {isAllYears ? "전체 프로젝트 목록" : `${selectedYearsLabel} 프로젝트 목록`} ({view.length}건)
                 </h2>
                 <button
                   type="button"
@@ -2955,15 +2973,15 @@ JSON 출력 예시:
                   <div style={{ padding: '36px 20px', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1', margin: '10px 14px' }}>
                     <div style={{ fontSize: '28px', marginBottom: '8px' }}>📭</div>
                     <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#334155' }}>
-                      {yearFilter === "전체" ? "조회 조건에 일치하는 프로젝트가 없습니다." : `선택하신 ${yearFilter}년도에 일치하는 프로젝트가 없습니다.`}
+                      {isAllYears ? "조회 조건에 일치하는 프로젝트가 없습니다." : `선택하신 ${selectedYearsLabel}에 일치하는 프로젝트가 없습니다.`}
                     </div>
                     <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
                       다른 연도를 선택하시거나, 검색어 및 필터를 초기화해 보세요.
                     </div>
-                    {yearFilter !== "전체" && (
+                    {!isAllYears && (
                       <button
                         type="button"
-                        onClick={() => handleYearFilterChange("전체")}
+                        onClick={() => handlePresetYears('all')}
                         style={{ marginTop: '12px', padding: '6px 14px', borderRadius: '6px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
                       >
                         🌐 전체 누적 프로젝트 보기

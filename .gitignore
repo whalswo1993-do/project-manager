@@ -38,6 +38,8 @@ scratch/
 *.xlsx
 *.xls
 *.pptx
+!public/*.pptx
+!*권한별_기능_가이드.pptx
 !public/*.xlsx
 !public/*.xls
 !*master-schedule-template.xlsx

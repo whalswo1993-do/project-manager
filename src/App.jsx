@@ -261,6 +261,31 @@ export default function App() {
   const [filter, setFilter] = useState("전체");
   const [siteFilter, setSiteFilter] = useState("전체");
   const [personFilter, setPersonFilter] = useState("전체");
+  
+  // 연간 단위 프로젝트 조회 시스템 (Year Filter)
+  const currentYearStr = String(new Date().getFullYear());
+  const [yearFilter, setYearFilter] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pm_year_filter");
+      if (saved) return saved;
+    } catch (e) {}
+    return currentYearStr; // 기본값: 현재 연도 (예: "2026")
+  });
+
+  const handleYearFilterChange = (yr) => {
+    setYearFilter(yr);
+    try {
+      localStorage.setItem("pm_year_filter", yr);
+    } catch (e) {}
+    // 연도 변경 시 달력도 해당 연도로 부드럽게 동기화
+    if (yr !== "전체") {
+      const targetYearNum = parseInt(yr, 10);
+      if (!isNaN(targetYearNum) && month.getFullYear() !== targetYearNum) {
+        setMonth(new Date(targetYearNum, month.getMonth(), 1));
+      }
+    }
+  };
+
   const [msg, setMsg] = useState("");
   const [newSite, setNewSite] = useState("");
   const [newPerson, setNewPerson] = useState("");
@@ -843,11 +868,27 @@ export default function App() {
         overdue: currentStatus !== "완료" && dt(p.endDate) < dt(iso())
       };
     }).filter(p => {
+      // 1. 연도 필터링: 프로젝트 진행 기간(startDate ~ endDate)이 선택한 연도(yearFilter)에 걸치는지 검사
+      let yearMatch = true;
+      if (yearFilter !== "전체") {
+        const yStart = `${yearFilter}-01-01`;
+        const yEnd = `${yearFilter}-12-31`;
+        const pStart = p.startDate || "";
+        const pEnd = p.endDate || "";
+        if (pStart && pEnd) {
+          yearMatch = (pStart <= yEnd && pEnd >= yStart);
+        } else if (pStart) {
+          yearMatch = (pStart <= yEnd);
+        } else if (pEnd) {
+          yearMatch = (pEnd >= yStart);
+        }
+      }
+
       const text = [p.manufacturingNo, p.site, p.line, p.name, p.pm, p.design, p.facilityTechnology, p.control, p.vision].join(" ").toLowerCase();
       const status = filter === "전체" || (filter === "완료" && p.status === "완료") || (filter === "진행중" && p.status !== "완료") || (filter === "지연" && p.overdue) || (p.status === filter);
       const site = siteFilter === "전체" || p.site === siteFilter;
       const person = personFilter === "전체" || [p.pm, p.design, p.facilityTechnology, p.control, p.vision].includes(personFilter);
-      return text.includes(search.toLowerCase()) && status && site && person;
+      return yearMatch && text.includes(search.toLowerCase()) && status && site && person;
     });
 
     // 프로젝트 시작일(startDate) 기준 오름차순 정렬 (빠른 시작일 순서대로 나열)
@@ -868,7 +909,59 @@ export default function App() {
 
     // 동시 진행 프로젝트 간 중복 및 유사 색상을 방지하는 지능형 색상 분산 적용
     return assignDistinctColors(list, COLORS);
-  }, [projects, search, filter, siteFilter, personFilter]);
+  }, [projects, search, filter, siteFilter, personFilter, yearFilter]);
+
+  // 등록된 프로젝트들의 기간에서 추출한 고유 연도 목록 (최신순)
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set();
+    const currentYear = new Date().getFullYear();
+    yearsSet.add(String(currentYear)); // 현재 연도 기본 포함
+
+    projects.forEach(p => {
+      if (p.startDate && p.startDate.length >= 4) {
+        const yStart = parseInt(p.startDate.slice(0, 4), 10);
+        if (!isNaN(yStart)) yearsSet.add(String(yStart));
+      }
+      if (p.endDate && p.endDate.length >= 4) {
+        const yEnd = parseInt(p.endDate.slice(0, 4), 10);
+        if (!isNaN(yEnd)) yearsSet.add(String(yEnd));
+      }
+    });
+
+    return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
+  }, [projects]);
+
+  // 선택된 연도(또는 전체)에 대한 연간 프로젝트 현황 통계
+  const yearStats = useMemo(() => {
+    let ongoing = 0;
+    let completed = 0;
+    let delayed = 0;
+    let totalManpower = 0;
+
+    view.forEach(p => {
+      if (p.status === "완료") completed++;
+      else if (p.overdue) delayed++;
+      else ongoing++;
+
+      if (p.manpower?.totalManday) {
+        totalManpower += Number(p.manpower.totalManday) || 0;
+      } else if (p.manpower?.dailyTotal) {
+        Object.entries(p.manpower.dailyTotal).forEach(([dStr, val]) => {
+          if (yearFilter === "전체" || dStr.startsWith(yearFilter)) {
+            totalManpower += Number(val) || 0;
+          }
+        });
+      }
+    });
+
+    return {
+      total: view.length,
+      ongoing,
+      completed,
+      delayed,
+      totalManpower
+    };
+  }, [view, yearFilter]);
 
   // 간트차트 기간 필터가 적용된 프로젝트 목록
   const ganttView = useMemo(() => {
@@ -1738,6 +1831,102 @@ JSON 출력 예시:
               </div>
             </div>
 
+            {/* 글로벌 연간 단위 선택기 (Year Tabs) 및 연간 핵심 통계 요약 바 */}
+            <div className="system-year-selector-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', margin: '8px 0', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', fontWeight: 'bold', color: '#1e293b', marginRight: '6px' }}>
+                  <span style={{ fontSize: '15px' }}>📅</span>
+                  <span>기준 연도:</span>
+                </div>
+                {availableYears.map(yr => {
+                  const isSelected = (yearFilter === yr);
+                  const isCurrent = (yr === currentYearStr);
+                  return (
+                    <button
+                      key={yr}
+                      type="button"
+                      onClick={() => handleYearFilterChange(yr)}
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: isSelected ? '700' : '600',
+                        border: isSelected ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                        background: isSelected ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#fff',
+                        color: isSelected ? '#fff' : '#475569',
+                        cursor: 'pointer',
+                        boxShadow: isSelected ? '0 2px 4px rgba(37, 99, 235, 0.25)' : 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        transition: 'all 0.15s ease'
+                      }}
+                      title={`${yr}년도에 진행되는 프로젝트만 선별 조회합니다.`}
+                    >
+                      <span>{yr}년</span>
+                      {isCurrent && (
+                        <span style={{
+                          fontSize: '10px',
+                          background: isSelected ? 'rgba(255,255,255,0.3)' : '#e0e7ff',
+                          color: isSelected ? '#fff' : '#4338ca',
+                          padding: '1px 5px',
+                          borderRadius: '8px',
+                          fontWeight: 'bold'
+                        }}>
+                          현재
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => handleYearFilterChange("전체")}
+                  style={{
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: yearFilter === "전체" ? '700' : '600',
+                    border: yearFilter === "전체" ? '1px solid #0f172a' : '1px solid #cbd5e1',
+                    background: yearFilter === "전체" ? '#0f172a' : '#fff',
+                    color: yearFilter === "전체" ? '#fff' : '#475569',
+                    cursor: 'pointer',
+                    boxShadow: yearFilter === "전체" ? '0 2px 4px rgba(15, 23, 42, 0.25)' : 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="과거부터 현재까지의 모든 연도 프로젝트를 누적 통합 조회합니다."
+                >
+                  <span>🌐 전체 연도</span>
+                </button>
+              </div>
+
+              {/* 연간 핵심 KPI 통계 배지 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', flexWrap: 'wrap' }}>
+                <span style={{ color: '#475569' }}>
+                  {yearFilter === "전체" ? "전체 대상" : `${yearFilter}년 프로젝트`}: <b style={{ color: '#0f172a', fontSize: '13px' }}>{yearStats.total}건</b>
+                </span>
+                <span style={{ color: '#cbd5e1' }}>|</span>
+                <span style={{ color: '#059669', fontWeight: 600 }}>진행중 <b>{yearStats.ongoing}</b></span>
+                <span style={{ color: '#cbd5e1' }}>|</span>
+                <span style={{ color: '#2563eb', fontWeight: 600 }}>완료 <b>{yearStats.completed}</b></span>
+                {yearStats.delayed > 0 && (
+                  <>
+                    <span style={{ color: '#cbd5e1' }}>|</span>
+                    <span style={{ color: '#dc2626', fontWeight: 600 }}>지연 <b>{yearStats.delayed}</b></span>
+                  </>
+                )}
+                {yearStats.totalManpower > 0 && (
+                  <>
+                    <span style={{ color: '#cbd5e1' }}>|</span>
+                    <span style={{ color: '#7c3aed', fontWeight: 600 }}>총공수 <b>{yearStats.totalManpower.toLocaleString()} M/D</b></span>
+                  </>
+                )}
+              </div>
+            </div>
+
             {/* 소항목 필터 버튼 그룹 */}
             <div className="system-sub-nav">
               {[
@@ -2165,6 +2354,12 @@ JSON 출력 예시:
             </div>
             {!collapsedSections.filter ? (
               <div className="filterbar" style={{ marginTop: '6px' }}>
+                <select value={yearFilter} onChange={e => handleYearFilterChange(e.target.value)} style={{ fontWeight: 600 }}>
+                  <option value="전체">연도: 전체</option>
+                  {availableYears.map(yr => (
+                    <option key={yr} value={yr}>연도: {yr}년 {yr === currentYearStr ? '(현재)' : ''}</option>
+                  ))}
+                </select>
                 <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
                   <option>전체</option>
                   {sites.map(s => <option key={s.id}>{s.name}</option>)}
@@ -2173,7 +2368,7 @@ JSON 출력 예시:
                   <option>전체</option>
                   {peopleNames.map(p => <option key={p}>{p}</option>)}
                 </select>
-                <button onClick={() => { setSiteFilter("전체"); setPersonFilter("전체"); }}>필터 초기화</button>
+                <button onClick={() => { handleYearFilterChange(currentYearStr); setSiteFilter("전체"); setPersonFilter("전체"); }}>필터 초기화</button>
               </div>
             ) : (
               <div 
@@ -2190,7 +2385,7 @@ JSON 출력 예시:
                   marginTop: '8px'
                 }}
               >
-                🔍 Site: <b>{siteFilter}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경 ▾)
+                🔍 연도: <b>{yearFilter === "전체" ? "전체 연도" : `${yearFilter}년`}</b> · Site: <b>{siteFilter}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경 ▾)
               </div>
             )}
           </section>
@@ -2630,7 +2825,9 @@ JSON 출력 예시:
           <section>
             <div className="tools">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2>프로젝트 목록 ({view.length}건)</h2>
+                <h2>
+                  {yearFilter === "전체" ? "전체 프로젝트 목록" : `${yearFilter}년 프로젝트 목록`} ({view.length}건)
+                </h2>
                 <button
                   type="button"
                   onClick={() => toggleSection('list')}
@@ -2654,20 +2851,43 @@ JSON 출력 예시:
             </div>
             {!collapsedSections.list ? (
               <>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '0 14px 10px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>
-                    <input type="checkbox" checked={view.length > 0 && selectedProjects.size === view.length} onChange={toggleSelectAll} style={{ width: 'auto', margin: 0, cursor: 'pointer' }} />
-                    전체 선택
-                  </label>
-                  {selectedProjects.size > 0 && (
-                    <button
-                      onClick={() => { if (!del) return showPermissionModal("프로젝트 다중 삭제"); removeSelected(); }}
-                      style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                    >
-                      선택 항목 삭제 ({selectedProjects.size}) {!del && "🔒"}
-                    </button>
-                  )}
-                </div>
+                {view.length === 0 ? (
+                  <div style={{ padding: '36px 20px', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1', margin: '10px 14px' }}>
+                    <div style={{ fontSize: '28px', marginBottom: '8px' }}>📭</div>
+                    <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#334155' }}>
+                      {yearFilter === "전체" ? "조회 조건에 일치하는 프로젝트가 없습니다." : `선택하신 ${yearFilter}년도에 일치하는 프로젝트가 없습니다.`}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                      다른 연도를 선택하시거나, 검색어 및 필터를 초기화해 보세요.
+                    </div>
+                    {yearFilter !== "전체" && (
+                      <button
+                        type="button"
+                        onClick={() => handleYearFilterChange("전체")}
+                        style={{ marginTop: '12px', padding: '6px 14px', borderRadius: '6px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                      >
+                        🌐 전체 누적 프로젝트 보기
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '0 14px 10px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>
+                        <input type="checkbox" checked={view.length > 0 && selectedProjects.size === view.length} onChange={toggleSelectAll} style={{ width: 'auto', margin: 0, cursor: 'pointer' }} />
+                        전체 선택
+                      </label>
+                      {selectedProjects.size > 0 && (
+                        <button
+                          onClick={() => { if (!del) return showPermissionModal("프로젝트 다중 삭제"); removeSelected(); }}
+                          style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          선택 항목 삭제 ({selectedProjects.size}) {!del && "🔒"}
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
                 {view.map(p => (
                   <article key={p.id} style={{ borderLeft: `7px solid ${p.projectColor}` }}>
                     <div>

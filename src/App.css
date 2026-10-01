@@ -140,6 +140,28 @@
   box-shadow: 0 2px 6px rgba(9, 105, 218, 0.28) !important;
 }
 
+.system-year-selector-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .system-year-selector-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+}
+
 /* Update Notification Banner */
 .app-update-notice-banner {
   display: inline-flex;

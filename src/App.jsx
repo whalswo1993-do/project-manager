@@ -263,33 +263,65 @@ export default function App() {
   const [personFilter, setPersonFilter] = useState("전체");
   
   // 복수 연간 단위 프로젝트 조회 시스템 (Multi-Year Filter: 1년, 2년치, 3년치, 전체 등 복수 선택 가능)
+  // 매년 1월 1일이 되면 new Date().getFullYear()에 의해 시스템 현재 연도가 자동으로 변경됩니다.
   const currentYearStr = String(new Date().getFullYear());
   const [selectedYears, setSelectedYears] = useState(() => {
     try {
+      // 1. 프리셋 상태(당해년도, 최근 2개년, 최근 3개년, 전체)로 저장되어 있다면 매년 1월 1일 접속 시 자동으로 새 연도로 계산
+      const savedPreset = localStorage.getItem("pm_year_preset");
+      const curY = parseInt(currentYearStr, 10);
+      if (savedPreset === "current") {
+        return [currentYearStr];
+      } else if (savedPreset === "2years") {
+        return [String(curY - 1), currentYearStr];
+      } else if (savedPreset === "3years") {
+        return [String(curY - 2), String(curY - 1), currentYearStr];
+      } else if (savedPreset === "all") {
+        return ["ALL"];
+      }
+
+      // 2. 수동 선택된 연도 목록이 있는 경우
       const saved = localStorage.getItem("pm_selected_years");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // 마지막 접속 연도와 현재 연도가 다르고(해가 바뀜), 이전 단일 당해년도만 저장되어 있던 경우 새 연도로 자동 갱신
+          const lastYear = localStorage.getItem("pm_app_last_year");
+          if (lastYear && lastYear !== currentYearStr && parsed.length === 1 && parsed[0] === lastYear) {
+            return [currentYearStr];
+          }
+          return parsed;
+        }
       }
       const oldSingle = localStorage.getItem("pm_year_filter");
       if (oldSingle) return oldSingle === "전체" ? ["ALL"] : [oldSingle];
     } catch (e) {}
-    return [currentYearStr]; // 기본값: 현재 연도 (예: ["2026"])
+    return [currentYearStr]; // 기본값: 현재 연도 (매년 1월 1일 자동 변경)
   });
+
+  // 접속 시 현재 연도를 로컬스토리지에 기록 (연도 변경 감지용)
+  useEffect(() => {
+    try {
+      localStorage.setItem("pm_app_last_year", currentYearStr);
+    } catch (e) {}
+  }, [currentYearStr]);
 
   const isAllYears = selectedYears.includes("ALL");
 
-  // 개별 연도 토글 (다중 선택/해제)
+  // 개별 연도 토글 (다중 선택/해제 - 수동 커스텀 모드)
   const handleToggleYear = (yr) => {
     let next;
     if (yr === "ALL") {
       next = ["ALL"];
+      try { localStorage.setItem("pm_year_preset", "all"); } catch (e) {}
     } else {
+      try { localStorage.removeItem("pm_year_preset"); } catch (e) {} // 개별 조작 시 프리셋 해제
       if (isAllYears) {
         next = [yr];
       } else if (selectedYears.includes(yr)) {
         if (selectedYears.length === 1) {
           next = ["ALL"]; // 마지막 선택 해제 시 전체 연도로 전환
+          try { localStorage.setItem("pm_year_preset", "all"); } catch (e) {}
         } else {
           next = selectedYears.filter(y => y !== yr);
         }
@@ -312,6 +344,7 @@ export default function App() {
   };
 
   // 원클릭 프리셋 핸들러 (당해년도, 최근 2개년, 최근 3개년, 전체 연도)
+  // 프리셋 모드를 localStorage에 기억하여 매년 1월 1일 새해가 되면 자동으로 새 연도로 전환됩니다.
   const handlePresetYears = (presetType) => {
     const curY = parseInt(currentYearStr, 10);
     let next;
@@ -326,6 +359,7 @@ export default function App() {
     }
     setSelectedYears(next);
     try {
+      localStorage.setItem("pm_year_preset", presetType);
       localStorage.setItem("pm_selected_years", JSON.stringify(next));
     } catch (e) {}
   };

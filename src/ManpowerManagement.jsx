@@ -425,6 +425,22 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedProjectForDetail, setSelectedProjectForDetail] = useState(null);
 
+  // 프로젝트별 계획공수 현황 표에서 "설정한 월(기간)에 공수가 투입되는 프로젝트만 보기" 필터 상태 (기본값: true)
+  const [onlyActiveProjectsInMonth, setOnlyActiveProjectsInMonth] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pm_manpower_only_active_table');
+      if (saved !== null) return JSON.parse(saved);
+    } catch (e) {}
+    return true; // 기본값: 당월 공수 들어가는 프로젝트만 보기
+  });
+
+  const setOnlyActiveProjectsAndSave = (val) => {
+    setOnlyActiveProjectsInMonth(val);
+    try {
+      localStorage.setItem('pm_manpower_only_active_table', JSON.stringify(val));
+    } catch (e) {}
+  };
+
   const [collapsedSections, setCollapsedSections] = useState(() => {
     try {
       const saved = localStorage.getItem('pm_manpower_collapsed_sections');
@@ -802,6 +818,17 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
     return { pDepts, pRangeTotal };
   };
 
+  // 프로젝트별 계획공수 현황 표에 표시할 프로젝트 목록 (설정한 월/기간에 공수 편성된 프로젝트 필터링)
+  const tableProjects = useMemo(() => {
+    if (!onlyActiveProjectsInMonth) {
+      return filteredProjects;
+    }
+    return filteredProjects.filter(p => {
+      const { pRangeTotal } = getProjectRangeData(p);
+      return pRangeTotal > 0;
+    });
+  }, [filteredProjects, onlyActiveProjectsInMonth, effectiveStartDate, effectiveEndDate, deptFilter, activeDeptKeys]);
+
   // Calendar cells generation (42 cells: 6 weeks x 7 days) for the visible month
   const calendarCells = useMemo(() => {
     const firstDayIndex = new Date(year, month, 1).getDay(); // 0 = Sunday
@@ -1038,7 +1065,8 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
 
       // Pagination for Table Slide
       const PJT_PER_PAGE = 10;
-      const tablePagesCount = Math.max(1, Math.ceil(filteredProjects.length / PJT_PER_PAGE));
+      const exportTableProjects = (onlyActiveProjectsInMonth && activeProjects.length > 0) ? activeProjects : filteredProjects;
+      const tablePagesCount = Math.max(1, Math.ceil(exportTableProjects.length / PJT_PER_PAGE));
 
       // Detailed Analysis Projects: up to 6 top projects (2 per slide)
       const detailPjtList = displayActiveProjects.slice(0, 6);
@@ -1381,7 +1409,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       for (let pIdx = 0; pIdx < tablePagesCount; pIdx++) {
         const sTbl = pptx.addSlide();
         const start = pIdx * PJT_PER_PAGE;
-        const pagePjtSlice = filteredProjects.slice(start, start + PJT_PER_PAGE);
+        const pagePjtSlice = exportTableProjects.slice(start, start + PJT_PER_PAGE);
 
         addSlideHeader(
           sTbl,
@@ -2474,7 +2502,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
       {(activeSection === 'all' || activeSection === 'table') && (
       <div className="mp-table-section">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px", cursor: 'pointer' }} onClick={(e) => {
-          if (e.target.tagName !== 'BUTTON') toggleSection('table');
+          if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT' && !e.target.closest('label')) toggleSection('table');
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -2499,11 +2527,40 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
               </button>
             </div>
             <span style={{ fontSize: "12px", color: "#64748b" }}>
-              * {viewMode === "range" ? `지정 기간(${effectiveStartDate} ~ ${effectiveEndDate})` : `상단 달력의 기준월(${year}년 {month + 1}월)`}에 편성된 프로젝트별 계획공수 데이터입니다. ({filteredProjects.length}개 프로젝트)
+              * {viewMode === "range" ? `지정 기간(${effectiveStartDate} ~ ${effectiveEndDate})` : `상단 달력의 기준월(${year}년 {month + 1}월)`}에 {onlyActiveProjectsInMonth ? "계획공수가 투입되는 프로젝트 목록입니다." : "편성된 프로젝트별 계획공수 데이터입니다."} (<b>{tableProjects.length}개 프로젝트</b>{onlyActiveProjectsInMonth && ` / 전체 ${filteredProjects.length}개 대상`})
             </span>
           </div>
-          {/* Synchronized Month Navigator in Table Section */}
-          <MonthNavigator currentDate={currentDate} onPrev={prevMonth} onNext={nextMonth} onToday={goToToday} />
+          {/* Synchronized Month Navigator & Active Projects Only Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+            <label
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: onlyActiveProjectsInMonth ? '#eff6ff' : '#f8fafc',
+                border: onlyActiveProjectsInMonth ? '1px solid #3b82f6' : '1px solid #cbd5e1',
+                borderRadius: '20px',
+                padding: '5px 13px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: onlyActiveProjectsInMonth ? '#1d4ed8' : '#64748b',
+                cursor: 'pointer',
+                userSelect: 'none',
+                boxShadow: onlyActiveProjectsInMonth ? '0 1px 3px rgba(59, 130, 246, 0.15)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+              title="설정한 월/기간에 실제 공수가 투입되는 프로젝트만 필터링하여 확인합니다."
+            >
+              <input
+                type="checkbox"
+                checked={onlyActiveProjectsInMonth}
+                onChange={(e) => setOnlyActiveProjectsAndSave(e.target.checked)}
+                style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#2563eb' }}
+              />
+              <span>{viewMode === "range" ? "기간" : "당월"} 투입 프로젝트만 보기 ({tableProjects.length}건 / 전체 {filteredProjects.length}건)</span>
+            </label>
+            <MonthNavigator currentDate={currentDate} onPrev={prevMonth} onNext={nextMonth} onToday={goToToday} />
+          </div>
         </div>
         {!collapsedSections.table ? (
           <div className="mp-table-wrapper">
@@ -2524,79 +2581,110 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                 </tr>
               </thead>
               <tbody>
-                {filteredProjects.map(p => {
-                  const mp = p.manpower;
-                  const { pDepts, pRangeTotal } = getProjectRangeData(p);
-                  const pTotalManday = getProjectTotalManday(p);
+                {tableProjects.length === 0 ? (
+                  <tr>
+                    <td colSpan={6 + activeDeptKeys.length} style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>
+                      <div style={{ fontSize: "28px", marginBottom: "8px" }}>📭</div>
+                      <div style={{ fontSize: "14px", fontWeight: "700", color: "#334155" }}>
+                        선택하신 {viewMode === "range" ? "기간" : `${year}년 ${month + 1}월`}에 계획공수가 편성된 프로젝트가 없습니다.
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>
+                        다른 월을 선택하시거나, 아래 버튼을 눌러 전체 프로젝트 목록을 확인하세요.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setOnlyActiveProjectsAndSave(false)}
+                        style={{
+                          marginTop: "12px",
+                          background: "#eff6ff",
+                          border: "1px solid #bfdbfe",
+                          borderRadius: "6px",
+                          padding: "6px 14px",
+                          fontSize: "12px",
+                          fontWeight: "600",
+                          color: "#1d4ed8",
+                          cursor: "pointer"
+                        }}
+                      >
+                        전체 프로젝트 보기 ({filteredProjects.length}개)
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  tableProjects.map(p => {
+                    const mp = p.manpower;
+                    const { pDepts, pRangeTotal } = getProjectRangeData(p);
+                    const pTotalManday = getProjectTotalManday(p);
 
-                  const effectiveTotal = pTotalManday > 0 ? pTotalManday : (pRangeTotal > 0 ? pRangeTotal : 0);
-                  const progressRate = effectiveTotal > 0 && pRangeTotal > 0 ? Math.round((pRangeTotal / effectiveTotal) * 100) : 0;
+                    const effectiveTotal = pTotalManday > 0 ? pTotalManday : (pRangeTotal > 0 ? pRangeTotal : 0);
+                    const progressRate = effectiveTotal > 0 && pRangeTotal > 0 ? Math.round((pRangeTotal / effectiveTotal) * 100) : 0;
 
-                  return (
-                    <tr key={p.id}>
-                      <td><b>{normalizeJVName(p.manufacturingNo) || "-"}</b></td>
-                      <td>{normalizeJVName(p.site) || "-"} {p.line ? `· Line ${normalizeJVName(p.line)}` : ""}</td>
-                      <td>
-                        <div style={{ fontWeight: 600, color: "#0f172a" }}>{normalizeJVName(p.name)}</div>
-                        {effectiveTotal > 0 ? (
-                          <div style={{ fontSize: "11px", color: "#475569", marginTop: "2px" }}>
-                            프로젝트 총 계획공수: <b style={{ color: "#059669" }}>{effectiveTotal.toLocaleString()} M/D</b>
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
-                            계획공수 미등록
-                          </div>
-                        )}
-                      </td>
-                      {activeDeptKeys.map(k => (
-                        <td key={k} style={{ textAlign: "center" }}>{pDepts[k] ? `${pDepts[k]}명` : "-"}</td>
-                      ))}
-                      <td style={{ textAlign: "center" }}>
-                        <span style={{ fontWeight: "bold", color: pRangeTotal > 0 ? "#1d4ed8" : "#94a3b8", fontSize: "14px" }}>
-                          {pRangeTotal > 0 ? `${pRangeTotal.toLocaleString()} M/D` : "-"}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: "center", background: "#f8fafc" }}>
-                        {effectiveTotal > 0 ? (
-                          <div>
-                            <span style={{ fontWeight: "800", color: "#0f172a", fontSize: "14px" }}>
-                              {effectiveTotal.toLocaleString()} M/D
-                            </span>
-                            {pRangeTotal > 0 && (
-                              <div style={{ fontSize: "11px", color: "#059669", fontWeight: 600, marginTop: "1px" }}>
-                                {viewMode === "range" ? "기간" : "당월"} {progressRate}%
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span style={{ color: "#94a3b8" }}>-</span>
-                        )}
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        <button
-                          onClick={() => {
-                            if (onSelectProject) onSelectProject(p);
-                            setSelectedProjectForDetail(p);
-                          }}
-                          style={{
-                            background: mp ? "#eff6ff" : "#f1f5f9",
-                            color: mp ? "#1d4ed8" : "#64748b",
-                            border: mp ? "1px solid #bfdbfe" : "1px solid #cbd5e1",
-                            borderRadius: "6px",
-                            padding: "4px 8px",
-                            fontSize: "11px",
-                            fontWeight: "bold",
-                            cursor: "pointer"
-                          }}
-                        >
-                          {mp ? "공수 상세" : "공수 조회"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                    return (
+                      <tr key={p.id}>
+                        <td><b>{normalizeJVName(p.manufacturingNo) || "-"}</b></td>
+                        <td>{normalizeJVName(p.site) || "-"} {p.line ? `· Line ${normalizeJVName(p.line)}` : ""}</td>
+                        <td>
+                          <div style={{ fontWeight: 600, color: "#0f172a" }}>{normalizeJVName(p.name)}</div>
+                          {effectiveTotal > 0 ? (
+                            <div style={{ fontSize: "11px", color: "#475569", marginTop: "2px" }}>
+                              프로젝트 총 계획공수: <b style={{ color: "#059669" }}>{effectiveTotal.toLocaleString()} M/D</b>
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
+                              계획공수 미등록
+                            </div>
+                          )}
+                        </td>
+                        {activeDeptKeys.map(k => (
+                          <td key={k} style={{ textAlign: "center" }}>{pDepts[k] ? `${pDepts[k]}명` : "-"}</td>
+                        ))}
+                        <td style={{ textAlign: "center" }}>
+                          <span style={{ fontWeight: "bold", color: pRangeTotal > 0 ? "#1d4ed8" : "#94a3b8", fontSize: "14px" }}>
+                            {pRangeTotal > 0 ? `${pRangeTotal.toLocaleString()} M/D` : "-"}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "center", background: "#f8fafc" }}>
+                          {effectiveTotal > 0 ? (
+                            <div>
+                              <span style={{ fontWeight: "800", color: "#0f172a", fontSize: "14px" }}>
+                                {effectiveTotal.toLocaleString()} M/D
+                              </span>
+                              {pRangeTotal > 0 && (
+                                <div style={{ fontSize: "11px", color: "#059669", fontWeight: 600, marginTop: "1px" }}>
+                                  {viewMode === "range" ? "기간" : "당월"} {progressRate}%
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span style={{ color: "#94a3b8" }}>-</span>
+                          )}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <button
+                            onClick={() => {
+                              if (onSelectProject) onSelectProject(p);
+                              setSelectedProjectForDetail(p);
+                            }}
+                            style={{
+                              background: mp ? "#eff6ff" : "#f1f5f9",
+                              color: mp ? "#1d4ed8" : "#64748b",
+                              border: mp ? "1px solid #bfdbfe" : "1px solid #cbd5e1",
+                              borderRadius: "6px",
+                              padding: "4px 8px",
+                              fontSize: "11px",
+                              fontWeight: "bold",
+                              cursor: "pointer"
+                            }}
+                          >
+                            {mp ? "공수 상세" : "공수 조회"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
-              {filteredProjects.length > 0 && (
+              {tableProjects.length > 0 && (
                 <tfoot>
                   <tr style={{ background: "#f1f5f9", fontWeight: "bold", borderTop: "2px solid #cbd5e1" }}>
                     <td colSpan={3} style={{ textAlign: "center", padding: "10px" }}>
@@ -2609,7 +2697,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
                       {periodTotalManday > 0 ? `${periodTotalManday.toLocaleString()} M/D` : "-"}
                     </td>
                     <td style={{ textAlign: "center", color: "#0f172a", fontSize: "14px", background: "#e2e8f0" }}>
-                      {filteredProjects.reduce((sum, p) => sum + getProjectTotalManday(p), 0).toLocaleString()} M/D
+                      {tableProjects.reduce((sum, p) => sum + getProjectTotalManday(p), 0).toLocaleString()} M/D
                     </td>
                     <td></td>
                   </tr>
@@ -2631,7 +2719,7 @@ export default function ManpowerManagement({ projects = [], sites = [], onSelect
               cursor: 'pointer'
             }}
           >
-            🏢 프로젝트별 계획공수 현황 표 ({filteredProjects.length}건)가 접혀 있습니다. (클릭하여 펼치기 ▾)
+            🏢 프로젝트별 계획공수 현황 표 ({tableProjects.length}건{onlyActiveProjectsInMonth && ` / 전체 ${filteredProjects.length}건`})가 접혀 있습니다. (클릭하여 펼치기 ▾)
           </div>
         )}
       </div>

@@ -524,13 +524,14 @@ export function parseExcelMasterPlan(wb, context = {}) {
   }
 
   let clientPrefix = baseProjectName ? baseProjectName.split(' - ')[0].trim() : (context.formSite || "Project");
+  let projectDetail = "";
   if (baseProjectName) {
     const siteMatch = baseProjectName.match(/(SKBM|SKOY|SKOJ|SKOH2|SKOH|SKBA|SKON|SKB|HSBMA|HMB|OJ1|OJ2-1F|OJ2|OJ|TW|SDI|LGES)/i);
     if (siteMatch) clientPrefix = siteMatch[1].toUpperCase();
 
-    const linesMatch = baseProjectName.match(/(?:^|[\s\-_])([0-9,\s]+)\s*(?:Line|L|라인)/i);
+    const linesMatch = baseProjectName.match(/(?:^|[\s\-_]+)([0-9][0-9,\s~-]*)\s*(?:Line|L|라인)\b/i);
     if (linesMatch) {
-      titleLines = linesMatch[1].split(',').map(s => s.trim()).filter(Boolean);
+      titleLines = linesMatch[1].split(/[,~]/).map(s => s.trim()).filter(Boolean);
       const prefixPart = baseProjectName.slice(0, linesMatch.index).trim().replace(/[:\-_]+$/, '').trim();
       if (prefixPart && !siteMatch) clientPrefix = prefixPart;
     }
@@ -545,6 +546,27 @@ export function parseExcelMasterPlan(wb, context = {}) {
         const mfgs = mfgMatch[1].split(',').map(s => s.trim()).filter(Boolean);
         titleLines.forEach((ln, idx) => { if (mfgs[idx]) lineMfgMap[ln] = mfgs[idx]; });
       }
+    }
+
+    // projectDetail 추출: baseProjectName에서 site와 lines 부분 제거 후 남는 핵심 프로젝트/공사 상세명 (예: ESS S012A J/C)
+    let temp = baseProjectName;
+    if (siteMatch) {
+      temp = temp.replace(new RegExp(`(^|[\\s\\-_]+)${siteMatch[1]}\\b[\\s\\-_:]*`, 'i'), ' ');
+    } else if (clientPrefix && temp.toLowerCase().startsWith(clientPrefix.toLowerCase())) {
+      temp = temp.slice(clientPrefix.length).replace(/^[\s\-_:]+/, ' ');
+    }
+
+    if (linesMatch) {
+      const escaped = linesMatch[1].replace(/[~-]/g, '\\$&');
+      temp = temp.replace(new RegExp(`(^|[\\s\\-_]+)${escaped}\\s*(?:Line|L|라인)[\\s\\-_:]*`, 'i'), ' ');
+    }
+
+    temp = temp.replace(/\b(?:line|라인|l)\b[\s\-_:]*/gi, ' ');
+    temp = temp.replace(/^[\s\-_:]+|[\s\-_:]+$/g, '').trim();
+    temp = temp.replace(/\s+/g, ' ').trim();
+
+    if (temp && temp.length >= 2) {
+      projectDetail = temp;
     }
   }
 
@@ -899,7 +921,18 @@ export function parseExcelMasterPlan(wb, context = {}) {
       mpPeakCol = -1;
       const lineLabel = currentLine ? (currentLine.toLowerCase().includes('line') ? currentLine : `${currentLine}Line`) : (context.formLine || "");
       const mfgNo = context.formMfg || "";
-      const projName = normalizeJVName([clientPrefix, lineLabel, effectiveEqStr].filter(Boolean).join(" - ").replace(" -  - ", " - "));
+      const parts = [clientPrefix, lineLabel];
+      if (projectDetail) {
+        const cleanDetail = projectDetail.toLowerCase().replace(/[\s\-_()대호기]+/g, '');
+        const cleanEq = (effectiveEqStr || '').toLowerCase().replace(/[\s\-_()대호기]+/g, '');
+        if (!cleanEq || (cleanDetail !== cleanEq && !cleanEq.includes(cleanDetail) && !cleanDetail.includes(cleanEq))) {
+          parts.push(projectDetail);
+        }
+      }
+      if (effectiveEqStr) {
+        parts.push(effectiveEqStr);
+      }
+      const projName = normalizeJVName(parts.filter(Boolean).join(" - ").replace(/\s+-\s+-\s+/g, " - "));
 
       currentProject = {
         projectName: projName,
@@ -931,7 +964,20 @@ export function parseExcelMasterPlan(wb, context = {}) {
       const lineLabel = currentLine ? (currentLine.toLowerCase().includes('line') ? currentLine : `${currentLine}Line`) : (context.formLine || "");
       const mfgNo = context.formMfg || "";
       const fallbackEq = context.editingProjectName || context.formName || "Main Equipment";
-      const projName = normalizeJVName([clientPrefix, lineLabel, fallbackEq].filter(Boolean).join(" - ").replace(" -  - ", " - "));
+      const parts = [clientPrefix, lineLabel];
+      if (projectDetail) {
+        const cleanDetail = projectDetail.toLowerCase().replace(/[\s\-_()대호기]+/g, '');
+        const cleanFb = (fallbackEq || '').toLowerCase().replace(/[\s\-_()대호기]+/g, '');
+        if (cleanFb !== "mainequipment" && (cleanDetail !== cleanFb && !cleanFb.includes(cleanDetail) && !cleanDetail.includes(cleanFb))) {
+          parts.push(projectDetail);
+        } else if (cleanFb === "mainequipment") {
+          parts.push(projectDetail);
+        }
+      }
+      if (fallbackEq && fallbackEq !== "Main Equipment") {
+        parts.push(fallbackEq);
+      }
+      const projName = normalizeJVName(parts.filter(Boolean).join(" - ").replace(/\s+-\s+-\s+/g, " - "));
       currentProject = {
         projectName: projName,
         equipment: fallbackEq,

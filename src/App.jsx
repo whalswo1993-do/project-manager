@@ -2687,22 +2687,34 @@ JSON 출력 예시:
                   {collapsedSections.filter ? "▸ 펼치기" : "▾ 접기"}
                 </span>
               </h2>
-              <button
-                type="button"
-                onClick={() => toggleSection('filter')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-subtle)',
-                  background: 'var(--bg-card)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: 'var(--text-secondary)',
-                  cursor: 'pointer'
-                }}
-              >
-                {collapsedSections.filter ? '▾ 필터 펼치기' : '▴ 필터 접기'}
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
+                {!collapsedSections.filter && (
+                  <button 
+                    type="button"
+                    onClick={() => { handlePresetYears('current'); setSiteFilter("전체"); setPersonFilter("전체"); }}
+                    className="filter-reset-btn"
+                    title="조회 연도, Site, 담당자 필터를 초기화합니다"
+                  >
+                    🔄 필터 초기화
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => toggleSection('filter')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-subtle)',
+                    background: 'var(--bg-card)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {collapsedSections.filter ? '▾ 필터 펼치기' : '▴ 필터 접기'}
+                </button>
+              </div>
             </div>
             {!collapsedSections.filter ? (
               <div className="filterbar" style={{ marginTop: '6px' }}>
@@ -2731,7 +2743,13 @@ JSON 출력 예시:
                   <option>전체</option>
                   {peopleNames.map(p => <option key={p}>{p}</option>)}
                 </select>
-                <button onClick={() => { handlePresetYears('current'); setSiteFilter("전체"); setPersonFilter("전체"); }}>필터 초기화</button>
+                <button 
+                  type="button"
+                  className="filter-reset-btn"
+                  onClick={() => { handlePresetYears('current'); setSiteFilter("전체"); setPersonFilter("전체"); }}
+                >
+                  🔄 필터 초기화
+                </button>
               </div>
             ) : (
               <div 
@@ -2797,7 +2815,7 @@ JSON 출력 예시:
                     }
                   }}
                 >
-                  PPT 내보내기 ({ganttView.length}건) {!canExportAnalysis && "🔒"}
+                  📊 PPT 내보내기 ({ganttView.length}건) {!canExportAnalysis && "🔒"}
                 </button>
               </div>
             </div>
@@ -3071,7 +3089,7 @@ JSON 출력 예시:
                     }
                   }}
                 >
-                  PPT 내보내기 {!canExportAnalysis && "🔒"}
+                  📊 PPT 내보내기 {!canExportAnalysis && "🔒"}
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)); }}>‹</button>
                 <b>{month.getFullYear()}년 {month.getMonth() + 1}월</b>

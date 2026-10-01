@@ -2834,20 +2834,8 @@ export default function ManpowerManagement({
             </button>
             <button
               type="button"
+              className="excel-export-btn"
               onClick={exportComparisonExcel}
-              style={{
-                padding: '6px 12px',
-                fontSize: '12px',
-                background: '#047857',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
               title="비교분석 요약 및 일자별 상세 내역을 엑셀로 다운로드합니다"
             >
               📥 비교분석 엑셀 다운로드
@@ -3921,27 +3909,12 @@ export function ProjectManpowerModal({ project, onClose }) {
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "5px", flexShrink: 0 }}>
             {mp && (
               <button
+                className="excel-export-btn"
                 onClick={handleExportExcel}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: "4px 9px",
-                  height: "26px",
-                  background: "#10b981",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "5px",
-                  fontSize: "12px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-                  transition: "background 0.15s"
-                }}
+                style={{ padding: "5px 12px", fontSize: "12px", gap: "5px" }}
                 title="화면과 동일한 서식의 Excel 파일 다운로드"
               >
-                <span style={{ fontSize: "11px" }}>📥</span> excel
+                <span>📥</span> Excel 다운로드
               </button>
             )}
             <button className="mp-close-btn" onClick={onClose}>×</button>
@@ -4057,22 +4030,9 @@ export function ProjectManpowerModal({ project, onClose }) {
         <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
           {mp && (
             <button
+              className="excel-export-btn"
               onClick={handleExportExcel}
-              style={{
-                flex: 1,
-                padding: "12px",
-                background: "#10b981",
-                color: "#fff",
-                border: "none",
-                borderRadius: "8px",
-                fontWeight: "bold",
-                cursor: "pointer",
-                fontSize: "14px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px"
-              }}
+              style={{ flex: 1, padding: "12px", fontSize: "14px" }}
             >
               <span>📥</span> Excel 서식 다운로드
             </button>

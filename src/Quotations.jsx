@@ -869,20 +869,10 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                     </div>
                     {!collapsedSections.itemSearch && (
                         <button 
+                            type="button"
                             onClick={handleResetFilters}
-                            style={{
-                                background: 'var(--bg-card-subtle)',
-                                border: '1px solid var(--border-subtle)',
-                                padding: '6px 14px',
-                                borderRadius: '8px',
-                                fontSize: '12.5px',
-                                fontWeight: '600',
-                                color: 'var(--text-secondary)',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}
+                            className="filter-reset-btn"
+                            title="선택된 모든 검색 조건 및 필터를 초기화합니다"
                         >
                             🔄 필터 초기화
                         </button>

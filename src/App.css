@@ -1317,25 +1317,109 @@ article aside button:hover {
 }
 
 /* ========================================================
-   PPT EXPORT BUTTON
+   FILTER RESET BUTTON (Unified across all systems)
+   Matches Quotation Filter Reset Button Design
    ======================================================== */
-.ppt-btn {
-  padding: 5px 12px;
-  background: var(--bg-card-subtle);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--dur-fast) var(--ease-in-out);
-  white-space: nowrap;
+.filter-reset-btn {
+  background: var(--bg-card-subtle) !important;
+  border: 1px solid var(--border-subtle) !important;
+  padding: 6px 14px !important;
+  border-radius: 8px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  line-height: 1.25 !important;
+  transition: all var(--dur-fast) var(--ease-in-out) !important;
+  white-space: nowrap !important;
 }
 
-.ppt-btn:hover {
-  background: var(--accent-muted);
-  border-color: var(--accent-border);
-  color: var(--accent);
+.filter-reset-btn:hover {
+  background: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-medium) !important;
+  transform: translateY(-1px);
+}
+
+/* ========================================================
+   PPT EXPORT BUTTON (Unified across all systems)
+   Matches Manpower PPT Export Button
+   ======================================================== */
+.ppt-btn,
+.mp-ppt-btn {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  padding: 8px 16px !important;
+  border-radius: 10px !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.32) !important;
+  transition: all var(--dur-fast) var(--ease-in-out) !important;
+  white-space: nowrap !important;
+  text-decoration: none !important;
+  line-height: 1.25 !important;
+}
+
+.ppt-btn:hover:not(:disabled),
+.mp-ppt-btn:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.45) !important;
+  filter: brightness(1.08) !important;
+}
+
+.ppt-btn:disabled,
+.mp-ppt-btn:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+/* ========================================================
+   EXCEL EXPORT BUTTON (Unified across all systems)
+   Rich Green Gradient Design
+   ======================================================== */
+.excel-export-btn,
+.mp-excel-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  padding: 8px 16px !important;
+  border-radius: 10px !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.32) !important;
+  transition: all var(--dur-fast) var(--ease-in-out) !important;
+  white-space: nowrap !important;
+  text-decoration: none !important;
+  line-height: 1.25 !important;
+}
+
+.excel-export-btn:hover:not(:disabled),
+.mp-excel-btn:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.45) !important;
+  filter: brightness(1.08) !important;
+}
+
+.excel-export-btn:disabled,
+.mp-excel-btn:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
 }
 
 /* ========================================================

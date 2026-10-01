@@ -689,7 +689,7 @@ export default function VisionSPC() {
                             {items.length > 0 && (
                                 <>
                                     <button className="btn" style={{background: '#24292f', color: '#fff', border: 'none'}} onClick={() => window.print()}>🖨️ 인쇄 / PDF 저장</button>
-                                    <button className="btn" style={{background: '#2da44e', color: '#fff', border: 'none'}} onClick={() => exportResultsToExcelWithExcelJS(items, parseFloat(targetCp))}>📊 Excel 리포트 출력</button>
+                                    <button className="excel-export-btn" onClick={() => exportResultsToExcelWithExcelJS(items, parseFloat(targetCp))}>📊 Excel 리포트 출력</button>
                                 </>
                             )}
                         </div>

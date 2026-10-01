@@ -2828,11 +2828,12 @@ ${compiledText.substring(0, 30000)}
                         </div>
 
                         <button 
-                            style={{background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', color: '#fff', border: 'none', padding: '1rem 2rem', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer', width: '100%', boxShadow: '0 4px 15px rgba(124, 58, 237, 0.3)', transition: 'all 0.2s'}}
+                            className="ppt-btn"
+                            style={{ width: '100%', padding: '13px 24px', fontSize: '15px' }}
                             onClick={generatePPT}
                             disabled={isAnalyzing}
                         >
-                            {isAnalyzing ? '분석 중...' : '전체 프로젝트 분석 및 PPT 다운로드 📥'}
+                            📊 {isAnalyzing ? '분석 및 PPT 생성 중...' : '전체 프로젝트 분석 및 PPT 다운로드 📥'}
                         </button>
 
                         {analyzeMsg && (

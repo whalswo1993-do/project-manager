@@ -21,6 +21,10 @@ import {
   updateTestProfile,
   findTestAccount,
   ensureSupabaseAuth,
+  getUserDisplayName,
+  getUserTeam,
+  saveCustomUserProfile,
+  getCustomUserProfiles,
 } from "./authService";
 import {
   computeAutoStatus,
@@ -33,24 +37,24 @@ import {
 const DAY = 86400000;
 const STATUSES = ["검토중", "PO대기중", "제작 및 운송중", "진행중", "완료"];
 const DEPTS = ["소장", "설계", "설비기술", "기구", "기구 외주", "비전", "비전 외주", "제어", "제어 외주", "전장", "전장 외주", "Supervisor", "안전"];
-// 눈이 편안한 파스텔 & 소프트 톤 팔레트 (빨간색 계열은 소프트 코랄 레드 1종류만 엄선 유지)
+// 고대비 & 고시인성 프리미엄 테마 팔레트 (어두운 보라색/남색 배제, 주황·노랑·에메랄드·하늘색 중심)
 const COLORS = [
-  "#4b7bec", // 소프트 로열 블루
-  "#26a69a", // 부드러운 세이지 틸
-  "#d97736", // 따뜻한 소프트 앰버
-  "#8854d0", // 부드러운 라벤더 바이올렛
-  "#dc5f5f", // 소프트 코랄 레드 (전체 팔레트 중 유일한 레드 계열)
-  "#38b2ac", // 소프트 청록 민트
-  "#5c7099", // 차분한 슬레이트 블루
-  "#6ab04c", // 부드러운 올리브 그린
-  "#a55eea", // 소프트 오키드 퍼플
-  "#e17055", // 소프트 테라코타 피치
-  "#3867d6", // 소프트 마린 블루
-  "#20bf6b", // 소프트 에메랄드
-  "#b86b88", // 차분한 인디안 로즈 / 모브
-  "#c28b38", // 소프트 앤틱 골드
-  "#4b6584", // 소프트 데님 네이비
-  "#778ca3"  // 소프트 쿨 그레이블루
+  "#38bdf8", // 밝은 스카이 블루
+  "#10b981", // 선명한 에메랄드 그린
+  "#f59e0b", // 따뜻하고 밝은 앰버 옐로우
+  "#fb923c", // 화사한 탠저린 오렌지
+  "#f43f5e", // 선명한 소프트 코랄 로즈
+  "#06b6d4", // 청량한 시안 민트
+  "#3b82f6", // 산뜻한 로열 블루
+  "#84cc16", // 산뜻한 라임 그린
+  "#eab308", // 밝은 골든 옐로우
+  "#ec4899", // 밝은 핑크 로즈
+  "#2dd4bf", // 화사한 아쿠아 틸
+  "#f97316", // 활기찬 비비드 오렌지
+  "#60a5fa", // 소프트 라이트 블루
+  "#a3e635", // 밝은 스프링 그린
+  "#fca5a5", // 화사한 라이트 코랄
+  "#0ea5e9"  // 비비드 스카이
 ];
 
 // 동시에 진행되는(기간이 겹치는) 프로젝트 간에 유사/중복 색상이 배정되지 않도록 하는 지능형 색상 분산 함수
@@ -276,6 +280,9 @@ export default function App() {
   const [editing, setEditing] = useState(null);
   const [milestones, setMilestones] = useState(newMs());
   const [modal, setModal] = useState(null);
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editTeam, setEditTeam] = useState("");
   const [permissionModal, setPermissionModal] = useState(null);
   const [expanded, setExpanded] = useState({});
   const [ganttExpanded, setGanttExpanded] = useState({});
@@ -801,6 +808,7 @@ export default function App() {
       try {
         const { data: supaProfiles } = await supabase.from("profiles").select("*").order("email");
         const testProfs = getTestProfiles();
+        const customProfs = getCustomUserProfiles();
         const combined = [];
         const seenEmails = new Set();
 
@@ -810,7 +818,12 @@ export default function App() {
           if (lower && !isAccountDeleted(lower) && !seenEmails.has(lower)) {
             seenEmails.add(lower);
             const testOverride = testProfs.find(tp => tp.email?.toLowerCase() === lower);
-            combined.push(testOverride ? { ...p, ...testOverride } : p);
+            const customOverride = customProfs[lower];
+            combined.push({
+              ...p,
+              ...(customOverride || {}),
+              ...(testOverride || {})
+            });
           }
         });
 
@@ -819,7 +832,26 @@ export default function App() {
           const lower = tp.email?.toLowerCase();
           if (lower && !isAccountDeleted(lower) && !tp.deleted && !seenEmails.has(lower)) {
             seenEmails.add(lower);
-            combined.push(tp);
+            const customOverride = customProfs[lower];
+            combined.push({
+              ...tp,
+              ...(customOverride || {})
+            });
+          }
+        });
+
+        // 3. Custom registered accounts that might not yet be in profiles or testProfs
+        Object.keys(customProfs).forEach(email => {
+          const lower = email.toLowerCase();
+          if (!seenEmails.has(lower) && !isAccountDeleted(lower)) {
+            seenEmails.add(lower);
+            combined.push({
+              id: `custom-${lower}`,
+              email: lower,
+              role: "grade1",
+              active: true,
+              ...customProfs[lower]
+            });
           }
         });
 
@@ -1286,8 +1318,12 @@ export default function App() {
       if (email) updateTestProfile(email, v);
     }
 
+    if (email) {
+      saveCustomUserProfile(email, v);
+    }
+
     try {
-      if (!id.startsWith("test-user-")) {
+      if (!id.startsWith("test-user-") && !id.startsWith("custom-")) {
         await supabase.from("profiles").update(v).eq("id", id);
       } else if (email) {
         await supabase.from("profiles").update(v).eq("email", email.trim().toLowerCase());
@@ -1296,7 +1332,7 @@ export default function App() {
       console.warn("Supabase update skipped/failed:", e);
     }
 
-    setMsg("사용자 권한/상태가 성공적으로 변경되었습니다.");
+    setMsg("사용자 정보 및 권한이 성공적으로 저장되었습니다.");
     await load("profiles");
   }
 
@@ -1788,9 +1824,7 @@ JSON 출력 예시:
               <div className="user-avatar-indicator" />
               <div className="user-info-text">
                 <span className="user-display-name">
-                  {session?.user?.email?.toLowerCase() === "cmj1012@twgroup.co.kr"
-                    ? "조민재 선임 (PM팀)"
-                    : session?.user?.email}
+                  {getUserDisplayName(session?.user?.email, session?.user?.user_metadata)}
                 </span>
                 <span className="user-role-tag">
                   {role === "admin" ? "최고 관리자" : (role || 'GRADE 1').toUpperCase()}
@@ -3061,11 +3095,11 @@ JSON 출력 예시:
                       start: Math.max(0, Math.round((dt(p.startDate) - dt(weekStart)) / DAY)),
                       end: Math.min(6, Math.round((dt(p.endDate) - dt(weekStart)) / DAY))
                     }));
-                    const rowHeight = Math.max(75, lanes.length * 18 + 25);
+                    const rowHeight = Math.max(82, lanes.length * 21 + 32);
 
                     return (
-                      <div className="calendar-week-row" key={weekStart} style={{ height: rowHeight + 'px' }}>
-                        <div className="date-cells" style={{ height: rowHeight + 'px' }}>
+                      <div className="calendar-week-row" key={weekStart} style={{ minHeight: `${rowHeight}px`, height: `${rowHeight}px` }}>
+                        <div className="date-cells" style={{ height: '100%' }}>
                           {weekDays.map(d => {
                             const dStr = iso(d);
                             let dayManpower = 0;
@@ -3079,13 +3113,15 @@ JSON 출력 예시:
                                   <span
                                     style={{
                                       display: 'inline-block',
-                                      fontSize: '10px',
-                                      background: dayManpower >= 10 ? '#fee2e2' : '#dbeafe',
-                                      color: dayManpower >= 10 ? '#b91c1c' : '#1e40af',
+                                      fontSize: '9.5px',
+                                      background: dayManpower >= 20 ? 'rgba(239, 68, 68, 0.15)' : dayManpower >= 10 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(14, 165, 233, 0.15)',
+                                      color: dayManpower >= 20 ? '#ef4444' : dayManpower >= 10 ? '#f59e0b' : '#38bdf8',
+                                      border: dayManpower >= 20 ? '1px solid rgba(239, 68, 68, 0.3)' : dayManpower >= 10 ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(14, 165, 233, 0.3)',
                                       padding: '1px 5px',
                                       borderRadius: '10px',
-                                      fontWeight: 'bold',
-                                      marginTop: '2px'
+                                      fontWeight: '700',
+                                      marginTop: '2px',
+                                      marginLeft: '3px'
                                     }}
                                     title={`당일 프로젝트 투입 공수: ${dayManpower}명`}
                                   >
@@ -3096,12 +3132,12 @@ JSON 출력 예시:
                             );
                           })}
                         </div>
-                        <div className="event-lanes" style={{ height: Math.max(24, lanes.length * 18 + 4) }}>
+                        <div className="event-lanes" style={{ height: `${lanes.length * 21}px` }}>
                           {lanes.map(({ p, lane, start, end }) => (
                             <button
                               key={p.id}
                               className="calendar-bar"
-                              style={{ left: `${start / 7 * 100}%`, width: `${(end - start + 1) / 7 * 100}%`, top: `${lane * 18 + 2}px`, background: p.projectColor }}
+                              style={{ left: `${(start / 7) * 100}%`, width: `${((end - start + 1) / 7) * 100}%`, top: `${lane * 21 + 2}px`, background: p.projectColor }}
                               onClick={() => setSelectedDay({
                                 date: `${weekStart} ~ ${weekEnd}`,
                                 active: [p],
@@ -3154,9 +3190,14 @@ JSON 출력 예시:
                 </button>
               </div>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="제조번호, Site, Line, 프로젝트, 담당자 검색" />
-              {["전체", "진행중", "완료", "지연"].map(x => (
-                <button key={x} className={filter === x ? "active" : ""} onClick={() => setFilter(x)}>{x}</button>
-              ))}
+              {["전체", "진행중", "완료", "지연"].map(x => {
+                const activeClass = filter === x
+                  ? (x === "진행중" ? "active-ongoing" : x === "완료" ? "active-completed" : x === "지연" ? "active-delayed" : "active-all")
+                  : "";
+                return (
+                  <button key={x} className={activeClass} onClick={() => setFilter(x)}>{x}</button>
+                );
+              })}
             </div>
             {!collapsedSections.list ? (
               <>
@@ -3322,30 +3363,34 @@ JSON 출력 예시:
           <div className="modal" onMouseDown={e => e.stopPropagation()}>
             <button className="close" onClick={() => setModal(null)}>×</button>
             {modal === "users" && (
-              <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+              <div style={{ maxWidth: "760px", margin: "0 auto" }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-                  <h2 style={{ margin: 0, fontSize: "20px", color: "var(--text-primary, #0f172a)" }}>사용자 계정·권한 관리</h2>
+                  <h2 style={{ margin: 0, fontSize: "20px", color: "var(--text-primary)" }}>사용자 계정·권한 및 프로필 관리</h2>
                 </div>
                 <div style={{
                   padding: "10px 14px",
-                  background: "#f0fdf4",
-                  border: "1px solid #bbf7d0",
+                  background: "var(--accent-muted)",
+                  border: "1px solid var(--accent-border)",
                   borderRadius: "8px",
                   fontSize: "12px",
-                  color: "#166534",
+                  color: "var(--text-primary)",
                   marginBottom: "16px",
                   lineHeight: "1.5"
                 }}>
-                  <b>💡 계정 관리 가이드</b><br />
+                  <b>💡 계정 및 팀원 프로필 가이드</b><br />
+                  • <b>팀명 및 이름 확인</b>: 각 사용자의 성명 및 소속팀을 확인하고 [✏️ 수정] 버튼으로 언제든 직접 변경할 수 있습니다.<br />
                   • <b>활성 해제</b>: 계정 로그인이 일시 차단됩니다. (언제든지 다시 활성화 가능)<br />
                   • <b>사용자 삭제</b>: 계정을 영구 제거하며, <b>해당 계정으로는 다시 로그인할 수 없습니다.</b>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   {users.map(u => {
                     const isSuperAdmin = u.email === "cmj1012@twgroup.co.kr";
                     const isSelf = session?.user?.email?.toLowerCase() === u.email?.toLowerCase();
                     const cannotDelete = isSuperAdmin || isSelf;
+                    const isEditing = editingUserId === u.id;
+                    const displayName = getUserDisplayName(u.email, u);
+                    const userTeam = getUserTeam(u.email, u);
 
                     return (
                       <div
@@ -3353,48 +3398,118 @@ JSON 출력 예시:
                         key={u.id}
                         style={{
                           display: "grid",
-                          gridTemplateColumns: "1fr 140px 80px 70px",
+                          gridTemplateColumns: "1fr 140px 75px 65px",
                           alignItems: "center",
                           gap: "10px",
-                          padding: "10px 14px",
-                          background: u.active ? "#ffffff" : "#f8fafc",
-                          border: `1px solid ${u.active ? "#e2e8f0" : "#cbd5e1"}`,
+                          padding: "12px 14px",
+                          background: u.active ? "var(--bg-card-subtle)" : "var(--bg-card)",
+                          border: `1px solid ${u.active ? "var(--border-subtle)" : "var(--border-faint)"}`,
                           borderRadius: "10px",
                           opacity: u.active ? 1 : 0.75,
-                          transition: "background 0.2s",
+                          transition: "all 0.2s",
                         }}
                       >
-                        <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <span style={{ fontWeight: "600", fontSize: "14px", color: "#1e293b" }}>{u.email}</span>
-                            {isSuperAdmin && (
-                              <span style={{ fontSize: "10px", background: "#fef3c7", color: "#b45309", padding: "1px 6px", borderRadius: "8px", fontWeight: "bold" }}>
-                                최고관리자
+                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                          {isEditing ? (
+                            <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+                              <input
+                                type="text"
+                                value={editName}
+                                onChange={e => setEditName(e.target.value)}
+                                placeholder="이름 및 직급 (예: 홍길동 책임)"
+                                style={{ width: "160px", padding: "4px 8px", fontSize: "12px", background: "var(--input-bg)", color: "var(--text-primary)", border: "1px solid var(--border-medium)", borderRadius: "4px" }}
+                              />
+                              <input
+                                type="text"
+                                value={editTeam}
+                                onChange={e => setEditTeam(e.target.value)}
+                                placeholder="소속팀 (예: PM팀)"
+                                style={{ width: "120px", padding: "4px 8px", fontSize: "12px", background: "var(--input-bg)", color: "var(--text-primary)", border: "1px solid var(--border-medium)", borderRadius: "4px" }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateUser(u.id, {
+                                    name: editName.trim(),
+                                    team: editTeam.trim(),
+                                    department: editTeam.trim()
+                                  });
+                                  setEditingUserId(null);
+                                }}
+                                style={{ padding: "4px 8px", fontSize: "11px", fontWeight: "bold", background: "var(--accent)", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}
+                              >
+                                저장
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingUserId(null)}
+                                style={{ padding: "4px 8px", fontSize: "11px", background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)", borderRadius: "4px", cursor: "pointer" }}
+                              >
+                                취소
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                              <span style={{ fontWeight: "700", fontSize: "14.5px", color: "var(--text-primary)" }}>
+                                {displayName}
                               </span>
-                            )}
-                            {isSelf && !isSuperAdmin && (
-                              <span style={{ fontSize: "10px", background: "#e0e7ff", color: "#4338ca", padding: "1px 6px", borderRadius: "8px", fontWeight: "bold" }}>
-                                현재접속
-                              </span>
-                            )}
-                            {newRegisteredUsers.some(nu => nu.email?.toLowerCase() === u.email?.toLowerCase()) && (
-                              <span style={{ fontSize: "10px", background: "#dcfce7", color: "#15803d", padding: "1px 6px", borderRadius: "8px", fontWeight: "bold", border: "1px solid #bbf7d0" }}>
-                                ⭐ 신규 가입
-                              </span>
-                            )}
-                          </div>
-                          {u.name && (
-                            <span style={{ fontSize: "11px", color: "#64748b" }}>
-                              {u.name} {u.department ? `(${u.department})` : ""}
-                            </span>
+                              {isSuperAdmin && (
+                                <span style={{ fontSize: "10px", background: "rgba(245, 158, 11, 0.18)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.4)", padding: "1px 7px", borderRadius: "8px", fontWeight: "bold" }}>
+                                  최고관리자
+                                </span>
+                              )}
+                              {isSelf && !isSuperAdmin && (
+                                <span style={{ fontSize: "10px", background: "rgba(14, 165, 233, 0.18)", color: "#38bdf8", border: "1px solid rgba(14, 165, 233, 0.4)", padding: "1px 6px", borderRadius: "8px", fontWeight: "bold" }}>
+                                  현재 접속
+                                </span>
+                              )}
+                              {newRegisteredUsers.some(nu => nu.email?.toLowerCase() === u.email?.toLowerCase()) && (
+                                <span style={{ fontSize: "10px", background: "rgba(16, 185, 129, 0.18)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.4)", padding: "1px 6px", borderRadius: "8px", fontWeight: "bold" }}>
+                                  ⭐ 신규 가입
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingUserId(u.id);
+                                  setEditName(u.name || "");
+                                  setEditTeam(userTeam || "");
+                                }}
+                                style={{
+                                  background: "transparent",
+                                  border: "1px solid var(--border-subtle)",
+                                  color: "var(--text-secondary)",
+                                  borderRadius: "4px",
+                                  padding: "1px 6px",
+                                  fontSize: "10.5px",
+                                  cursor: "pointer",
+                                  lineHeight: 1.3
+                                }}
+                                title="이름 및 소속팀 수정"
+                              >
+                                ✏️ 수정
+                              </button>
+                            </div>
                           )}
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-secondary)" }}>
+                            <span>✉️ {u.email}</span>
+                            {userTeam && <span style={{ color: "var(--text-muted)" }}>• {userTeam}</span>}
+                          </div>
                         </div>
 
                         <select
                           value={u.role}
                           disabled={isSuperAdmin}
                           onChange={e => updateUser(u.id, { role: e.target.value })}
-                          style={{ padding: "6px 8px", fontSize: "13px", borderRadius: "6px", border: "1px solid #cbd5e1" }}
+                          style={{
+                            padding: "6px 8px",
+                            fontSize: "12.5px",
+                            borderRadius: "6px",
+                            border: "1px solid var(--border-medium)",
+                            background: "var(--input-bg)",
+                            color: "var(--text-primary)",
+                            fontWeight: "500"
+                          }}
                         >
                           <option value="admin">관리자</option>
                           <option value="grade3">Grade3 (PM)</option>
@@ -3402,7 +3517,7 @@ JSON 출력 예시:
                           <option value="grade1">Grade1 (일반)</option>
                         </select>
 
-                        <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: isSuperAdmin ? "default" : "pointer", fontSize: "13px", fontWeight: "500", color: u.active ? "#15803d" : "#64748b" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: "5px", cursor: isSuperAdmin ? "default" : "pointer", fontSize: "12.5px", fontWeight: "600", color: u.active ? "var(--success)" : "var(--text-muted)" }}>
                           <input
                             type="checkbox"
                             checked={Boolean(u.active)}
@@ -3419,12 +3534,12 @@ JSON 출력 예시:
                           onClick={() => deleteUser(u.id, u.email)}
                           title={cannotDelete ? "최고 관리자 또는 본인 계정은 삭제할 수 없습니다." : "사용자 영구 삭제"}
                           style={{
-                            padding: "6px 10px",
-                            fontSize: "12px",
+                            padding: "6px 8px",
+                            fontSize: "11.5px",
                             fontWeight: "bold",
-                            color: cannotDelete ? "#94a3b8" : "#dc2626",
-                            background: cannotDelete ? "#f1f5f9" : "#fee2e2",
-                            border: `1px solid ${cannotDelete ? "#e2e8f0" : "#fca5a5"}`,
+                            color: cannotDelete ? "var(--text-muted)" : "#ef4444",
+                            background: cannotDelete ? "var(--bg-card)" : "rgba(239, 68, 68, 0.12)",
+                            border: `1px solid ${cannotDelete ? "var(--border-subtle)" : "rgba(239, 68, 68, 0.3)"}`,
                             borderRadius: "6px",
                             cursor: cannotDelete ? "not-allowed" : "pointer",
                             transition: "all 0.15s ease",
@@ -3437,8 +3552,8 @@ JSON 출력 예시:
                           }}
                           onMouseLeave={e => {
                             if (!cannotDelete) {
-                              e.currentTarget.style.background = "#fee2e2";
-                              e.currentTarget.style.color = "#dc2626";
+                              e.currentTarget.style.background = "rgba(239, 68, 68, 0.12)";
+                              e.currentTarget.style.color = "#ef4444";
                             }
                           }}
                         >

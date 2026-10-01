@@ -51,14 +51,14 @@ const DEPT_SHORT = {
 const DEPT_COLORS = {
   mechanical: "#3b82f6",
   mechanical_sub: "#60a5fa",
-  vision: "#8b5cf6",
-  vision_sub: "#a855f7",
+  vision: "#c084fc",
+  vision_sub: "#e879f9",
   control: "#10b981",
   control_sub: "#34d399",
   electrical: "#f59e0b",
-  electrical_sub: "#d97706",
+  electrical_sub: "#fb923c",
   supervisor: "#0284c7",
-  safety: "#ef4444",
+  safety: "#f43f5e",
   manager: "#06b6d4"
 };
 
@@ -74,7 +74,7 @@ function getDeptShort(key) {
   return key.slice(0, 2);
 }
 
-const DYNAMIC_PALETTE = ["#ec4899", "#6366f1", "#14b8a6", "#84cc16", "#e11d48", "#f97316", "#8b5cf6", "#06b6d4"];
+const DYNAMIC_PALETTE = ["#ec4899", "#38bdf8", "#14b8a6", "#84cc16", "#f43f5e", "#f97316", "#c084fc", "#06b6d4"];
 function getDeptColor(key) {
   const norm = normalizeDeptKey(key);
   if (DEPT_COLORS[norm]) return DEPT_COLORS[norm];
@@ -1795,8 +1795,8 @@ export default function ManpowerManagement({
       { key: 'mechanical', name: '기구 (Mechanical)', plan: planMech, actual: actualMech, color: '#3b82f6' },
       { key: 'control', name: '제어 (Control)', plan: planControl, actual: actualControl, color: '#10b981' },
       { key: 'electrical', name: '전장 (Electrical)', plan: planElectrical, actual: actualElectrical, color: '#f59e0b' },
-      { key: 'vision', name: '비전 (Vision)', plan: planVision, actual: actualVision, color: '#8b5cf6' },
-      { key: 'safety', name: '안전 (Safety)', plan: planSafety, actual: actualSafety, color: '#ef4444' },
+      { key: 'vision', name: '비전 (Vision)', plan: planVision, actual: actualVision, color: '#c084fc' },
+      { key: 'safety', name: '안전 (Safety)', plan: planSafety, actual: actualSafety, color: '#f43f5e' },
       { key: 'manager', name: '소장 (Manager)', plan: planManager, actual: actualManager, color: '#0284c7' },
     ];
 
@@ -1809,10 +1809,10 @@ export default function ManpowerManagement({
       subDepts.push({ key: 'control_sub', name: '제어 외주 (Control Sub)', plan: planControlSub, actual: actualControlSub, color: '#34d399' });
     }
     if (planElectricalSub > 0 || actualElectricalSub > 0) {
-      subDepts.push({ key: 'electrical_sub', name: '전장 외주 (Elec Sub)', plan: planElectricalSub, actual: actualElectricalSub, color: '#d97706' });
+      subDepts.push({ key: 'electrical_sub', name: '전장 외주 (Elec Sub)', plan: planElectricalSub, actual: actualElectricalSub, color: '#fb923c' });
     }
     if (planVisionSub > 0 || actualVisionSub > 0) {
-      subDepts.push({ key: 'vision_sub', name: '비전 외주 (Vision Sub)', plan: planVisionSub, actual: actualVisionSub, color: '#a855f7' });
+      subDepts.push({ key: 'vision_sub', name: '비전 외주 (Vision Sub)', plan: planVisionSub, actual: actualVisionSub, color: '#e879f9' });
     }
     if (planSV > 0) {
       subDepts.push({ key: 'supervisor', name: 'SV (Supervisor)', plan: planSV, actual: 0, color: '#06b6d4' });
@@ -1825,7 +1825,7 @@ export default function ManpowerManagement({
         name: `${k} (특수부서)`,
         plan: deptPlanMap[k] || 0,
         actual: v,
-        color: '#6366f1'
+        color: '#38bdf8'
       });
     });
 

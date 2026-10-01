@@ -8,9 +8,87 @@ const TEST_PROFILES_KEY = "tw_test_user_profiles_v3";
 const TEST_SESSION_KEY = "tw_test_active_session";
 // Supabase 백그라운드 리프레시 토큰 저장 키
 const BG_REFRESH_TOKEN_KEY = "tw_bg_refresh_token";
+// 사용자 정의 프로필 (이름, 소속팀 등) 로컬스토리지 키
+const CUSTOM_USER_PROFILES_KEY = "tw_custom_user_profiles_v1";
 
 // 초기 시드용 리프레시 토큰 (DB 쿼리 권한 유지용)
 const INITIAL_REFRESH_TOKEN = "c6w7xv7ho63t";
+
+// 사용자 정의 프로필 목록 조회 (이메일 기준 매핑)
+export function getCustomUserProfiles() {
+  try {
+    if (typeof localStorage === "undefined") return {};
+    const raw = localStorage.getItem(CUSTOM_USER_PROFILES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.error("Failed to parse custom user profiles:", e);
+    return {};
+  }
+}
+
+// 사용자 프로필 저장 (이름, 팀명 등)
+export function saveCustomUserProfile(email, data = {}) {
+  if (!email) return;
+  const normalized = email.trim().toLowerCase();
+  const all = getCustomUserProfiles();
+  all[normalized] = {
+    ...(all[normalized] || {}),
+    ...data,
+    email: normalized,
+    updated_at: new Date().toISOString()
+  };
+  try {
+    localStorage.setItem(CUSTOM_USER_PROFILES_KEY, JSON.stringify(all));
+  } catch (e) {
+    console.error("Failed to save custom user profile:", e);
+  }
+  return all[normalized];
+}
+
+// 사용자 표시 이름 반환 (예: "조민재 선임 (PM팀)", "홍길동 책임 (설계팀)")
+export function getUserDisplayName(userOrEmail, metadata = {}) {
+  if (!userOrEmail) return "사용자";
+  const email = (typeof userOrEmail === "string" ? userOrEmail : userOrEmail?.email || "").trim().toLowerCase();
+
+  // 최고 관리자
+  if (email === "cmj1012@twgroup.co.kr") {
+    return "조민재 선임 (PM팀)";
+  }
+
+  // 테스트 계정 확인
+  const testProf = DEFAULT_TEST_ACCOUNTS.find(t => t.email.toLowerCase() === email);
+  if (testProf && !testProf.deleted) {
+    const dept = testProf.department ? ` (${testProf.department})` : "";
+    return `${testProf.name}${dept}`;
+  }
+
+  // 커스텀 프로필 캐시 및 메타데이터 확인
+  const custom = getCustomUserProfiles()[email] || {};
+  const name = custom.name || metadata?.name || userOrEmail?.name || userOrEmail?.user_metadata?.name;
+  const team = custom.team || custom.department || metadata?.team || metadata?.department || userOrEmail?.team || userOrEmail?.department || userOrEmail?.user_metadata?.team;
+
+  if (name && team) {
+    return `${name} (${team})`;
+  }
+  if (name) {
+    return name;
+  }
+  if (team) {
+    return `${email} (${team})`;
+  }
+  return email;
+}
+
+// 사용자 팀명/부서 반환
+export function getUserTeam(userOrEmail, metadata = {}) {
+  if (!userOrEmail) return "";
+  const email = (typeof userOrEmail === "string" ? userOrEmail : userOrEmail?.email || "").trim().toLowerCase();
+  if (email === "cmj1012@twgroup.co.kr") return "PM팀";
+  const testProf = DEFAULT_TEST_ACCOUNTS.find(t => t.email.toLowerCase() === email);
+  if (testProf?.department) return testProf.department;
+  const custom = getCustomUserProfiles()[email] || {};
+  return custom.team || custom.department || metadata?.team || metadata?.department || userOrEmail?.team || userOrEmail?.department || "";
+}
 
 // 3개의 기본 테스트 계정 정의 (test1=Grade1, test2=Grade2, test3=Grade3)
 export const DEFAULT_TEST_ACCOUNTS = [

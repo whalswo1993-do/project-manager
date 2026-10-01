@@ -5,11 +5,14 @@ import {
   authenticateTestAccount,
   requestPasswordReset,
   updateTestAccountPassword,
+  saveCustomUserProfile,
 } from "./authService";
 
 export default function Login() {
   const [mode, setMode] = useState("login"); // "login" | "signup" | "reset" | "test-reset"
   const [emailInput, setEmailInput] = useState("");
+  const [nameInput, setNameInput] = useState("");
+  const [teamInput, setTeamInput] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -92,11 +95,33 @@ export default function Login() {
     try {
       // 1. 회원가입 모드
       if (mode === "signup") {
+        if (!nameInput.trim()) {
+          setMessage("이름 및 직급을 입력해 주세요 (예: 홍길동 책임).");
+          return;
+        }
+        if (!teamInput.trim()) {
+          setMessage("소속팀을 입력해 주세요 (예: PM팀, 설계팀, 제어팀 등).");
+          return;
+        }
+
+        // 로컬 커스텀 프로필 캐시에 즉시 저장
+        saveCustomUserProfile(email, {
+          name: nameInput.trim(),
+          team: teamInput.trim(),
+          department: teamInput.trim()
+        });
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: window.location.origin + window.location.pathname,
+            data: {
+              name: nameInput.trim(),
+              team: teamInput.trim(),
+              department: teamInput.trim(),
+              displayName: `${nameInput.trim()} (${teamInput.trim()})`
+            }
           },
         });
 
@@ -105,14 +130,36 @@ export default function Login() {
           return;
         }
 
+        try {
+          if (data?.user?.id) {
+            await supabase.from("profiles").upsert({
+              id: data.user.id,
+              email: email.toLowerCase(),
+              name: nameInput.trim(),
+              team: teamInput.trim(),
+              department: teamInput.trim(),
+              role: "grade1",
+              active: true
+            });
+          }
+        } catch (pe) {
+          console.warn("Profiles upsert fallback:", pe);
+        }
+
         if (data.session) {
           await supabase.auth.signOut();
-          setMessage("Supabase 이메일 인증 설정을 확인해 주세요. 회사 이메일 인증 후 로그인할 수 있도록 Confirm email을 활성화해야 합니다.");
+          setMessage("회원가입이 완료되었습니다. 관리자 승인 후 로그인하실 수 있습니다.");
+          setMode("login");
+          setNameInput("");
+          setTeamInput("");
+          setPassword("");
           return;
         }
 
         setMessage("인증 메일이 발송되었습니다. 회사 이메일에서 인증을 완료한 후 로그인해 주세요.");
         setMode("login");
+        setNameInput("");
+        setTeamInput("");
         setPassword("");
         return;
       }
@@ -210,6 +257,27 @@ export default function Login() {
           disabled={isTestResetMode}
           required
         />
+
+        {isSignupMode && (
+          <>
+            <input
+              type="text"
+              value={nameInput}
+              onChange={(event) => setNameInput(event.target.value)}
+              placeholder="이름 및 직급 (예: 홍길동 책임)"
+              autoComplete="name"
+              required
+            />
+            <input
+              type="text"
+              value={teamInput}
+              onChange={(event) => setTeamInput(event.target.value)}
+              placeholder="소속팀 (예: PM팀, 설계팀, 제어팀 등)"
+              autoComplete="organization"
+              required
+            />
+          </>
+        )}
 
         {!isResetMode && (
           <input

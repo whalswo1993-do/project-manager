@@ -1766,7 +1766,7 @@ JSON 출력 예시:
   return (
     <main>
       {/* 고정 최상단 헤더 래퍼 (틀고정 / Freeze Pane) */}
-      <div id="app-fixed-top" ref={fixedHeaderRef} className="system-fixed-top-bar">
+      <div id="app-fixed-top" className="system-fixed-top-bar">
         <header className="system-main-header">
           <div className="system-brand-left">
             <img src="/tw-logo.png" alt="TW Logo" className="system-brand-logo" />

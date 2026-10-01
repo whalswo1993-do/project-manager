@@ -1929,7 +1929,7 @@ JSON 출력 예시:
           <div className="system-nav-capsule">
             <button
               type="button"
-              className={`nav-tab-btn ${currentView === "projects" ? "active" : ""}`}
+              className={`nav-tab-btn tab-projects ${currentView === "projects" ? "active" : ""}`}
               onClick={() => switchView("projects")}
             >
               <span className="nav-tab-icon">📅</span>
@@ -1937,7 +1937,7 @@ JSON 출력 예시:
             </button>
             <button
               type="button"
-              className={`nav-tab-btn ${currentView === "manpower" ? "active" : ""}`}
+              className={`nav-tab-btn tab-manpower ${currentView === "manpower" ? "active" : ""}`}
               onClick={() => switchView("manpower")}
             >
               <span className="nav-tab-icon">📊</span>
@@ -1945,7 +1945,7 @@ JSON 출력 예시:
             </button>
             <button
               type="button"
-              className={`nav-tab-btn ${currentView === "issues" ? "active" : ""}`}
+              className={`nav-tab-btn tab-issues ${currentView === "issues" ? "active" : ""}`}
               onClick={() => switchView("issues")}
             >
               <span className="nav-tab-icon">📋</span>
@@ -1953,7 +1953,7 @@ JSON 출력 예시:
             </button>
             <button
               type="button"
-              className={`nav-tab-btn ${currentView === "quotations" ? "active" : ""} ${!canAccessQuotations ? "restricted" : ""}`}
+              className={`nav-tab-btn tab-quotations ${currentView === "quotations" ? "active" : ""} ${!canAccessQuotations ? "restricted" : ""}`}
               onClick={() => {
                 if (!canAccessQuotations) return showPermissionModal("견적 조회");
                 switchView("quotations");
@@ -1966,7 +1966,7 @@ JSON 출력 예시:
             </button>
             <button
               type="button"
-              className={`nav-tab-btn ${currentView === "vision-spc" ? "active" : ""}`}
+              className={`nav-tab-btn tab-vision-spc ${currentView === "vision-spc" ? "active" : ""}`}
               onClick={() => switchView("vision-spc")}
             >
               <span className="nav-tab-icon">📈</span>
@@ -2254,12 +2254,12 @@ JSON 출력 예시:
           <div className="system-sticky-header">
             <div className="system-header-row">
               <div className="system-title-group">
-                <div className="system-logo-icon">
+                <div className="system-logo-icon theme-projects">
                   📅
                 </div>
                 <div className="system-title-text">
                   <h2>
-                    <span style={{ color: '#0969da', WebkitTextFillColor: '#0969da' }}>프로젝트</span> 일정 관리 시스템 (Project Schedule Management)
+                    프로젝트 일정 관리 시스템 (Project Schedule Management)
                   </h2>
                   <p>
                     마스터 스케줄 일정 계획, 마일스톤 Gantt 차트 및 프로젝트 종합 모니터링
@@ -3416,7 +3416,7 @@ JSON 출력 예시:
                                 type="text"
                                 value={editName}
                                 onChange={e => setEditName(e.target.value)}
-                                placeholder="이름 및 직급 (예: 홍길동 책임)"
+                                placeholder="이름 (예: 홍길동)"
                                 style={{ width: "160px", padding: "4px 8px", fontSize: "12px", background: "var(--input-bg)", color: "var(--text-primary)", border: "1px solid var(--border-medium)", borderRadius: "4px" }}
                               />
                               <input

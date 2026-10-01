@@ -2118,12 +2118,12 @@ ${compiledText.substring(0, 30000)}
             <div className="system-sticky-header">
                 <div className="system-header-row">
                     <div className="system-title-group">
-                        <div className="system-logo-icon">
+                        <div className="system-logo-icon theme-issues">
                             📋
                         </div>
                         <div className="system-title-text">
                             <h2>
-                                <span style={{ color: '#0969da', WebkitTextFillColor: '#0969da' }}>프로젝트</span> 이슈 및 일보관리 시스템 (Issue & Daily Log Management)
+                                프로젝트 이슈 및 일보관리 시스템 (Issue & Daily Log Management)
                             </h2>
                             <p>
                                 공사일보 텍스트 축적 및 AI 기반 자동 PPT 보고서 생성
@@ -2223,7 +2223,7 @@ ${compiledText.substring(0, 30000)}
 
                         <div style={{marginTop: '1rem', marginBottom: '1rem'}}>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                                <div className="panel-title" style={{margin: 0, fontSize: '0.8rem', whiteSpace: 'nowrap'}}>공사일보 파일 첨부 및 표 붙여넣기</div>
+                                <div className="panel-title" style={{margin: 0, fontSize: '16.5px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap'}}>공사일보 파일 첨부 및 표 붙여넣기</div>
                                 <button
                                     type="button"
                                     onClick={() => toggleSection('upload')}
@@ -2350,7 +2350,7 @@ ${compiledText.substring(0, 30000)}
 
                         <div>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: !collapsedSections.inputForm ? '6px' : '0'}}>
-                                <div style={{fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap'}}>
+                                <div style={{fontSize: '16.5px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap'}}>
                                     공사일보 데이터 ({extractedReports.length}일치 직접입력 등록)
                                 </div>
                                 <button

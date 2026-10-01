@@ -462,9 +462,9 @@ export default function VisionSPC() {
         <div className="vision-spc-container">
             <header className="vision-spc-header">
                 <div className="logo-area">
-                    <div className="logo-icon">SPC</div>
+                    <div className="logo-icon theme-vision">SPC</div>
                     <div className="logo-text">
-                        <h1><span style={{color: 'var(--primary)'}}>Vision</span> SPC 분석기</h1>
+                        <h2>Vision SPC 분석기</h2>
                         <p>설비 비전 검사 데이터 기반 공정능력(Cp/Cpk) 통계 및 분석</p>
                     </div>
                 </div>
@@ -536,7 +536,7 @@ export default function VisionSPC() {
             <div className="main-container">
                 <aside className="sidebar">
                     <div>
-                        <div className="panel-title" style={{ marginBottom: '10px' }}>데이터 입력</div>
+                        <div className="panel-title panel-section-title" style={{ marginBottom: '10px' }}>데이터 입력</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginBottom: '1.25rem' }}>
                             {/* 1. 파일 첨부 버튼 (표 붙여넣기 칸 크기만큼 width: 100%로 확장) */}
                             <button
@@ -599,7 +599,7 @@ export default function VisionSPC() {
                     </div>
 
                     <div style={{marginTop: '1.5rem'}}>
-                        <div className="panel-title">분석 항목 목록</div>
+                        <div className="panel-title panel-section-title">분석 항목 목록</div>
                         <div className="items-container">
                             {items.length === 0 ? (
                                 <div style={{fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1.5rem'}}>

@@ -2148,9 +2148,9 @@ export default function ManpowerManagement({
       <div className="system-sticky-header">
         <div className="system-header-row">
           <div className="system-title-group">
-            <div className="system-logo-icon">📊</div>
+            <div className="system-logo-icon theme-manpower">📊</div>
             <div className="system-title-text">
-              <h2><span style={{ color: "#0969da", WebkitTextFillColor: "#0969da" }}>공수</span> 통합 관리 시스템 (Manpower Management)</h2>
+              <h2>공수 통합 관리 시스템 (Manpower Management)</h2>
               <p>마스터 플랜 기반 부서별 일일 투입 인원 및 전사 공수 종합 모니터링</p>
             </div>
           </div>
@@ -2201,7 +2201,7 @@ export default function ManpowerManagement({
       <div className="mp-table-section" style={{ marginBottom: "20px" }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsedSections.controls ? 0 : '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '16.5px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>🔍</span> 계획공수 조회 조건 및 필터
             </h3>
             <button
@@ -2332,7 +2332,7 @@ export default function ManpowerManagement({
       <div className="mp-table-section" style={{ marginBottom: "20px" }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsedSections.summary ? 0 : '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '16.5px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>📈</span> 전사 계획공수 요약 및 부서별 편성 현황 ({effectiveLabel})
             </h3>
             <button
@@ -2439,7 +2439,7 @@ export default function ManpowerManagement({
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ margin: 0, fontSize: '16.5px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>📅</span> 일별 전사 계획공수 투입 달력 ({year}년 {month + 1}월)
               </h3>
               <button
@@ -2555,7 +2555,7 @@ export default function ManpowerManagement({
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ margin: 0, fontSize: '16.5px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>🏢</span> 프로젝트별 계획공수 현황 ({effectiveLabel})
               </h3>
               <button
@@ -2782,7 +2782,7 @@ export default function ManpowerManagement({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ margin: 0, fontSize: '16.5px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>⚖️</span> 계획공수 vs 실투입공수 비교분석
                 <span style={{ fontSize: '12px', background: 'var(--accent-muted)', color: 'var(--accent)', padding: '3px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid var(--accent-border)' }}>
                   일보 연동

@@ -96,7 +96,7 @@ export default function Login() {
       // 1. 회원가입 모드
       if (mode === "signup") {
         if (!nameInput.trim()) {
-          setMessage("이름 및 직급을 입력해 주세요 (예: 홍길동 책임).");
+          setMessage("이름을 입력해 주세요 (예: 홍길동).");
           return;
         }
         if (!teamInput.trim()) {
@@ -264,7 +264,7 @@ export default function Login() {
               type="text"
               value={nameInput}
               onChange={(event) => setNameInput(event.target.value)}
-              placeholder="이름 및 직급 (예: 홍길동 책임)"
+              placeholder="이름 (예: 홍길동)"
               autoComplete="name"
               required
             />

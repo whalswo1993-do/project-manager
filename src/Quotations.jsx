@@ -641,12 +641,12 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
             <div className="system-sticky-header">
                 <div className="system-header-row">
                     <div className="system-title-group">
-                        <div className="system-logo-icon">
+                        <div className="system-logo-icon theme-quotations">
                             💰
                         </div>
                         <div className="system-title-text">
                             <h2>
-                                <span style={{ color: '#0969da', WebkitTextFillColor: '#0969da' }}>견적</span> 조회 시스템 (Quotation Management System)
+                                견적 조회 시스템 (Quotation Management System)
                             </h2>
                             <p>
                                 프로젝트별 견적 내역 조회, 사양 및 품목별 단가 종합 분석 관리

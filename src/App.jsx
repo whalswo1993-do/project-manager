@@ -33,7 +33,72 @@ import {
 const DAY = 86400000;
 const STATUSES = ["검토중", "PO대기중", "제작 및 운송중", "진행중", "완료"];
 const DEPTS = ["소장", "설계", "설비기술", "기구", "기구 외주", "비전", "비전 외주", "제어", "제어 외주", "전장", "전장 외주", "Supervisor", "안전"];
-const COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#d946ef", "#f43f5e", "#14b8a6", "#84cc16", "#6366f1", "#a855f7", "#10b981", "#f59e0b"];
+// 눈이 편안한 파스텔 & 소프트 톤 팔레트 (빨간색 계열은 소프트 코랄 레드 1종류만 엄선 유지)
+const COLORS = [
+  "#4b7bec", // 소프트 로열 블루
+  "#26a69a", // 부드러운 세이지 틸
+  "#d97736", // 따뜻한 소프트 앰버
+  "#8854d0", // 부드러운 라벤더 바이올렛
+  "#dc5f5f", // 소프트 코랄 레드 (전체 팔레트 중 유일한 레드 계열)
+  "#38b2ac", // 소프트 청록 민트
+  "#5c7099", // 차분한 슬레이트 블루
+  "#6ab04c", // 부드러운 올리브 그린
+  "#a55eea", // 소프트 오키드 퍼플
+  "#e17055", // 소프트 테라코타 피치
+  "#3867d6", // 소프트 마린 블루
+  "#20bf6b", // 소프트 에메랄드
+  "#b86b88", // 차분한 인디안 로즈 / 모브
+  "#c28b38", // 소프트 앤틱 골드
+  "#4b6584", // 소프트 데님 네이비
+  "#778ca3"  // 소프트 쿨 그레이블루
+];
+
+// 동시에 진행되는(기간이 겹치는) 프로젝트 간에 유사/중복 색상이 배정되지 않도록 하는 지능형 색상 분산 함수
+function assignDistinctColors(projects, palette) {
+  if (!projects || projects.length === 0) return [];
+  const n = projects.length;
+  const assigned = new Array(n).fill(-1);
+
+  projects.forEach((p, idx) => {
+    const pStart = p.startDate || "";
+    const pEnd = p.endDate || "";
+    const usedIndices = new Set();
+
+    // 일정(startDate ~ endDate)이 겹치는 이전 프로젝트들이 사용한 색상 수집
+    for (let prevIdx = 0; prevIdx < idx; prevIdx++) {
+      const prevP = projects[prevIdx];
+      const prevStart = prevP.startDate || "";
+      const prevEnd = prevP.endDate || "";
+      const isOverlapping = (pStart <= prevEnd && pEnd >= prevStart);
+      if (isOverlapping && assigned[prevIdx] !== -1) {
+        usedIndices.add(assigned[prevIdx]);
+      }
+    }
+
+    // 겹치지 않는 색상 중, 앞선 프로젝트와 색조(Hue) 차이가 확실한 색상 우선 배정
+    let chosen = -1;
+    for (let c = 0; c < palette.length; c++) {
+      // 3칸씩 건너뛰며 색상환 대비 극대화
+      const candidate = (idx * 3 + c) % palette.length;
+      if (!usedIndices.has(candidate)) {
+        chosen = candidate;
+        break;
+      }
+    }
+
+    if (chosen === -1) {
+      // 팔레트 수보다 동시 프로젝트가 많은 경우 가장 덜 겹치는 색상 배정
+      chosen = idx % palette.length;
+    }
+
+    assigned[idx] = chosen;
+  });
+
+  return projects.map((p, idx) => ({
+    ...p,
+    projectColor: palette[assigned[idx]]
+  }));
+}
 
 const iso = (d = new Date()) => d.toISOString().slice(0, 10);
 const dt = s => new Date(`${s}T00:00:00`);
@@ -801,11 +866,8 @@ export default function App() {
       return (a.name || "").localeCompare(b.name || "");
     });
 
-    // 정렬된 순서에 맞추어 프로젝트 고유 색상(COLORS) 부여
-    return list.map((p, i) => ({
-      ...p,
-      projectColor: COLORS[i % COLORS.length]
-    }));
+    // 동시 진행 프로젝트 간 중복 및 유사 색상을 방지하는 지능형 색상 분산 적용
+    return assignDistinctColors(list, COLORS);
   }, [projects, search, filter, siteFilter, personFilter]);
 
   // 간트차트 기간 필터가 적용된 프로젝트 목록

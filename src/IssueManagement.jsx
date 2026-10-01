@@ -22,6 +22,8 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
     }, [activeIssueSection]);
     
     const isGrade1 = role === 'grade1';
+    const canEditReport = ['admin', 'grade3'].includes(role);
+    const canRunAIAnalysis = ['admin', 'grade3', 'grade2'].includes(role);
     const notifyPermission = (feature) => {
         if (onPermissionDenied) {
             onPermissionDenied(feature);
@@ -141,7 +143,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
     const handleDrop = async (e) => {
         e.preventDefault();
         setIsDragging(false);
-        if (isGrade1) {
+        if (!canEditReport) {
             notifyPermission('공사일보 파일 업로드');
             return;
         }
@@ -225,7 +227,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
     };
 
     const handleFileUpload = async (file) => {
-        if (isGrade1) {
+        if (!canEditReport) {
             notifyPermission('공사일보 파일 업로드');
             return;
         }
@@ -485,7 +487,7 @@ ${allText.substring(0, 100000)}
     };
 
     const saveReport = async () => {
-        if (isGrade1) return notifyPermission('공사일보 저장');
+        if (!canEditReport) return notifyPermission('공사일보 저장');
         if (!selectedProject) return setMsg('프로젝트를 먼저 선택해주세요.');
 
         // 유효한 일보 항목 필터링 (날짜가 있고, 작업내용/특이사항/공수 중 하나라도 입력된 경우 저장 가능)
@@ -630,7 +632,7 @@ ${allText.substring(0, 100000)}
     };
 
     const removeReport = async (id) => {
-        if (isGrade1) return notifyPermission('일보 삭제');
+        if (!canEditReport) return notifyPermission('일보 삭제');
         if (confirm('이 일보를 삭제하시겠습니까?')) {
             await supabase.from('daily_reports').delete().eq('id', id);
             loadReports(selectedProject);
@@ -1785,7 +1787,7 @@ ${allText.substring(0, 100000)}
 
     const handlePasteReportSheet = (e, type) => {
         e.preventDefault();
-        if (isGrade1) return notifyPermission('일보 데이터 등록');
+        if (!canEditReport) return notifyPermission('일보 데이터 등록');
 
         const html = e.clipboardData?.getData("text/html") || "";
         const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text") || "";
@@ -1974,7 +1976,7 @@ ${allText.substring(0, 100000)}
     };
 
     const generatePPT = async () => {
-        if (isGrade1) return notifyPermission('AI 통합 분석 & PPT 보고서');
+        if (!canRunAIAnalysis) return notifyPermission('AI 통합 분석 & PPT 보고서');
         if (startDate > endDate) return setAnalyzeMsg('시작일이 종료일보다 클 수 없습니다.');
         
         const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -2179,15 +2181,15 @@ ${compiledText.substring(0, 30000)}
                         type="button"
                         className={`system-sub-btn ${activeIssueSection === 'analyze' ? 'active' : ''}`}
                         onClick={() => {
-                            if (isGrade1) {
+                            if (!canRunAIAnalysis) {
                                 notifyPermission('AI 통합 분석 & PPT 보고서');
                                 return;
                             }
                             setActiveIssueSection('analyze');
                         }}
-                        title={isGrade1 ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : ""}
+                        title={!canRunAIAnalysis ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : ""}
                     >
-                        📊 AI 프로젝트 통합 분석 & PPT {isGrade1 && "🔒"}
+                        📊 AI 프로젝트 통합 분석 & PPT {!canRunAIAnalysis && "🔒"}
                     </button>
                 </div>
             </div>
@@ -2198,10 +2200,12 @@ ${compiledText.substring(0, 30000)}
                 <div className={`main-container ${activeIssueSection !== 'all' ? 'single-pane' : ''}`}>
                     {(activeIssueSection === 'all' || activeIssueSection === 'register') && (
                         <aside className="sidebar" style={{ maxWidth: activeIssueSection === 'register' ? '860px' : 'none', margin: activeIssueSection === 'register' ? '0 auto' : '0', width: '100%' }}>
-                        {isGrade1 && (
+                        {!canEditReport && (
                             <div style={{background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px', fontSize: '12px', color: '#92400e', lineHeight: '1.4'}}>
-                                🔒 <b>Grade 1 (조회 전용)</b><br/>
-                                프로젝트 선택 후 등록된 일보 내역 조회만 가능하며, 일보 등록/삭제 및 AI 분석 기능은 제한됩니다.
+                                🔒 <b>{isGrade1 ? 'Grade 1 (조회 전용)' : 'Grade 2 (부서 담당자)'} 안내</b><br/>
+                                {isGrade1 
+                                    ? '프로젝트 선택 후 등록된 일보 내역 조회만 가능하며, 일보 등록/수정/삭제 및 AI 분석은 제한됩니다.'
+                                    : '등록된 일보 내역 및 AI 프로젝트 분석 열람이 가능하며, 신규 일보 등록/수정/삭제는 Grade 3 이상 필요합니다.'}
                             </div>
                         )}
                         <div style={{ marginBottom: '0.75rem' }}>
@@ -2242,13 +2246,13 @@ ${compiledText.substring(0, 30000)}
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            if (isGrade1) return notifyPermission('공사일보 파일 업로드');
+                                            if (!canEditReport) return notifyPermission('공사일보 파일 업로드');
                                             fileInputRef.current.click();
                                         }}
                                         disabled={isExtracting}
                                         style={{
                                             width: '100%',
-                                            background: isGrade1 ? '#9ca3af' : isExtracting ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #059669)',
+                                            background: !canEditReport ? '#9ca3af' : isExtracting ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #059669)',
                                             color: '#fff',
                                             padding: '9px 16px',
                                             borderRadius: '8px',
@@ -2257,7 +2261,7 @@ ${compiledText.substring(0, 30000)}
                                             boxShadow: '0 2px 5px rgba(16, 185, 129, 0.25)',
                                             height: '38px',
                                             whiteSpace: 'nowrap',
-                                            cursor: isGrade1 ? 'not-allowed' : 'pointer',
+                                            cursor: !canEditReport ? 'not-allowed' : 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -2266,16 +2270,16 @@ ${compiledText.substring(0, 30000)}
                                             boxSizing: 'border-box',
                                             transition: 'all 0.15s ease'
                                         }}
-                                        title={isGrade1 ? "등록 권한이 없습니다 (클릭 시 권한 안내)" : ""}
+                                        title={!canEditReport ? "등록 권한이 없습니다 (Grade 3 이상 가능)" : ""}
                                     >
-                                        {isExtracting ? "⏳ AI 분석 중..." : "✨ 파일 첨부 (Excel)"} {isGrade1 && "🔒"}
+                                        {isExtracting ? "⏳ AI 분석 중..." : "✨ 파일 첨부 (Excel)"} {!canEditReport && "🔒"}
                                     </button>
 
                                     {/* 2. 엑셀 작업내용 시트 표 붙여넣기 (Ctrl+V) */}
                                     <textarea
                                         placeholder="📋 1. 작업내용 시트 표 붙여넣기 (Ctrl+V)"
                                         onPaste={(e) => handlePasteReportSheet(e, 'work')}
-                                        disabled={isGrade1}
+                                        disabled={!canEditReport}
                                         style={{
                                             width: '100%',
                                             height: '38px',
@@ -2289,20 +2293,20 @@ ${compiledText.substring(0, 30000)}
                                             boxSizing: 'border-box',
                                             fontSize: '12px',
                                             fontFamily: 'inherit',
-                                            background: isGrade1 ? '#f3f4f6' : '#ffffff',
+                                            background: !canEditReport ? '#f3f4f6' : '#ffffff',
                                             color: '#1e293b',
                                             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
                                             textAlign: 'left',
-                                            cursor: isGrade1 ? 'not-allowed' : 'text'
+                                            cursor: !canEditReport ? 'not-allowed' : 'text'
                                         }}
-                                        title={isGrade1 ? "등록 권한이 없습니다" : "엑셀의 작업내용 시트 표 범위를 복사(Ctrl+C)한 후 이 칸에 붙여넣기(Ctrl+V)하세요."}
+                                        title={!canEditReport ? "등록 권한이 없습니다 (Grade 3 이상 가능)" : "엑셀의 작업내용 시트 표 범위를 복사(Ctrl+C)한 후 이 칸에 붙여넣기(Ctrl+V)하세요."}
                                     />
 
                                     {/* 3. 엑셀 공수(투입인원) 시트 표 붙여넣기 (Ctrl+V) */}
                                     <textarea
                                         placeholder="👥 2. 공수(투입인원) 시트 표 붙여넣기 (Ctrl+V)"
                                         onPaste={(e) => handlePasteReportSheet(e, 'manpower')}
-                                        disabled={isGrade1}
+                                        disabled={!canEditReport}
                                         style={{
                                             width: '100%',
                                             height: '38px',
@@ -2316,13 +2320,13 @@ ${compiledText.substring(0, 30000)}
                                             boxSizing: 'border-box',
                                             fontSize: '12px',
                                             fontFamily: 'inherit',
-                                            background: isGrade1 ? '#f3f4f6' : '#ffffff',
+                                            background: !canEditReport ? '#f3f4f6' : '#ffffff',
                                             color: '#1e293b',
                                             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
                                             textAlign: 'left',
-                                            cursor: isGrade1 ? 'not-allowed' : 'text'
+                                            cursor: !canEditReport ? 'not-allowed' : 'text'
                                         }}
-                                        title={isGrade1 ? "등록 권한이 없습니다" : "엑셀의 공수 시트 표 범위를 복사(Ctrl+C)한 후 이 칸에 붙여넣기(Ctrl+V)하세요. 날짜별로 작업내용과 자동 병합됩니다."}
+                                        title={!canEditReport ? "등록 권한이 없습니다 (Grade 3 이상 가능)" : "엑셀의 공수 시트 표 범위를 복사(Ctrl+C)한 후 이 칸에 붙여넣기(Ctrl+V)하세요. 날짜별로 작업내용과 자동 병합됩니다."}
                                     />
                                 </div>
                             ) : (
@@ -2370,19 +2374,19 @@ ${compiledText.substring(0, 30000)}
                             {!collapsedSections.inputForm && (
                                 <div style={{display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', marginBottom: '8px', fontSize: '11px', whiteSpace: 'nowrap'}}>
                                     <span
-                                        style={{color: isGrade1 ? '#9ca3af' : 'var(--primary)', cursor: isGrade1 ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap'}}
+                                        style={{color: !canEditReport ? '#9ca3af' : 'var(--primary)', cursor: !canEditReport ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap'}}
                                         onClick={() => {
-                                            if (isGrade1) return notifyPermission('일보 등록 및 편집');
+                                            if (!canEditReport) return notifyPermission('일보 등록 및 편집');
                                             setExtractedReports([...extractedReports, {date: new Date().toISOString().slice(0,10), work_details:'', special_notes:'', personnel_count:0, pm_count:0, design_count:0, facility_count:0, control_count:0, vision_count:0}]);
                                         }}
                                     >
-                                        + 일자 추가 {isGrade1 && "🔒"}
+                                        + 일자 추가 {!canEditReport && "🔒"}
                                     </span>
                                     <span style={{color: '#cbd5e1'}}>|</span>
                                     <span
-                                        style={{color: isGrade1 ? '#9ca3af' : 'var(--danger)', cursor: isGrade1 ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap'}}
+                                        style={{color: !canEditReport ? '#9ca3af' : 'var(--danger)', cursor: !canEditReport ? 'not-allowed' : 'pointer', fontWeight: 600, whiteSpace: 'nowrap'}}
                                         onClick={() => {
-                                            if (isGrade1) return notifyPermission('일보 등록 및 편집');
+                                            if (!canEditReport) return notifyPermission('일보 등록 및 편집');
                                             setExtractedReports([{date: new Date().toISOString().slice(0, 10), work_details: '', special_notes: '', personnel_count: 0, pm_count:0, design_count:0, facility_count:0, control_count:0, vision_count:0}]);
                                         }}
                                     >
@@ -2558,13 +2562,13 @@ ${compiledText.substring(0, 30000)}
                                             <button
                                                 className="btn-analyze"
                                                 onClick={() => {
-                                                    if (isGrade1) return notifyPermission('공사일보 저장');
+                                                    if (!canEditReport) return notifyPermission('공사일보 저장');
                                                     saveReport();
                                                 }}
                                                 disabled={!selectedProject || isExtracting || !hasValidReportsToSave}
                                                 title={!selectedProject ? '프로젝트를 먼저 선택해주세요' : !hasValidReportsToSave ? '저장할 일보 내용이나 공수가 입력되어야 합니다' : ''}
                                             >
-                                                {isExtracting ? 'AI 추출 중...' : 'Save All' + (isGrade1 ? ' 🔒' : '')}
+                                                {isExtracting ? 'AI 추출 중...' : 'Save All' + (!canEditReport ? ' 🔒' : '')}
                                             </button>
                                         );
                                     })()}
@@ -2724,31 +2728,31 @@ ${compiledText.substring(0, 30000)}
                                                         <button 
                                                             onClick={(e) => { 
                                                                 e.stopPropagation(); 
-                                                                if (isGrade1) return notifyPermission('일보 수정');
+                                                                if (!canEditReport) return notifyPermission('일보 수정');
                                                                 handleEditReport(report); 
                                                             }} 
                                                             style={{
                                                                 background: 'transparent',
                                                                 border: 'none',
-                                                                color: isGrade1 ? '#9ca3af' : '#0969da',
-                                                                cursor: isGrade1 ? 'not-allowed' : 'pointer',
+                                                                color: !canEditReport ? '#9ca3af' : '#0969da',
+                                                                cursor: !canEditReport ? 'not-allowed' : 'pointer',
                                                                 fontSize: '0.8rem',
                                                                 fontWeight: 600
                                                             }} 
-                                                            title="이 일보를 직접입력 폼으로 불러와 수정합니다"
+                                                            title={!canEditReport ? "수정 권한이 없습니다 (Grade 3 이상 가능)" : "이 일보를 직접입력 폼으로 불러와 수정합니다"}
                                                         >
-                                                            ✏️ 수정
+                                                            ✏️ 수정 {!canEditReport && "🔒"}
                                                         </button>
                                                         <button 
                                                             onClick={(e) => { 
                                                                 e.stopPropagation(); 
-                                                                if (isGrade1) return notifyPermission('일보 삭제');
+                                                                if (!canEditReport) return notifyPermission('일보 삭제');
                                                                 removeReport(report.id); 
                                                             }} 
-                                                            style={{background:'transparent', border:'none', color:isGrade1 ? '#9ca3af' : 'var(--danger)', cursor:'pointer', fontSize:'0.8rem'}} 
-                                                            title={isGrade1 ? "삭제 권한이 없습니다 (클릭 시 권한 안내)" : ""}
+                                                            style={{background:'transparent', border:'none', color:!canEditReport ? '#9ca3af' : 'var(--danger)', cursor:'pointer', fontSize:'0.8rem'}} 
+                                                            title={!canEditReport ? "삭제 권한이 없습니다 (Grade 3 이상 가능)" : ""}
                                                         >
-                                                            삭제 {isGrade1 && "🔒"}
+                                                            삭제 {!canEditReport && "🔒"}
                                                         </button>
                                                     </div>
                                                 </div>

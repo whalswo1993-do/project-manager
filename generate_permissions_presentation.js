@@ -271,15 +271,16 @@ function addSlideHeader(slide, category, title, subtitle) {
     ['프로젝트 목록 / 간트차트 / 달력 조회', 'O (전체)', 'O (전체)', 'O (전체)', 'O (전체)'],
     ['간트차트 & 일정 달력 PPT 파일 내보내기', 'O (가능)', 'O (가능)', 'O (가능)', 'X (잠금 🔒)'],
     ['새 프로젝트 생성 & 마스터 플랜 등록', 'O (자유 등록)', 'O (자유 등록)', 'X (생성 불가 🔒)', 'X (생성 불가 🔒)'],
-    ['프로젝트 정보 수정 (제조번호/Line/담당자 등)', 'O (전체 수정)', 'O (전체 수정)', '△ (메타 잠금 / 일정만 갱신)', 'X (수정 불가 🔒)'],
+    ['프로젝트 정보 수정 (제조번호/Line/담당자 등)', 'O (전체 수정)', 'O (전체 수정)', 'X (수정 불가 🔒)', 'X (수정 불가 🔒)'],
     ['프로젝트 삭제 (단일 및 체크박스 일괄 삭제)', 'O (삭제 가능)', 'O (삭제 가능)', 'X (삭제 불가 🔒)', 'X (삭제 불가 🔒)'],
     ['Site / 담당자 기초 마스터 데이터 관리', 'O (관리 가능)', 'O (관리 가능)', 'X (권한 제한 🔒)', 'X (권한 제한 🔒)'],
-    ['공사일보 파일 첨부(Excel) 및 표 붙여넣기', 'O (등록 가능)', 'O (등록 가능)', 'O (등록 가능)', 'X (입력 불가 🔒)'],
-    ['공사일보 수정 / 일보 데이터 개별 삭제', 'O (자유 편집)', 'O (자유 편집)', 'O (자유 편집)', 'X (편집 불가 🔒)'],
+    ['공사일보 파일 첨부(Excel) 및 표 붙여넣기', 'O (등록 가능)', 'O (등록 가능)', 'X (입력 불가 🔒)', 'X (입력 불가 🔒)'],
+    ['공사일보 수정 / 일보 데이터 개별 삭제', 'O (자유 편집)', 'O (자유 편집)', 'X (편집 불가 🔒)', 'X (편집 불가 🔒)'],
     ['AI 프로젝트 통합 분석 & PPT 보고서 생성', 'O (생성 가능)', 'O (생성 가능)', 'O (생성 가능)', 'X (생성 불가 🔒)'],
-    ['견적서 메뉴 접근 및 품목/단가 조회', 'O (전체 조회)', 'O (전체 조회)', 'O (조회 전용 모드)', 'X (접근 차단 🔒)'],
-    ['신규 견적서 등록 (파일 업로드 & 표 복사)', 'O (등록 가능)', 'O (등록 가능)', 'X (등록 제한 🔒)', 'X (접근 차단 🔒)'],
-    ['견적서 수정 및 견적 삭제(단일/전체)', 'O (삭제 가능)', 'O (삭제 가능)', 'X (삭제 제한 🔒)', 'X (접근 차단 🔒)'],
+    ['공수 상세 내역 및 공수 확인 / 보고서 PPT', 'O (상세 분석)', 'O (상세 분석)', 'O (상세 분석)', 'X (상세 잠금 🔒)'],
+    ['견적서 메뉴 접근 및 품목/단가 조회', 'O (전체 조회)', 'O (전체 조회)', 'X (접근 차단 🔒)', 'X (접근 차단 🔒)'],
+    ['신규 견적서 등록 (파일 업로드 & 표 복사)', 'O (등록 가능)', 'O (등록 가능)', 'X (접근 차단 🔒)', 'X (접근 차단 🔒)'],
+    ['견적서 수정 및 견적 삭제(단일/전체)', 'O (삭제 가능)', 'O (삭제 가능)', 'X (접근 차단 🔒)', 'X (접근 차단 🔒)'],
     ['Vision SPC 통계 분석기 사용 (Excel 양식/분석)', 'O (전체 이용)', 'O (전체 이용)', 'O (전체 이용)', 'O (전체 이용)'],
     ['사용자 권한 관리 (등급 변경 / 계정 비활성화)', 'O (전용 모달)', 'X (접근 불가)', 'X (접근 불가)', 'X (접근 불가)']
   ];
@@ -291,11 +292,11 @@ function addSlideHeader(slide, category, title, subtitle) {
     const bg = isEven ? 'FFFFFF' : 'F8FAFC';
 
     tableData.push([
-      { text: row[0], options: { fill: { color: bg }, fontSize: 8.5, bold: true, color: COLORS.textDark, valign: 'middle' } },
-      { text: row[1], options: { fill: { color: bg }, fontSize: 8.5, color: COLORS.rose, bold: true, align: 'center', valign: 'middle' } },
-      { text: row[2], options: { fill: { color: bg }, fontSize: 8.5, color: COLORS.bluePrimary, bold: true, align: 'center', valign: 'middle' } },
-      { text: row[3], options: { fill: { color: bg }, fontSize: 8.5, color: row[3].startsWith('△') ? COLORS.amber : row[3].startsWith('O') ? COLORS.emerald : '94A3B8', bold: true, align: 'center', valign: 'middle' } },
-      { text: row[4], options: { fill: { color: bg }, fontSize: 8.5, color: row[4].startsWith('O') ? COLORS.textDark : '94A3B8', bold: true, align: 'center', valign: 'middle' } }
+      { text: row[0], options: { fill: { color: bg }, fontSize: 8, bold: true, color: COLORS.textDark, valign: 'middle' } },
+      { text: row[1], options: { fill: { color: bg }, fontSize: 8, color: COLORS.rose, bold: true, align: 'center', valign: 'middle' } },
+      { text: row[2], options: { fill: { color: bg }, fontSize: 8, color: COLORS.bluePrimary, bold: true, align: 'center', valign: 'middle' } },
+      { text: row[3], options: { fill: { color: bg }, fontSize: 8, color: row[3].startsWith('O') ? COLORS.emerald : '94A3B8', bold: true, align: 'center', valign: 'middle' } },
+      { text: row[4], options: { fill: { color: bg }, fontSize: 8, color: row[4].startsWith('O') ? COLORS.textDark : '94A3B8', bold: true, align: 'center', valign: 'middle' } }
     ]);
   });
 
@@ -482,7 +483,7 @@ function addSlideHeader(slide, category, title, subtitle) {
 {
   const slide = pres.addSlide();
   slide.addShape(pres.shapes.RECTANGLE, { x: 0, y: 0, w: '100%', h: '100%', fill: { color: COLORS.bgLight } });
-  addSlideHeader(slide, '05. Role Detail', 'Grade 2 (각 부서 실무 담당자) 상세 권한', '현장 실무 중심: 일정/진행률 업데이트 및 일보 등록 허용, 프로젝트 메타 및 견적은 보호');
+  addSlideHeader(slide, '05. Role Detail', 'Grade 2 (각 부서 실무 담당자) 상세 권한', '현장 실무 중심: 공수 상세 및 분석 열람·PPT 다운로드 허용, 프로젝트 수정/등록 및 견적은 전면 차단');
 
   // 좌측 카드: 사용 가능 기능
   slide.addShape(pres.shapes.ROUNDED_RECTANGLE, {
@@ -503,12 +504,11 @@ function addSlideHeader(slide, category, title, subtitle) {
   });
 
   const g2Features = [
-    { bold: '마일스톤 일정 및 진행률 업데이트', desc: '담당 프로젝트의 마일스톤 날짜 조정, 단계별 진척도 및 진행 상태(진행중/완료) 저장' },
-    { bold: '공사일보 등록 및 실시간 편집', desc: '엑셀 파일 첨부 AI 분석, 작업내용 및 공수 표 붙여넣기(Ctrl+V), 일자별 일보 등록/수정/삭제' },
-    { bold: 'AI 프로젝트 통합 분석 & PPT 생성', desc: '공사일보 텍스트를 AI로 요약하고 종합 현황 PPT 보고서를 다운로드' },
-    { bold: '견적 조회 전용 모드 (Read-Only)', desc: '품목별 단가 검색, 공정/프로젝트/구분 다차원 필터링, 총 견적 비용 및 부품 단가 열람' },
-    { bold: 'PPT 내보내기', desc: '간트차트 및 일정 캘린더 화면을 파워포인트(PPT) 파일로 다운로드' },
-    { bold: 'Vision SPC 통계 분석기', desc: '측정 데이터 엑셀 업로드, 규격 설정 및 공정능력지수(Cp/Cpk) 정밀 분석' }
+    { bold: '간트차트 & 일정 달력 PPT 내보내기', desc: '간트차트 및 일정 캘린더 화면을 파워포인트(PPT) 파일로 자유롭게 다운로드' },
+    { bold: '공수 상세 확인 및 보고서 PPT 다운로드', desc: '프로젝트별 M/D 공수 상세 확인 모달 열람 및 전사 공수 보고서 PPT 다운로드 가능' },
+    { bold: 'AI 프로젝트 통합 분석 & PPT 생성', desc: '공사일보 텍스트를 AI로 요약하고 종합 현황 PPT 보고서를 자유롭게 다운로드' },
+    { bold: '프로젝트 목록 & 간트차트 & 달력 조회', desc: '제조번호/Site/라인별 전체 일정, 진행률 및 타임라인 상시 모니터링' },
+    { bold: 'Vision SPC 통계 분석기 전체 이용', desc: '측정 데이터 엑셀 업로드, 규격 설정 및 공정능력지수(Cp/Cpk) 정밀 분석 수행' }
   ];
 
   let curY = 2.35;
@@ -517,10 +517,10 @@ function addSlideHeader(slide, category, title, subtitle) {
       { text: `• ${f.bold}: `, options: { bold: true, color: COLORS.textDark, fontSize: 8.8 } },
       { text: f.desc, options: { color: COLORS.textMuted, fontSize: 8.3 } }
     ], {
-      x: 1.05, y: curY, w: 3.6, h: 0.46,
+      x: 1.05, y: curY, w: 3.6, h: 0.52,
       fontFace: FONT, lineSpacing: 10
     });
-    curY += 0.46;
+    curY += 0.52;
   });
 
   // 우측 카드: 제한되는 기능
@@ -542,11 +542,12 @@ function addSlideHeader(slide, category, title, subtitle) {
   });
 
   const g2Limits = [
-    { bold: '프로젝트 메타 필드 수정 잠금 (Disabled)', desc: '제조번호, Site, Line, 프로젝트명, 시작/종료일, 5대 부서 담당자 입력 필드가 비활성화되어 임의 변경 불가' },
-    { bold: '새 프로젝트 생성 & 마스터 플랜 등록 차단', desc: '신규 프로젝트를 단독 생성하거나 엑셀 마스터 플랜으로 신규 프로젝트를 등록할 수 없음' },
-    { bold: '프로젝트 삭제 권한 차단', desc: '프로젝트 삭제 버튼 클릭 시 권한 안내 모달이 발생하며 삭제가 차단됨' },
-    { bold: '견적서 신규 등록 및 견적 삭제 불가', desc: '새 견적서 등록 인풋 및 삭제 버튼이 비활성화되며 오직 단가/비용 조회만 가능' },
-    { bold: 'Site 및 담당자 관리 모달 접근 차단', desc: '기초 사업장 및 담당자 마스터 데이터를 수정할 수 없음' }
+    { bold: '견적 관리 메뉴 접근 전면 차단 (접근 불가 🔒)', desc: 'Grade 3 아래 무조건 제한 원칙에 따라 견적 탭 클릭 차단 및 품목/단가 조회 불가' },
+    { bold: '프로젝트 정보 수정 불가 (잠금 🔒)', desc: '제조번호, Line, 담당자 등 프로젝트 정보 수정 권한 없음 (수정 버튼 차단)' },
+    { bold: '새 프로젝트 생성 & 마스터 플랜 등록 차단 🔒', desc: '신규 프로젝트를 단독 생성하거나 엑셀 마스터 플랜으로 신규 프로젝트 등록 불가' },
+    { bold: '프로젝트 삭제 권한 차단 🔒', desc: '단일 프로젝트 삭제 및 체크박스 일괄 삭제 전면 차단' },
+    { bold: '공사일보 등록 · 수정 · 개별 삭제 불가 🔒', desc: '엑셀 파일 첨부, 표 붙여넣기(Ctrl+V), 일보 수정 및 삭제 권한 없음' },
+    { bold: 'Site 및 담당자 기초 마스터 관리 불가 🔒', desc: '기초 사업장 및 담당자 마스터 데이터 관리 모달 접근 차단' }
   ];
 
   curY = 2.35;
@@ -568,7 +569,7 @@ function addSlideHeader(slide, category, title, subtitle) {
 {
   const slide = pres.addSlide();
   slide.addShape(pres.shapes.RECTANGLE, { x: 0, y: 0, w: '100%', h: '100%', fill: { color: COLORS.bgLight } });
-  addSlideHeader(slide, '06. Role Detail', 'Grade 1 (일반 사원 / 조회 전용) 상세 권한', '데이터 훼손 방지를 위한 안전 모드: 전 메뉴 수정/삭제 및 견적·리포트 출력 차단');
+  addSlideHeader(slide, '06. Role Detail', 'Grade 1 (기본 가입 / 조회 전용) 상세 권한', '메일 인증 후 관리자 승인 대기 상태: 기본 현황 조회만 허용, 공수 상세·분석 및 전 메뉴 수정/견적 차단');
 
   // 좌측 카드: 사용 가능 기능
   slide.addShape(pres.shapes.ROUNDED_RECTANGLE, {
@@ -583,30 +584,28 @@ function addSlideHeader(slide, category, title, subtitle) {
     line: { color: '64748B', width: 1 },
     rectRadius: 0.06
   });
-  slide.addText('✅ 사용 가능한 기능 (조회 전용)', {
+  slide.addText('✅ 사용 가능한 기능 (기본 조회 전용)', {
     x: 1.0, y: 1.75, w: 3.7, h: 0.45,
     fontFace: FONT, fontSize: 11, bold: true, color: '334155', align: 'center', valign: 'middle'
   });
 
   const g1Features = [
-    { bold: '프로젝트 목록 및 검색/필터링', desc: '제조번호, Site, 라인, 상태(진행중/완료/지연), 담당자별 자유로운 검색 및 필터' },
-    { bold: '간트차트(Gantt) 및 마일스톤 열람', desc: '프로젝트별 전체 마일스톤 일정, 일정 진행률 바 및 타임라인 확인' },
-    { bold: '월간 일정 달력(Calendar) 모니터링', desc: '월별 마일스톤 일정, 제조번호별 일정 배치 현황 조회' },
-    { bold: '부서별/프로젝트별 공수 분석', desc: 'M/D 차트 및 인원 투입 현황 데이터 시각화 화면 열람' },
-    { bold: '공사일보 열람', desc: '등록되어 있는 과거 및 최근 공사일보 작업내용과 투입 인원 조회' },
+    { bold: '프로젝트 목록 & 간트차트 & 달력 기본 조회', desc: '전사 프로젝트 진행률 바, 마일스톤 일정, 월간 일정 달력 기본 현황 열람' },
+    { bold: '전사 공수 현황 및 요약 차트 조회', desc: '부서별 M/D 투입 공수 및 전체 인원 투입 현황 그래프/테이블 기본 조회' },
+    { bold: '등록된 공사일보 작업내역 목록 조회', desc: '과거 및 최근 등록 완료된 일보 내용 기본 열람' },
     { bold: 'Vision SPC 통계 분석기 이용', desc: '스프레드시트 양식 다운로드 및 데이터 측정치 공정능력 통계 분석 수행' }
   ];
 
-  let curY = 2.35;
+  let curY = 2.45;
   g1Features.forEach(f => {
     slide.addText([
       { text: `• ${f.bold}: `, options: { bold: true, color: COLORS.textDark, fontSize: 8.8 } },
       { text: f.desc, options: { color: COLORS.textMuted, fontSize: 8.3 } }
     ], {
-      x: 1.05, y: curY, w: 3.6, h: 0.46,
+      x: 1.05, y: curY, w: 3.6, h: 0.58,
       fontFace: FONT, lineSpacing: 10
     });
-    curY += 0.46;
+    curY += 0.58;
   });
 
   // 우측 카드: 제한되는 기능
@@ -628,12 +627,12 @@ function addSlideHeader(slide, category, title, subtitle) {
   });
 
   const g1Limits = [
-    { bold: '견적 조회 메뉴 진입 전면 차단', desc: '상단 [견적 조회 💰🔒] 탭 클릭 시 즉시 권한 제한 안내 팝업이 노출되며 화면 진입 불가' },
-    { bold: '프로젝트 생성 · 수정 · 삭제 차단', desc: '신규 등록, 기존 프로젝트의 수정 버튼 클릭, 삭제 실행 등 모든 쓰기 액션 차단' },
-    { bold: '간트차트 및 달력 PPT 내보내기 불가', desc: '상단 [PPT 내보내기 🔒] 버튼 클릭 시 권한 제한 모달 발생' },
-    { bold: '공사일보 등록 · 수정 · 삭제 차단', desc: '엑셀 파일 첨부, 표 붙여넣기, Save All, 개별 수정/삭제 버튼 모두 비활성화' },
-    { bold: 'AI 프로젝트 통합 분석 & PPT 생성 불가', desc: 'AI 분석 및 파워포인트 보고서 자동 생성 기능 잠금 처리' },
-    { bold: 'Site / 담당자 / 사용자 권한 관리 불가', desc: '모든 관리자 설정 모달 접근 불가' }
+    { bold: '공수 상세 확인 및 보고서 PPT 다운로드 차단 🔒', desc: '프로젝트별 [공수 확인] 버튼 및 전사 [공수 보고서 PPT 다운로드] 클릭 시 권한 안내 모달 발생' },
+    { bold: '간트차트 및 달력 PPT 내보내기 불가 🔒', desc: '상단 [PPT 내보내기 🔒] 버튼 클릭 시 권한 제한 모달 발생' },
+    { bold: 'AI 프로젝트 통합 분석 & PPT 생성 불가 🔒', desc: 'AI 분석 및 파워포인트 보고서 자동 생성 기능 잠금 처리' },
+    { bold: '견적 조회 메뉴 진입 전면 차단 (접근 불가 🔒)', desc: '상단 [견적 조회 💰🔒] 탭 클릭 시 즉시 권한 제한 안내 팝업이 노출되며 화면 진입 불가' },
+    { bold: '프로젝트 생성 · 수정 · 삭제 차단 🔒', desc: '신규 등록, 기존 프로젝트의 수정 버튼 클릭, 삭제 실행 등 모든 쓰기 액션 차단' },
+    { bold: '공사일보 등록 · 수정 · 삭제 차단 🔒', desc: '엑셀 파일 첨부, 표 붙여넣기, Save All, 개별 수정/삭제 버튼 모두 비활성화' }
   ];
 
   let curY2 = 2.35;
@@ -764,11 +763,28 @@ function addSlideHeader(slide, category, title, subtitle) {
   });
 }
 
-// 파일 저장 실행
-const outputPath = path.join(__dirname, 'TW_프로젝트관리시스템_권한별_기능_가이드.pptx');
-pres.writeFile({ fileName: outputPath })
-  .then(fileName => {
-    console.log(`[SUCCESS] Presentation saved successfully: ${fileName}`);
+// 파일 저장 실행 및 4대 타깃 동기화
+const fs = require('fs');
+const rootKo = path.join(__dirname, 'TW_프로젝트관리시스템_권한별_기능_가이드.pptx');
+const rootEn = path.join(__dirname, 'TW_Role_Guide.pptx');
+const publicDir = path.join(__dirname, 'public');
+const publicKo = path.join(publicDir, 'TW_프로젝트관리시스템_권한별_기능_가이드.pptx');
+const publicEn = path.join(publicDir, 'TW_Role_Guide.pptx');
+
+if (!fs.existsSync(publicDir)) {
+  fs.mkdirSync(publicDir, { recursive: true });
+}
+
+pres.writeFile({ fileName: rootKo })
+  .then(() => {
+    fs.copyFileSync(rootKo, rootEn);
+    fs.copyFileSync(rootKo, publicKo);
+    fs.copyFileSync(rootKo, publicEn);
+    console.log(`[SUCCESS] Presentation saved & synchronized across 4 targets:`);
+    console.log(` - ${rootKo}`);
+    console.log(` - ${rootEn}`);
+    console.log(` - ${publicKo}`);
+    console.log(` - ${publicEn}`);
   })
   .catch(err => {
     console.error('[ERROR] Failed to save presentation:', err);

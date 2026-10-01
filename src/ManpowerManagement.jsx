@@ -393,7 +393,30 @@ export function MonthNavigator({ currentDate, onPrev, onNext, onToday }) {
   );
 }
 
-export default function ManpowerManagement({ projects = [], allProjects = [], sites = [], onSelectProject, selectedYears = ['ALL'], availableYears = [], onToggleYear, onPresetYears }) {
+export default function ManpowerManagement({
+  projects = [],
+  allProjects = [],
+  sites = [],
+  onSelectProject,
+  selectedYears = ['ALL'],
+  availableYears = [],
+  onToggleYear,
+  onPresetYears,
+  role = 'grade1',
+  onPermissionDenied
+}) {
+  const isGrade1 = role === 'grade1';
+  const canViewDetail = ['admin', 'grade3', 'grade2'].includes(role);
+  const canExportPPT = ['admin', 'grade3', 'grade2'].includes(role);
+
+  const notifyPermission = (feature) => {
+    if (onPermissionDenied) {
+      onPermissionDenied(feature);
+    } else {
+      alert(`[${feature}] 권한이 없습니다. 운영자에게 권한을 부여받으시기 바랍니다.`);
+    }
+  };
+
   const [currentDate, setCurrentDate] = useState(() => {
     for (const p of projects) {
       if (p.manpower?.dailyTotal) {
@@ -884,6 +907,7 @@ export default function ManpowerManagement({ projects = [], allProjects = [], si
 
   // PPT Export Function for Executive Reporting
   const exportManpowerPPT = async () => {
+    if (!canExportPPT) return notifyPermission("공수 보고서 PPT 다운로드");
     if (isExportingPPT) return;
     setIsExportingPPT(true);
 
@@ -2276,9 +2300,10 @@ export default function ManpowerManagement({ projects = [], allProjects = [], si
                 className="mp-ppt-btn"
                 onClick={exportManpowerPPT}
                 disabled={isExportingPPT}
-                title="공수 현황 및 프로젝트 상세 분석 보고서 PPT 다운로드"
+                title={!canExportPPT ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : "공수 현황 및 프로젝트 상세 분석 보고서 PPT 다운로드"}
+                style={!canExportPPT ? { opacity: 0.85 } : {}}
               >
-                {isExportingPPT ? "⏳ PPT 보고서 생성 중..." : `📊 공수 보고서 PPT 다운로드 (${viewMode === "month" ? `${month + 1}월` : "지정기간"})`}
+                {isExportingPPT ? "⏳ PPT 보고서 생성 중..." : `📊 공수 보고서 PPT 다운로드 (${viewMode === "month" ? `${month + 1}월` : "지정기간"})`} {!canExportPPT && "🔒"}
               </button>
             </div>
           </div>
@@ -2686,21 +2711,23 @@ export default function ManpowerManagement({ projects = [], allProjects = [], si
                         <td style={{ textAlign: "center" }}>
                           <button
                             onClick={() => {
+                              if (!canViewDetail) return notifyPermission("공수 상세 조회");
                               if (onSelectProject) onSelectProject(p);
                               setSelectedProjectForDetail(p);
                             }}
                             style={{
-                              background: mp ? "#eff6ff" : "#f1f5f9",
-                              color: mp ? "#1d4ed8" : "#64748b",
-                              border: mp ? "1px solid #bfdbfe" : "1px solid #cbd5e1",
+                              background: !canViewDetail ? "#f1f5f9" : (mp ? "#eff6ff" : "#f1f5f9"),
+                              color: !canViewDetail ? "#94a3b8" : (mp ? "#1d4ed8" : "#64748b"),
+                              border: !canViewDetail ? "1px solid #cbd5e1" : (mp ? "1px solid #bfdbfe" : "1px solid #cbd5e1"),
                               borderRadius: "6px",
                               padding: "4px 8px",
                               fontSize: "11px",
                               fontWeight: "bold",
                               cursor: "pointer"
                             }}
+                            title={!canViewDetail ? "공수 상세 확인은 Grade 2 이상 권한이 필요합니다 (클릭 시 권한 안내)" : "프로젝트 공수 상세 내역을 확인합니다"}
                           >
-                            {mp ? "공수 상세" : "공수 조회"}
+                            {mp ? "공수 상세" : "공수 조회"} {!canViewDetail && "🔒"}
                           </button>
                         </td>
                       </tr>
@@ -3505,7 +3532,7 @@ export default function ManpowerManagement({ projects = [], allProjects = [], si
       )}
 
       {/* Project Detail Modal */}
-      {selectedProjectForDetail && (
+      {selectedProjectForDetail && canViewDetail && (
         <ProjectManpowerModal
           project={selectedProjectForDetail}
           onClose={() => setSelectedProjectForDetail(null)}

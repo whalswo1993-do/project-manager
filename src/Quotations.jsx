@@ -13,6 +13,23 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
             alert(`[${feature}] 권한이 없습니다. 운영자에게 권한을 부여받으시기 바랍니다.`);
         }
     };
+
+    if (!canManage) {
+        return (
+            <div style={{ padding: '60px 20px', textAlign: 'center', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', margin: '30px auto', maxWidth: '540px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '48px', marginBottom: '14px' }}>🔒</div>
+                <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginBottom: '10px' }}>견적 관리 접근 권한 제한</h3>
+                <p style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6, marginBottom: '20px' }}>
+                    견적 조회 및 관리 기능은 <b>Grade 3(PM/소장) 이상</b> 등급만 이용할 수 있습니다.<br />
+                    권한이 필요하신 경우 최고 관리자(운영자)에게 승인을 요청해 주세요.
+                </p>
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px 16px', textAlign: 'left', fontSize: '13px', color: '#334155', maxWidth: '380px', margin: '0 auto' }}>
+                    <div style={{ fontWeight: 'bold', color: '#0f172a', marginBottom: '4px', fontSize: '12px' }}>📌 권한 문의처</div>
+                    <div style={{ fontSize: '12px', lineHeight: '1.5' }}>조민재 선임 (cmj1012@twgroup.co.kr / +82 10 5506 8739)</div>
+                </div>
+            </div>
+        );
+    }
     const [isExtracting, setIsExtracting] = useState(false);
     const [selectedProjectInput, setSelectedProjectInput] = useState('');
     const [quotations, setQuotations] = useState([]);

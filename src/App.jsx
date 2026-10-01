@@ -242,8 +242,11 @@ export default function App() {
   const role = profile?.role || "grade1";
   const isGrade1 = role === "grade1";
   const create = ["admin", "grade3"].includes(role);
-  const edit = ["admin", "grade3", "grade2"].includes(role);
+  const edit = ["admin", "grade3"].includes(role);
   const del = ["admin", "grade3"].includes(role);
+  const canAccessQuotations = ["admin", "grade3"].includes(role);
+  const canExportAnalysis = ["admin", "grade3", "grade2"].includes(role);
+  const canViewManpowerDetail = ["admin", "grade3", "grade2"].includes(role);
   const [users, setUsers] = useState([]);
   const [newRegisteredUsers, setNewRegisteredUsers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -1187,6 +1190,7 @@ export default function App() {
 
   async function save() {
     if (!editing && !create) return showPermissionModal("새 프로젝트 생성");
+    if (editing && !edit) return showPermissionModal("프로젝트 수정");
     if (!form.site || !form.name.trim()) return setMsg("Site, 프로젝트명은 필수입니다.");
     if (dt(form.endDate) < dt(form.startDate)) return setMsg("프로젝트 종료일을 확인하세요.");
     const m = milestones.filter(x => x.name.trim() && x.startDate && x.endDate && x.id !== '__status_meta__' && x.id !== '__manpower_meta__');
@@ -1251,6 +1255,7 @@ export default function App() {
   }
 
   function editProject(p) {
+    if (!edit) return showPermissionModal("프로젝트 수정");
     setEditing(p.id);
     setCollapsedSections(prev => ({ ...prev, form: false }));
     const cleanMs = (p.milestones || []).filter(x => x && x.id !== '__status_meta__' && x.id !== '__manpower_meta__');
@@ -1985,7 +1990,7 @@ JSON 출력 예시:
             </button>
             <button
               onClick={() => {
-                if (isGrade1) return showPermissionModal("견적 조회");
+                if (!canAccessQuotations) return showPermissionModal("견적 조회");
                 switchView("quotations");
               }}
               style={{
@@ -2003,11 +2008,11 @@ JSON 출력 예시:
                 justifyContent: "center",
                 boxSizing: "border-box",
                 fontSize: "13px",
-                opacity: isGrade1 ? 0.85 : 1
+                opacity: !canAccessQuotations ? 0.85 : 1
               }}
-              title={isGrade1 ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : ""}
+              title={!canAccessQuotations ? "견적 기능은 Grade 3(PM/소장) 이상만 이용할 수 있습니다 (클릭 시 권한 안내)" : ""}
             >
-              <span>견적 조회 💰 {isGrade1 && "🔒"}</span>
+              <span>견적 조회 💰 {!canAccessQuotations && "🔒"}</span>
             </button>
             <button
               onClick={() => switchView("vision-spc")}
@@ -2262,7 +2267,21 @@ JSON 출력 예시:
       ) : currentView === "quotations" ? (
         <Quotations projects={projects} session={session} role={role} onPermissionDenied={showPermissionModal} />
       ) : currentView === "manpower" ? (
-        <ManpowerManagement projects={view} allProjects={projects} sites={sites} onSelectProject={setSelectedManpowerProject} selectedYears={selectedYears} availableYears={availableYears} onToggleYear={handleToggleYear} onPresetYears={handlePresetYears} />
+        <ManpowerManagement
+          projects={view}
+          allProjects={projects}
+          sites={sites}
+          onSelectProject={(p) => {
+            if (!canViewManpowerDetail) return showPermissionModal("공수 상세 조회");
+            setSelectedManpowerProject(p);
+          }}
+          selectedYears={selectedYears}
+          availableYears={availableYears}
+          onToggleYear={handleToggleYear}
+          onPresetYears={handlePresetYears}
+          role={role}
+          onPermissionDenied={showPermissionModal}
+        />
       ) : (
         <>
           {/* 프로젝트 일정 관리 시스템 메인 헤더 카드 (틀고정) */}
@@ -2807,7 +2826,7 @@ JSON 출력 예시:
                   className="ppt-btn"
                   onClick={async (e) => {
                     e.stopPropagation();
-                    if (isGrade1) return showPermissionModal("간트차트 PPT 내보내기");
+                    if (!canExportAnalysis) return showPermissionModal("간트차트 PPT 내보내기");
                     if (!ganttView.length) return setMsg("내보낼 프로젝트가 없습니다.");
                     setMsg("간트차트 PPT 생성 중...");
                     try {
@@ -2821,7 +2840,7 @@ JSON 출력 예시:
                     }
                   }}
                 >
-                  PPT 내보내기 ({ganttView.length}건) {isGrade1 && "🔒"}
+                  PPT 내보내기 ({ganttView.length}건) {!canExportAnalysis && "🔒"}
                 </button>
               </div>
             </div>
@@ -3095,7 +3114,7 @@ JSON 출력 예시:
                   className="ppt-btn"
                   onClick={async (e) => {
                     e.stopPropagation();
-                    if (isGrade1) return showPermissionModal("일정 달력 PPT 내보내기");
+                    if (!canExportAnalysis) return showPermissionModal("일정 달력 PPT 내보내기");
                     setMsg("일정 달력 PPT 생성 중...");
                     try {
                       await exportCalendarReport(view, month, { filter, siteFilter, personFilter, search });
@@ -3105,7 +3124,7 @@ JSON 출력 예시:
                     }
                   }}
                 >
-                  PPT 내보내기 {isGrade1 && "🔒"}
+                  PPT 내보내기 {!canExportAnalysis && "🔒"}
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)); }}>‹</button>
                 <b>{month.getFullYear()}년 {month.getMonth() + 1}월</b>
@@ -3322,13 +3341,30 @@ JSON 출력 예시:
                         {expanded[p.id] ? "마일스톤 닫기" : "마일스톤 보기"}
                       </button>
                       <button
-                        onClick={() => setSelectedManpowerProject(p)}
-                        style={{ background: p.manpower ? '#eff6ff' : '#f8fafc', color: p.manpower ? '#1d4ed8' : '#4b5563', border: p.manpower ? '1px solid #bfdbfe' : '1px solid #d1d5db', fontWeight: 'bold' }}
+                        onClick={() => {
+                          if (!canViewManpowerDetail) return showPermissionModal("공수 상세 확인");
+                          setSelectedManpowerProject(p);
+                        }}
+                        style={{
+                          background: p.manpower ? '#eff6ff' : '#f8fafc',
+                          color: !canViewManpowerDetail ? '#9ca3af' : (p.manpower ? '#1d4ed8' : '#4b5563'),
+                          border: p.manpower ? '1px solid #bfdbfe' : '1px solid #d1d5db',
+                          fontWeight: 'bold',
+                          cursor: 'pointer'
+                        }}
+                        title={!canViewManpowerDetail ? "공수 상세 확인은 Grade 2 이상 권한이 필요합니다" : "프로젝트 공수 상세 내역을 확인합니다"}
                       >
-                        공수 확인 {p.manpower?.totalManday ? `(${p.manpower.totalManday}M/D)` : ''}
+                        공수 확인 {p.manpower?.totalManday ? `(${p.manpower.totalManday}M/D)` : ''} {!canViewManpowerDetail && "🔒"}
                       </button>
-                      <button onClick={() => { if (isGrade1) return showPermissionModal("프로젝트 수정"); editProject(p); }}>
-                        수정 {isGrade1 && "🔒"}
+                      <button
+                        onClick={() => {
+                          if (!edit) return showPermissionModal("프로젝트 수정");
+                          editProject(p);
+                        }}
+                        style={{ color: edit ? 'inherit' : '#9ca3af' }}
+                        title={!edit ? "프로젝트 수정 권한이 없습니다 (Grade 3 이상 가능)" : ""}
+                      >
+                        수정 {!edit && "🔒"}
                       </button>
                       <button onClick={() => { if (!del) return showPermissionModal("프로젝트 삭제"); remove(p.id); }} style={{ color: del ? 'inherit' : '#9ca3af' }}>
                         삭제 {!del && "🔒"}

@@ -2774,10 +2774,10 @@ JSON 출력 예시:
 
           {(activeProjectSection === 'all' || activeProjectSection === 'gantt') && (
           <section id="gantt-export">
-            <div className="title" style={{ cursor: 'pointer' }} onClick={(e) => {
+            <div className="title" style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }} onClick={(e) => {
               if (e.target.tagName !== 'BUTTON') toggleSection('gantt');
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                 <h2>프로젝트 간트차트 {ganttView.length > 0 && <span style={{ fontSize: '14px', color: '#2563eb', fontWeight: 'normal' }}>({ganttView.length}건)</span>}</h2>
                 <button
                   type="button"
@@ -2789,16 +2789,19 @@ JSON 출력 예시:
                     borderRadius: '4px',
                     padding: '2px 8px',
                     fontSize: '11px',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
                   }}
                 >
                   {collapsedSections.gantt ? '▸ 펼치기' : '▾ 접기'}
                 </button>
               </div>
-              <div className="view-actions">
-                <span>프로젝트 상위 · 마일스톤 하위 · 오늘선</span>
+              <div className="view-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                <span style={{ whiteSpace: 'nowrap', fontSize: '13px', color: 'var(--text-secondary)', flexShrink: 0 }}>프로젝트 상위 · 마일스톤 하위 · 오늘선</span>
                 <button
                   className="ppt-btn"
+                  style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
                   onClick={async (e) => {
                     e.stopPropagation();
                     if (!canExportAnalysis) return showPermissionModal("간트차트 PPT 내보내기");

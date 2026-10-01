@@ -19,8 +19,8 @@
 /* ── Layout ── */
 .issue-management-container .main-container {
   display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 14px;
+  grid-template-columns: minmax(430px, 450px) 1fr;
+  gap: 16px;
   flex-grow: 1;
 }
 
@@ -527,3 +527,73 @@
   box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
   transform: translateY(-1px);
 }
+
+/* ── High Contrast Report Paste Textareas ── */
+.report-paste-textarea {
+  font-weight: 600 !important;
+  transition: all var(--dur-fast) var(--ease-in-out) !important;
+}
+
+.report-paste-textarea::placeholder {
+  opacity: 1 !important;
+  font-weight: 600 !important;
+}
+
+/* Light mode placeholders */
+[data-theme="light"] .report-paste-textarea.work-paste::placeholder,
+body.theme-light .report-paste-textarea.work-paste::placeholder {
+  color: #059669 !important;
+}
+[data-theme="light"] .report-paste-textarea.mp-paste::placeholder,
+body.theme-light .report-paste-textarea.mp-paste::placeholder {
+  color: #0284c7 !important;
+}
+
+/* Dark mode placeholders - Bright, crisp & ultra-readable */
+[data-theme="dark"] .report-paste-textarea.work-paste::placeholder,
+body.theme-dark .report-paste-textarea.work-paste::placeholder {
+  color: #34d399 !important; /* Vivid Emerald */
+}
+[data-theme="dark"] .report-paste-textarea.mp-paste::placeholder,
+body.theme-dark .report-paste-textarea.mp-paste::placeholder {
+  color: #38bdf8 !important; /* Vivid Sky Blue */
+}
+
+/* Dark mode text color when typing or filled */
+[data-theme="dark"] .report-paste-textarea,
+body.theme-dark .report-paste-textarea {
+  color: #ffffff !important;
+  background-color: #0d1117 !important;
+}
+
+/* ── Section Fold Buttons (Prevent Vertical Wrapping) ── */
+.report-fold-btn {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 3px 10px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  border: 1px solid var(--border-medium) !important;
+  background: var(--bg-card-subtle) !important;
+  color: var(--text-primary) !important;
+  cursor: pointer !important;
+  line-height: 1.2 !important;
+  transition: all var(--dur-fast) var(--ease-in-out) !important;
+}
+
+.report-fold-btn:hover {
+  background: var(--bg-hover) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.report-fold-btn.collapsed {
+  background: var(--accent) !important;
+  color: #ffffff !important;
+  border-color: var(--accent) !important;
+}
+

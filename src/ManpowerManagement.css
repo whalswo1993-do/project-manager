@@ -163,10 +163,25 @@
 .mp-mode-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
 
 .mp-mode-btn.active {
-  background: var(--bg-card);
-  color: var(--accent);
+  background: var(--bg-card) !important;
+  color: var(--accent) !important;
   box-shadow: var(--shadow-xs);
   font-weight: 700;
+}
+
+[data-theme="light"] .mp-mode-btn.active,
+body.theme-light .mp-mode-btn.active {
+  background: #ffffff !important;
+  color: #1d4ed8 !important;
+  border: 1px solid #bfdbfe !important;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.12) !important;
+}
+
+[data-theme="dark"] .mp-mode-btn.active,
+body.theme-dark .mp-mode-btn.active {
+  background: #1c1c20 !important;
+  color: #60a5fa !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
 }
 
 /* ── Date Range ── */

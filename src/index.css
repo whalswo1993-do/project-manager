@@ -264,7 +264,7 @@ body.theme-light textarea {
 
 ::placeholder { color: var(--text-muted) !important; opacity: 0.75; }
 [data-theme="dark"] ::placeholder,
-body.theme-dark ::placeholder { color: #475569 !important; opacity: 1; }
+body.theme-dark ::placeholder { color: #94a3b8 !important; opacity: 1; }
 
 /* ─── SCROLLBAR ─────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

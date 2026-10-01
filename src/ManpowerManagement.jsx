@@ -2265,8 +2265,11 @@ export default function ManpowerManagement({
                   </div>
                 </div>
               ) : (
-                <div style={{ fontSize: "13px", color: "#64748b" }}>
-                  선택 기준월: <b style={{ color: "#0969da" }}>{year}년 {month + 1}월</b>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
+                    조회 기준월:
+                  </span>
+                  <MonthNavigator currentDate={currentDate} onPrev={prevMonth} onNext={nextMonth} onToday={goToToday} />
                 </div>
               )}
             </div>

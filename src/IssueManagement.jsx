@@ -2222,20 +2222,13 @@ ${compiledText.substring(0, 30000)}
                         </div>
 
                         <div style={{marginTop: '1rem', marginBottom: '1rem'}}>
-                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                                <div className="panel-title" style={{margin: 0, fontSize: '19px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap'}}>공사일보 파일 첨부 및 표 붙여넣기</div>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', gap: '8px', flexWrap: 'nowrap'}}>
+                                <div className="panel-title" style={{margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis'}}>공사일보 파일 첨부 및 표 붙여넣기</div>
                                 <button
                                     type="button"
+                                    className={`report-fold-btn ${collapsedSections.upload ? 'collapsed' : ''}`}
                                     onClick={() => toggleSection('upload')}
-                                    style={{
-                                        background: collapsedSections.upload ? '#3b82f6' : 'var(--bg-card-subtle)',
-                                        color: collapsedSections.upload ? '#fff' : '#475569',
-                                        border: '1px solid var(--border-subtle)',
-                                        borderRadius: '4px',
-                                        padding: '2px 8px',
-                                        fontSize: '11px',
-                                        cursor: 'pointer'
-                                    }}
+                                    title={collapsedSections.upload ? '클릭하여 파일 첨부 및 붙여넣기 영역 펼치기' : '클릭하여 영역 접기'}
                                 >
                                     {collapsedSections.upload ? '▸ 펼치기' : '▾ 접기'}
                                 </button>
@@ -2277,6 +2270,7 @@ ${compiledText.substring(0, 30000)}
 
                                     {/* 2. 엑셀 작업내용 시트 표 붙여넣기 (Ctrl+V) */}
                                     <textarea
+                                        className="report-paste-textarea work-paste"
                                         placeholder="📋 1. 작업내용 시트 표 붙여넣기 (Ctrl+V)"
                                         onPaste={(e) => handlePasteReportSheet(e, 'work')}
                                         disabled={!canEditReport}
@@ -2304,6 +2298,7 @@ ${compiledText.substring(0, 30000)}
 
                                     {/* 3. 엑셀 공수(투입인원) 시트 표 붙여넣기 (Ctrl+V) */}
                                     <textarea
+                                        className="report-paste-textarea mp-paste"
                                         placeholder="👥 2. 공수(투입인원) 시트 표 붙여넣기 (Ctrl+V)"
                                         onPaste={(e) => handlePasteReportSheet(e, 'manpower')}
                                         disabled={!canEditReport}
@@ -2349,24 +2344,15 @@ ${compiledText.substring(0, 30000)}
                         </div>
 
                         <div>
-                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: !collapsedSections.inputForm ? '6px' : '0'}}>
-                                <div style={{fontSize: '19px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap'}}>
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: !collapsedSections.inputForm ? '6px' : '0', gap: '8px', flexWrap: 'nowrap'}}>
+                                <div style={{fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis'}}>
                                     공사일보 데이터 ({extractedReports.length}일치 직접입력 등록)
                                 </div>
                                 <button
                                     type="button"
+                                    className={`report-fold-btn ${collapsedSections.inputForm ? 'collapsed' : ''}`}
                                     onClick={() => toggleSection('inputForm')}
-                                    style={{
-                                        background: collapsedSections.inputForm ? 'var(--primary)' : 'var(--pill-bg)',
-                                        color: collapsedSections.inputForm ? '#ffffff' : 'var(--pill-text)',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: '6px',
-                                        padding: '3px 10px',
-                                        fontSize: '11px',
-                                        fontWeight: 600,
-                                        whiteSpace: 'nowrap',
-                                        cursor: 'pointer'
-                                    }}
+                                    title={collapsedSections.inputForm ? '클릭하여 일보 직접입력 등록 폼 펼치기' : '클릭하여 폼 접기'}
                                 >
                                     {collapsedSections.inputForm ? '▸ 펼치기' : '▾ 접기'}
                                 </button>

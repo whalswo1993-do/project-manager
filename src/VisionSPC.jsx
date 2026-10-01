@@ -468,6 +468,66 @@ export default function VisionSPC() {
                         <p>설비 비전 검사 데이터 기반 공정능력(Cp/Cpk) 통계 및 분석</p>
                     </div>
                 </div>
+                <div className="header-actions">
+                    <a
+                        href={`${import.meta.env.BASE_URL || '/'}vision-spc-template.xlsx`.replace('//', '/')}
+                        download="Vision SPC 양식.xlsx"
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '8px 14px',
+                            height: '56px',
+                            background: '#ffffff',
+                            border: '2px solid #10b981',
+                            borderRadius: '12px',
+                            color: '#065f46',
+                            textDecoration: 'none',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 5px rgba(16, 185, 129, 0.15)',
+                            boxSizing: 'border-box',
+                            transition: 'all 0.2s ease',
+                            flexShrink: 0
+                        }}
+                        onMouseOver={e => {
+                            e.currentTarget.style.background = '#f0fdf4';
+                            e.currentTarget.style.borderColor = '#059669';
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = '0 4px 8px rgba(16, 185, 129, 0.25)';
+                        }}
+                        onMouseOut={e => {
+                            e.currentTarget.style.background = '#ffffff';
+                            e.currentTarget.style.borderColor = '#10b981';
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = '0 2px 5px rgba(16, 185, 129, 0.15)';
+                        }}
+                        title="클릭 시 'Vision SPC 양식.xlsx' 파일이 다운로드됩니다."
+                    >
+                        <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '8px',
+                            background: 'linear-gradient(135deg, #10b981, #059669)',
+                            color: '#fff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '18px',
+                            boxShadow: '0 2px 4px rgba(5, 150, 105, 0.3)'
+                        }}>
+                            📥
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <b style={{ fontSize: '13px', color: '#0f172a' }}>Vision SPC 양식</b>
+                                <span style={{ fontSize: '10px', fontWeight: 'bold', background: '#dcfce7', color: '#15803d', padding: '1px 5px', borderRadius: '4px', border: '1px solid #bbf7d0' }}>Excel</span>
+                            </div>
+                            <span style={{ fontSize: '11px', color: '#059669', fontWeight: '600', marginTop: '2px' }}>
+                                양식 다운로드 받기 ⇩
+                            </span>
+                        </div>
+                    </a>
+                </div>
             </header>
 
             <input type="file" ref={fileInputRef} onChange={(e) => handleFileUpload(e.target.files[0])} accept=".xlsx, .xls" style={{display: 'none'}} />
@@ -478,6 +538,42 @@ export default function VisionSPC() {
                     <div>
                         <div className="panel-title" style={{ marginBottom: '10px' }}>데이터 입력</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginBottom: '1.25rem' }}>
+                            {/* 양식 다운로드 버튼 (사이드바 콤팩트 링크) */}
+                            <a
+                                href={`${import.meta.env.BASE_URL || '/'}vision-spc-template.xlsx`.replace('//', '/')}
+                                download="Vision SPC 양식.xlsx"
+                                style={{
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px',
+                                    padding: '7px 10px',
+                                    background: '#f0fdf4',
+                                    border: '1.5px dashed #10b981',
+                                    borderRadius: '8px',
+                                    color: '#065f46',
+                                    textDecoration: 'none',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    boxSizing: 'border-box',
+                                    transition: 'all 0.15s ease'
+                                }}
+                                onMouseOver={e => {
+                                    e.currentTarget.style.background = '#dcfce7';
+                                    e.currentTarget.style.borderColor = '#059669';
+                                }}
+                                onMouseOut={e => {
+                                    e.currentTarget.style.background = '#f0fdf4';
+                                    e.currentTarget.style.borderColor = '#10b981';
+                                }}
+                                title="클릭 시 'Vision SPC 양식.xlsx' 파일이 다운로드됩니다."
+                            >
+                                <span>📥</span>
+                                <span>Vision SPC 양식 다운로드</span>
+                                <span style={{ fontSize: '10px', background: '#bbf7d0', color: '#166534', padding: '1px 5px', borderRadius: '4px', border: '1px solid #86efac' }}>Excel</span>
+                            </a>
                             {/* 1. 파일 첨부 버튼 (표 붙여넣기 칸 크기만큼 width: 100%로 확장) */}
                             <button
                                 type="button"

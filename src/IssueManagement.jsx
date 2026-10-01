@@ -2223,7 +2223,7 @@ ${compiledText.substring(0, 30000)}
 
                         <div style={{marginTop: '1rem', marginBottom: '1rem'}}>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                                <div className="panel-title" style={{margin: 0, fontSize: '16.5px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap'}}>공사일보 파일 첨부 및 표 붙여넣기</div>
+                                <div className="panel-title" style={{margin: 0, fontSize: '19px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap'}}>공사일보 파일 첨부 및 표 붙여넣기</div>
                                 <button
                                     type="button"
                                     onClick={() => toggleSection('upload')}
@@ -2350,7 +2350,7 @@ ${compiledText.substring(0, 30000)}
 
                         <div>
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: !collapsedSections.inputForm ? '6px' : '0'}}>
-                                <div style={{fontSize: '16.5px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap'}}>
+                                <div style={{fontSize: '19px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap'}}>
                                     공사일보 데이터 ({extractedReports.length}일치 직접입력 등록)
                                 </div>
                                 <button

@@ -730,11 +730,11 @@ section {
 section:hover { border-color: var(--border-medium); }
 
 section h2 {
-  font-size: 16.5px;
+  font-size: 19px;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 14px 0;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1470,7 +1470,7 @@ article aside button:hover {
 
 .system-title-text h2 {
   margin: 0;
-  font-size: 21px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.025em;
   color: var(--text-primary);

@@ -81,7 +81,7 @@
 
 .vision-spc-container .logo-text h1,
 .vision-spc-container .logo-text h2 {
-  font-size: 21px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--text-color);
   margin: 0;
@@ -198,11 +198,11 @@
 }
 
 .vision-spc-container .panel-section-title {
-  font-size: 16.5px !important;
+  font-size: 19px !important;
   font-weight: 700 !important;
   color: var(--text-color) !important;
   text-transform: none !important;
-  letter-spacing: -0.015em !important;
+  letter-spacing: -0.02em !important;
 }
 
 /* ── Dropzone ── */

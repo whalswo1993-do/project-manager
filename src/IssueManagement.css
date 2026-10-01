@@ -187,11 +187,11 @@
 }
 
 .issue-management-container .section-title {
-  font-size: 16.5px;
+  font-size: 19px;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
 }
 
 /* ── Issue Cards ── */

@@ -2714,17 +2714,17 @@ ${compiledText.substring(0, 30000)}
                                                         Object.values(report.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
 
                                         return (
-                                            <div key={report.id} className="issue-card" style={{borderLeftColor: 'var(--accent)'}}>
+                                            <div key={report.id} className="issue-card" style={{borderLeftColor: '#f59e0b'}}>
                                                 <div className="issue-meta" onClick={() => toggleReport(report.id)} style={{cursor: 'pointer'}}>
                                                     <span style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
-                                                        <b style={{color: 'var(--text-primary)', fontSize: '13.5px'}}>{report.report_date}</b> 
-                                                        <span style={{color: 'var(--text-secondary)', fontWeight: 500}}>일보</span>
+                                                        <b style={{color: 'var(--text-primary)', fontSize: '14px', letterSpacing: '0.01em'}}>{report.report_date}</b> 
+                                                        <span style={{color: 'var(--text-secondary)', fontWeight: 600, fontSize: '13px'}}>일보</span>
                                                         {totalMD > 0 && (
-                                                            <span style={{fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 700, background: 'var(--accent-muted)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--accent-border)'}}>
+                                                            <span style={{fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, background: 'rgba(245, 158, 11, 0.12)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(245, 158, 11, 0.35)'}}>
                                                                 👥 {totalMD}명
                                                             </span>
                                                         )}
-                                                        <span style={{fontSize:'0.8rem', color:'var(--text-secondary)'}}>{expandedReports[report.id] ? '▲' : '▼'}</span>
+                                                        <span style={{fontSize:'0.85rem', color:'var(--text-secondary)', marginLeft: '2px'}}>{expandedReports[report.id] ? '▲' : '▼'}</span>
                                                     </span>
                                                     <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
                                                         <button 

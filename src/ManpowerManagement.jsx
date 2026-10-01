@@ -49,17 +49,17 @@ const DEPT_SHORT = {
 };
 
 const DEPT_COLORS = {
-  mechanical: "#3b82f6",
-  mechanical_sub: "#60a5fa",
-  vision: "#c084fc",
-  vision_sub: "#e879f9",
-  control: "#10b981",
-  control_sub: "#34d399",
-  electrical: "#f59e0b",
-  electrical_sub: "#fb923c",
-  supervisor: "#0284c7",
-  safety: "#f43f5e",
-  manager: "#06b6d4"
+  mechanical: "#38bdf8",     // Bright Sky Blue
+  mechanical_sub: "#7dd3fc", // Light Sky
+  vision: "#fbbf24",         // Warm Golden Yellow
+  vision_sub: "#fde047",     // Light Gold
+  control: "#10b981",        // Emerald Green
+  control_sub: "#34d399",    // Mint
+  electrical: "#f97316",     // Vibrant Orange
+  electrical_sub: "#fb923c", // Warm Tangerine
+  supervisor: "#f59e0b",     // Amber
+  safety: "#f43f5e",         // Rose Red
+  manager: "#06b6d4"         // Cyan
 };
 
 function getDeptLabel(key) {
@@ -2201,15 +2201,15 @@ export default function ManpowerManagement({
       <div className="mp-table-section" style={{ marginBottom: "20px" }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsedSections.controls ? 0 : '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#17263b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>🔍</span> 계획공수 조회 조건 및 필터
             </h3>
             <button
               type="button"
               onClick={() => toggleSection('controls')}
               style={{
-                background: collapsedSections.controls ? '#3b82f6' : 'var(--bg-card-subtle)',
-                color: collapsedSections.controls ? '#fff' : '#475569',
+                background: collapsedSections.controls ? 'var(--accent)' : 'var(--bg-card-subtle)',
+                color: collapsedSections.controls ? '#fff' : 'var(--text-secondary)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: '4px',
                 padding: '2px 8px',
@@ -2274,13 +2274,13 @@ export default function ManpowerManagement({
             {/* Row 2: Filters & PPT Export Button */}
             <div className="mp-controls-row">
               <div className="mp-filter-group">
-                <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>Site 필터:</label>
+                <label style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-secondary)" }}>Site 필터:</label>
                 <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
                   <option value="전체">전체 Site</option>
                   {sites.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                 </select>
 
-                <label style={{ fontSize: "12px", fontWeight: "bold", color: "#475569" }}>부서 필터:</label>
+                <label style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-secondary)" }}>부서 필터:</label>
                 <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}>
                   <option value="전체">전체 부서</option>
                   {activeDeptKeys.map(k => (
@@ -2332,15 +2332,15 @@ export default function ManpowerManagement({
       <div className="mp-table-section" style={{ marginBottom: "20px" }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsedSections.summary ? 0 : '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>📈</span> 전사 계획공수 요약 및 부서별 편성 현황 ({effectiveLabel})
             </h3>
             <button
               type="button"
               onClick={() => toggleSection('summary')}
               style={{
-                background: collapsedSections.summary ? '#3b82f6' : 'var(--bg-card-subtle)',
-                color: collapsedSections.summary ? '#fff' : '#475569',
+                background: collapsedSections.summary ? 'var(--accent)' : 'var(--bg-card-subtle)',
+                color: collapsedSections.summary ? '#fff' : 'var(--text-secondary)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: '4px',
                 padding: '2px 8px',
@@ -2392,7 +2392,7 @@ export default function ManpowerManagement({
             </div>
 
             <div className="mp-dept-banner" style={{ marginTop: '16px' }}>
-              <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 'bold', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>📈</span> 부서별 계획공수 편성 현황 ({effectiveLabel})
               </h4>
               <div className="mp-dept-tags">
@@ -2403,7 +2403,7 @@ export default function ManpowerManagement({
                     <div className="mp-dept-tag" key={deptKey} style={{ borderLeft: `4px solid ${getDeptColor(deptKey)}` }}>
                       <div className="mp-dept-tag-name">{getDeptLabel(deptKey)}</div>
                       <div className="mp-dept-tag-val">
-                        {count.toLocaleString()} M/D <span style={{ fontSize: "12px", color: "#64748b", fontWeight: "normal" }}>({pct}%)</span>
+                        {count.toLocaleString()} M/D <span style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: "normal" }}>({pct}%)</span>
                       </div>
                     </div>
                   );
@@ -2420,7 +2420,7 @@ export default function ManpowerManagement({
               border: '1px dashed var(--border-subtle)',
               borderRadius: '8px',
               textAlign: 'center',
-              color: '#64748b',
+              color: 'var(--text-secondary)',
               fontSize: '13px',
               cursor: 'pointer'
             }}
@@ -2439,15 +2439,15 @@ export default function ManpowerManagement({
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#17263b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>📅</span> 일별 전사 계획공수 투입 달력 ({year}년 {month + 1}월)
               </h3>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); toggleSection('calendar'); }}
                 style={{
-                  background: collapsedSections.calendar ? '#3b82f6' : 'var(--bg-card-subtle)',
-                  color: collapsedSections.calendar ? '#fff' : '#475569',
+                  background: collapsedSections.calendar ? 'var(--accent)' : 'var(--bg-card-subtle)',
+                  color: collapsedSections.calendar ? '#fff' : 'var(--text-secondary)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: '4px',
                   padding: '2px 8px',
@@ -2459,7 +2459,7 @@ export default function ManpowerManagement({
                 {collapsedSections.calendar ? '▸ 펼치기' : '▾ 접기'}
               </button>
             </div>
-            <span style={{ fontSize: "12px", color: "#64748b" }}>
+            <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
               * 날짜를 클릭하면 해당 일자의 프로젝트별 세부 투입 명단을 볼 수 있습니다.
               {viewMode === "range" && ` (전체 지정 기간: ${effectiveStartDate} ~ ${effectiveEndDate})`}
             </span>
@@ -2555,15 +2555,15 @@ export default function ManpowerManagement({
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#17263b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>🏢</span> 프로젝트별 계획공수 현황 ({effectiveLabel})
               </h3>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); toggleSection('table'); }}
                 style={{
-                  background: collapsedSections.table ? '#3b82f6' : 'var(--bg-card-subtle)',
-                  color: collapsedSections.table ? '#fff' : '#475569',
+                  background: collapsedSections.table ? 'var(--accent)' : 'var(--bg-card-subtle)',
+                  color: collapsedSections.table ? '#fff' : 'var(--text-secondary)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: '4px',
                   padding: '2px 8px',
@@ -2575,8 +2575,8 @@ export default function ManpowerManagement({
                 {collapsedSections.table ? '▸ 펼치기' : '▾ 접기'}
               </button>
             </div>
-            <span style={{ fontSize: "12px", color: "#64748b" }}>
-              * {viewMode === "range" ? `지정 기간(${effectiveStartDate} ~ ${effectiveEndDate})` : `상단 달력의 기준월(${year}년 {month + 1}월)`}에 {onlyActiveProjectsInMonth ? "계획공수가 투입되는 프로젝트 목록입니다." : "편성된 프로젝트별 계획공수 데이터입니다."} (<b>{tableProjects.length}개 프로젝트</b>{onlyActiveProjectsInMonth && ` / 전체 ${filteredProjects.length}개 대상`})
+            <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+              * {viewMode === "range" ? `지정 기간(${effectiveStartDate} ~ ${effectiveEndDate})` : `상단 달력의 기준월(${year}년 ${month + 1}월)`}에 {onlyActiveProjectsInMonth ? "계획공수가 투입되는 프로젝트 목록입니다." : "편성된 프로젝트별 계획공수 데이터입니다."} (<b>{tableProjects.length}개 프로젝트</b>{onlyActiveProjectsInMonth && ` / 전체 ${filteredProjects.length}개 대상`})
             </span>
           </div>
           {/* Synchronized Month Navigator & Active Projects Only Filter */}
@@ -2586,13 +2586,13 @@ export default function ManpowerManagement({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                background: onlyActiveProjectsInMonth ? '#eff6ff' : 'var(--bg-card-subtle)',
-                border: onlyActiveProjectsInMonth ? '1px solid #3b82f6' : '1px solid var(--border-subtle)',
+                background: onlyActiveProjectsInMonth ? 'var(--accent-muted)' : 'var(--bg-card-subtle)',
+                border: onlyActiveProjectsInMonth ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
                 borderRadius: '20px',
                 padding: '5px 13px',
                 fontSize: '12px',
                 fontWeight: 600,
-                color: onlyActiveProjectsInMonth ? '#1d4ed8' : '#64748b',
+                color: onlyActiveProjectsInMonth ? 'var(--text-primary)' : 'var(--text-secondary)',
                 cursor: 'pointer',
                 userSelect: 'none',
                 boxShadow: onlyActiveProjectsInMonth ? '0 1px 3px rgba(59, 130, 246, 0.15)' : 'none',
@@ -2604,7 +2604,7 @@ export default function ManpowerManagement({
                 type="checkbox"
                 checked={onlyActiveProjectsInMonth}
                 onChange={(e) => setOnlyActiveProjectsAndSave(e.target.checked)}
-                style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#2563eb' }}
+                style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: 'var(--accent)' }}
               />
               <span>{viewMode === "range" ? "기간" : "당월"} 투입 프로젝트만 보기 ({tableProjects.length}건 / 전체 {filteredProjects.length}건)</span>
             </label>
@@ -2622,22 +2622,22 @@ export default function ManpowerManagement({
                   {activeDeptKeys.map(k => (
                     <th key={k} style={{ textAlign: "center" }}>{getDeptShort(k)}</th>
                   ))}
-                  <th style={{ textAlign: "center", color: "#1d4ed8" }}>
+                  <th style={{ textAlign: "center", color: "var(--accent)" }}>
                     {viewMode === "range" ? "기간 계획공수" : `${month + 1}월 계획공수`}
                   </th>
-                  <th style={{ textAlign: "center", background: "var(--bg-card-subtle)", color: "#0f172a" }}>프로젝트 총 계획공수</th>
+                  <th style={{ textAlign: "center", background: "var(--bg-card-subtle)", color: "var(--text-primary)" }}>프로젝트 총 계획공수</th>
                   <th style={{ textAlign: "center" }}>상세</th>
                 </tr>
               </thead>
               <tbody>
                 {tableProjects.length === 0 ? (
                   <tr>
-                    <td colSpan={6 + activeDeptKeys.length} style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>
+                    <td colSpan={6 + activeDeptKeys.length} style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-muted)" }}>
                       <div style={{ fontSize: "28px", marginBottom: "8px" }}>📭</div>
-                      <div style={{ fontSize: "14px", fontWeight: "700", color: "#334155" }}>
+                      <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)" }}>
                         선택하신 {viewMode === "range" ? "기간" : `${year}년 ${month + 1}월`}에 계획공수가 편성된 프로젝트가 없습니다.
                       </div>
-                      <div style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>
+                      <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "4px" }}>
                         다른 월을 선택하시거나, 아래 버튼을 눌러 전체 프로젝트 목록을 확인하세요.
                       </div>
                       <button
@@ -2645,13 +2645,13 @@ export default function ManpowerManagement({
                         onClick={() => setOnlyActiveProjectsAndSave(false)}
                         style={{
                           marginTop: "12px",
-                          background: "#eff6ff",
-                          border: "1px solid #bfdbfe",
+                          background: "var(--accent-muted)",
+                          border: "1px solid var(--accent-border)",
                           borderRadius: "6px",
                           padding: "6px 14px",
                           fontSize: "12px",
                           fontWeight: "600",
-                          color: "#1d4ed8",
+                          color: "var(--accent)",
                           cursor: "pointer"
                         }}
                       >
@@ -2673,13 +2673,13 @@ export default function ManpowerManagement({
                         <td><b>{normalizeJVName(p.manufacturingNo) || "-"}</b></td>
                         <td>{normalizeJVName(p.site) || "-"} {p.line ? `· Line ${normalizeJVName(p.line)}` : ""}</td>
                         <td>
-                          <div style={{ fontWeight: 600, color: "#0f172a" }}>{normalizeJVName(p.name)}</div>
+                          <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{normalizeJVName(p.name)}</div>
                           {effectiveTotal > 0 ? (
-                            <div style={{ fontSize: "11px", color: "#475569", marginTop: "2px" }}>
-                              프로젝트 총 계획공수: <b style={{ color: "#059669" }}>{effectiveTotal.toLocaleString()} M/D</b>
+                            <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px" }}>
+                              프로젝트 총 계획공수: <b style={{ color: "var(--success)" }}>{effectiveTotal.toLocaleString()} M/D</b>
                             </div>
                           ) : (
-                            <div style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
                               계획공수 미등록
                             </div>
                           )}
@@ -2688,24 +2688,24 @@ export default function ManpowerManagement({
                           <td key={k} style={{ textAlign: "center" }}>{pDepts[k] ? `${pDepts[k]}명` : "-"}</td>
                         ))}
                         <td style={{ textAlign: "center" }}>
-                          <span style={{ fontWeight: "bold", color: pRangeTotal > 0 ? "#1d4ed8" : "#94a3b8", fontSize: "14px" }}>
+                          <span style={{ fontWeight: "bold", color: pRangeTotal > 0 ? "var(--text-primary)" : "var(--text-muted)", fontSize: "14px" }}>
                             {pRangeTotal > 0 ? `${pRangeTotal.toLocaleString()} M/D` : "-"}
                           </span>
                         </td>
                         <td style={{ textAlign: "center", background: "var(--bg-card-subtle)" }}>
                           {effectiveTotal > 0 ? (
                             <div>
-                              <span style={{ fontWeight: "800", color: "#0f172a", fontSize: "14px" }}>
+                              <span style={{ fontWeight: "800", color: "var(--text-primary)", fontSize: "14px" }}>
                                 {effectiveTotal.toLocaleString()} M/D
                               </span>
                               {pRangeTotal > 0 && (
-                                <div style={{ fontSize: "11px", color: "#059669", fontWeight: 600, marginTop: "1px" }}>
+                                <div style={{ fontSize: "11px", color: "var(--success)", fontWeight: 600, marginTop: "1px" }}>
                                   {viewMode === "range" ? "기간" : "당월"} {progressRate}%
                                 </div>
                               )}
                             </div>
                           ) : (
-                            <span style={{ color: "#94a3b8" }}>-</span>
+                            <span style={{ color: "var(--text-muted)" }}>-</span>
                           )}
                         </td>
                         <td style={{ textAlign: "center" }}>
@@ -2716,9 +2716,9 @@ export default function ManpowerManagement({
                               setSelectedProjectForDetail(p);
                             }}
                             style={{
-                              background: !canViewDetail ? "var(--bg-card-subtle)" : (mp ? "#eff6ff" : "var(--bg-card-subtle)"),
-                              color: !canViewDetail ? "#94a3b8" : (mp ? "#1d4ed8" : "#64748b"),
-                              border: !canViewDetail ? "1px solid var(--border-subtle)" : (mp ? "1px solid #bfdbfe" : "1px solid var(--border-subtle)"),
+                              background: !canViewDetail ? "var(--bg-card-subtle)" : (mp ? "var(--accent-muted)" : "var(--bg-card-subtle)"),
+                              color: !canViewDetail ? "var(--text-muted)" : (mp ? "var(--accent)" : "var(--text-secondary)"),
+                              border: !canViewDetail ? "1px solid var(--border-subtle)" : (mp ? "1px solid var(--accent-border)" : "1px solid var(--border-subtle)"),
                               borderRadius: "6px",
                               padding: "4px 8px",
                               fontSize: "11px",
@@ -2744,10 +2744,10 @@ export default function ManpowerManagement({
                     {activeDeptKeys.map(k => (
                       <td key={k} style={{ textAlign: "center" }}>{deptTotals[k] > 0 ? `${deptTotals[k]} M/D` : "-"}</td>
                     ))}
-                    <td style={{ textAlign: "center", color: "#1d4ed8", fontSize: "14px" }}>
+                    <td style={{ textAlign: "center", color: "var(--accent)", fontSize: "14px" }}>
                       {periodTotalManday > 0 ? `${periodTotalManday.toLocaleString()} M/D` : "-"}
                     </td>
-                    <td style={{ textAlign: "center", color: "#0f172a", fontSize: "14px", background: "var(--border-faint)" }}>
+                    <td style={{ textAlign: "center", color: "var(--text-primary)", fontSize: "14px", background: "var(--border-faint)" }}>
                       {tableProjects.reduce((sum, p) => sum + getProjectTotalManday(p), 0).toLocaleString()} M/D
                     </td>
                     <td></td>
@@ -2782,9 +2782,9 @@ export default function ManpowerManagement({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#17263b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>⚖️</span> 계획공수 vs 실투입공수 비교분석
-                <span style={{ fontSize: '12px', background: '#dbeafe', color: '#1e40af', padding: '3px 10px', borderRadius: '12px', fontWeight: 600 }}>
+                <span style={{ fontSize: '12px', background: 'var(--accent-muted)', color: 'var(--accent)', padding: '3px 10px', borderRadius: '12px', fontWeight: 600, border: '1px solid var(--accent-border)' }}>
                   일보 연동
                 </span>
               </h3>
@@ -2792,8 +2792,8 @@ export default function ManpowerManagement({
                 type="button"
                 onClick={() => toggleSection('comparison')}
                 style={{
-                  background: collapsedSections.comparison ? '#3b82f6' : 'var(--bg-card-subtle)',
-                  color: collapsedSections.comparison ? '#fff' : '#475569',
+                  background: collapsedSections.comparison ? 'var(--accent)' : 'var(--bg-card-subtle)',
+                  color: collapsedSections.comparison ? '#fff' : 'var(--text-secondary)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: '4px',
                   padding: '3px 10px',
@@ -2805,7 +2805,7 @@ export default function ManpowerManagement({
                 {collapsedSections.comparison ? '▸ 펼치기' : '▾ 접기'}
               </button>
             </div>
-            <span style={{ fontSize: "12px", color: "#64748b" }}>
+            <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
               * 프로젝트 마스터플랜의 계획 공수와 [프로젝트 이슈관리]에 등록된 일자별 공사일보 실투입 공수를 비교 분석합니다.
             </span>
           </div>
@@ -2822,7 +2822,7 @@ export default function ManpowerManagement({
                 border: '1px solid var(--border-subtle)',
                 borderRadius: '6px',
                 cursor: 'pointer',
-                color: '#334155',
+                color: 'var(--text-primary)',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px',
@@ -2860,14 +2860,14 @@ export default function ManpowerManagement({
             {/* 1. 🏢 프로젝트별 계획 vs 실투입 비교 목록 */}
             <div style={{ marginBottom: '22px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>🏢</span> 프로젝트별 계획 vs 실투입 비교 목록
-                  <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 'normal' }}>({filteredCompData.length}건)</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'normal' }}>({filteredCompData.length}건)</span>
                 </h4>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                   {/* 연도 탭 필터 바 */}
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: 'var(--bg-card-subtle)', padding: '2px 4px', borderRadius: '14px', border: '1px solid var(--border-subtle)' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#475569', marginLeft: '4px', marginRight: '2px' }}>📅 연도:</span>
+                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-secondary)', marginLeft: '4px', marginRight: '2px' }}>📅 연도:</span>
                     <button
                       type="button"
                       onClick={() => setCompYearFilter("ALL")}
@@ -2876,8 +2876,8 @@ export default function ManpowerManagement({
                         borderRadius: '10px',
                         fontSize: '11px',
                         fontWeight: compYearFilter === "ALL" ? 'bold' : 'normal',
-                        background: compYearFilter === "ALL" ? '#2563eb' : 'transparent',
-                        color: compYearFilter === "ALL" ? '#fff' : '#475569',
+                        background: compYearFilter === "ALL" ? 'var(--accent)' : 'transparent',
+                        color: compYearFilter === "ALL" ? '#fff' : 'var(--text-secondary)',
                         border: 'none',
                         cursor: 'pointer'
                       }}
@@ -2894,8 +2894,8 @@ export default function ManpowerManagement({
                           borderRadius: '10px',
                           fontSize: '11px',
                           fontWeight: compYearFilter === yr ? 'bold' : 'normal',
-                          background: compYearFilter === yr ? '#2563eb' : 'transparent',
-                          color: compYearFilter === yr ? '#fff' : '#475569',
+                          background: compYearFilter === yr ? 'var(--accent)' : 'transparent',
+                          color: compYearFilter === yr ? '#fff' : 'var(--text-secondary)',
                           border: 'none',
                           cursor: 'pointer'
                         }}
@@ -2905,7 +2905,7 @@ export default function ManpowerManagement({
                     ))}
                   </div>
 
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-secondary)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     <input
                       type="checkbox"
                       checked={onlyReported}
@@ -2985,7 +2985,7 @@ export default function ManpowerManagement({
                               {normalizeJVName(item.site) || "-"} {item.line ? `· ${normalizeJVName(item.line)}` : ""}
                             </td>
                             <td style={{ padding: '9px 12px' }}>
-                              <span style={{ fontWeight: 600, color: isSelected ? 'var(--accent)' : 'var(--accent)' }}>
+                              <span style={{ fontWeight: 600, color: isSelected ? 'var(--accent)' : 'var(--text-primary)' }}>
                                 {normalizeJVName(item.projectName)}
                               </span>
                             </td>
@@ -3213,7 +3213,7 @@ export default function ManpowerManagement({
                 {/* 📅 일자별 실투입 내역 테이블 */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 'bold', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span>📅</span> [{normalizeJVName(selectedProjectComp.projectName)}] 일자별 실투입 내역 ({selectedProjectComp.reports.length}일치 일보)
                     </h4>
                     {selectedProjectComp.reports.length > 0 && (
@@ -3236,7 +3236,7 @@ export default function ManpowerManagement({
                           padding: '4px 10px',
                           fontSize: '11px',
                           fontWeight: 600,
-                          color: '#475569',
+                          color: 'var(--text-secondary)',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
@@ -3292,25 +3292,25 @@ export default function ManpowerManagement({
 
                             return (
                               <tr key={rowKey} style={{ borderBottom: '1px solid var(--bg-card-subtle)' }}>
-                                <td style={{ padding: '9px 10px', textAlign: 'center', fontWeight: 'bold', color: '#334155', whiteSpace: 'nowrap' }}>
+                                <td style={{ padding: '9px 10px', textAlign: 'center', fontWeight: 'bold', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                                   {r.report_date}
                                 </td>
-                                <td style={{ padding: '9px 10px', textAlign: 'center', fontWeight: 'bold', color: '#10b981', background: '#f0fdf4', whiteSpace: 'nowrap' }}>
+                                <td style={{ padding: '9px 10px', textAlign: 'center', fontWeight: 'bold', color: '#10b981', background: 'var(--success-muted)', whiteSpace: 'nowrap' }}>
                                   {dayTotal}명
                                 </td>
-                                <td style={{ padding: '9px 8px', textAlign: 'center', color: pm > 0 ? '#0f172a' : 'var(--border-subtle)', fontWeight: pm > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '70px' }}>
+                                <td style={{ padding: '9px 8px', textAlign: 'center', color: pm > 0 ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: pm > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '70px' }}>
                                   {pm > 0 ? `${pm}명` : "-"}
                                 </td>
-                                <td style={{ padding: '9px 8px', textAlign: 'center', color: fac > 0 ? '#0f172a' : 'var(--border-subtle)', fontWeight: fac > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '70px' }}>
+                                <td style={{ padding: '9px 8px', textAlign: 'center', color: fac > 0 ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: fac > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '70px' }}>
                                   {fac > 0 ? `${fac}명` : "-"}
                                 </td>
-                                <td style={{ padding: '9px 8px', textAlign: 'center', color: ctrl > 0 ? '#0f172a' : 'var(--border-subtle)', fontWeight: ctrl > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '65px' }}>
+                                <td style={{ padding: '9px 8px', textAlign: 'center', color: ctrl > 0 ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: ctrl > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '65px' }}>
                                   {ctrl > 0 ? `${ctrl}명` : "-"}
                                 </td>
-                                <td style={{ padding: '9px 8px', textAlign: 'center', color: elec > 0 ? '#b45309' : 'var(--border-subtle)', fontWeight: elec > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '65px' }}>
+                                <td style={{ padding: '9px 8px', textAlign: 'center', color: elec > 0 ? '#f59e0b' : 'var(--text-muted)', fontWeight: elec > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '65px' }}>
                                   {elec > 0 ? `${elec}명` : "-"}
                                 </td>
-                                <td style={{ padding: '9px 8px', textAlign: 'center', color: vis > 0 ? '#0f172a' : 'var(--border-subtle)', fontWeight: vis > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '65px' }}>
+                                <td style={{ padding: '9px 8px', textAlign: 'center', color: vis > 0 ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: vis > 0 ? 600 : 'normal', whiteSpace: 'nowrap', width: '65px' }}>
                                   {vis > 0 ? `${vis}명` : "-"}
                                 </td>
                                 <td style={{ padding: '8px 12px', textAlign: 'left', verticalAlign: 'middle' }}>
@@ -3354,7 +3354,7 @@ export default function ManpowerManagement({
                                       {deptChanges && deptChanges.length > 0 && (
                                         <span style={{
                                           fontSize: '11px',
-                                          color: '#1e293b',
+                                          color: 'var(--text-primary)',
                                           fontWeight: 700,
                                           background: 'var(--bg-card-subtle)',
                                           border: '1px solid var(--border-subtle)',
@@ -3372,13 +3372,13 @@ export default function ManpowerManagement({
                                           type="button"
                                           onClick={() => setExpandedCompReports(prev => ({ ...prev, [rowKey]: !prev[rowKey] }))}
                                           style={{
-                                            background: isExpanded ? '#dbeafe' : 'var(--bg-card-subtle)',
-                                            border: isExpanded ? '1px solid #93c5fd' : '1px solid var(--border-subtle)',
+                                            background: isExpanded ? 'var(--accent-muted)' : 'var(--bg-card-subtle)',
+                                            border: isExpanded ? '1px solid var(--accent-border)' : '1px solid var(--border-subtle)',
                                             borderRadius: '4px',
                                             padding: '1px 7px',
                                             fontSize: '11px',
                                             fontWeight: 600,
-                                            color: isExpanded ? '#1d4ed8' : '#475569',
+                                            color: isExpanded ? 'var(--accent)' : 'var(--text-secondary)',
                                             cursor: 'pointer',
                                             display: 'inline-flex',
                                             alignItems: 'center',
@@ -3407,16 +3407,16 @@ export default function ManpowerManagement({
                                         {/* 증원된 부서별 작업내용 리스트 (라벨 아래에 항목 배치) */}
                                         {reasonInfo.deptWorkItems && reasonInfo.deptWorkItems.length > 0 && reasonInfo.deptWorkItems.map((dw, dwIdx) => (
                                           <div key={dwIdx} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                               <span style={{ background: 'var(--border-faint)', padding: '1px 6px', borderRadius: '3px' }}>
                                                 [{dw.dept}]
                                               </span>
                                             </div>
                                             <div style={{ paddingLeft: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                               {dw.items.map((it, itIdx) => (
-                                                <div key={itIdx} style={{ fontSize: '11.5px', color: '#334155', lineHeight: 1.45 }}>
+                                                <div key={itIdx} style={{ fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
                                                   {dw.items.length > 1 && (
-                                                    <span style={{ fontWeight: 600, color: '#64748b', marginRight: '4px' }}>
+                                                    <span style={{ fontWeight: 600, color: 'var(--text-muted)', marginRight: '4px' }}>
                                                       {itIdx + 1}.
                                                     </span>
                                                   )}
@@ -3429,7 +3429,7 @@ export default function ManpowerManagement({
 
                                         {/* 특이사항이 있는 경우 */}
                                         {reasonInfo.specialNote && (
-                                          <div style={{ fontSize: '11.5px', color: '#b45309', background: '#fef3c7', padding: '4px 8px', borderRadius: '4px', border: '1px solid #fde68a' }}>
+                                          <div style={{ fontSize: '11.5px', color: '#f59e0b', background: 'rgba(245, 158, 11, 0.12)', padding: '4px 8px', borderRadius: '4px', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
                                             <b>[특이사항]</b> {reasonInfo.specialNote}
                                           </div>
                                         )}
@@ -3484,14 +3484,14 @@ export default function ManpowerManagement({
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               {Object.entries(selectedDay.departments).map(([dKey, cnt]) => (
                 <div key={dKey} style={{ background: "var(--bg-card-subtle)", border: `1px solid var(--border-faint)`, borderLeft: `4px solid ${getDeptColor(dKey)}`, borderRadius: "8px", padding: "8px 14px", minWidth: "120px" }}>
-                  <div style={{ fontSize: "11px", color: "#64748b", fontWeight: "bold" }}>{getDeptLabel(dKey)}</div>
-                  <div style={{ fontSize: "16px", fontWeight: "bold", color: "#0f172a" }}>{cnt}명</div>
+                  <div style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: "bold" }}>{getDeptLabel(dKey)}</div>
+                  <div style={{ fontSize: "16px", fontWeight: "bold", color: "var(--text-primary)" }}>{cnt}명</div>
                 </div>
               ))}
             </div>
 
             <div style={{ marginTop: "10px" }}>
-              <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#334155" }}>당일 프로젝트별 인력 투입 상세</h4>
+              <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "var(--text-primary)" }}>당일 프로젝트별 인력 투입 상세</h4>
               <table className="mp-table">
                 <thead>
                   <tr>
@@ -3512,7 +3512,7 @@ export default function ManpowerManagement({
                       <tr key={pIdx}>
                         <td><b>{normalizeJVName(pb.manufacturingNo) || "-"}</b></td>
                         <td>{normalizeJVName(pb.site) || "-"} · {normalizeJVName(pb.line) || "-"}</td>
-                        <td><b style={{ color: "#0f172a" }}>{normalizeJVName(pb.name)}</b></td>
+                        <td><b style={{ color: "var(--text-primary)" }}>{normalizeJVName(pb.name)}</b></td>
                         {activeDeptKeys.map(k => (
                           <td key={k} style={{ textAlign: "center" }}>{pb.departments?.[k] || "-"}</td>
                         ))}
@@ -3949,40 +3949,40 @@ export function ProjectManpowerModal({ project, onClose }) {
         </div>
 
         {!mp ? (
-          <div style={{ textAlign: "center", padding: "40px 20px", color: "#64748b" }}>
+          <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-muted)" }}>
             <div style={{ fontSize: "36px", marginBottom: "12px" }}>📋</div>
-            <h4 style={{ margin: "0 0 8px 0", color: "#1e293b" }}>등록된 마스터 플랜 공수 데이터가 없습니다.</h4>
+            <h4 style={{ margin: "0 0 8px 0", color: "var(--text-primary)" }}>등록된 마스터 플랜 공수 데이터가 없습니다.</h4>
             <p style={{ margin: 0, fontSize: "13px" }}>새 프로젝트 등록 시 <b>마스터 플랜 엑셀(Manpower 표 포함)</b>을 첨부하시면 자동으로 공수 데이터가 추출되어 이곳에 표시됩니다.</p>
           </div>
         ) : (
           <>
             {/* KPI Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
-              <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "14px" }}>
-                <div style={{ fontSize: "12px", color: "#166534", fontWeight: "bold" }}>총 투입 공수 (Total Manday)</div>
-                <div style={{ fontSize: "24px", fontWeight: "800", color: "#15803d", marginTop: "4px" }}>{mp.totalManday || 0} M/D</div>
+              <div style={{ background: "var(--bg-card-subtle)", border: "1px solid var(--border-subtle)", borderRadius: "10px", padding: "14px" }}>
+                <div style={{ fontSize: "12px", color: "var(--success)", fontWeight: "bold" }}>총 투입 공수 (Total Manday)</div>
+                <div style={{ fontSize: "24px", fontWeight: "800", color: "var(--text-primary)", marginTop: "4px" }}>{mp.totalManday || 0} M/D</div>
               </div>
-              <div style={{ background: "#fef2f2", border: "1px solid #fecdd3", borderRadius: "10px", padding: "14px" }}>
-                <div style={{ fontSize: "12px", color: "#991b1b", fontWeight: "bold" }}>일일 피크 인원 (Daily Peak)</div>
+              <div style={{ background: "var(--bg-card-subtle)", border: "1px solid var(--border-subtle)", borderRadius: "10px", padding: "14px" }}>
+                <div style={{ fontSize: "12px", color: "var(--danger)", fontWeight: "bold" }}>일일 피크 인원 (Daily Peak)</div>
                 <div style={{ fontSize: "24px", fontWeight: "800", color: "#dc2626", marginTop: "4px" }}>{mp.dailyPeak || 0} 명</div>
               </div>
-              <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "10px", padding: "14px" }}>
-                <div style={{ fontSize: "12px", color: "#1e40af", fontWeight: "bold" }}>공수 투입 일수</div>
-                <div style={{ fontSize: "24px", fontWeight: "800", color: "#2563eb", marginTop: "4px" }}>{activeDaysCount} 일</div>
+              <div style={{ background: "var(--bg-card-subtle)", border: "1px solid var(--border-subtle)", borderRadius: "10px", padding: "14px" }}>
+                <div style={{ fontSize: "12px", color: "#f59e0b", fontWeight: "bold" }}>공수 투입 일수</div>
+                <div style={{ fontSize: "24px", fontWeight: "800", color: "#f59e0b", marginTop: "4px" }}>{activeDaysCount} 일</div>
               </div>
             </div>
 
             {/* Department Breakdown */}
             {sortedDepts.length > 0 && (
               <div>
-                <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "#334155" }}>부서별 투입 요약</h4>
+                <h4 style={{ margin: "0 0 10px 0", fontSize: "14px", color: "var(--text-primary)" }}>부서별 투입 요약</h4>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px" }}>
                   {sortedDepts.map(([rawD, dData]) => {
                     const norm = normalizeDeptKey(rawD);
                     return (
                       <div key={rawD} style={{ background: "var(--bg-card-subtle)", border: "1px solid var(--border-faint)", borderLeft: `4px solid ${getDeptColor(norm)}`, borderRadius: "8px", padding: "10px 14px" }}>
-                        <div style={{ fontSize: "11px", fontWeight: "bold", color: "#64748b" }}>{getDeptLabel(norm)}</div>
-                        <div style={{ fontSize: "18px", fontWeight: "bold", color: "#0f172a", marginTop: "4px" }}>
+                        <div style={{ fontSize: "11px", fontWeight: "bold", color: "var(--text-secondary)" }}>{getDeptLabel(norm)}</div>
+                        <div style={{ fontSize: "18px", fontWeight: "bold", color: "var(--text-primary)", marginTop: "4px" }}>
                           {dData.total || 0} <span style={{ fontSize: "12px", fontWeight: "normal" }}>M/D</span>
                         </div>
                         <div style={{ fontSize: "11px", color: "#dc2626" }}>Peak: {dData.peak || 0}명</div>
@@ -3997,10 +3997,10 @@ export function ProjectManpowerModal({ project, onClose }) {
             {fullDates.length > 0 && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 10px 0" }}>
-                  <h4 style={{ margin: 0, fontSize: "14px", color: "#334155" }}>
+                  <h4 style={{ margin: 0, fontSize: "14px", color: "var(--text-primary)" }}>
                     일자별 인력 투입 타임라인 ({fullDates[0]} ~ {fullDates[fullDates.length - 1]})
                   </h4>
-                  <span style={{ fontSize: "12px", color: "#64748b" }}>전체 {fullDates.length}일 (투입 {activeDaysCount}일)</span>
+                  <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>전체 {fullDates.length}일 (투입 {activeDaysCount}일)</span>
                 </div>
                 <div style={{ overflowX: "auto", maxHeight: "320px", border: "1px solid var(--border-faint)", borderRadius: "8px" }}>
                   <table className="mp-timeline-table">
@@ -4030,7 +4030,7 @@ export function ProjectManpowerModal({ project, onClose }) {
                           <tr key={dateStr}>
                             <td style={{ fontWeight: 600, background: "var(--bg-card-subtle)" }}>{dateStr}</td>
                             {cells.map((v, cIdx) => (
-                              <td key={cIdx} style={{ color: v > 0 ? undefined : "#94a3b8" }}>
+                              <td key={cIdx} style={{ color: v > 0 ? "var(--text-primary)" : "var(--text-muted)" }}>
                                 {v > 0 ? v : "-"}
                               </td>
                             ))}
@@ -4038,7 +4038,7 @@ export function ProjectManpowerModal({ project, onClose }) {
                               className={isPeak ? "mp-peak-cell" : ""}
                               style={{
                                 fontWeight: hasManpower ? "bold" : "normal",
-                                color: hasManpower ? (isPeak ? "#dc2626" : "#0f172a") : "#94a3b8"
+                                color: hasManpower ? (isPeak ? "#dc2626" : "var(--text-primary)") : "var(--text-muted)"
                               }}
                             >
                               {hasManpower ? `${total}명 ${isPeak ? "🔥" : ""}` : "-"}

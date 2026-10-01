@@ -115,10 +115,10 @@ export default function PasswordChangeModal({
           >
             {mode === "recovery" ? "🔄" : "🔑"}
           </div>
-          <h2 style={{ margin: "0 0 6px", fontSize: "20px", color: "#1e293b", fontWeight: 700 }}>
+          <h2 style={{ margin: "0 0 6px", fontSize: "20px", color: "var(--text-primary)", fontWeight: 700 }}>
             {mode === "recovery" ? "비밀번호 재설정" : "비밀번호 변경"}
           </h2>
-          <p style={{ margin: 0, fontSize: "13px", color: "#64748b", lineHeight: 1.4 }}>
+          <p style={{ margin: 0, fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.4 }}>
             {mode === "recovery"
               ? "이메일 인증이 확인되었습니다. 사용할 새 비밀번호를 입력해 주세요."
               : userEmail
@@ -129,7 +129,7 @@ export default function PasswordChangeModal({
 
         <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
           <div>
-            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#334155", marginBottom: "6px" }}>
+            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "6px" }}>
               새 비밀번호
             </label>
             <div style={{ position: "relative" }}>
@@ -156,7 +156,7 @@ export default function PasswordChangeModal({
                   top: "50%",
                   transform: "translateY(-50%)",
                   background: "transparent",
-                  color: "#64748b",
+                  color: "var(--text-secondary)",
                   padding: "4px 8px",
                   fontSize: "13px",
                 }}
@@ -164,13 +164,13 @@ export default function PasswordChangeModal({
                 {showPassword ? "숨김" : "보기"}
               </button>
             </div>
-            <div style={{ marginTop: "4px", fontSize: "11px", color: isLengthValid ? "#16a34a" : "#94a3b8" }}>
+            <div style={{ marginTop: "4px", fontSize: "11px", color: isLengthValid ? "var(--success)" : "var(--text-muted)" }}>
               {isLengthValid ? "✓ 6자리 이상 충족" : "• 최소 6자 이상 필요"}
             </div>
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#334155", marginBottom: "6px" }}>
+            <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "6px" }}>
               새 비밀번호 확인
             </label>
             <input
@@ -239,7 +239,7 @@ export default function PasswordChangeModal({
                 style={{
                   flex: 1,
                   background: "var(--bg-card-subtle)",
-                  color: "#475569",
+                  color: "var(--text-secondary)",
                   fontWeight: 600,
                   fontSize: "14px",
                   height: "42px",

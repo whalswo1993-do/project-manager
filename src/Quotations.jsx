@@ -877,7 +877,7 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                                 borderRadius: '8px',
                                 fontSize: '12.5px',
                                 fontWeight: '600',
-                                color: '#475569',
+                                color: 'var(--text-secondary)',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -1294,7 +1294,7 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                                     border: '1px solid var(--border-subtle)',
                                     borderRadius: '6px',
                                     cursor: 'pointer',
-                                    color: '#334155'
+                                    color: 'var(--text-primary)'
                                 }}
                             >
                                 ▾ 모든 프로젝트 펼치기
@@ -1309,7 +1309,7 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                                     border: '1px solid var(--border-subtle)',
                                     borderRadius: '6px',
                                     cursor: 'pointer',
-                                    color: '#334155'
+                                    color: 'var(--text-primary)'
                                 }}
                             >
                                 ▴ 모든 프로젝트 접기

@@ -1532,7 +1532,7 @@ export default function App() {
       setMsg(
         <div>
           <b>{summaryHeader}</b>
-          <div style={{ fontSize: '12px', marginTop: '4px', lineHeight: '1.5', whiteSpace: 'pre-line', color: '#1e293b' }}>
+          <div style={{ fontSize: '12px', marginTop: '4px', lineHeight: '1.5', whiteSpace: 'pre-line', color: 'var(--text-secondary)' }}>
             {detailLines}
           </div>
         </div>
@@ -2118,15 +2118,15 @@ JSON 출력 예시:
           </div>
         </div>
 
-        {/* KPI 5: PREVAX Electric Blue Accent Card (누적 투입공수) */}
+        {/* KPI 5: 누적 투입공수 (조화로운 앰버 강조 카드) */}
         <div className="prevax-kpi-card prevax-accent-card">
           <div className="prevax-kpi-header">
             <span>Total Manpower</span>
-            <span style={{ fontSize: '13px' }}>⚡</span>
+            <span style={{ fontSize: '13px', color: '#f59e0b' }}>⚡</span>
           </div>
-          <div className="prevax-kpi-value">
+          <div className="prevax-kpi-value" style={{ color: '#f59e0b' }}>
             {yearStats.totalManpower.toLocaleString()}
-            <span className="kpi-unit">M/D</span>
+            <span className="kpi-unit" style={{ color: 'var(--text-tertiary)' }}>M/D</span>
           </div>
           <div className="prevax-kpi-sub">
             <span>누적 투입 공수 총계</span>

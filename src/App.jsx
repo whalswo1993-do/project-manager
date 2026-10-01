@@ -989,6 +989,53 @@ export default function App() {
     setPermissionModal({ feature, role });
   }
 
+  const handleDownloadRoleGuide = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const basePath = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '') + '/';
+    const candidateUrls = [
+      `${basePath}TW_Role_Guide.pptx`,
+      `${basePath}TW_프로젝트관리시스템_권한별_기능_가이드.pptx`,
+      './TW_Role_Guide.pptx',
+      '/TW_Role_Guide.pptx',
+      './TW_프로젝트관리시스템_권한별_기능_가이드.pptx',
+      '/TW_프로젝트관리시스템_권한별_기능_가이드.pptx'
+    ];
+
+    let downloaded = false;
+    for (const url of candidateUrls) {
+      try {
+        const response = await fetch(url, { method: 'GET' });
+        if (response.ok) {
+          const blob = await response.blob();
+          if (blob && blob.size > 1000) {
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = 'TW_프로젝트관리시스템_권한별_기능_가이드.pptx';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(downloadUrl);
+            downloaded = true;
+            break;
+          }
+        }
+      } catch (err) {
+        console.warn(`[Download] Failed from ${url}:`, err);
+      }
+    }
+
+    if (!downloaded) {
+      const link = document.createElement('a');
+      link.href = `${basePath}TW_Role_Guide.pptx`;
+      link.download = 'TW_프로젝트관리시스템_권한별_기능_가이드.pptx';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   const peopleNames = [...new Set(people.map(p => p.name))].sort();
 
   const view = useMemo(() => {
@@ -1813,6 +1860,24 @@ JSON 출력 예시:
               <button onClick={handleSignOut}>로그아웃</button>
             </div>
             <div style={{ display: 'flex', gap: '4px' }}>
+              <button
+                type="button"
+                onClick={handleDownloadRoleGuide}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  color: '#334155',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer'
+                }}
+                title="시스템 권한별 상세 기능 가이드 PPT를 다운로드합니다"
+              >
+                📥 권한 가이드 PPT
+              </button>
               {role === "admin" && (
                 <button
                   onClick={() => {
@@ -3319,7 +3384,31 @@ JSON 출력 예시:
             <button className="close" onClick={() => setModal(null)}>×</button>
             {modal === "users" && (
               <div style={{ maxWidth: "720px", margin: "0 auto" }}>
-                <h2 style={{ margin: "0 0 8px", fontSize: "20px", color: "#0f172a" }}>사용자 계정·권한 관리</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                  <h2 style={{ margin: 0, fontSize: "20px", color: "#0f172a" }}>사용자 계정·권한 관리</h2>
+                  <button
+                    type="button"
+                    onClick={handleDownloadRoleGuide}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '6px 14px',
+                      background: 'linear-gradient(135deg, #d97706, #b45309)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(180, 83, 9, 0.25)',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="시스템 전체 권한별 기능 및 제한 안내 PPT를 다운로드합니다"
+                  >
+                    📥 권한 가이드 PPT 다운로드
+                  </button>
+                </div>
                 <div style={{
                   padding: "10px 14px",
                   background: "#f0fdf4",
@@ -3501,6 +3590,29 @@ JSON 출력 예시:
               <span>로그인: <b>{session?.user?.email}</b></span>
               <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold', fontSize: '11px' }}>{(role || 'grade1').toUpperCase()}</span>
             </div>
+            <button
+              type="button"
+              onClick={handleDownloadRoleGuide}
+              style={{
+                width: '100%',
+                padding: '10px',
+                marginBottom: '8px',
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                color: '#1e293b',
+                fontSize: '13px',
+                fontWeight: 600,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}
+              title="시스템의 각 등급별 기능 및 차이점 가이드 문서를 다운로드합니다"
+            >
+              📥 권한별 전체 기능 가이드 PPT 다운로드
+            </button>
             <button onClick={() => setPermissionModal(null)} style={{ width: '100%', padding: '11px', background: 'linear-gradient(135deg, #1f6feb, #1152b3)', color: '#fff', fontSize: '14px', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
               확인
             </button>

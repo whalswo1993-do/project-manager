@@ -40,6 +40,7 @@ scratch/
 *.pptx
 !public/*.pptx
 !*권한별_기능_가이드.pptx
+!TW_Role_Guide.pptx
 !public/*.xlsx
 !public/*.xls
 !*master-schedule-template.xlsx

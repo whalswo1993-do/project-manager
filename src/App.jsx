@@ -245,6 +245,7 @@ export default function App() {
   const edit = ["admin", "grade3", "grade2"].includes(role);
   const del = ["admin", "grade3"].includes(role);
   const [users, setUsers] = useState([]);
+  const [newRegisteredUsers, setNewRegisteredUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
   const [people, setPeople] = useState([]);
@@ -370,6 +371,60 @@ export default function App() {
     : selectedYears.length === 1
       ? `${selectedYears[0]}년`
       : `${selectedYears.slice().sort().join(', ')}년 (${selectedYears.length}개년)`;
+
+  // 최고 관리자를 위한 신규 가입자 알림 로직 (마지막 확인 시점 이후 새로 가입한 인원 자동 감지)
+  const checkNewRegisteredUsers = (userList) => {
+    if (!userList || userList.length === 0) return;
+    try {
+      const savedRaw = localStorage.getItem("pm_last_known_user_emails");
+      if (!savedRaw) {
+        // 최초 접속 시점: 기존에 이미 등록된 유저들을 기준선(Baseline)으로 저장하여 불필요한 일괄 알림 방지
+        const initialEmails = userList.map(u => (u.email || "").toLowerCase()).filter(Boolean);
+        localStorage.setItem("pm_last_known_user_emails", JSON.stringify(initialEmails));
+        localStorage.setItem("pm_last_users_check_time", new Date().toISOString());
+        return;
+      }
+
+      const knownEmails = new Set(JSON.parse(savedRaw));
+      const newlyAdded = userList.filter(u => {
+        const mail = (u.email || "").toLowerCase();
+        return mail && !knownEmails.has(mail);
+      });
+
+      setNewRegisteredUsers(newlyAdded);
+    } catch (e) {
+      console.warn("신규 가입자 감지 오류:", e);
+    }
+  };
+
+  // 관리자가 확인 완료 시 (모달 열기 또는 배너 닫기)
+  const markUsersAsChecked = () => {
+    try {
+      const allEmails = users.map(u => (u.email || "").toLowerCase()).filter(Boolean);
+      localStorage.setItem("pm_last_known_user_emails", JSON.stringify(allEmails));
+      localStorage.setItem("pm_last_users_check_time", new Date().toISOString());
+    } catch (e) {}
+    setNewRegisteredUsers([]);
+  };
+
+  // 최고 관리자일 때 60초 폴링 및 화면 복귀(focus) 시 최신 가입자 백그라운드 자동 조회
+  useEffect(() => {
+    if (role !== "admin") return;
+
+    const handleFocus = () => {
+      load("profiles");
+    };
+    window.addEventListener("focus", handleFocus);
+
+    const interval = setInterval(() => {
+      load("profiles");
+    }, 60000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      clearInterval(interval);
+    };
+  }, [role]);
 
   const [msg, setMsg] = useState("");
   const [newSite, setNewSite] = useState("");
@@ -746,9 +801,16 @@ export default function App() {
         });
 
         setUsers(combined);
+        if (role === "admin") {
+          checkNewRegisteredUsers(combined);
+        }
       } catch (err) {
         console.error("profiles load error:", err);
-        setUsers(getTestProfiles().filter(tp => !isAccountDeleted(tp.email) && !tp.deleted));
+        const fallback = getTestProfiles().filter(tp => !isAccountDeleted(tp.email) && !tp.deleted);
+        setUsers(fallback);
+        if (role === "admin") {
+          checkNewRegisteredUsers(fallback);
+        }
       }
       return;
     }
@@ -1751,7 +1813,42 @@ JSON 출력 예시:
               <button onClick={handleSignOut}>로그아웃</button>
             </div>
             <div style={{ display: 'flex', gap: '4px' }}>
-              {role === "admin" && <button onClick={() => setModal("users")}>사용자 권한 관리</button>}
+              {role === "admin" && (
+                <button
+                  onClick={() => {
+                    setModal("users");
+                    markUsersAsChecked();
+                  }}
+                  style={{
+                    position: 'relative',
+                    background: newRegisteredUsers.length > 0 ? '#1d4ed8' : '',
+                    color: newRegisteredUsers.length > 0 ? '#fff' : '',
+                    fontWeight: newRegisteredUsers.length > 0 ? '700' : 'normal'
+                  }}
+                  title={newRegisteredUsers.length > 0 ? `신규 가입자 ${newRegisteredUsers.length}명이 있습니다.` : "사용자 권한 관리"}
+                >
+                  사용자 권한 관리
+                  {newRegisteredUsers.length > 0 && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: '-7px',
+                        right: '-7px',
+                        background: '#ef4444',
+                        color: '#fff',
+                        borderRadius: '10px',
+                        padding: '1px 6px',
+                        fontSize: '10px',
+                        fontWeight: '800',
+                        border: '2px solid #fff',
+                        boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)'
+                      }}
+                    >
+                      {newRegisteredUsers.length}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
           </nav>
         </header>
@@ -1875,6 +1972,79 @@ JSON 출력 예시:
           </div>
         </div>
       </div>
+
+      {/* 최고 관리자 전용 신규 가입자 알림 배너 */}
+      {role === "admin" && newRegisteredUsers.length > 0 && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+            border: '1.5px solid #3b82f6',
+            borderRadius: '10px',
+            padding: '12px 18px',
+            margin: '8px 0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.15)',
+            flexWrap: 'wrap',
+            gap: '10px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '24px' }}>🔔</span>
+            <div>
+              <div style={{ fontWeight: 800, color: '#1e3a8a', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>신규 가입자가 있습니다!</span>
+                <span style={{ background: '#2563eb', color: '#fff', fontSize: '11px', padding: '1px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
+                  {newRegisteredUsers.length}명 대기중
+                </span>
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#1e40af', marginTop: '3px' }}>
+                가입자 메일주소: <b style={{ color: '#0f172a' }}>{newRegisteredUsers.map(u => u.email).join(', ')}</b>
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setModal("users");
+                markUsersAsChecked();
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                color: '#fff',
+                border: 'none',
+                padding: '7px 14px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(37, 99, 235, 0.3)'
+              }}
+            >
+              권한 설정 바로가기 ⚙️
+            </button>
+            <button
+              type="button"
+              onClick={markUsersAsChecked}
+              style={{
+                background: '#ffffff',
+                border: '1px solid #bfdbfe',
+                color: '#1e40af',
+                padding: '7px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+              title="알림을 닫고 확인 완료 처리합니다"
+            >
+              확인 (닫기)
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 글로벌 복수 연간 단위 선택기 (Global Multi-Year Toolbar: 당해년도, 최근 2개년, 최근 3개년, 전체 및 복수 토글) */}
       <div className="global-multi-year-bar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', margin: '8px 0', flexWrap: 'wrap', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
@@ -3199,6 +3369,11 @@ JSON 출력 예시:
                             {isSelf && !isSuperAdmin && (
                               <span style={{ fontSize: "10px", background: "#e0e7ff", color: "#4338ca", padding: "1px 6px", borderRadius: "8px", fontWeight: "bold" }}>
                                 현재접속
+                              </span>
+                            )}
+                            {newRegisteredUsers.some(nu => nu.email?.toLowerCase() === u.email?.toLowerCase()) && (
+                              <span style={{ fontSize: "10px", background: "#dcfce7", color: "#15803d", padding: "1px 6px", borderRadius: "8px", fontWeight: "bold", border: "1px solid #bbf7d0" }}>
+                                ⭐ 신규 가입
                               </span>
                             )}
                           </div>

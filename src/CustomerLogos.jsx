@@ -114,9 +114,9 @@ export function SamsungSdiLogo({ height = 18, className = "" }) {
 }
 
 /**
- * 3. Hyundai 로고 (초록색 테마 적용): 타원형 비스듬한 H 엠블럼 + HYUNDAI 텍스트
+ * 3. Hyundai 로고: 사용자가 제공한 원본 이미지 그대로 현대 공식 딥네이비(#002c5f) 로고 적용
  */
-export function HyundaiLogo({ height = 22, color = "#10b981", className = "" }) {
+export function HyundaiLogo({ height = 22, color = "#002c5f", className = "" }) {
   return (
     <svg
       height={height}
@@ -125,7 +125,7 @@ export function HyundaiLogo({ height = 22, color = "#10b981", className = "" }) 
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       style={{ verticalAlign: "middle", display: "inline-block", flexShrink: 0 }}
-      aria-label="Hyundai 로고 (초록색)"
+      aria-label="Hyundai 로고 (원본 네이비)"
     >
       {/* 타원 외곽선 */}
       <ellipse cx="60" cy="28" rx="46" ry="24" stroke={color} strokeWidth="5.5" fill="none" />
@@ -148,7 +148,7 @@ export function HyundaiLogo({ height = 22, color = "#10b981", className = "" }) 
         fill={color}
       />
 
-      {/* HYUNDAI 텍스트 (초록색) */}
+      {/* HYUNDAI 텍스트 */}
       <text
         x="60"
         y="66"

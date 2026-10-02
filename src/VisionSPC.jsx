@@ -9,7 +9,7 @@ import { supabase } from './supabase';
 ChartJS.register(CategoryScale, LinearScale, BarController, LineController, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
 
-export default function VisionSPC() {
+export default function VisionSPC({ currentCustomer = "SK on" }) {
     const [isDragging, setIsDragging] = useState(false);
     const [items, setItems] = useState([]); // [{ name, data: [], specs: { target, usl, lsl, subgroup }, stats: {} }]
     const [activeItemIndex, setActiveItemIndex] = useState(null);
@@ -34,7 +34,17 @@ export default function VisionSPC() {
             const loadedPresets = {};
             if (data) {
                 data.forEach(row => {
-                    loadedPresets[row.name] = row.data;
+                    const rowName = row.name || '';
+                    const match = rowName.match(/^\[(.*?)\]\s*(.*)$/);
+                    let cust = "SK on";
+                    let displayName = rowName;
+                    if (match) {
+                        cust = match[1];
+                        displayName = match[2];
+                    }
+                    if (cust === currentCustomer) {
+                        loadedPresets[displayName] = row.data;
+                    }
                 });
             }
             setCustomPresets(loadedPresets);
@@ -255,10 +265,11 @@ export default function VisionSPC() {
             presetData[item.name] = { ...item.specs };
         });
         
+        const dbKey = `[${currentCustomer}] ${rawName}`;
         try {
             const { error } = await supabase
                 .from('spc_presets')
-                .upsert({ name: rawName, data: presetData }, { onConflict: 'name' });
+                .upsert({ name: dbKey, data: presetData }, { onConflict: 'name' });
                 
             if (error) throw error;
             
@@ -266,7 +277,7 @@ export default function VisionSPC() {
             setCustomPresets(updated);
             setNewPresetName('');
             setPresetSelect(`custom_${rawName}`);
-            alert(`모델 스펙 저장 완료: '${rawName}'`);
+            alert(`[${currentCustomer}] 모델 스펙 저장 완료: '${rawName}'`);
         } catch (error) {
             console.error("Failed to save preset to Supabase", error);
             alert("저장 중 오류가 발생했습니다.");
@@ -294,12 +305,13 @@ export default function VisionSPC() {
     const handleDeletePreset = async () => {
         if (!presetSelect || presetSelect.startsWith("builtin_")) return;
         const cleanName = presetSelect.replace("custom_", "");
+        const dbKey = `[${currentCustomer}] ${cleanName}`;
         if (window.confirm(`'${cleanName}' 모델 스펙 프리셋을 삭제하시겠습니까?`)) {
             try {
                 const { error } = await supabase
                     .from('spc_presets')
                     .delete()
-                    .eq('name', cleanName);
+                    .in('name', [dbKey, cleanName]);
                     
                 if (error) throw error;
                 

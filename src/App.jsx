@@ -107,9 +107,17 @@ function assignDistinctColors(projects, palette) {
 const iso = (d = new Date()) => d.toISOString().slice(0, 10);
 const dt = s => new Date(`${s}T00:00:00`);
 const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+export const CUSTOMERS = [
+  { id: "SK on", label: "SK on", sub: "배터리", color: "#ea580c", icon: "⚡", cls: "tab-customer-sk" },
+  { id: "Samsung SDI", label: "Samsung SDI", sub: "배터리", color: "#2563eb", icon: "🔷", cls: "tab-customer-sdi" },
+  { id: "Hyundai", label: "Hyundai", sub: "완성차", color: "#0ea5e9", icon: "🚗", cls: "tab-customer-hyundai" }
+];
+export const DEFAULT_CUSTOMER = "SK on";
+
 const newMs = () => Array.from({ length: 5 }, () => ({ id: uid(), name: "", startDate: iso(), endDate: iso() }));
 
-const blank = () => ({
+const blank = (defaultCustomer = "SK on") => ({
+  customer: defaultCustomer,
   manufacturingNo: "",
   site: "",
   line: "",
@@ -142,7 +150,8 @@ const from = p => {
   const rawList = p.milestones || [];
   const meta = rawList.find(x => x && x.id === '__status_meta__');
   const manpowerMeta = rawList.find(x => x && x.id === '__manpower_meta__');
-  const cleanMs = rawList.filter(x => x && x.id !== '__status_meta__' && x.id !== '__manpower_meta__').map(norm);
+  const customerMeta = rawList.find(x => x && x.id === '__customer_meta__');
+  const cleanMs = rawList.filter(x => x && x.id !== '__status_meta__' && x.id !== '__manpower_meta__' && x.id !== '__customer_meta__').map(norm);
   const isPOWaiting = (p.status === "PO대기중");
   const isManual = isPOWaiting || (meta ? Boolean(meta.isManual) : false);
   const manualBy = meta?.by || (isManual ? (p.pm || p.manager || "수동지정 담당자") : "");
@@ -151,6 +160,7 @@ const from = p => {
 
   return {
     id: p.id,
+    customer: p.customer || customerMeta?.customer || "SK on",
     manufacturingNo: normalizeJVName(p.manufacturing_no || ""),
     site: normalizeJVName(p.site || ""),
     line: normalizeJVName(p.line || ""),
@@ -176,19 +186,23 @@ const from = p => {
 
 const to = p => {
   const rawMs = p.milestones || [];
-  const cleanMs = rawMs.filter(m => m && m.id !== '__status_meta__' && m.id !== '__manpower_meta__');
+  const cleanMs = rawMs.filter(m => m && m.id !== '__status_meta__' && m.id !== '__manpower_meta__' && m.id !== '__customer_meta__');
   const existingMeta = rawMs.find(m => m && m.id === '__status_meta__');
   const existingManpowerMeta = rawMs.find(m => m && m.id === '__manpower_meta__');
+  const existingCustomerMeta = rawMs.find(m => m && m.id === '__customer_meta__');
   const isPOWaiting = (p.status === "PO대기중");
   const isManual = isPOWaiting || (p.isManualStatus !== undefined ? Boolean(p.isManualStatus) : (existingMeta ? Boolean(existingMeta.isManual) : false));
   const manualBy = p.manualStatusBy !== undefined && p.manualStatusBy !== "" ? p.manualStatusBy : (existingMeta?.by || (isManual ? (p.pm || "수동지정 담당자") : ""));
   const statusMeta = { id: '__status_meta__', isManual, by: manualBy, at: existingMeta?.at || iso(), startDate: p.startDate, endDate: p.endDate };
   const manpowerMeta = p.manpower ? { id: '__manpower_meta__', manpower: p.manpower } : (existingManpowerMeta || null);
-  const finalMilestones = [...cleanMs, statusMeta];
+  const custVal = p.customer || existingCustomerMeta?.customer || "SK on";
+  const customerMeta = { id: '__customer_meta__', customer: custVal };
+  const finalMilestones = [...cleanMs, statusMeta, customerMeta];
   if (manpowerMeta) finalMilestones.push(manpowerMeta);
 
   return {
     id: p.id,
+    customer: custVal,
     manufacturing_no: normalizeJVName((p.manufacturingNo || "").trim()) || null,
     site: normalizeJVName(p.site),
     line: normalizeJVName((p.line || "").trim()),
@@ -271,12 +285,46 @@ export default function App() {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
+  // 고객사별 독립 시스템 운영 상태 (SK on / Samsung SDI / Hyundai)
+  const [currentCustomer, setCurrentCustomer] = useState(() => {
+    try {
+      const saved = localStorage.getItem("pm_current_customer");
+      if (saved && ["SK on", "Samsung SDI", "Hyundai"].includes(saved)) {
+        return saved;
+      }
+    } catch (e) {}
+    return "SK on";
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("pm_current_customer", currentCustomer);
+    } catch (e) {}
+  }, [currentCustomer]);
+
   const [users, setUsers] = useState([]);
   const [newRegisteredUsers, setNewRegisteredUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
   const [people, setPeople] = useState([]);
-  const [form, setForm] = useState(blank());
+  const [form, setForm] = useState(() => blank("SK on"));
+
+  // 고객사별 등록 건수 집계
+  const customerCounts = useMemo(() => {
+    const counts = { "SK on": 0, "Samsung SDI": 0, "Hyundai": 0 };
+    (projects || []).forEach(p => {
+      const c = p.customer || "SK on";
+      if (counts[c] !== undefined) counts[c]++;
+      else counts["SK on"]++;
+    });
+    return counts;
+  }, [projects]);
+
+  // 현재 선택된 고객사의 프로젝트 목록만 격리 추출
+  const currentCustomerProjects = useMemo(() => {
+    return (projects || []).filter(p => (p.customer || "SK on") === currentCustomer);
+  }, [projects, currentCustomer]);
+
   const [editing, setEditing] = useState(null);
   const [milestones, setMilestones] = useState(newMs());
   const [modal, setModal] = useState(null);
@@ -1047,7 +1095,7 @@ export default function App() {
   const peopleNames = [...new Set(people.map(p => p.name))].sort();
 
   const view = useMemo(() => {
-    const list = projects.map(p => {
+    const list = currentCustomerProjects.map(p => {
       const cleanMs = (p.milestones || [])
         .filter(x => x && x.id !== '__status_meta__')
         .sort((a, b) => {
@@ -1117,7 +1165,7 @@ export default function App() {
 
     // 동시 진행 프로젝트 간 중복 및 유사 색상을 방지하는 지능형 색상 분산 적용
     return assignDistinctColors(list, COLORS);
-  }, [projects, search, filter, siteFilter, personFilter, selectedYears, isAllYears]);
+  }, [currentCustomerProjects, search, filter, siteFilter, personFilter, selectedYears, isAllYears]);
 
   // 등록된 프로젝트들의 기간에서 추출한 고유 연도 목록 (최신순)
   const availableYears = useMemo(() => {
@@ -1125,7 +1173,7 @@ export default function App() {
     const currentYear = new Date().getFullYear();
     yearsSet.add(String(currentYear)); // 현재 연도 기본 포함
 
-    projects.forEach(p => {
+    currentCustomerProjects.forEach(p => {
       if (p.startDate && p.startDate.length >= 4) {
         const yStart = parseInt(p.startDate.slice(0, 4), 10);
         if (!isNaN(yStart)) yearsSet.add(String(yStart));
@@ -1198,7 +1246,7 @@ export default function App() {
     if (editing && !edit) return showPermissionModal("프로젝트 수정");
     if (!form.site || !form.name.trim()) return setMsg("Site, 프로젝트명은 필수입니다.");
     if (dt(form.endDate) < dt(form.startDate)) return setMsg("프로젝트 종료일을 확인하세요.");
-    const m = milestones.filter(x => x.name.trim() && x.startDate && x.endDate && x.id !== '__status_meta__' && x.id !== '__manpower_meta__');
+    const m = milestones.filter(x => x.name.trim() && x.startDate && x.endDate && x.id !== '__status_meta__' && x.id !== '__manpower_meta__' && x.id !== '__customer_meta__');
     if (m.some(x => dt(x.endDate) < dt(x.startDate))) return setMsg("마일스톤 종료일은 시작일 이후여야 합니다.");
 
     const isPOWaiting = (form.status === "PO대기중");
@@ -1206,7 +1254,9 @@ export default function App() {
     const manualBy = isManual ? (form.manualStatusBy || currentUserName) : "";
     const calculatedStatus = isManual ? form.status : computeAutoStatus({ ...form, milestones: m });
     const statusMeta = { id: '__status_meta__', isManual, by: manualBy, at: iso(), startDate: form.startDate, endDate: form.endDate };
-    const finalMilestones = [...m, statusMeta];
+    const targetCustomer = form.customer || currentCustomer || "SK on";
+    const customerMeta = { id: '__customer_meta__', customer: targetCustomer };
+    const finalMilestones = [...m, statusMeta, customerMeta];
     if (form.manpower) finalMilestones.push({ id: '__manpower_meta__', manpower: form.manpower });
 
     let error;
@@ -1220,6 +1270,7 @@ export default function App() {
     } else {
       const row = {
         ...form,
+        customer: targetCustomer,
         status: calculatedStatus,
         isManualStatus: isManual,
         manualStatusBy: manualBy,
@@ -1227,9 +1278,21 @@ export default function App() {
         milestones: finalMilestones,
         manpower: form.manpower || null
       };
-      ({ error } = editing
-        ? await supabase.from("projects").update(to(row)).eq("id", editing)
-        : await supabase.from("projects").insert(to(row)));
+      let payload = to(row);
+      let res = editing
+        ? await supabase.from("projects").update(payload).eq("id", editing)
+        : await supabase.from("projects").insert(payload);
+      error = res.error;
+
+      // DB에 customer 컬럼이 없는 경우 milestones 메타데이터로 안전하게 재시도
+      if (error && String(error.message || "").toLowerCase().includes("customer")) {
+        const fallback = { ...payload };
+        delete fallback.customer;
+        const retry = editing
+          ? await supabase.from("projects").update(fallback).eq("id", editing)
+          : await supabase.from("projects").insert(fallback);
+        error = retry.error;
+      }
     }
 
     if (error) {
@@ -1456,14 +1519,15 @@ export default function App() {
         if (matchedSite) siteVal = matchedSite.name;
       }
 
-      // Check against current DB list + already processed in this batch
-      const existing = processedProjects.find(ep => isSameProjectIdentity(ep, p, sites));
+      // Check against current DB list for same customer + already processed in this batch
+      const existing = processedProjects.find(ep => (ep.customer || 'SK on') === currentCustomer && isSameProjectIdentity(ep, p, sites));
       const cleanMs = p.milestones.map(m => ({ ...m, name: normalizeJVName(m.name), id: uid() }));
       const autoStat = computeAutoStatus({ startDate: p.startDate || iso(), endDate: p.endDate || iso(), milestones: cleanMs });
 
       if (existing) {
         const updatedExisting = {
           ...existing,
+          customer: currentCustomer,
           startDate: p.startDate || existing.startDate,
           endDate: p.endDate || existing.endDate,
           manufacturingNo: normalizeJVName(p.manufacturingNo || existing.manufacturingNo || ""),
@@ -1472,7 +1536,15 @@ export default function App() {
           status: autoStat, autoStatus: true, isManualStatus: false, manualStatusBy: "",
           milestones: cleanMs, manpower: p.manpower || existing.manpower || null
         };
-        const { error } = await supabase.from("projects").update(to(updatedExisting)).eq("id", existing.id);
+        let payload = to(updatedExisting);
+        let { error } = await supabase.from("projects").update(payload).eq("id", existing.id);
+        if (error && String(error.message || "").toLowerCase().includes("customer")) {
+          const fallback = { ...payload };
+          delete fallback.customer;
+          const retry = await supabase.from("projects").update(fallback).eq("id", existing.id);
+          error = retry.error;
+        }
+
         if (error) {
           console.error("Auto-update error for", p.projectName, error);
           errorLogs.push(`${p.projectName}: ${error.message}`);
@@ -1484,17 +1556,29 @@ export default function App() {
         }
       } else {
         const newRow = {
-          ...blank(), id: uid(), name: projName,
-          startDate: p.startDate || iso(), endDate: p.endDate || iso(),
+          ...blank(currentCustomer),
+          customer: currentCustomer,
+          id: uid(),
+          name: projName,
+          startDate: p.startDate || iso(),
+          endDate: p.endDate || iso(),
           manufacturingNo: normalizeJVName(p.manufacturingNo || form.manufacturingNo || ""),
           line: normalizeJVName(p.line || form.line || ""),
           site: normalizeJVName(siteVal || form.site || "선택 안됨"),
           status: autoStat, autoStatus: true, isManualStatus: false, manualStatusBy: "",
-          milestones: cleanMs, manpower: p.manpower || null
+          milestones: cleanMs,
+          manpower: p.manpower || null
         };
 
         let insertData = to(newRow);
         let { error } = await supabase.from("projects").insert(insertData);
+        if (error && String(error.message || "").toLowerCase().includes("customer")) {
+          const fallback = { ...insertData };
+          delete fallback.customer;
+          const retry = await supabase.from("projects").insert(fallback);
+          error = retry.error;
+          insertData = fallback;
+        }
 
         // If duplicate key error (manufacturing_no collision), append equipment suffix or random tag and retry
         if (error && (error.code === "23505" || String(error.message).includes("unique") || String(error.message).includes("duplicate"))) {
@@ -1925,6 +2009,45 @@ JSON 출력 예시:
           </div>
         </header>
 
+        {/* ========================================================
+            고객사별 독립 시스템 선택 바 (Customer Selection Bar)
+            ======================================================== */}
+        <div className="system-customer-bar-row">
+          <div className="system-customer-capsule">
+            {CUSTOMERS.map(cust => {
+              const isSelected = currentCustomer === cust.id;
+              const count = customerCounts[cust.id] || 0;
+              return (
+                <button
+                  key={cust.id}
+                  type="button"
+                  onClick={() => {
+                    setCurrentCustomer(cust.id);
+                    setForm(f => ({ ...f, customer: cust.id }));
+                  }}
+                  className={`customer-tab-btn ${cust.cls} ${isSelected ? 'active' : ''}`}
+                  title={`${cust.label} 독립 시스템으로 전환합니다 (${count}건 등록됨)`}
+                >
+                  <span className="customer-logo-badge">{cust.icon}</span>
+                  <span style={{ fontWeight: 800, fontSize: '13.5px' }}>{cust.label}</span>
+                  <span className="customer-count-badge">{count}건</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="customer-meta-status">
+            <div className="customer-isolated-pill" title="선택된 고객사의 데이터만 독립적으로 등록 및 조회됩니다">
+              <span style={{ fontSize: '12px' }}>🔒</span>
+              <span><b>{currentCustomer}</b> 독립 데이터 격리 운영 중</span>
+            </div>
+            <div className="customer-future-analytics-pill" title="고객사별 운영 안정화 후 전사 통합 분석 대시보드가 제공될 예정입니다">
+              <span style={{ fontSize: '12px' }}>📊</span>
+              <span>종합 분석 (안정화 후 오픈 예정)</span>
+            </div>
+          </div>
+        </div>
+
         <div className="system-nav-bar-row">
           <div className="system-nav-capsule">
             <button
@@ -2227,15 +2350,15 @@ JSON 출력 예시:
       </div>
 
       {currentView === "vision-spc" ? (
-        <ErrorBoundary><VisionSPC /></ErrorBoundary>
+        <ErrorBoundary><VisionSPC currentCustomer={currentCustomer} /></ErrorBoundary>
       ) : currentView === "issues" ? (
-        <IssueManagement projects={view} role={role} onPermissionDenied={showPermissionModal} selectedYears={selectedYears} />
+        <IssueManagement projects={currentCustomerProjects} role={role} onPermissionDenied={showPermissionModal} selectedYears={selectedYears} currentCustomer={currentCustomer} />
       ) : currentView === "quotations" ? (
-        <Quotations projects={projects} session={session} role={role} onPermissionDenied={showPermissionModal} />
+        <Quotations projects={currentCustomerProjects} session={session} role={role} onPermissionDenied={showPermissionModal} currentCustomer={currentCustomer} />
       ) : currentView === "manpower" ? (
         <ManpowerManagement
           projects={view}
-          allProjects={projects}
+          allProjects={currentCustomerProjects}
           sites={sites}
           onSelectProject={(p) => {
             if (!canViewManpowerDetail) return showPermissionModal("공수 상세 조회");
@@ -2247,6 +2370,7 @@ JSON 출력 예시:
           onPresetYears={handlePresetYears}
           role={role}
           onPermissionDenied={showPermissionModal}
+          currentCustomer={currentCustomer}
         />
       ) : (
         <>
@@ -2259,10 +2383,10 @@ JSON 출력 예시:
                 </div>
                 <div className="system-title-text">
                   <h2>
-                    프로젝트 일정 관리 시스템 (Project Schedule Management)
+                    {currentCustomer} · 프로젝트 일정 관리 시스템
                   </h2>
                   <p>
-                    마스터 스케줄 일정 계획, 마일스톤 Gantt 차트 및 프로젝트 종합 모니터링
+                    [{currentCustomer}] 마스터 스케줄 일정 계획, 마일스톤 Gantt 차트 및 종합 공수 모니터링
                   </p>
                 </div>
               </div>
@@ -2331,6 +2455,19 @@ JSON 출력 예시:
                       {collapsedSections.form ? "▸ 펼치기" : "▾ 접기"}
                     </span>
                   </h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                    <span style={{
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      padding: '3px 10px',
+                      borderRadius: '8px',
+                      background: (form.customer || currentCustomer) === 'SK on' ? 'rgba(234, 88, 12, 0.14)' : (form.customer || currentCustomer) === 'Samsung SDI' ? 'rgba(37, 99, 235, 0.14)' : 'rgba(14, 165, 233, 0.14)',
+                      color: (form.customer || currentCustomer) === 'SK on' ? '#ea580c' : (form.customer || currentCustomer) === 'Samsung SDI' ? '#2563eb' : '#0ea5e9',
+                      border: `1px solid ${(form.customer || currentCustomer) === 'SK on' ? 'rgba(234, 88, 12, 0.3)' : (form.customer || currentCustomer) === 'Samsung SDI' ? 'rgba(37, 99, 235, 0.3)' : 'rgba(14, 165, 233, 0.3)'}`
+                    }}>
+                      소속 고객사: <b>{form.customer || currentCustomer}</b>
+                    </span>
+                  </div>
                   {editing && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
                       <span style={{ fontSize: '13px', color: '#1d4ed8', fontWeight: 'bold', background: '#eff6ff', padding: '3px 9px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
@@ -2338,7 +2475,7 @@ JSON 출력 예시:
                       </span>
                       <button
                         type="button"
-                        onClick={() => { setEditing(null); setForm(blank()); setMilestones(newMs()); setMsg(""); }}
+                        onClick={() => { setEditing(null); setForm(blank(currentCustomer)); setMilestones(newMs()); setMsg(""); }}
                         style={{ fontSize: '12px', padding: '4px 10px', background: 'var(--bg-card-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', cursor: 'pointer' }}
                       >
                         수정 취소
@@ -2511,6 +2648,11 @@ JSON 출력 예시:
               {!collapsedSections.form ? (
                 <>
                   <div className="grid">
+                    <label>고객사 *
+                      <select value={form.customer || currentCustomer} disabled={role === "grade2"} onChange={e => setForm({ ...form, customer: e.target.value })}>
+                        {CUSTOMERS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                      </select>
+                    </label>
                     <label>제조번호<input value={form.manufacturingNo} disabled={role === "grade2"} onChange={e => setForm({ ...form, manufacturingNo: e.target.value })} /></label>
                     <label>Site *
                       <select value={form.site} disabled={role === "grade2"} onChange={e => setForm({ ...form, site: e.target.value })}>

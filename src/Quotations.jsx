@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as XLSX from 'xlsx';
 
-export default function Quotations({ projects, role, onPermissionDenied }) {
+export default function Quotations({ projects, role, onPermissionDenied, currentCustomer = "SK on" }) {
     const canManage = ['admin', 'grade3'].includes(role);
     const notifyPermission = (feature) => {
         if (onPermissionDenied) {
@@ -316,12 +316,20 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
                 const { error: delErr } = await supabase.from('quotation_items').delete().eq('quotation_id', targetQuotId);
                 if (delErr) throw delErr;
             } else {
-                const { data: newQuot, error: qErr } = await supabase.from('quotations').insert({
+                let quotPayload = {
+                    customer: currentCustomer,
                     project_id: projectId,
                     project_name: projectName,
                     title: extractedData.title,
                     total_amount: totalAmount
-                }).select().single();
+                };
+                let { data: newQuot, error: qErr } = await supabase.from('quotations').insert(quotPayload).select().single();
+                if (qErr && String(qErr.message || '').toLowerCase().includes('customer')) {
+                    delete quotPayload.customer;
+                    const retry = await supabase.from('quotations').insert(quotPayload).select().single();
+                    newQuot = retry.data;
+                    qErr = retry.error;
+                }
                 if (qErr) throw qErr;
                 targetQuotId = newQuot.id;
             }
@@ -405,61 +413,79 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
         }
     };
 
-    // 1. 모든 품목 데이터에 공정, 프로젝트, 정규화 구분 메타데이터 결합
-    const enrichedItems = useMemo(() => {
-        return quotationItems.map(item => {
-            const q = quotations.find(quot => quot.id === item.quotation_id);
-            let projectKey = "미지정 프로젝트";
-            let projectObj = null;
-            if (q) {
-                if (q.project_id) {
-                    projectObj = projects.find(p => p.id === q.project_id);
-                    if (projectObj) {
-                        projectKey = `${projectObj.manufacturing_no || ''} · ${projectObj.name || ''}`.replace(/^ ·\s*/, '');
-                    }
-                } else if (q.project_name) {
-                    projectKey = q.project_name;
-                }
-            }
-
-            // 공정 판별: Stacking(STK), Notching(NC)
-            const combinedText = [
-                projectKey,
-                projectObj?.name,
-                projectObj?.equipment,
-                projectObj?.line,
-                q?.title,
-                item.unit_name,
-                item.item_name
-            ].filter(Boolean).join(' ');
-
-            const isNC = /(?:notching|notcher|노칭|\bnc\b)/i.test(combinedText);
-            const isSTK = /(?:stacking|stacker|스택|스태킹|\bstk\b)/i.test(combinedText);
-
-            let processType = "기타";
-            if (isNC && !isSTK) processType = "Notching";
-            else if (isSTK && !isNC) processType = "Stacking";
-            else if (isNC && isSTK) processType = "Both";
-
-            // 구분 정규화: 가공품 / 시장품(구매품) / 기타
-            const rawCat = String(item.item_category || '').trim();
-            let normCategory = "기타";
-            if (/가공/i.test(rawCat)) normCategory = "가공품";
-            else if (/구매|시장|상용/i.test(rawCat)) normCategory = "시장품";
-
-            return {
-                ...item,
-                projectKey,
-                quotationTitle: q?.title || '견적서',
-                processType,
-                normCategory,
-                unit_name: item.unit_name || '',
-                unit_price: Number(item.unit_price) || 0,
-                quantity: Number(item.quantity) || 1,
-                total_price: Number(item.total_price) || (Number(item.unit_price) || 0) * (Number(item.quantity) || 1)
-            };
+    // 현재 고객사(currentCustomer)에 해당하는 견적서만 격리 필터링
+    const customerQuotations = useMemo(() => {
+        const pIds = new Set((projects || []).map(p => p.id));
+        const pNames = new Set((projects || []).map(p => p.name));
+        return quotations.filter(q => {
+            if (q.customer) return q.customer === currentCustomer;
+            if (q.project_id && pIds.has(q.project_id)) return true;
+            if (q.project_name && pNames.has(q.project_name)) return true;
+            return currentCustomer === "SK on";
         });
-    }, [quotationItems, quotations, projects]);
+    }, [quotations, projects, currentCustomer]);
+
+    const customerQuotationIds = useMemo(() => {
+        return new Set(customerQuotations.map(q => q.id));
+    }, [customerQuotations]);
+
+    // 1. 모든 품목 데이터에 공정, 프로젝트, 정규화 구분 메타데이터 결합 (현재 고객사 견적서 품목만)
+    const enrichedItems = useMemo(() => {
+        return quotationItems
+            .filter(item => customerQuotationIds.has(item.quotation_id))
+            .map(item => {
+                const q = customerQuotations.find(quot => quot.id === item.quotation_id);
+                let projectKey = "미지정 프로젝트";
+                let projectObj = null;
+                if (q) {
+                    if (q.project_id) {
+                        projectObj = projects.find(p => p.id === q.project_id);
+                        if (projectObj) {
+                            projectKey = `${projectObj.manufacturing_no || ''} · ${projectObj.name || ''}`.replace(/^ ·\s*/, '');
+                        }
+                    } else if (q.project_name) {
+                        projectKey = q.project_name;
+                    }
+                }
+
+                // 공정 판별: Stacking(STK), Notching(NC)
+                const combinedText = [
+                    projectKey,
+                    projectObj?.name,
+                    projectObj?.equipment,
+                    projectObj?.line,
+                    q?.title,
+                    item.unit_name,
+                    item.item_name
+                ].filter(Boolean).join(' ');
+
+                const isNC = /(?:notching|notcher|노칭|\bnc\b)/i.test(combinedText);
+                const isSTK = /(?:stacking|stacker|스택|스태킹|\bstk\b)/i.test(combinedText);
+
+                let processType = "기타";
+                if (isNC && !isSTK) processType = "Notching";
+                else if (isSTK && !isNC) processType = "Stacking";
+                else if (isNC && isSTK) processType = "Both";
+
+                // 구분 정규화: 가공품 / 시장품(구매품) / 기타
+                const rawCat = String(item.item_category || '').trim();
+                let normCategory = "기타";
+                if (/가공/i.test(rawCat)) normCategory = "가공품";
+                else if (/구매|시장|상용/i.test(rawCat)) normCategory = "시장품";
+
+                return {
+                    ...item,
+                    projectKey,
+                    quotationTitle: q?.title || '견적서',
+                    processType,
+                    normCategory,
+                    unit_name: item.unit_name || '',
+                    unit_price: Number(item.unit_price) || 0,
+                    quantity: Number(item.quantity) || 1,
+                    total_price: Number(item.total_price) || (Number(item.unit_price) || 0) * (Number(item.quantity) || 1)
+                };
+            });
+    }, [quotationItems, customerQuotations, customerQuotationIds, projects]);
 
     // 2. [공정 필터]에 따른 유효 프로젝트 목록
     const availableProjects = useMemo(() => {
@@ -601,7 +627,7 @@ export default function Quotations({ projects, role, onPermissionDenied }) {
     };
 
     const groupedQuotations = {};
-    quotations.forEach(q => {
+    customerQuotations.forEach(q => {
         let key = "미지정 프로젝트";
         if (q.project_id) {
             const p = projects.find(proj => proj.id === q.project_id);

@@ -94,6 +94,19 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
         return (projects || []).sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
     }, [projects]);
 
+    // 고객사(Customer) 변경 등으로 projects 목록이 바뀔 때, 이전 고객사의 선택 프로젝트 잔존 방지
+    useEffect(() => {
+        if (!projects || projects.length === 0) {
+            setSelectedProject('');
+            setProjectReports([]);
+            return;
+        }
+        const exists = projects.some(p => String(p.id) === String(selectedProject));
+        if (!exists) {
+            setSelectedProject(projects[0].id);
+        }
+    }, [projects]);
+
     useEffect(() => {
         if (activeIssueSection !== 'analyze' && selectedProject) {
             loadReports(selectedProject);

@@ -390,39 +390,38 @@ body.theme-dark .theme-toggle-btn {
    ======================================================== */
 .system-customer-bar-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 6px 0 10px 0;
-  margin: 0 0 6px 0;
+  padding: 3px 0 5px 0;
+  margin: 0 0 3px 0;
   border-bottom: 1px solid var(--border-medium);
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
 }
 
 .system-customer-capsule {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px;
-  border-radius: 14px;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
   background: var(--pill-bg);
-  border: 1.5px solid var(--border-medium);
+  border: 1px solid var(--border-medium);
   box-shadow: var(--shadow-sm);
 }
 
 .customer-tab-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
-  min-height: 44px;
+  gap: 6px;
+  padding: 4px 11px;
+  min-height: 31px;
   box-sizing: border-box;
-  border-radius: 10px;
-  font-size: 13.5px;
+  border-radius: 7px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--text-secondary);
   background: transparent;
-  border: 1.5px solid transparent;
+  border: 1.2px solid transparent;
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease-in-out);
   white-space: nowrap;
@@ -441,7 +440,7 @@ body.theme-dark .theme-toggle-btn {
   background: linear-gradient(135deg, rgba(234, 88, 12, 0.16), rgba(249, 115, 22, 0.08));
   border-color: #ea580c !important;
   color: #ea580c !important;
-  box-shadow: 0 0 0 1px #ea580c, 0 3px 12px rgba(234, 88, 12, 0.28) !important;
+  box-shadow: 0 0 0 1px #ea580c, 0 2px 8px rgba(234, 88, 12, 0.28) !important;
   font-weight: 800;
 }
 [data-theme="dark"] .customer-tab-btn.tab-customer-sk.active,
@@ -455,7 +454,7 @@ body.theme-dark .customer-tab-btn.tab-customer-sk.active {
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.16), rgba(2, 132, 199, 0.08));
   border-color: #2563eb !important;
   color: #2563eb !important;
-  box-shadow: 0 0 0 1px #2563eb, 0 3px 12px rgba(37, 99, 235, 0.28) !important;
+  box-shadow: 0 0 0 1px #2563eb, 0 2px 8px rgba(37, 99, 235, 0.28) !important;
   font-weight: 800;
 }
 [data-theme="dark"] .customer-tab-btn.tab-customer-sdi.active,
@@ -469,7 +468,7 @@ body.theme-dark .customer-tab-btn.tab-customer-sdi.active {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(5, 150, 105, 0.08));
   border-color: #10b981 !important;
   color: #059669 !important;
-  box-shadow: 0 0 0 1px #10b981, 0 3px 12px rgba(16, 185, 129, 0.28) !important;
+  box-shadow: 0 0 0 1px #10b981, 0 2px 8px rgba(16, 185, 129, 0.28) !important;
   font-weight: 800;
 }
 [data-theme="dark"] .customer-tab-btn.tab-customer-hyundai.active,
@@ -482,24 +481,31 @@ body.theme-dark .customer-tab-btn.tab-customer-hyundai.active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 26px;
-  min-width: 28px;
-  padding: 2px 6px;
-  border-radius: 8px;
+  height: 18px;
+  min-width: 20px;
+  padding: 1px 4px;
+  border-radius: 5px;
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.10);
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-sizing: border-box;
 }
 
+.customer-label {
+  font-weight: 800;
+  font-size: 11.5px;
+  line-height: 1;
+}
+
 .customer-count-badge {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 700;
-  padding: 1px 7px;
-  border-radius: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
   background: var(--bg-hover);
   color: var(--text-secondary);
   border: 1px solid var(--border-medium);
+  line-height: 1;
 }
 .customer-tab-btn.active .customer-count-badge {
   background: rgba(255, 255, 255, 0.22);
@@ -508,7 +514,7 @@ body.theme-dark .customer-tab-btn.tab-customer-hyundai.active {
 }
 
 .customer-subtext {
-  font-size: 11px;
+  font-size: 10px;
   opacity: 0.75;
   font-weight: 500;
   margin-left: 2px;
@@ -520,21 +526,21 @@ body.theme-dark .customer-tab-btn.tab-customer-hyundai.active {
 .system-nav-bar-row {
   display: flex;
   align-items: center;
-  padding: 0 0 10px 0;
+  padding: 0 0 5px 0;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   border-bottom: 1px solid var(--border-faint);
-  margin: 0 0 4px 0;
+  margin: 0 0 2px 0;
 }
 
 .system-nav-capsule {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px;
-  border-radius: 14px;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
   background: var(--pill-bg);
-  border: 1.5px solid var(--border-medium);
+  border: 1px solid var(--border-medium);
   box-shadow: var(--shadow-sm);
   flex-wrap: wrap;
 }
@@ -542,16 +548,16 @@ body.theme-dark .customer-tab-btn.tab-customer-hyundai.active {
 .nav-tab-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 18px;
-  min-height: 44px;
+  gap: 6px;
+  padding: 4px 11px;
+  min-height: 31px;
   box-sizing: border-box;
-  border-radius: 10px;
-  font-size: 13.5px;
+  border-radius: 7px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--pill-text);
   background: transparent;
-  border: 1.5px solid transparent;
+  border: 1.2px solid transparent;
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease-in-out);
   line-height: 1.25;
@@ -578,7 +584,7 @@ body.theme-dark .customer-tab-btn.tab-customer-hyundai.active {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.16), rgba(37, 99, 235, 0.08));
   border-color: #3b82f6 !important;
   color: #1d4ed8 !important;
-  box-shadow: 0 0 0 1px #3b82f6, 0 3px 12px rgba(59, 130, 246, 0.28) !important;
+  box-shadow: 0 0 0 1px #3b82f6, 0 2px 8px rgba(59, 130, 246, 0.28) !important;
   font-weight: 800;
 }
 [data-theme="dark"] .nav-tab-btn.tab-projects.active,
@@ -591,7 +597,7 @@ body.theme-dark .nav-tab-btn.tab-projects.active {
   background: linear-gradient(135deg, rgba(249, 115, 22, 0.16), rgba(234, 88, 12, 0.08));
   border-color: #f97316 !important;
   color: #c2410c !important;
-  box-shadow: 0 0 0 1px #f97316, 0 3px 12px rgba(249, 115, 22, 0.28) !important;
+  box-shadow: 0 0 0 1px #f97316, 0 2px 8px rgba(249, 115, 22, 0.28) !important;
   font-weight: 800;
 }
 [data-theme="dark"] .nav-tab-btn.tab-manpower.active,
@@ -604,7 +610,7 @@ body.theme-dark .nav-tab-btn.tab-manpower.active {
   background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(14, 165, 233, 0.08));
   border-color: #38bdf8 !important;
   color: #0284c7 !important;
-  box-shadow: 0 0 0 1px #38bdf8, 0 3px 12px rgba(56, 189, 248, 0.28) !important;
+  box-shadow: 0 0 0 1px #38bdf8, 0 2px 8px rgba(56, 189, 248, 0.28) !important;
   font-weight: 800;
 }
 [data-theme="dark"] .nav-tab-btn.tab-issues.active,
@@ -617,7 +623,7 @@ body.theme-dark .nav-tab-btn.tab-issues.active {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(217, 119, 6, 0.08));
   border-color: #f59e0b !important;
   color: #b45309 !important;
-  box-shadow: 0 0 0 1px #f59e0b, 0 3px 12px rgba(245, 158, 11, 0.28) !important;
+  box-shadow: 0 0 0 1px #f59e0b, 0 2px 8px rgba(245, 158, 11, 0.28) !important;
   font-weight: 800;
 }
 [data-theme="dark"] .nav-tab-btn.tab-quotations.active,
@@ -630,7 +636,7 @@ body.theme-dark .nav-tab-btn.tab-quotations.active {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(5, 150, 105, 0.08));
   border-color: #10b981 !important;
   color: #047857 !important;
-  box-shadow: 0 0 0 1px #10b981, 0 3px 12px rgba(16, 185, 129, 0.28) !important;
+  box-shadow: 0 0 0 1px #10b981, 0 2px 8px rgba(16, 185, 129, 0.28) !important;
   font-weight: 800;
 }
 [data-theme="dark"] .nav-tab-btn.tab-vision-spc.active,
@@ -645,19 +651,19 @@ body.theme-dark .nav-tab-btn.tab-vision-spc.active {
 }
 
 .nav-tab-icon {
-  font-size: 18px;
+  font-size: 13.5px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 .nav-tab-label {
-  line-height: 1.2;
-  font-size: 13.5px;
+  line-height: 1.15;
+  font-size: 11.5px;
   font-weight: inherit;
 }
 .nav-tab-lock {
-  font-size: 12px;
+  font-size: 9px;
   opacity: 0.7;
 }
 
@@ -666,14 +672,13 @@ body.theme-dark .nav-tab-btn.tab-vision-spc.active {
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
-  line-height: 1.15;
+  line-height: 1.05;
 }
 
 .nav-tab-sub {
-  font-size: 10px;
+  font-size: 8.5px;
   opacity: 0.75;
   font-weight: 500;
-  margin-top: 1px;
 }
 
 /* ========================================================

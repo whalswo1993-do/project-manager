@@ -109,9 +109,9 @@ const iso = (d = new Date()) => d.toISOString().slice(0, 10);
 const dt = s => new Date(`${s}T00:00:00`);
 const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 export const CUSTOMERS = [
-  { id: "SK on", label: "SK on", sub: "배터리", color: "#ea580c", logo: <SkOnLogo height={20} />, cls: "tab-customer-sk" },
-  { id: "Samsung SDI", label: "Samsung SDI", sub: "배터리", color: "#2563eb", logo: <SamsungSdiLogo height={16} />, cls: "tab-customer-sdi" },
-  { id: "Hyundai", label: "Hyundai", sub: "완성차", color: "#10b981", logo: <HyundaiLogo height={21} />, cls: "tab-customer-hyundai" }
+  { id: "SK on", label: "SK on", sub: "배터리", color: "#ea580c", logo: <SkOnLogo height={14} />, cls: "tab-customer-sk" },
+  { id: "Samsung SDI", label: "Samsung SDI", sub: "배터리", color: "#2563eb", logo: <SamsungSdiLogo height={11} />, cls: "tab-customer-sdi" },
+  { id: "Hyundai", label: "Hyundai", sub: "완성차", color: "#10b981", logo: <HyundaiLogo height={14.5} />, cls: "tab-customer-hyundai" }
 ];
 export const DEFAULT_CUSTOMER = "SK on";
 
@@ -2030,7 +2030,7 @@ JSON 출력 예시:
                   title={`${cust.label} 독립 시스템으로 전환합니다 (${count}건 등록됨)`}
                 >
                   <span className="customer-logo-badge">{cust.logo}</span>
-                  <span style={{ fontWeight: 800, fontSize: '13.5px' }}>{cust.label}</span>
+                  <span className="customer-label">{cust.label}</span>
                   <span className="customer-count-badge">{count}건</span>
                 </button>
               );

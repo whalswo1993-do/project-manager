@@ -2036,17 +2036,6 @@ JSON 출력 예시:
               );
             })}
           </div>
-
-          <div className="customer-meta-status">
-            <div className="customer-isolated-pill" title="선택된 고객사의 데이터만 독립적으로 등록 및 조회됩니다">
-              <span style={{ fontSize: '12px' }}>🔒</span>
-              <span><b>{currentCustomer}</b> 독립 데이터 격리 운영 중</span>
-            </div>
-            <div className="customer-future-analytics-pill" title="고객사별 운영 안정화 후 전사 통합 분석 대시보드가 제공될 예정입니다">
-              <span style={{ fontSize: '12px' }}>📊</span>
-              <span>종합 분석 (안정화 후 오픈 예정)</span>
-            </div>
-          </div>
         </div>
 
         <div className="system-nav-bar-row">

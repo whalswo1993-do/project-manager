@@ -4,134 +4,18 @@ import { supabase } from './supabase';
 import * as XLSX from 'xlsx';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// 기본 초기 샘플 데이터 (스택파트 실무 현장: 본인 + 이은성 주임)
-const INITIAL_TASKS = [
-  {
-    id: 'task-1',
-    threadId: 'th-sk-stack-01',
-    customer: 'SK on',
-    equipment: '헝가리 이반차 Stacking #3',
-    subject: '[긴급] Stacking 매거진 공급부 얼라인 센서 감도 재조정 요청의 건',
-    status: '재회신접수', // 고객사에서 추가 회신이 도착해 자동 재오픈된 건
-    priority: '긴급',
-    assignee: '본인(선임)',
-    isSoloEunseong: false,
-    lastSender: '김원규 책임 (SK on 이반차 기술팀)',
-    lastRecipient: '나(선임), 이은성 주임',
-    receivedAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
-    dueDate: new Date(Date.now() + 1 * 86400000).toISOString().slice(0, 10),
-    summary: '지난주 센서 세팅 조치 후에도 특정 로트에서 간헐적 오검출 발생. 현장 재티칭 및 파라미터 값 회신 요청.',
-    actionPlan: '이은성 주임이 어제 측정한 오프셋 로그 취합 후 17시 이전 고객사 기술팀에 최종 수정안 회신 예정',
-    history: [
-      {
-        id: 'mail-1',
-        direction: 'inbound_customer',
-        sender: '김원규 책임 <wgkim@sk.com>',
-        recipient: '내 메일, 이은성 주임 메일',
-        sentAt: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
-        subject: '[요청] Stacking #3 매거진 얼라인 센서 확인 요청',
-        body: '안녕하십니까, TW 스택파트 담당자님. SK on 이반차 현장 김원규입니다.\n#3호기 매거진 투입 시 센서 오검출이 발생하여 라인 정지가 있었습니다. 파라미터 점검 부탁드립니다.'
-      },
-      {
-        id: 'mail-2',
-        direction: 'internal',
-        sender: '나(선임) <cmj1012@twgroup.co.kr>',
-        recipient: '이은성 주임 메일 <les0415@twgroup.co.kr>',
-        sentAt: new Date(Date.now() - 40 * 3600 * 1000).toISOString(),
-        subject: 'Fwd: [요청] Stacking #3 매거진 얼라인 센서 확인 요청',
-        body: '이은성 주임님, 지난주 출장 시 기록한 광량 감도 로그 파일 확인해서 센서 거리 보정치 먼저 계산해주세요.'
-      },
-      {
-        id: 'mail-3',
-        direction: 'outbound_customer',
-        sender: '나(선임) <cmj1012@twgroup.co.kr>',
-        recipient: '김원규 책임 <wgkim@sk.com>',
-        sentAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-        subject: 'Re: [요청] Stacking #3 매거진 얼라인 센서 1차 가이드 회신',
-        body: '김 책임님 안녕하십니까. TW 스택파트입니다. 1차 조치로 PLC 감도 설정값을 120 -> 145로 상향 조정 권고드립니다.'
-      },
-      {
-        id: 'mail-4',
-        direction: 'inbound_customer',
-        sender: '김원규 책임 <wgkim@sk.com>',
-        recipient: '내 메일, 이은성 주임 메일',
-        sentAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
-        subject: 'Re: Re: [요청] Stacking #3 센서 재조정 관련 추가 문의',
-        body: '알려주신 145 값 적용 후 주간은 양호하나 야간 특정 조도에서 여전히 간헐적 감지 불량이 있습니다. 긴급 재점검 바랍니다.'
-      }
-    ]
-  },
-  {
-    id: 'task-2',
-    threadId: 'th-sdi-stack-02',
-    customer: 'Samsung SDI',
-    equipment: '울산 Stacking M라인',
-    subject: '스택 유닛 세퍼레이터 텐션 롤러 구동부 윤활 주기 및 사양 문의',
-    status: '고객사회신완료', // 고객사에 답변 완료되어 '완료' 처리된 건
-    priority: '보통',
-    assignee: '이은성 주임',
-    isSoloEunseong: true, // ⭐️ 이은성 주임님 단독 수신 건 (선임 미참조 메일)
-    lastSender: '박민우 프로 (SDI 울산 품질팀)',
-    lastRecipient: '이은성 주임 <les0415@twgroup.co.kr>',
-    receivedAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
-    dueDate: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
-    summary: '세퍼레이터 텐션 롤러 베어링 그리스 사양 및 주기적 주유 매뉴얼 회신 요청 (이은성 주임 단독 수신건 자동 감지).',
-    actionPlan: '이은성 주임이 표준 유지보수 매뉴얼 PDF 및 그리스 품번 직접 고객사 송부 완료. (상태: 완료)',
-    history: [
-      {
-        id: 'mail-2-1',
-        direction: 'inbound_customer',
-        sender: '박민우 프로 <mw.park@samsung.com>',
-        recipient: '이은성 주임 <les0415@twgroup.co.kr>', // 선임 미참조!
-        sentAt: new Date(Date.now() - 10 * 3600 * 1000).toISOString(),
-        subject: '[SDI 울산] 스택 텐션 롤러 윤활 매뉴얼 요청',
-        body: '이은성 주임님 안녕하십니까, SDI 울산 품질팀 박민우 프로입니다. 스택 텐션 롤러 윤활 오일 교체 주기 매뉴얼 공유 부탁드립니다.'
-      },
-      {
-        id: 'mail-2-2',
-        direction: 'outbound_customer',
-        sender: '이은성 주임 <les0415@twgroup.co.kr>',
-        recipient: '박민우 프로 <mw.park@samsung.com>',
-        sentAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
-        subject: 'Re: [SDI 울산] 스택 텐션 롤러 윤활 매뉴얼 송부의 건',
-        body: '박 프로님 안녕하십니까, TW 스택파트 이은성 주임입니다. 요청하신 롤러 그리스 사양서 및 주유 주기 가이드 첨부 송부드립니다.'
-      }
-    ]
-  },
-  {
-    id: 'task-3',
-    threadId: 'th-hyundai-stack-01',
-    customer: 'Hyundai',
-    equipment: '남양연구소 차세대 셀 Stacker',
-    subject: '극판 적층 흡착 패드 정전기 방지(ESD) 재질 변경 검토 건',
-    status: '내부진행중',
-    priority: '높음',
-    assignee: '공동',
-    isSoloEunseong: false,
-    lastSender: '최정훈 책임 (현대차 배터리선행개발팀)',
-    lastRecipient: '내 메일, 이은성 주임 메일',
-    receivedAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
-    dueDate: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
-    summary: '신규 음극/양극 극판 진공 픽업 시 대전 방지 고무 패드 적용 가능성 및 가공 납기 검토 요청.',
-    actionPlan: '부품 구매팀에 ESD 실리콘 패드 샘플 발주 확인 중. 내일 오전 설계팀과 인터페이스 도면 미팅 후 회신 예정.',
-    history: [
-      {
-        id: 'mail-3-1',
-        direction: 'inbound_customer',
-        sender: '최정훈 책임 <jhchoi@hyundai.com>',
-        recipient: '내 메일, 이은성 주임 메일',
-        sentAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
-        subject: '[현대차 남양] 스택 진공 패드 ESD 재질 변경 기술 검토 요청',
-        body: 'TW 스택파트 담당자님. 정전기 발생 억제를 위해 기존 우레탄 패드를 전도성 실리콘으로 변경 가능한지 검토 부탁드립니다.'
-      }
-    ]
-  }
-];
+// 임의 샘플 데이터를 배제하고 실제 메일로 등록하여 관리하도록 빈 배열로 초기화
+const INITIAL_TASKS = [];
+
+// 이전 테스트/임의 샘플 데이터 ID 목록 (기존 브라우저 캐시 자동 정제용)
+const MOCK_TASK_IDS = new Set(['task-1', 'task-2', 'task-3', 'th-sk-stack-01', 'th-sdi-stack-02', 'th-hyundai-stack-01']);
 
 // 기존 캐시/데이터에 남아있을 수 있는 '부사수' 및 예전 메일 주소를 '이은성 주임' 및 'les0415@twgroup.co.kr'로 자동 정제
 function sanitizeTasks(rawList) {
   if (!Array.isArray(rawList)) return [];
-  return rawList.map(t => {
+  // 임의 샘플 데이터 완전 배제
+  const realList = rawList.filter(t => !MOCK_TASK_IDS.has(t.id) && !MOCK_TASK_IDS.has(t.threadId));
+  return realList.map(t => {
     let nextAssignee = t.assignee;
     if (t.assignee === '부사수') {
       nextAssignee = '이은성 주임';
@@ -836,6 +720,22 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
             <span>📊</span>
             <span>엑셀 다운로드</span>
           </button>
+
+          <button
+            type="button"
+            className="sheet-btn"
+            style={{ color: '#f43f5e', borderColor: 'rgba(244, 63, 94, 0.35)' }}
+            onClick={async () => {
+              if (confirm("현재 목록의 모든 업무를 깨끗하게 비우고 새로 시작할까요?")) {
+                await saveAndBroadcastTasks([], "모든 업무 목록이 초기화되었습니다.");
+                showToast("🗑️ 모든 업무 목록이 깨끗하게 비워졌습니다.");
+              }
+            }}
+            title="이전 기록이나 샘플을 완전히 비웁니다"
+          >
+            <span>🗑️</span>
+            <span>시트 비우기</span>
+          </button>
         </div>
       </div>
 
@@ -1031,8 +931,33 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
               <tbody>
                 {filteredTasks.length === 0 ? (
                   <tr>
-                    <td colSpan={12} style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-                      조건에 일치하는 스택파트 업무가 없습니다. '다우 메일 빠른 등록' 또는 '새 업무 추가'를 눌러보세요.
+                    <td colSpan={12} style={{ textAlign: 'center', padding: '70px 20px', background: 'var(--bg-card)' }}>
+                      <div style={{ fontSize: '44px', marginBottom: '12px' }}>📬</div>
+                      <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                        등록된 실제 업무가 없습니다 (깨끗한 상태)
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '520px', margin: '0 auto 22px auto', lineHeight: 1.65 }}>
+                        임의 샘플 데이터를 모두 비웠습니다.<br />
+                        지금 <b>조민재 선임님</b>과 <b>이은성 주임님</b>의 다우오피스 메일함에 있는 실제 메일을 복사해 등록해 보세요!
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                        <button
+                          type="button"
+                          className="sheet-btn daou-btn"
+                          onClick={() => setShowIntakeModal(true)}
+                          style={{ padding: '8px 18px', fontSize: '13px' }}
+                        >
+                          ✉️ 다우 메일 빠른 등록
+                        </button>
+                        <button
+                          type="button"
+                          className="sheet-btn primary"
+                          onClick={() => setShowNewTaskModal(true)}
+                          style={{ padding: '8px 18px', fontSize: '13px' }}
+                        >
+                          ➕ 새 업무 직접 추가
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ) : (

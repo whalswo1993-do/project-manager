@@ -6,6 +6,7 @@ import {
   requestPasswordReset,
   updateTestAccountPassword,
   saveCustomUserProfile,
+  recordUserAccess,
 } from "./authService";
 
 export default function Login() {
@@ -65,6 +66,16 @@ export default function Login() {
       if (data?.user?.email && isAccountDeleted(data.user.email)) {
         await supabase.auth.signOut();
         setMessage("삭제된 계정입니다. 해당 계정으로는 다시 로그인할 수 없습니다.");
+        return;
+      }
+
+      if (data?.user?.email) {
+        await recordUserAccess(data.user.email, {
+          name: data.user.user_metadata?.name,
+          team: data.user.user_metadata?.team,
+          department: data.user.user_metadata?.department,
+          last_sign_in_at: data.user.last_sign_in_at || new Date().toISOString()
+        });
       }
     } catch (err) {
       setMessage(err.message || "로그인 중 오류가 발생했습니다.");

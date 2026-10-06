@@ -10,6 +10,184 @@ const TEST_SESSION_KEY = "tw_test_active_session";
 const BG_REFRESH_TOKEN_KEY = "tw_bg_refresh_token";
 // 사용자 정의 프로필 (이름, 소속팀 등) 로컬스토리지 키
 const CUSTOM_USER_PROFILES_KEY = "tw_custom_user_profiles_v1";
+// 사용자 최근 접속 로그 로컬스토리지 키
+const USER_LAST_ACCESS_KEY = "tw_user_last_access_v1";
+
+// 사용자 최근 접속 로그 전체 조회
+export function getAllUserLastAccess() {
+  try {
+    if (typeof localStorage === "undefined") return {};
+    const raw = localStorage.getItem(USER_LAST_ACCESS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.error("Failed to parse user last access logs:", e);
+    return {};
+  }
+}
+
+// 사용자 최근 접속 로그 저장
+export function saveAllUserLastAccess(accessMap) {
+  try {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(USER_LAST_ACCESS_KEY, JSON.stringify(accessMap));
+  } catch (e) {
+    console.error("Failed to save user last access logs:", e);
+  }
+}
+
+// 원격 Supabase 접속 로그 동기화 및 로컬과 병합
+export async function fetchRemoteUserAccessLogs() {
+  try {
+    const { data, error } = await supabase
+      .from("spc_presets")
+      .select("name, data")
+      .eq("name", "[SYSTEM] USER_ACCESS_LOGS")
+      .maybeSingle();
+
+    if (!error && data?.data && typeof data.data === "object") {
+      const local = getAllUserLastAccess();
+      const merged = { ...local };
+      Object.entries(data.data).forEach(([email, remoteInfo]) => {
+        if (!email || !remoteInfo) return;
+        const norm = email.toLowerCase();
+        const localInfo = merged[norm];
+        const remoteTime = remoteInfo?.last_sign_in_at ? new Date(remoteInfo.last_sign_in_at).getTime() : 0;
+        const localTime = localInfo?.last_sign_in_at ? new Date(localInfo.last_sign_in_at).getTime() : 0;
+        if (!localInfo || remoteTime >= localTime) {
+          merged[norm] = {
+            ...(localInfo || {}),
+            ...remoteInfo
+          };
+        }
+      });
+      saveAllUserLastAccess(merged);
+      return merged;
+    }
+  } catch (e) {
+    console.warn("fetchRemoteUserAccessLogs skipped/failed:", e);
+  }
+  return getAllUserLastAccess();
+}
+
+// 사용자 접속 기록 (로그인 시 또는 세션 활성화 시 호출)
+export async function recordUserAccess(email, extraData = {}) {
+  if (!email) return;
+  const normalized = email.trim().toLowerCase();
+  const now = new Date().toISOString();
+
+  // 1. LocalStorage 업데이트
+  const current = getAllUserLastAccess();
+  const existing = current[normalized] || {};
+  const updatedInfo = {
+    ...existing,
+    ...extraData,
+    email: normalized,
+    last_sign_in_at: extraData.last_sign_in_at || existing.last_sign_in_at || now,
+    last_active_at: now,
+  };
+  current[normalized] = updatedInfo;
+  saveAllUserLastAccess(current);
+
+  // 2. 테스트 계정인 경우 테스트 프로필에도 저장
+  const testAcc = findTestAccount(normalized);
+  if (testAcc) {
+    updateTestProfile(testAcc.id || normalized, {
+      last_sign_in_at: updatedInfo.last_sign_in_at,
+      last_active_at: now
+    });
+  }
+
+  // 3. 커스텀 프로필 캐시에도 저장
+  saveCustomUserProfile(normalized, {
+    last_sign_in_at: updatedInfo.last_sign_in_at,
+    last_active_at: now
+  });
+
+  // 4. Supabase 원격 동기화 (비동기 백그라운드)
+  try {
+    const { data } = await supabase
+      .from("spc_presets")
+      .select("data")
+      .eq("name", "[SYSTEM] USER_ACCESS_LOGS")
+      .maybeSingle();
+
+    const remoteMap = (data?.data && typeof data.data === "object") ? { ...data.data } : {};
+    remoteMap[normalized] = updatedInfo;
+
+    await supabase
+      .from("spc_presets")
+      .upsert({
+        name: "[SYSTEM] USER_ACCESS_LOGS",
+        data: remoteMap
+      }, { onConflict: "name" });
+  } catch (err) {
+    console.warn("Remote user access log sync skipped:", err);
+  }
+
+  return updatedInfo;
+}
+
+// 마지막 접속 시간 포맷팅 함수 (UI 표시용)
+export function formatLastAccessTime(isoString) {
+  if (!isoString) {
+    return {
+      display: "접속 기록 없음",
+      detail: "아직 로그인 기록이 없습니다.",
+      relative: "기록 없음",
+      fullDateTime: "",
+      isOnline: false,
+      raw: null
+    };
+  }
+
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) {
+    return {
+      display: "접속 기록 없음",
+      detail: "유효하지 않은 날짜입니다.",
+      relative: "기록 없음",
+      fullDateTime: "",
+      isOnline: false,
+      raw: null
+    };
+  }
+
+  const now = new Date();
+  const diffMs = Math.max(0, now.getTime() - d.getTime());
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  const pad = n => String(n).padStart(2, '0');
+  const fullDateTime = `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+  // 10분 이내 접속을 온라인/최근 활동으로 간주
+  const isOnline = diffMin < 10;
+
+  let relative = "";
+  if (diffSec < 60) {
+    relative = "방금 전";
+  } else if (diffMin < 60) {
+    relative = `${diffMin}분 전`;
+  } else if (diffHour < 24) {
+    relative = `${diffHour}시간 전`;
+  } else if (diffDay === 1) {
+    relative = `어제 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } else if (diffDay < 7) {
+    relative = `${diffDay}일 전`;
+  } else {
+    relative = `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+  }
+
+  return {
+    display: `${fullDateTime} (${relative})`,
+    relative,
+    fullDateTime,
+    isOnline,
+    raw: isoString
+  };
+}
 
 // 초기 시드용 리프레시 토큰 (DB 쿼리 권한 유지용)
 const INITIAL_REFRESH_TOKEN = "c6w7xv7ho63t";
@@ -386,6 +564,7 @@ export async function authenticateTestAccount(email, password) {
   await ensureSupabaseAuth();
 
   // 7. 세션 생성
+  const nowIso = new Date().toISOString();
   const session = {
     user: {
       id: account.id,
@@ -395,12 +574,20 @@ export async function authenticateTestAccount(email, password) {
         full_name: account.name,
         department: account.department,
       },
+      last_sign_in_at: nowIso,
     },
     expires_at: Math.floor(Date.now() / 1000) + 86400 * 7,
     isTestAccount: true,
   };
 
   setActiveTestSession(session);
+  recordUserAccess(account.email, {
+    name: account.name,
+    department: account.department,
+    team: account.department,
+    role: account.role,
+    last_sign_in_at: nowIso
+  });
 
   return {
     success: true,

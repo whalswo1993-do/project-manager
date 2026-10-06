@@ -35,6 +35,7 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
             if (data) {
                 data.forEach(row => {
                     const rowName = row.name || '';
+                    if (rowName.startsWith('[SYSTEM]') || rowName.startsWith('__SYSTEM__')) return;
                     const match = rowName.match(/^\[(.*?)\]\s*(.*)$/);
                     let cust = "SK on";
                     let displayName = rowName;

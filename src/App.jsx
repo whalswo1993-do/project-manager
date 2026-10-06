@@ -26,6 +26,10 @@ import {
   getUserTeam,
   saveCustomUserProfile,
   getCustomUserProfiles,
+  getAllUserLastAccess,
+  recordUserAccess,
+  fetchRemoteUserAccessLogs,
+  formatLastAccessTime,
 } from "./authService";
 import {
   computeAutoStatus,
@@ -257,8 +261,8 @@ export default function App() {
   const sessionRef = useRef(session);
   sessionRef.current = session;
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
-  const role = profile?.role || "grade1";
+  const isSuperAdminEmail = (session?.user?.email?.toLowerCase() === "cmj1012@twgroup.co.kr") || (profile?.email?.toLowerCase() === "cmj1012@twgroup.co.kr");
+  const role = isSuperAdminEmail ? "admin" : (profile?.role || "grade1");
   const isGrade1 = role === "grade1";
   const create = ["admin", "grade3"].includes(role);
   const edit = ["admin", "grade3"].includes(role);
@@ -858,6 +862,7 @@ export default function App() {
         const { data: supaProfiles } = await supabase.from("profiles").select("*").order("email");
         const testProfs = getTestProfiles();
         const customProfs = getCustomUserProfiles();
+        const accessLogs = await fetchRemoteUserAccessLogs();
         const combined = [];
         const seenEmails = new Set();
 
@@ -868,10 +873,13 @@ export default function App() {
             seenEmails.add(lower);
             const testOverride = testProfs.find(tp => tp.email?.toLowerCase() === lower);
             const customOverride = customProfs[lower];
+            const accessOverride = accessLogs[lower];
             combined.push({
               ...p,
               ...(customOverride || {}),
-              ...(testOverride || {})
+              ...(testOverride || {}),
+              last_sign_in_at: accessOverride?.last_sign_in_at || customOverride?.last_sign_in_at || testOverride?.last_sign_in_at || p.last_sign_in_at,
+              last_active_at: accessOverride?.last_active_at || customOverride?.last_active_at || testOverride?.last_active_at || p.last_active_at,
             });
           }
         });
@@ -882,9 +890,12 @@ export default function App() {
           if (lower && !isAccountDeleted(lower) && !tp.deleted && !seenEmails.has(lower)) {
             seenEmails.add(lower);
             const customOverride = customProfs[lower];
+            const accessOverride = accessLogs[lower];
             combined.push({
               ...tp,
-              ...(customOverride || {})
+              ...(customOverride || {}),
+              last_sign_in_at: accessOverride?.last_sign_in_at || customOverride?.last_sign_in_at || tp.last_sign_in_at,
+              last_active_at: accessOverride?.last_active_at || customOverride?.last_active_at || tp.last_active_at,
             });
           }
         });
@@ -894,12 +905,15 @@ export default function App() {
           const lower = email.toLowerCase();
           if (!seenEmails.has(lower) && !isAccountDeleted(lower)) {
             seenEmails.add(lower);
+            const accessOverride = accessLogs[lower];
             combined.push({
               id: `custom-${lower}`,
               email: lower,
               role: "grade1",
               active: true,
-              ...customProfs[lower]
+              ...customProfs[lower],
+              last_sign_in_at: accessOverride?.last_sign_in_at || customProfs[lower]?.last_sign_in_at,
+              last_active_at: accessOverride?.last_active_at || customProfs[lower]?.last_active_at,
             });
           }
         });
@@ -910,7 +924,12 @@ export default function App() {
         }
       } catch (err) {
         console.error("profiles load error:", err);
-        const fallback = getTestProfiles().filter(tp => !isAccountDeleted(tp.email) && !tp.deleted);
+        const accessLogs = getAllUserLastAccess();
+        const fallback = getTestProfiles().filter(tp => !isAccountDeleted(tp.email) && !tp.deleted).map(tp => ({
+          ...tp,
+          last_sign_in_at: accessLogs[tp.email?.toLowerCase()]?.last_sign_in_at || tp.last_sign_in_at,
+          last_active_at: accessLogs[tp.email?.toLowerCase()]?.last_active_at || tp.last_active_at
+        }));
         setUsers(fallback);
         if (role === "admin") {
           checkNewRegisteredUsers(fallback);
@@ -950,6 +969,14 @@ export default function App() {
       setProfile(null);
       return alert("삭제된 계정입니다. 해당 계정으로는 다시 로그인할 수 없습니다.");
     }
+
+    // 사용자 접속 기록 등록
+    recordUserAccess(email, {
+      name: sess.user.user_metadata?.name || sess.user.name,
+      team: sess.user.user_metadata?.team || sess.user.team,
+      department: sess.user.user_metadata?.department || sess.user.department,
+      last_sign_in_at: sess.user.last_sign_in_at
+    });
 
     // 2. 테스트 계정인지 확인
     const testAcc = findTestAccount(email);
@@ -1993,6 +2020,7 @@ JSON 출력 예시:
                     onClick={() => {
                       setModal("users");
                       markUsersAsChecked();
+                      load("profiles");
                     }}
                     className={`system-btn-tool system-btn-admin ${newRegisteredUsers.length > 0 ? 'has-new' : ''}`}
                     title={newRegisteredUsers.length > 0 ? `신규 가입자 ${newRegisteredUsers.length}명이 있습니다.` : "사용자 권한 관리"}
@@ -3515,10 +3543,56 @@ JSON 출력 예시:
         <div className="back" onMouseDown={() => setModal(null)} style={{ zIndex: 99999 }}>
           <div className="modal" onMouseDown={e => e.stopPropagation()}>
             <button className="close" onClick={() => setModal(null)}>×</button>
-            {modal === "users" && (
-              <div style={{ maxWidth: "760px", margin: "0 auto" }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-                  <h2 style={{ margin: 0, fontSize: "20px", color: "var(--text-primary)" }}>사용자 계정·권한 및 프로필 관리</h2>
+            {modal === "users" && role === "admin" && (
+              <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <h2 style={{ margin: 0, fontSize: "20px", color: "var(--text-primary)" }}>사용자 계정·권한 및 프로필 관리</h2>
+                    <span style={{
+                      fontSize: "11px",
+                      padding: "3px 8px",
+                      borderRadius: "12px",
+                      background: "rgba(245, 158, 11, 0.15)",
+                      color: "#f59e0b",
+                      fontWeight: "bold",
+                      border: "1px solid rgba(245, 158, 11, 0.35)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}>
+                      🔒 최고관리자 전용
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "12px", color: "var(--text-secondary)" }}>
+                      <span>전체 <b>{users.length}</b>명</span>
+                      <span style={{ color: "var(--border-medium)" }}>•</span>
+                      <span style={{ color: "#10b981", fontWeight: "600" }}>
+                        🟢 활동 중 <b>{users.filter(u => formatLastAccessTime(u.last_sign_in_at || u.last_active_at).isOnline || session?.user?.email?.toLowerCase() === u.email?.toLowerCase()).length}</b>명
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => load("profiles")}
+                      style={{
+                        background: "var(--bg-card)",
+                        border: "1px solid var(--border-subtle)",
+                        color: "var(--text-secondary)",
+                        borderRadius: "6px",
+                        padding: "4px 9px",
+                        fontSize: "11.5px",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        fontWeight: "500",
+                        transition: "all 0.15s"
+                      }}
+                      title="사용자 목록 및 최근 접속 시간 새로고침"
+                    >
+                      🔄 새로고침
+                    </button>
+                  </div>
                 </div>
                 <div style={{
                   padding: "10px 14px",
@@ -3532,6 +3606,7 @@ JSON 출력 예시:
                 }}>
                   <b>💡 계정 및 팀원 프로필 가이드</b><br />
                   • <b>팀명 및 이름 확인</b>: 각 사용자의 성명 및 소속팀을 확인하고 [✏️ 수정] 버튼으로 언제든 직접 변경할 수 있습니다.<br />
+                  • <b>마지막 접속 시간</b>: 각 사용자의 시스템 마지막 로그인 및 접속 일시를 실시간으로 확인합니다. (최고관리자 전용 비공개)<br />
                   • <b>활성 해제</b>: 계정 로그인이 일시 차단됩니다. (언제든지 다시 활성화 가능)<br />
                   • <b>사용자 삭제</b>: 계정을 영구 제거하며, <b>해당 계정으로는 다시 로그인할 수 없습니다.</b>
                 </div>
@@ -3544,6 +3619,7 @@ JSON 출력 예시:
                     const isEditing = editingUserId === u.id;
                     const displayName = getUserDisplayName(u.email, u);
                     const userTeam = getUserTeam(u.email, u);
+                    const accessInfo = formatLastAccessTime(u.last_sign_in_at || u.last_active_at);
 
                     return (
                       <div
@@ -3647,6 +3723,42 @@ JSON 출력 예시:
                           <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-secondary)" }}>
                             <span>✉️ {u.email}</span>
                             {userTeam && <span style={{ color: "var(--text-muted)" }}>• {userTeam}</span>}
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11.5px", marginTop: "2px", flexWrap: "wrap" }}>
+                            <span style={{ color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: "3px" }}>
+                              🕒 마지막 접속:
+                            </span>
+                            {(accessInfo.raw || isSelf) ? (
+                              <span style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                color: (accessInfo.isOnline || isSelf) ? "#10b981" : "var(--text-secondary)",
+                                fontWeight: "500",
+                                background: (accessInfo.isOnline || isSelf) ? "rgba(16, 185, 129, 0.1)" : "var(--bg-card)",
+                                padding: "1px 7px",
+                                borderRadius: "6px",
+                                border: `1px solid ${(accessInfo.isOnline || isSelf) ? "rgba(16, 185, 129, 0.3)" : "var(--border-subtle)"}`
+                              }}>
+                                {(accessInfo.isOnline || isSelf) && (
+                                  <span style={{
+                                    width: "6px",
+                                    height: "6px",
+                                    borderRadius: "50%",
+                                    backgroundColor: "#10b981",
+                                    boxShadow: "0 0 6px #10b981",
+                                    display: "inline-block"
+                                  }} />
+                                )}
+                                <span>{isSelf && !accessInfo.raw ? "방금 전 접속" : accessInfo.fullDateTime}</span>
+                                <span style={{ fontSize: "10.5px", opacity: 0.85 }}>({isSelf ? "현재 접속 중" : accessInfo.relative})</span>
+                              </span>
+                            ) : (
+                              <span style={{ color: "var(--text-muted)", fontStyle: "italic", fontSize: "11px" }}>
+                                접속 기록 없음
+                              </span>
+                            )}
                           </div>
                         </div>
 

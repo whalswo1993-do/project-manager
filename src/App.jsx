@@ -4,7 +4,6 @@ import { supabase } from "./supabase";
 import Login from "./Login";
 import { exportGanttReport, exportCalendarReport } from "./reportExports";
 import VisionSPC from "./VisionSPC";
-import StackPartAssistant from "./StackPartAssistant";
 import IssueManagement from "./IssueManagement";
 import Quotations from "./Quotations";
 import ManpowerManagement, { ProjectManpowerModal } from "./ManpowerManagement";
@@ -515,7 +514,7 @@ export default function App() {
   const [newSite, setNewSite] = useState("");
   const [newPerson, setNewPerson] = useState("");
   const [newDept, setNewDept] = useState("소장");
-  const VALID_VIEWS = ["projects", "manpower", "issues", "quotations", "vision-spc", "stack-assistant"];
+  const VALID_VIEWS = ["projects", "manpower", "issues", "quotations", "vision-spc"];
 
   const [currentView, setCurrentView] = useState(() => {
     try {
@@ -2118,17 +2117,6 @@ JSON 출력 예시:
                 <span className="nav-tab-sub">Cp·Cpk 분석</span>
               </div>
             </button>
-            <button
-              type="button"
-              className={`nav-tab-btn tab-stack-assistant ${currentView === "stack-assistant" ? "active" : ""}`}
-              onClick={() => switchView("stack-assistant")}
-            >
-              <span className="nav-tab-icon">📬</span>
-              <div className="nav-tab-text-col">
-                <span className="nav-tab-label">스택파트 비서</span>
-                <span className="nav-tab-sub">메일·업무 자동화</span>
-              </div>
-            </button>
           </div>
         </div>
       </div>
@@ -2380,9 +2368,7 @@ JSON 출력 예시:
         </div>
       </div>
 
-      {currentView === "stack-assistant" ? (
-        <ErrorBoundary><StackPartAssistant currentCustomer={currentCustomer} /></ErrorBoundary>
-      ) : currentView === "vision-spc" ? (
+      {currentView === "vision-spc" ? (
         <ErrorBoundary><VisionSPC currentCustomer={currentCustomer} /></ErrorBoundary>
       ) : currentView === "issues" ? (
         <IssueManagement projects={currentCustomerProjects} role={role} onPermissionDenied={showPermissionModal} selectedYears={selectedYears} currentCustomer={currentCustomer} />

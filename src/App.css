@@ -645,19 +645,6 @@ body.theme-dark .nav-tab-btn.tab-vision-spc.active {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.22), rgba(4, 120, 87, 0.15)) !important;
 }
 
-.nav-tab-btn.tab-stack-assistant.active {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.16), rgba(124, 58, 237, 0.08));
-  border-color: #8b5cf6 !important;
-  color: #6d28d9 !important;
-  box-shadow: 0 0 0 1px #8b5cf6, 0 2px 8px rgba(139, 92, 246, 0.28) !important;
-  font-weight: 800;
-}
-[data-theme="dark"] .nav-tab-btn.tab-stack-assistant.active,
-body.theme-dark .nav-tab-btn.tab-stack-assistant.active {
-  color: #a78bfa !important;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(109, 40, 217, 0.15)) !important;
-}
-
 /* Lock icon for restricted tabs */
 .nav-tab-btn.restricted {
   opacity: 0.65;

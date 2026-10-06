@@ -2,7 +2,7 @@
  * 다우오피스(DaouOffice) 메일 자동 동기화 데몬 (Background Sync Daemon)
  * 
  * [동작 원리]
- * 1. 본인 및 부사수의 다우오피스 웹메일 IMAP(포트 993 SSL)에 주기적으로 연결합니다.
+ * 1. 본인 및 이은성 주임의 다우오피스 웹메일 IMAP(포트 993 SSL)에 주기적으로 연결합니다.
  * 2. 새로 도착한 [스택파트] 관련 메일을 감지하여 Supabase DB 또는 웹 앱으로 실시간 전송합니다.
  * 3. 고객사 회신/답장 여부를 감지하여 상태를 '완료' 또는 '재회신 접수(진행중)'로 자동 갱신합니다.
  * 
@@ -21,20 +21,20 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://tebtuzxafkymlplml
 const SUPABASE_KEY = process.env.VITE_SUPABASE_KEY || "sb_publishable_grHTjPexU7_f9M8w4IrEYQ_o7_gx160";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 2. 다우오피스 계정 설정 (본인 + 부사수)
+// 2. 다우오피스 계정 설정 (본인 + 이은성 주임)
 const DAOU_ACCOUNTS = [
   {
     name: "본인 (선임)",
-    email: process.env.MY_EMAIL || "my_email@twgroup.co.kr",
+    email: process.env.MY_EMAIL || "cmj1012@twgroup.co.kr",
     password: process.env.MY_PASSWORD || "daou_password_here",
     host: "mail.twgroup.co.kr", // 또는 imap.daouoffice.com (회사 메일 도메인)
     port: 993,
     tls: true
   },
   {
-    name: "부사수",
-    email: process.env.JUNIOR_EMAIL || "junior_email@twgroup.co.kr",
-    password: process.env.JUNIOR_PASSWORD || "daou_password_here",
+    name: "이은성 주임",
+    email: process.env.EUNSEONG_EMAIL || "eslee@twgroup.co.kr",
+    password: process.env.EUNSEONG_PASSWORD || "daou_password_here",
     host: "mail.twgroup.co.kr",
     port: 993,
     tls: true

@@ -261,6 +261,7 @@ export default function App() {
   const sessionRef = useRef(session);
   sessionRef.current = session;
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
   const isSuperAdminEmail = (session?.user?.email?.toLowerCase() === "cmj1012@twgroup.co.kr") || (profile?.email?.toLowerCase() === "cmj1012@twgroup.co.kr");
   const role = isSuperAdminEmail ? "admin" : (profile?.role || "grade1");
   const isGrade1 = role === "grade1";

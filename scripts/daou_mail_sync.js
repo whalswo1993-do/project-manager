@@ -33,7 +33,7 @@ const DAOU_ACCOUNTS = [
   },
   {
     name: "이은성 주임",
-    email: process.env.EUNSEONG_EMAIL || "eslee@twgroup.co.kr",
+    email: process.env.EUNSEONG_EMAIL || "les0415@twgroup.co.kr",
     password: process.env.EUNSEONG_PASSWORD || "daou_password_here",
     host: "mail.twgroup.co.kr",
     port: 993,

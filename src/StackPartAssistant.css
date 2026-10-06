@@ -481,6 +481,26 @@
   border: 1px solid rgba(6, 182, 212, 0.35);
 }
 
+.solo-eunseong-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.18), rgba(14, 165, 233, 0.12));
+  color: #0891b2;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  padding: 1px 7px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+[data-theme="dark"] .solo-eunseong-tag,
+body.theme-dark .solo-eunseong-tag {
+  color: #38bdf8;
+  background: rgba(6, 182, 212, 0.22);
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
 .assignee-badge.shared {
   background: rgba(249, 115, 22, 0.14);
   color: #ea580c;

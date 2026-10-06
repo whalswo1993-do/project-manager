@@ -15,6 +15,7 @@ const INITIAL_TASKS = [
     status: '재회신접수', // 고객사에서 추가 회신이 도착해 자동 재오픈된 건
     priority: '긴급',
     assignee: '본인(선임)',
+    isSoloEunseong: false,
     lastSender: '김원규 책임 (SK on 이반차 기술팀)',
     lastRecipient: '나(선임), 이은성 주임',
     receivedAt: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
@@ -35,7 +36,7 @@ const INITIAL_TASKS = [
         id: 'mail-2',
         direction: 'internal',
         sender: '나(선임) <cmj1012@twgroup.co.kr>',
-        recipient: '이은성 주임 메일 <eslee@twgroup.co.kr>',
+        recipient: '이은성 주임 메일 <les0415@twgroup.co.kr>',
         sentAt: new Date(Date.now() - 40 * 3600 * 1000).toISOString(),
         subject: 'Fwd: [요청] Stacking #3 매거진 얼라인 센서 확인 요청',
         body: '이은성 주임님, 지난주 출장 시 기록한 광량 감도 로그 파일 확인해서 센서 거리 보정치 먼저 계산해주세요.'
@@ -65,30 +66,31 @@ const INITIAL_TASKS = [
     threadId: 'th-sdi-stack-02',
     customer: 'Samsung SDI',
     equipment: '울산 Stacking M라인',
-    subject: '[회신완료] 스택 유닛 세퍼레이터 텐션 롤러 구동부 윤활 주기 및 사양 문의',
+    subject: '스택 유닛 세퍼레이터 텐션 롤러 구동부 윤활 주기 및 사양 문의',
     status: '고객사회신완료', // 고객사에 답변 완료되어 '완료' 처리된 건
     priority: '보통',
     assignee: '이은성 주임',
-    lastSender: '이은성 주임 (TW 스택파트)',
-    lastRecipient: '박민우 프로 (SDI 울산 품질팀)',
+    isSoloEunseong: true, // ⭐️ 이은성 주임님 단독 수신 건 (선임 미참조 메일)
+    lastSender: '박민우 프로 (SDI 울산 품질팀)',
+    lastRecipient: '이은성 주임 <les0415@twgroup.co.kr>',
     receivedAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
     dueDate: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
-    summary: '세퍼레이터 텐션 롤러 베어링 그리스 사양 및 주기적 주유 매뉴얼 회신 요청 완료.',
-    actionPlan: '표준 유지보수 매뉴얼 PDF 및 그리스 품번 송부 완료 (상태: 완료). 고객사 추가 질문 대기.',
+    summary: '세퍼레이터 텐션 롤러 베어링 그리스 사양 및 주기적 주유 매뉴얼 회신 요청 (이은성 주임 단독 수신건 자동 감지).',
+    actionPlan: '이은성 주임이 표준 유지보수 매뉴얼 PDF 및 그리스 품번 직접 고객사 송부 완료. (상태: 완료)',
     history: [
       {
         id: 'mail-2-1',
         direction: 'inbound_customer',
         sender: '박민우 프로 <mw.park@samsung.com>',
-        recipient: '이은성 주임 메일, 내 메일',
+        recipient: '이은성 주임 <les0415@twgroup.co.kr>', // 선임 미참조!
         sentAt: new Date(Date.now() - 10 * 3600 * 1000).toISOString(),
         subject: '[SDI 울산] 스택 텐션 롤러 윤활 매뉴얼 요청',
-        body: '안녕하세요, SDI 박민우 프로입니다. 스택 텐션 롤러 윤활 오일 교체 주기 매뉴얼 공유 부탁드립니다.'
+        body: '이은성 주임님 안녕하십니까, SDI 울산 품질팀 박민우 프로입니다. 스택 텐션 롤러 윤활 오일 교체 주기 매뉴얼 공유 부탁드립니다.'
       },
       {
         id: 'mail-2-2',
         direction: 'outbound_customer',
-        sender: '이은성 주임 <eslee@twgroup.co.kr>',
+        sender: '이은성 주임 <les0415@twgroup.co.kr>',
         recipient: '박민우 프로 <mw.park@samsung.com>',
         sentAt: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
         subject: 'Re: [SDI 울산] 스택 텐션 롤러 윤활 매뉴얼 송부의 건',
@@ -105,6 +107,7 @@ const INITIAL_TASKS = [
     status: '내부진행중',
     priority: '높음',
     assignee: '공동',
+    isSoloEunseong: false,
     lastSender: '최정훈 책임 (현대차 배터리선행개발팀)',
     lastRecipient: '내 메일, 이은성 주임 메일',
     receivedAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
@@ -125,7 +128,7 @@ const INITIAL_TASKS = [
   }
 ];
 
-// 기존 캐시/데이터에 남아있을 수 있는 '부사수' 텍스트를 '이은성 주임'으로 자동 변환하는 마이그레이션 함수
+// 기존 캐시/데이터에 남아있을 수 있는 '부사수' 및 예전 메일 주소를 '이은성 주임' 및 'les0415@twgroup.co.kr'로 자동 정제
 function sanitizeTasks(rawList) {
   if (!Array.isArray(rawList)) return [];
   return rawList.map(t => {
@@ -133,20 +136,27 @@ function sanitizeTasks(rawList) {
     if (t.assignee === '부사수') {
       nextAssignee = '이은성 주임';
     }
-    const nextLastSender = (t.lastSender || '').replace(/부사수/g, '이은성 주임');
-    const nextLastRecipient = (t.lastRecipient || '').replace(/부사수/g, '이은성 주임');
+    const nextLastSender = (t.lastSender || '').replace(/부사수/g, '이은성 주임').replace(/eslee@twgroup\.co\.kr/gi, 'les0415@twgroup.co.kr').replace(/junior@twgroup\.co\.kr/gi, 'les0415@twgroup.co.kr');
+    const nextLastRecipient = (t.lastRecipient || '').replace(/부사수/g, '이은성 주임').replace(/eslee@twgroup\.co\.kr/gi, 'les0415@twgroup.co.kr').replace(/junior@twgroup\.co\.kr/gi, 'les0415@twgroup.co.kr');
     const nextSummary = (t.summary || '').replace(/부사수/g, '이은성 주임');
     const nextActionPlan = (t.actionPlan || '').replace(/부사수/g, '이은성 주임');
     const nextHistory = (t.history || []).map(h => ({
       ...h,
-      sender: (h.sender || '').replace(/부사수/g, '이은성 주임').replace(/junior@twgroup\.co\.kr/gi, 'eslee@twgroup.co.kr'),
-      recipient: (h.recipient || '').replace(/부사수/g, '이은성 주임').replace(/junior@twgroup\.co\.kr/gi, 'eslee@twgroup.co.kr'),
+      sender: (h.sender || '').replace(/부사수/g, '이은성 주임').replace(/eslee@twgroup\.co\.kr/gi, 'les0415@twgroup.co.kr').replace(/junior@twgroup\.co\.kr/gi, 'les0415@twgroup.co.kr'),
+      recipient: (h.recipient || '').replace(/부사수/g, '이은성 주임').replace(/eslee@twgroup\.co\.kr/gi, 'les0415@twgroup.co.kr').replace(/junior@twgroup\.co\.kr/gi, 'les0415@twgroup.co.kr'),
       body: (h.body || '').replace(/부사수/g, '이은성 주임')
     }));
+
+    // 이은성 주임 단독 수신 여부 재계산
+    const recipLower = (nextLastRecipient || '').toLowerCase();
+    const hasEunseong = recipLower.includes('les0415') || recipLower.includes('이은성');
+    const hasMe = recipLower.includes('cmj1012') || recipLower.includes('나') || recipLower.includes('선임');
+    const isSoloEunseong = t.isSoloEunseong !== undefined ? t.isSoloEunseong : (hasEunseong && !hasMe);
 
     return {
       ...t,
       assignee: nextAssignee,
+      isSoloEunseong,
       lastSender: nextLastSender,
       lastRecipient: nextLastRecipient,
       summary: nextSummary,
@@ -157,7 +167,7 @@ function sanitizeTasks(rawList) {
 }
 
 export default function StackPartAssistant({ currentCustomer = "SK on" }) {
-  // ── 0. 메일 계정 연동 설정 상태 (본인 메일 + 이은성 주임 메일) ──
+  // ── 0. 메일 계정 연동 설정 상태 (본인 메일 + 이은성 주임 메일: les0415@twgroup.co.kr) ──
   const [myEmail, setMyEmail] = useState(() => {
     try {
       return localStorage.getItem('pm_stack_my_email') || 'cmj1012@twgroup.co.kr';
@@ -168,10 +178,12 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
 
   const [eunseongEmail, setEunseongEmail] = useState(() => {
     try {
-      return localStorage.getItem('pm_stack_eunseong_email') || 'eslee@twgroup.co.kr';
-    } catch (e) {
-      return 'eslee@twgroup.co.kr';
-    }
+      const saved = localStorage.getItem('pm_stack_eunseong_email');
+      if (saved && saved !== 'eslee@twgroup.co.kr' && saved !== 'junior@twgroup.co.kr') {
+        return saved;
+      }
+    } catch (e) {}
+    return 'les0415@twgroup.co.kr';
   });
 
   const saveEmailSettings = (myMail, esMail) => {
@@ -203,7 +215,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
   const [toastMsg, setToastMsg] = useState("");
   const showToast = (msg) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(""), 4500);
+    setTimeout(() => setToastMsg(""), 5000);
   };
 
   // ── 2. 뷰 및 필터 상태 ──
@@ -211,6 +223,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
   const [customerFilter, setCustomerFilter] = useState('전체');
   const [assigneeFilter, setAssigneeFilter] = useState('전체'); // '전체' | '내 업무(선임)' | '이은성 주임' | '공동'
   const [statusFilter, setStatusFilter] = useState('전체'); // '전체' | '진행중' | '재회신접수' | '고객사회신완료'
+  const [recipientFilter, setRecipientFilter] = useState('전체'); // '전체' | 'solo_eunseong' | 'joint' | 'solo_me'
   const [searchQuery, setSearchQuery] = useState('');
 
   // ── 3. 선택 및 모달 / 서랍 상태 ──
@@ -338,12 +351,21 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
   };
 
   // ── 5. 핵심: 메일 수신 시 자동 상태 추적 로직 (State Machine) ──
-  // 고객사 답변 시 -> '고객사회신완료' (완료)
-  // 고객사 재회신 시 -> '재회신접수' (자동 재오픈/진행중)
+  // 이은성 주임 단독 수신(선임 미포함) 메일도 100% 감지 및 분류!
   const processMailStateTransition = (mailItem, existingTask = null) => {
     const isFromCustomer = mailItem.direction === 'inbound_customer';
     const isOutboundToCustomer = mailItem.direction === 'outbound_customer';
     const isInternalShare = mailItem.direction === 'internal';
+
+    // 수신자 판별 (이은성 단독 수신 vs 공동 수신 vs 나 단독 수신)
+    const recipLower = (mailItem.recipient || '').toLowerCase();
+    const sendLower = (mailItem.sender || '').toLowerCase();
+    const esMailLower = (eunseongEmail || 'les0415@twgroup.co.kr').toLowerCase();
+    const myMailLower = (myEmail || 'cmj1012@twgroup.co.kr').toLowerCase();
+
+    const hasEunseong = recipLower.includes('이은성') || recipLower.includes(esMailLower) || recipLower.includes('les0415') || sendLower.includes('이은성') || sendLower.includes(esMailLower);
+    const hasMe = recipLower.includes('나') || recipLower.includes('선임') || recipLower.includes(myMailLower) || recipLower.includes('cmj1012') || sendLower.includes(myMailLower);
+    const isSoloEunseong = hasEunseong && !hasMe;
 
     if (existingTask) {
       let nextStatus = existingTask.status;
@@ -379,6 +401,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
         ...existingTask,
         status: nextStatus,
         assignee: effectiveAssignee,
+        isSoloEunseong: existingTask.isSoloEunseong || isSoloEunseong,
         lastSender: mailItem.sender,
         lastRecipient: mailItem.recipient,
         receivedAt: mailItem.sentAt || new Date().toISOString(),
@@ -390,17 +413,11 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
       // 신규 업무 생성
       const initialStatus = isFromCustomer ? '요청접수' : '내부진행중';
 
-      // 수신자/발신자 기반 초기 담당자 스마트 판별
+      // 수신자 기반 초기 담당자 스마트 판별
       let initialAssignee = '본인(선임)';
-      const recipLower = (mailItem.recipient || '').toLowerCase();
-      const sendLower = (mailItem.sender || '').toLowerCase();
-      const esMailLower = (eunseongEmail || 'eslee@twgroup.co.kr').toLowerCase();
-      const myMailLower = (myEmail || 'cmj1012@twgroup.co.kr').toLowerCase();
-
-      const hasEunseong = recipLower.includes('이은성') || recipLower.includes(esMailLower) || sendLower.includes('이은성') || sendLower.includes(esMailLower);
-      const hasMe = recipLower.includes('나') || recipLower.includes('선임') || recipLower.includes(myMailLower) || sendLower.includes(myMailLower);
-
-      if (hasEunseong && hasMe) {
+      if (isSoloEunseong) {
+        initialAssignee = '이은성 주임';
+      } else if (hasEunseong && hasMe) {
         initialAssignee = '공동';
       } else if (hasEunseong) {
         initialAssignee = '이은성 주임';
@@ -417,16 +434,20 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
         status: initialStatus,
         priority: isFromCustomer ? '높음' : '보통',
         assignee: initialAssignee,
+        isSoloEunseong,
         lastSender: mailItem.sender,
         lastRecipient: mailItem.recipient,
         receivedAt: mailItem.sentAt || new Date().toISOString(),
         dueDate: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
         summary: mailItem.body?.slice(0, 200) || mailItem.subject,
-        actionPlan: '메일 확인 후 담당자 배정 및 기술 검토 진행',
+        actionPlan: isSoloEunseong
+          ? '이은성 주임 단독 수신건 (선임 미참조). 이은성 주임 확인 및 기술 검토 진행'
+          : '메일 확인 후 담당자 배정 및 기술 검토 진행',
         history: [mailItem]
       };
 
-      const toastAlert = `✨ [신규 업무 등록] '${newTask.subject}' 업무가 접수되었습니다. (담당: ${initialAssignee})`;
+      const soloMsg = isSoloEunseong ? " [🧑 이은성 주임 단독 수신건 자동 감지]" : "";
+      const toastAlert = `✨ [신규 업무 등록${soloMsg}] '${newTask.subject}' 업무가 접수되었습니다. (담당: ${initialAssignee})`;
       return { task: newTask, isNew: true, toastAlert };
     }
   };
@@ -440,7 +461,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
       .toLowerCase();
   };
 
-  // 다우오피스 메일 텍스트/헤더 스마트 파서
+  // 다우오피스 메일 텍스트/헤더 스마트 파서 (les0415@twgroup.co.kr 포함)
   const parseDaouOfficeText = (rawText) => {
     const lines = rawText.split('\n').map(l => l.trim());
     let subject = "";
@@ -480,16 +501,17 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
 
     const fullBody = bodyLines.join('\n').trim();
 
-    // 발신자/수신자 성격 판별 (나 + 이은성 주임 메일 주소 매칭)
+    // 발신자/수신자 성격 판별 (나 + 이은성 주임 les0415@twgroup.co.kr 매칭)
     let direction = 'inbound_customer';
     const lowerSender = sender.toLowerCase();
     const lowerRecip = recipient.toLowerCase();
     const myMailLower = (myEmail || 'cmj1012@twgroup.co.kr').toLowerCase();
-    const esMailLower = (eunseongEmail || 'eslee@twgroup.co.kr').toLowerCase();
+    const esMailLower = (eunseongEmail || 'les0415@twgroup.co.kr').toLowerCase();
 
     const isInternalSender = lowerSender.includes('twgroup.co.kr') ||
                              lowerSender.includes(myMailLower) ||
                              lowerSender.includes(esMailLower) ||
+                             lowerSender.includes('les0415') ||
                              lowerSender.includes('나') ||
                              lowerSender.includes('선임') ||
                              lowerSender.includes('이은성') ||
@@ -565,7 +587,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
     }
   };
 
-  // 백그라운드 데몬에서 수신된 메일 실시간 반영
+  // 백그라운드 데몬에서 수신된 메일 실시간 반영 (이은성 주임 계정 수신 포함)
   const handleIncomingDaouMail = (payload) => {
     const parsedMail = {
       subject: payload.subject,
@@ -662,6 +684,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
         "고객사": t.customer,
         "설비/호기": t.equipment,
         "업무/메일 제목": t.subject,
+        "이은성 주임 단독수신 여부": t.isSoloEunseong ? "O (선임 미포함)" : "X",
         "담당자": t.assignee,
         "최근 발신자": t.lastSender,
         "최근 수신일시": t.receivedAt ? t.receivedAt.replace('T', ' ').slice(0, 16) : "",
@@ -688,7 +711,8 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
     const inProgress = tasks.filter(t => t.status === '내부진행중').length;
     const completed = tasks.filter(t => t.status === '고객사회신완료').length;
     const reopened = tasks.filter(t => t.status === '재회신접수').length;
-    return { total, pending, inProgress, completed, reopened };
+    const soloEunseongCount = tasks.filter(t => t.isSoloEunseong).length;
+    return { total, pending, inProgress, completed, reopened, soloEunseongCount };
   }, [tasks]);
 
   const filteredTasks = useMemo(() => {
@@ -706,6 +730,11 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
       if (statusFilter === '재회신접수' && t.status !== '재회신접수') return false;
       if (statusFilter === '고객사회신완료' && t.status !== '고객사회신완료') return false;
 
+      // 수신처 필터 (이은성 주임 단독 수신 필터링 핵심!)
+      if (recipientFilter === 'solo_eunseong' && !t.isSoloEunseong) return false;
+      if (recipientFilter === 'joint' && (t.isSoloEunseong || t.assignee !== '공동')) return false;
+      if (recipientFilter === 'solo_me' && t.isSoloEunseong) return false;
+
       // 검색어 필터
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -715,7 +744,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
 
       return true;
     });
-  }, [tasks, customerFilter, assigneeFilter, statusFilter, searchQuery]);
+  }, [tasks, customerFilter, assigneeFilter, statusFilter, recipientFilter, searchQuery]);
 
   return (
     <div className="stack-assistant-container">
@@ -757,7 +786,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
               </span>
             </h2>
             <p>
-              본인(<code style={{ color: '#8b5cf6' }}>{myEmail}</code>) 및 이은성 주임(<code style={{ color: '#0ea5e9' }}>{eunseongEmail}</code>) 다우오피스 메일 통합 추적 · 구글 시트 실시간 공유
+              본인(<code style={{ color: '#8b5cf6' }}>{myEmail}</code>) 및 이은성 주임(<code style={{ color: '#0ea5e9', fontWeight: 'bold' }}>{eunseongEmail}</code>) 단독/공동 수신 메일 실시간 통합 추적
             </p>
           </div>
         </div>
@@ -795,7 +824,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
             title="다우오피스 IMAP/수신규칙 및 이은성 주임 메일 연동 설정 가이드"
           >
             <span>⚙️</span>
-            <span>다우오피스 계정 연동 설정</span>
+            <span>다우오피스 연동 설정</span>
           </button>
 
           <button
@@ -813,8 +842,8 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
       {/* ── KPI 상태 요약 카드 ── */}
       <div className="stack-kpi-grid">
         <div
-          className={`stack-kpi-card ${statusFilter === '전체' ? 'active-filter' : ''}`}
-          onClick={() => setStatusFilter('전체')}
+          className={`stack-kpi-card ${statusFilter === '전체' && recipientFilter === '전체' ? 'active-filter' : ''}`}
+          onClick={() => { setStatusFilter('전체'); setRecipientFilter('전체'); }}
         >
           <div className="stack-kpi-header">
             <span>전체 관리 업무</span>
@@ -825,6 +854,25 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
             <span className="kpi-unit">건</span>
           </div>
           <div className="stack-kpi-sub">본인 및 이은성 주임 취합 전체 건수</div>
+        </div>
+
+        {/* ⭐️ 이은성 주임 단독 수신 KPI 카드 */}
+        <div
+          className={`stack-kpi-card ${recipientFilter === 'solo_eunseong' ? 'active-filter' : ''}`}
+          onClick={() => {
+            setRecipientFilter(prev => prev === 'solo_eunseong' ? '전체' : 'solo_eunseong');
+          }}
+          style={{ borderColor: '#0ea5e9' }}
+        >
+          <div className="stack-kpi-header" style={{ color: '#0ea5e9' }}>
+            <span>이은성 주임 단독 수신</span>
+            <span>🧑</span>
+          </div>
+          <div className="stack-kpi-value" style={{ color: '#0ea5e9' }}>
+            {stats.soloEunseongCount}
+            <span className="kpi-unit">건</span>
+          </div>
+          <div className="stack-kpi-sub">선임 미참조 · 이은성 주임 단독 수신건</div>
         </div>
 
         <div
@@ -895,6 +943,19 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
             </button>
           </div>
 
+          {/* 수신 대상 필터 (이은성 단독 vs 공동 vs 나 단독) */}
+          <select
+            className="sheet-select"
+            value={recipientFilter}
+            onChange={e => setRecipientFilter(e.target.value)}
+            style={{ fontWeight: 700, borderColor: recipientFilter === 'solo_eunseong' ? '#0ea5e9' : undefined }}
+          >
+            <option value="전체">📬 수신처: 전체 메일</option>
+            <option value="solo_eunseong">🧑 이은성 주임 단독 수신 (나 미포함) ★</option>
+            <option value="joint">👥 나 & 이은성 주임 공동 수신</option>
+            <option value="solo_me">👤 나(선임) 단독 수신</option>
+          </select>
+
           {/* 담당자 필터: 본인 vs 이은성 주임 vs 공동 */}
           <select
             className="sheet-select"
@@ -958,7 +1019,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                   <th style={{ width: '70px', textAlign: 'center' }}>우선순위</th>
                   <th style={{ width: '100px' }}>고객사</th>
                   <th style={{ width: '160px' }}>설비 / 라인</th>
-                  <th style={{ width: '320px' }}>업무 / 메일 제목 (클릭 시 스레드)</th>
+                  <th style={{ width: '340px' }}>업무 / 메일 제목 (클릭 시 스레드)</th>
                   <th style={{ width: '115px' }}>담당자 (클릭)</th>
                   <th style={{ width: '170px' }}>최근 발신자</th>
                   <th style={{ width: '110px' }}>최근 수신일</th>
@@ -1048,7 +1109,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                           )}
                         </td>
 
-                        {/* 업무 제목 (클릭 시 우측 메일 스레드 서랍 열림) */}
+                        {/* 업무 제목 (이은성 단독 수신 배지 표시) */}
                         <td>
                           <div
                             style={{
@@ -1057,7 +1118,8 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                               color: 'var(--text-primary)',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '6px'
+                              gap: '6px',
+                              flexWrap: 'wrap'
                             }}
                             onClick={() => {
                               setSelectedTaskId(task.id);
@@ -1065,6 +1127,11 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                             }}
                             title="클릭하여 오고 간 전체 메일 히스토리 및 회신 작성"
                           >
+                            {task.isSoloEunseong && (
+                              <span className="solo-eunseong-tag" title="선임(본인)이 참조에 포함되지 않고 이은성 주임님께만 단독으로 온 메일입니다">
+                                🧑 이은성 단독
+                              </span>
+                            )}
                             {task.status === '재회신접수' && (
                               <span style={{ color: '#f43f5e', fontSize: '11px', fontWeight: 900 }}>[재회신]</span>
                             )}
@@ -1208,9 +1275,16 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)' }}>
-                            {task.customer} · {task.equipment}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)' }}>
+                              {task.customer} · {task.equipment}
+                            </span>
+                            {task.isSoloEunseong && (
+                              <span className="solo-eunseong-tag" style={{ fontSize: '9.5px', padding: '0 4px' }}>
+                                단독
+                              </span>
+                            )}
+                          </div>
                           <span className={`priority-tag ${task.priority === '긴급' ? 'urgent' : task.priority === '높음' ? 'high' : 'normal'}`}>
                             {task.priority}
                           </span>
@@ -1249,6 +1323,11 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                 <h3>
                   <span>{activeTask.customer}</span>
                   <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>· {activeTask.equipment}</span>
+                  {activeTask.isSoloEunseong && (
+                    <span className="solo-eunseong-tag" style={{ marginLeft: '8px' }}>
+                      🧑 이은성 주임 단독 수신 (선임 미포함)
+                    </span>
+                  )}
                 </h3>
                 <div style={{ fontSize: '13px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
                   {activeTask.subject}
@@ -1349,6 +1428,9 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                         </div>
 
                         <div className="timeline-subject">{mail.subject}</div>
+                        <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                          수신자: {mail.recipient}
+                        </div>
                         <div className="timeline-body-text">{mail.body}</div>
                       </div>
                     </div>
@@ -1396,7 +1478,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                   rows={3}
                   placeholder={drawerNoteType === 'outbound_customer'
                     ? "고객사로 발송한 회신 메일 본문을 입력하세요. 등록 시 상태가 자동으로 [고객사 회신완료]로 처리됩니다."
-                    : "이은성 주임 또는 내부 관계자와 공유할 메모 내용을 입력하세요."}
+                    : `이은성 주임(${eunseongEmail}) 또는 내부 관계자와 공유할 메모 내용을 입력하세요.`}
                   value={drawerNewNote}
                   onChange={e => setDrawerNewNote(e.target.value)}
                 />
@@ -1450,7 +1532,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
             <div className="stack-modal-body">
               <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
                 다우오피스 웹메일에서 <b>[보낸사람 / 받는사람 / 제목 / 본문]</b>을 그대로 복사하여 아래에 붙여넣으세요.<br />
-                스마트 파서가 고객사, 설비, 요청사항을 자동 식별하여 <b>시트에 자동 등록</b>하고, 기존 건인 경우 <b>회신 여부에 따라 상태를 자동 전환</b>합니다.
+                스마트 파서가 고객사, 설비 및 <b>이은성 주임 단독 수신 여부(선임 미포함)</b>를 자동 식별하여 시트에 자동 등록합니다.
               </p>
 
               <div className="form-group">
@@ -1461,8 +1543,8 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                   onChange={e => setIntakeRecipientType(e.target.value)}
                 >
                   <option value="auto">✨ 자동 판별 (발신자/수신자 분석)</option>
-                  <option value="inbound_customer">🏢 고객사에서 온 신규 요청 / 재회신 메일</option>
-                  <option value="outbound_customer">📤 내가 고객사에 보낸 답변 메일 (등록 시 완료 처리)</option>
+                  <option value="inbound_customer">🏢 고객사에서 온 신규 요청 / 재회신 메일 (이은성 주임 단독 포함)</option>
+                  <option value="outbound_customer">📤 나와 이은성 주임이 고객사에 보낸 답변 메일 (등록 시 완료 처리)</option>
                   <option value="internal">💬 본인 ↔ 이은성 주임 간 내부 협의/공유 메일</option>
                 </select>
               </div>
@@ -1472,15 +1554,15 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                 <textarea
                   className="form-textarea"
                   rows={9}
-                  placeholder={`예시:
-보낸사람: 김원규 책임 <wgkim@sk.com>
-받는사람: 나선임 <cmj1012@twgroup.co.kr>, 이은성 주임 <eslee@twgroup.co.kr>
+                  placeholder={`[이은성 주임 단독 수신 메일 예시]
+보낸사람: 박민우 프로 <mw.park@samsung.com>
+받는사람: 이은성 주임 <les0415@twgroup.co.kr>
 날짜: 2026-10-06 14:30
-제목: [SK on 이반차] Stacking #3 센서 감도 재조정 요청의 건
+제목: [SDI 울산] 스택 롤러 부품 변경 사양 문의
 
-안녕하십니까, TW 스택파트 담당자님.
-지난번 안내해주신 파라미터 적용 후에도 간헐적 감지 오류가 있습니다.
-야간 조도 조건에서 재점검 부탁드립니다.`}
+이은성 주임님 안녕하십니까.
+울산 SDI 현장 박민우입니다.
+스택 텐션 롤러 축 가공 도면 및 납기 확인 부탁드립니다.`}
                   value={intakeMailText}
                   onChange={e => setIntakeMailText(e.target.value)}
                 />
@@ -1645,6 +1727,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                     return;
                   }
 
+                  const isSolo = newForm.assignee === '이은성 주임';
                   const createdTask = {
                     id: `task-${Date.now()}`,
                     threadId: `th-${Date.now()}`,
@@ -1654,6 +1737,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                     status: '내부진행중',
                     priority: newForm.priority,
                     assignee: newForm.assignee,
+                    isSoloEunseong: isSolo,
                     lastSender: '직접 등록',
                     lastRecipient: newForm.assignee,
                     receivedAt: new Date().toISOString(),
@@ -1687,11 +1771,11 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
       {/* ── 모달: 다우오피스 계정 연동 설정 및 가이드 ── */}
       {showGuideModal && (
         <div className="stack-modal-overlay" onClick={() => setShowGuideModal(false)}>
-          <div className="stack-modal-card" style={{ width: '740px' }} onClick={e => e.stopPropagation()}>
+          <div className="stack-modal-card" style={{ width: '760px' }} onClick={e => e.stopPropagation()}>
             <div className="stack-modal-header">
               <h3>
                 <span>⚙️</span>
-                <span>다우오피스(DaouOffice) 연동 및 이은성 주임 메일 연결 설정</span>
+                <span>다우오피스 연동 및 이은성 주임(les0415) 메일 추적 설정</span>
               </h3>
               <button
                 type="button"
@@ -1727,7 +1811,7 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                       className="form-input"
                       value={eunseongEmail}
                       onChange={e => setEunseongEmail(e.target.value)}
-                      placeholder="예: eslee@twgroup.co.kr"
+                      placeholder="예: les0415@twgroup.co.kr"
                     />
                   </div>
                 </div>
@@ -1742,54 +1826,55 @@ export default function StackPartAssistant({ currentCustomer = "SK on" }) {
                 </div>
               </div>
 
-              <div style={{ background: 'var(--bg-card-subtle)', padding: '14px 18px', borderRadius: '10px', border: '1px solid var(--border-subtle)', marginTop: '8px' }}>
-                <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', color: '#0ea5e9' }}>
-                  💡 이은성 주임 메일 연결 및 완전 자동 연동 방법
+              <div style={{ background: 'rgba(14, 165, 233, 0.08)', padding: '14px 18px', borderRadius: '10px', border: '1px solid rgba(14, 165, 233, 0.3)', marginTop: '8px' }}>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '14px', color: '#0284c7' }}>
+                  💡 "이은성 주임 메일로만 간 것(나 미포함)도 추적 가능할까?"에 대한 솔루션
                 </h4>
-                <div>
-                  이은성 주임님의 메일도 본인 메일과 완전히 동일하게 <b>실시간 통합 감지 및 추적</b>됩니다.<br />
-                  다음 3가지 방법 중 편리한 방식을 활용하시면 됩니다:
+                <div style={{ color: 'var(--text-primary)' }}>
+                  <b>네! 100% 추적 가능합니다.</b> 본인이 참조(CC)에 없더라도 다음 <b>2가지 방식</b> 중 하나를 통해 이은성 주임님 편지함의 메일을 완벽하게 끌어올 수 있습니다:
                 </div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '6px' }}>
                 <div style={{ borderLeft: '3px solid #0ea5e9', paddingLeft: '12px' }}>
                   <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '13.5px' }}>
-                    방법 1. 사내 PC / 서버 백그라운드 자동 수집 데몬 (가장 추천!)
+                    방식 1. 다우오피스 메일함 '수신 규칙 자동 전달' (가장 쉽고 확실함! 1분 완료)
                   </div>
                   <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    제공해드린 <code style={{ color: '#8b5cf6', background: 'var(--bg-card-subtle)', padding: '2px 5px', borderRadius: '4px' }}>scripts/daou_mail_sync.js</code> 스크립트에
-                    본인과 이은성 주임님의 다우오피스 계정을 설정해두면, 60초마다 양쪽 메일함을 자동 확인하여 새 메일 도착 시 이 웹 앱 시트로 즉시 전송합니다.
+                    이은성 주임님의 다우오피스 웹메일 환경설정 &gt; <b>[메일] &gt; [자동분류 / 수신규칙]</b>에서:<br />
+                    • 조건: 보낸사람이 고객사(SK, SDI, 현대 등)이거나 제목에 <b>[스택], [Stack], [설비]</b> 포함 시<br />
+                    • 처리: <b>내 메일(<code style={{ color: '#8b5cf6' }}>{myEmail}</code>)로 자동 전달(Forward)</b> 체크!<br />
+                    👉 이렇게 해두면 <b>고객사가 이은성 주임님께만 단독 메일을 보내도, 내 메일함으로 자동 전달되면서 본 앱이 <code>[🧑 이은성 단독]</code>으로 자동 분류</b>합니다!
                   </div>
                 </div>
 
                 <div style={{ borderLeft: '3px solid #10b981', paddingLeft: '12px' }}>
                   <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '13.5px' }}>
-                    방법 2. 이은성 주임 메일함 '수신 규칙 자동 전달' 설정
+                    방식 2. 사내 자동 수집 데몬 (<code style={{ color: '#8b5cf6' }}>scripts/daou_mail_sync.js</code>)
                   </div>
                   <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    이은성 주임님의 다우오피스 환경설정 &gt; <b>[메일] &gt; [자동분류 / 수신규칙]</b>에서
-                    제목이나 본문에 <b>[스택], [Stack], [고객사명]</b>이 포함된 메일을 전용 주소로 자동 전달되도록 1회만 등록해두시면 자동 취합됩니다.
+                    제공해드린 데몬 스크립트에 이은성 주임님의 다우오피스 IMAP 계정을 등록해두면,
+                    스크립트가 <b>이은성 주임님의 받은편지함(INBOX)을 직접 열어 60초마다 폴링</b>하므로, 선임이 참조되어 있지 않은 단독 메일도 100% 자동으로 시트에 꽂힙니다.
                   </div>
                 </div>
 
                 <div style={{ borderLeft: '3px solid #f59e0b', paddingLeft: '12px' }}>
                   <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '13.5px' }}>
-                    방법 3. 다우오피스 POP3 / IMAP 설정 확인
+                    방식 3. 이은성 주임님이 '다우 메일 빠른 등록'에 복사/붙여넣기
                   </div>
                   <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    다우오피스 환경설정 &gt; <b>[POP3/IMAP 설정]</b> 메뉴에서 상태를 <b>"사용함"</b>으로 변경하면,
-                    서버 주소: <code style={{ color: 'var(--text-primary)' }}>mail.twgroup.co.kr</code> (포트: 993, SSL)을 통해 외부 스크립트 연결이 가능합니다.
+                    이 웹 앱은 구글 스프레드시트처럼 실시간 공유되므로, 이은성 주임님이 본인 PC에서 단독 메일을 복사해 붙여넣기만 하면 선임 화면에도 0.1초 만에 실시간으로 나타납니다.
                   </div>
                 </div>
               </div>
 
               <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: '8px', padding: '12px 14px', marginTop: '4px' }}>
                 <div style={{ fontWeight: 700, marginBottom: '6px', fontSize: '12.5px' }}>
-                  🚀 백그라운드 데몬 실행 명령어:
+                  🚀 백그라운드 데몬 설정 확인:
                 </div>
                 <pre style={{ margin: 0, fontSize: '12px', background: 'var(--bg-card-subtle)', padding: '8px 12px', borderRadius: '6px', overflowX: 'auto' }}>
-{`node scripts/daou_mail_sync.js`}
+{`// scripts/daou_mail_sync.js
+EUNSEONG_EMAIL = "${eunseongEmail}"  // les0415@twgroup.co.kr`}
                 </pre>
               </div>
             </div>

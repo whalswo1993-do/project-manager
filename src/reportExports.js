@@ -15,7 +15,7 @@ const progress=p=>Number.isFinite(+p.value)?+p.value:p.status==="완료"?100:0;
 const conditions=f=>`상태 ${f.filter||"전체"} | Site ${normalizeJVName(f.siteFilter||"전체")} | 담당자 ${f.personFilter||"전체"} | 검색 ${normalizeJVName(f.search||"없음")}`;
 function ppt(title){
   const x=new PptxGenJS();
-  x.layout="LAYOUT_16x9"; // 13.33 x 7.5 인치 (TW 양식 규격 100% 일치)
+  x.layout="LAYOUT_WIDE"; // 13.333 x 7.5 인치 (16:9 Widescreen, TW PPT 공식 규격 일치)
   x.author="(주)TW";
   x.company="(주)TW";
   x.title=title;
@@ -26,24 +26,24 @@ function ppt(title){
 function head(slide,title,sub,page,totalPages){
   slide.background={color:C.white};
   // 슬라이드 제목 (상단)
-  slide.addText(title,{x:0.45,y:0.20,w:9.8,h:0.45,fontSize:18,bold:true,color:C.navy,fontFace:"맑은 고딕",margin:0});
+  slide.addText(title,{x:0.55,y:0.22,w:9.8,h:0.42,fontSize:17,bold:true,color:C.navy,fontFace:"맑은 고딕",margin:0});
   // 서브 메타 정보
-  slide.addText(sub,{x:0.46,y:0.65,w:12.2,h:0.22,fontSize:8.5,color:C.gray,fontFace:"맑은 고딕",margin:0});
+  slide.addText(sub,{x:0.55,y:0.65,w:12.2,h:0.22,fontSize:8.5,color:C.gray,fontFace:"맑은 고딕",margin:0});
   // 구분선 (블루 라인)
-  slide.addShape("line",{x:0.45,y:0.92,w:12.4,h:0,line:{color:C.blue,width:1.2}});
+  slide.addShape("line",{x:0.55,y:0.90,w:12.23,h:0,line:{color:C.blue,width:1.2}});
   
-  // 하단 좌측 TW 공식 로고 (image2)
+  // 하단 좌측 TW 공식 로고
   try {
-    slide.addImage({data:TW_LOGO_FOOTER,x:0.30,y:7.15,w:1.25,h:0.28});
+    slide.addImage({data:TW_LOGO_FOOTER,x:0.55,y:7.02,w:1.25,h:0.28});
   } catch(e){}
 
   // 하단 중앙 보안 문구
-  slide.addText(SECURITY_NOTICE,{x:3.80,y:7.17,w:5.73,h:0.16,fontSize:6.5,color:"8493A1",fontFace:"맑은 고딕",align:"center",margin:0});
+  slide.addText(SECURITY_NOTICE,{x:3.80,y:7.08,w:5.73,h:0.16,fontSize:6.5,color:"8493A1",fontFace:"맑은 고딕",align:"center",margin:0});
   // 하단 우측 슬로건
-  slide.addText(TW_SLOGAN,{x:9.34,y:7.15,w:3.72,h:0.25,fontSize:7.5,bold:true,color:C.navy,fontFace:"맑은 고딕",align:"right",margin:0});
+  slide.addText(TW_SLOGAN,{x:8.80,y:7.05,w:3.98,h:0.22,fontSize:7.5,bold:true,color:C.navy,fontFace:"맑은 고딕",align:"right",margin:0});
   // 하단 슬라이드 페이지 번호
   const pageStr = totalPages ? `${page} / ${totalPages}` : `${page}`;
-  slide.addText(pageStr,{x:6.14,y:6.98,w:1.05,h:0.18,fontSize:7,color:"8493A1",fontFace:"맑은 고딕",align:"center",margin:0});
+  slide.addText(pageStr,{x:6.14,y:6.90,w:1.05,h:0.16,fontSize:7,color:"8493A1",fontFace:"맑은 고딕",align:"center",margin:0});
 }
 function summary(pptx,projects,filters){const s=pptx.addSlide();head(s,"Project Management Report",conditions(filters),1);const stats=[["전체",projects.length,C.blue],["진행 중",projects.filter(p=>p.status!=="완료").length,C.orange],["완료",projects.filter(p=>p.status==="완료").length,C.green],["지연",projects.filter(p=>p.status!=="완료"&&d(p.endDate)<new Date()).length,C.red]];stats.forEach((v,i)=>{const x=.65+i*3.08;s.addShape("roundRect",{x,y:1.4,w:2.7,h:1.05,fill:{color:C.light},line:{color:C.line}});s.addText(v[0],{x:x+.2,y:1.62,w:1.6,h:.2,fontSize:10,color:C.gray,margin:0});s.addText(String(v[1]),{x:x+.2,y:1.91,w:1.5,h:.34,fontSize:25,bold:true,color:v[2],margin:0})});const rows=projects.slice(0,11).map(p=>[normalizeJVName(p.manufacturingNo),normalizeJVName(p.name),normalizeJVName(p.site),p.status,`${progress(p)}%`]),tableRows=[["제조번호","프로젝트명","Site","상태","진행률"],...rows],tableHeight=Math.min(3.55,.26+tableRows.length*.24);s.addTable(tableRows,{x:.65,y:2.85,w:12,h:tableHeight,colW:[1.8,4.7,1.8,1.7,1.2],fontSize:8.5,color:C.navy,fill:C.white,border:{type:"solid",color:C.line,pt:.5},margin:.035,rowH:.22,autoFit:false})}
 function range(projects){const a=projects.flatMap(p=>[p.startDate,p.endDate,...(p.milestones||[]).flatMap(m=>[m.startDate,m.endDate])]).filter(Boolean).map(d);const start=new Date(Math.min(...a.map(x=>x.getTime()))),end=new Date(Math.max(...a.map(x=>x.getTime())));return{start,end,span:Math.max(DAY,end-start+DAY)}}
@@ -362,6 +362,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
     mode = 'construction', // 'construction' | 'project'
     startDate = '',
     endDate = '',
+    customer = '',
     filters = {},
     includeSlides = {
       summary: true,
@@ -374,13 +375,17 @@ export async function exportComprehensiveReport(projects, options = {}) {
 
   const isConstruction = mode === 'construction';
   const modeLabel = isConstruction ? "공사 일정 기준" : "전체 프로젝트 일정 기준";
-  const pptReportTitle = isConstruction
-    ? "TW 프로젝트 공사 일정 및 투입 공수 종합 보고서"
-    : "TW 프로젝트 종합 일정 및 공수 보고서";
+
+  // 1. 고객사 필터링 (2번 요구사항: SKon 선택 시 SKon 프로젝트만 격리 수록, 타 고객사 제거)
+  const selectedCustomer = customer || (projects[0]?.customer) || "SK on";
+  const customerOnlyProjects = projects.filter(p => !p.customer || p.customer === selectedCustomer);
+  const baseProjects = customerOnlyProjects.length > 0 ? customerOnlyProjects : projects;
+
+  const pptReportTitle = `${selectedCustomer} 프로젝트 ${isConstruction ? '공사 일정 및 투입 공수' : '종합 일정 및 공수'} 종합 보고서`;
   const x = ppt(pptReportTitle);
 
-  // 1. 각 프로젝트의 일정 및 진행률 매핑
-  const mappedAll = projects.map(p => {
+  // 2. 각 프로젝트의 일정 및 진행률 매핑
+  const mappedAll = baseProjects.map(p => {
     const cp = getConstructionPeriod(p);
     const effStart = isConstruction ? (cp.startDate || p.startDate) : p.startDate;
     const effEnd = isConstruction ? (cp.endDate || p.endDate) : p.endDate;
@@ -394,130 +399,99 @@ export async function exportComprehensiveReport(projects, options = {}) {
     };
   });
 
-  // 2. 기간 필터링: 설정 기간에 걸쳐 있는 모든 프로젝트를 누락 없이 포함
+  // 3. 기간 필터링: 설정 기간에 걸쳐 있는 모든 프로젝트 누락 없이 포함
   let targetProjects = mappedAll;
   if (startDate && endDate) {
-    targetProjects = mappedAll.filter(p => (!p.effStart || p.effStart <= endDate) && (!p.effEnd || p.effEnd >= startDate));
-  } else if (startDate) {
-    targetProjects = mappedAll.filter(p => !p.effEnd || p.effEnd >= startDate);
-  } else if (endDate) {
-    targetProjects = mappedAll.filter(p => !p.effStart || p.effStart <= endDate);
-  }
-  if (!targetProjects.length) {
-    targetProjects = mappedAll; // 조건에 맞는 프로젝트가 없으면 전체로 안전하게 폴백
+    const filtered = mappedAll.filter(p => (!p.effStart || p.effStart <= endDate) && (!p.effEnd || p.effEnd >= startDate));
+    if (filtered.length > 0) targetProjects = filtered;
   }
 
-  // 3. 설정 기간 내 포함되는 모든 월(Months) 추출 (데이터 누락 방지 핵심!)
+  // 4. 월별 목록 및 4개월 단위 분기 청크 계산 (4번 요구사항)
   const monthsInRange = getMonthsInRange(startDate, endDate, targetProjects);
-  const monthsSummaryStr = monthsInRange.length === 1
-    ? monthsInRange[0].label
-    : `${monthsInRange[0].label} ~ ${monthsInRange[monthsInRange.length - 1].label} (${monthsInRange.length}개월)`;
+  const monthsSummaryStr = monthsInRange.length > 1
+    ? `${monthsInRange[0].label} ~ ${monthsInRange[monthsInRange.length - 1].label} (${monthsInRange.length}개월)`
+    : (monthsInRange[0]?.label || "전체");
 
-  // 전체 기간 누적 통계 계산
-  const grandTotalManday = targetProjects.reduce((acc, p) => acc + (p.manpower?.totalManday || 0), 0);
-  const avgProgress = targetProjects.length > 0
-    ? Math.round(targetProjects.reduce((acc, p) => acc + (p.effProgress || 0), 0) / targetProjects.length)
-    : 0;
-
-  // 전체 일자별 피크 투입량 계산
-  let grandPeak = { date: "-", val: 0 };
-  monthsInRange.forEach(mObj => {
-    const mMatrix = getMonthDailyDeptMatrix(targetProjects, mObj.year, mObj.monthIdx);
-    mMatrix.days.forEach(dStr => {
-      const v = mMatrix.dayDataMap[dStr]?.total || 0;
-      if (v > grandPeak.val) {
-        grandPeak = { date: dStr, val: v };
-      }
-    });
-  });
-
-  const periodStr = (startDate || endDate)
-    ? `${startDate || '시작'} ~ ${endDate || '종료'}`
-    : '전체 일정 기간';
-
-  // 4. 간트차트 행 데이터 준비 (미리 계산하여 슬라이드 수 파악)
-  const allDates = targetProjects.flatMap(p => [
-    p.effStart,
-    p.effEnd,
-    ...(p.milestones || []).flatMap(m => [m.startDate, m.endDate])
-  ]).filter(Boolean).map(d);
-  if (startDate) allDates.push(d(startDate));
-  if (endDate) allDates.push(d(endDate));
-
-  const gStart = allDates.length ? new Date(Math.min(...allDates.map(xx => xx.getTime()))) : new Date();
-  const gEnd = allDates.length ? new Date(Math.max(...allDates.map(xx => xx.getTime()))) : new Date(Date.now() + DAY * 30);
-  const gSpan = Math.max(DAY, gEnd - gStart + DAY);
-
-  const ganttRows = [];
-  if (includeSlides.gantt !== false) {
-    targetProjects.forEach(p => {
-      ganttRows.push({
-        p,
-        name: `${normalizeJVName(p.manufacturingNo)} · ${normalizeJVName(p.name)}`,
-        s: p.effStart,
-        e: p.effEnd,
-        v: p.effProgress,
-        main: true,
-        typeLabel: isConstruction && p.cp?.hasConstructionData ? (p.cp.msStartDate ? '셋업/이설' : '공수투입') : '일반'
-      });
-
-      const msList = isConstruction
-        ? ((p.cp?.constrMilestones && p.cp.constrMilestones.length > 0) ? p.cp.constrMilestones : (p.milestones || []).slice(0, 3))
-        : (p.milestones || []);
-
-      msList.filter(m => m && m.name && m.startDate && m.endDate).forEach(m => {
-        const msElapsed = Math.max(0, Math.min(100, Math.round((new Date() - d(m.startDate)) / Math.max(DAY, d(m.endDate) - d(m.startDate)) * 100)));
-        ganttRows.push({
-          p,
-          name: normalizeJVName(m.name),
-          s: m.startDate,
-          e: m.endDate,
-          v: msElapsed,
-          main: false
-        });
-      });
-    });
+  const quarterChunks = [];
+  for (let i = 0; i < monthsInRange.length; i += 4) {
+    quarterChunks.push(monthsInRange.slice(i, i + 4));
   }
 
-  const perGanttSlide = 15;
-  const ganttSlideCount = includeSlides.gantt !== false ? Math.max(1, Math.ceil(ganttRows.length / perGanttSlide)) : 0;
+  // 5. 간트차트 데이터: 마일스톤 펼침 없이 메인 프로젝트 바만 생성 (5번 요구사항)
+  const gAllDates = targetProjects.flatMap(p => [p.effStart, p.effEnd]).filter(Boolean).map(d);
+  let gStart = new Date(), gEnd = new Date();
+  if (gAllDates.length > 0) {
+    gStart = new Date(Math.min(...gAllDates.map(xx => xx.getTime())));
+    gEnd = new Date(Math.max(...gAllDates.map(xx => xx.getTime())));
+  }
+  if (startDate && !isNaN(new Date(`${startDate}T00:00:00`).getTime())) gStart = new Date(`${startDate}T00:00:00`);
+  if (endDate && !isNaN(new Date(`${endDate}T00:00:00`).getTime())) gEnd = new Date(`${endDate}T00:00:00`);
+  const gSpan = Math.max(DAY, gEnd.getTime() - gStart.getTime() + DAY);
 
-  // 상세 명세서 페이징 계산 (슬라이드당 12개 프로젝트씩 전수 수록)
+  const ganttRows = targetProjects.map(p => ({
+    p,
+    name: `${normalizeJVName(p.manufacturingNo || "")} · ${normalizeJVName(p.name)} (${normalizeJVName(p.site || "")})`,
+    s: p.effStart,
+    e: p.effEnd,
+    v: p.effProgress,
+    main: true
+  }));
+
+  const perGanttSlide = 18;
+  const ganttSlideCount = Math.max(1, Math.ceil(ganttRows.length / perGanttSlide));
+
+  // 6. 상세 명세서 페이징 계산
   const perDetailSlide = 12;
-  const detailSlideCount = includeSlides.details !== false ? Math.max(1, Math.ceil(targetProjects.length / perDetailSlide)) : 0;
+  const detailSlideCount = Math.max(1, Math.ceil(targetProjects.length / perDetailSlide));
 
-  // 총 슬라이드 수 사전 집계 (하단 Page / Total 표시용)
+  // 7. 총 슬라이드 페이지 수 사전 계산
   let totalReportPages = 1; // 표지
   if (includeSlides.summary !== false) totalReportPages += 1;
   if (includeSlides.calendar !== false) totalReportPages += monthsInRange.length;
-  if (includeSlides.manpower !== false) totalReportPages += monthsInRange.length;
+  if (includeSlides.manpower !== false) totalReportPages += quarterChunks.length;
   if (includeSlides.gantt !== false) totalReportPages += ganttSlideCount;
   if (includeSlides.details !== false) totalReportPages += detailSlideCount;
   totalReportPages += 1; // 엔딩 슬라이드
 
   let curPageNum = 1;
+  const periodStr = (startDate && endDate) ? `${startDate} ~ ${endDate}` : "전체 공사 기간";
+
+  // 종합 집계 지표
+  const grandTotalManday = targetProjects.reduce((acc, p) => acc + (p.manpower?.totalManday || 0), 0);
+  const avgProgress = targetProjects.length > 0
+    ? Math.round(targetProjects.reduce((acc, p) => acc + (p.effProgress || 0), 0) / targetProjects.length)
+    : 0;
+
+  let grandPeak = { val: 0, date: "-" };
+  monthsInRange.forEach(mObj => {
+    const m = getMonthDailyDeptMatrix(targetProjects, mObj.year, mObj.monthIdx);
+    m.days.forEach(dStr => {
+      const v = m.dayDataMap[dStr]?.total || 0;
+      if (v > grandPeak.val) grandPeak = { val: v, date: dStr };
+    });
+  });
 
   // =============================================================
-  // SLIDE 1: TW 공식 표지 슬라이드 (Cover Slide - Layout 1 규격)
+  // SLIDE 1: TW 공식 표지 슬라이드 (13.333 x 7.5 정중앙 완벽 대칭 배치 - 1번 요구사항)
   // =============================================================
   const sCover = x.addSlide();
   sCover.background = { color: C.white };
 
   // 대제목
   sCover.addText(pptReportTitle, {
-    x: 1.5, y: 1.45, w: 10.33, h: 0.85,
+    x: 0.80, y: 1.50, w: 11.73, h: 0.85,
     fontSize: 24, bold: true, color: C.navy, fontFace: "맑은 고딕", align: "center", margin: 0
   });
 
   // 영문 서브타이틀
   sCover.addText("TW PROJECT MANAGEMENT SYSTEM", {
-    x: 3.91, y: 2.30, w: 5.51, h: 0.32,
+    x: 0.80, y: 2.38, w: 11.73, h: 0.32,
     fontSize: 11, bold: true, color: C.blue, fontFace: "맑은 고딕", align: "center", margin: 0
   });
 
   // - INDEX - 헤더
   sCover.addText("- INDEX -", {
-    x: 5.45, y: 2.75, w: 2.44, h: 0.35,
+    x: 0.80, y: 2.85, w: 11.73, h: 0.35,
     fontSize: 14, bold: true, color: C.navy, fontFace: "맑은 고딕", align: "center", margin: 0
   });
 
@@ -525,44 +499,44 @@ export async function exportComprehensiveReport(projects, options = {}) {
   const indexBullets = [];
   if (includeSlides.summary !== false) indexBullets.push("1. 프로젝트 종합 현황 요약 (Executive Summary)");
   if (includeSlides.calendar !== false) indexBullets.push(`2. 월간 공사 일정 달력 (${monthsSummaryStr})`);
-  if (includeSlides.manpower !== false) indexBullets.push(`3. 부서별 일일 투입 공수 매트릭스 (${monthsSummaryStr})`);
-  if (includeSlides.gantt !== false) indexBullets.push("4. 프로젝트 종합 간트차트 일정 타임라인");
+  if (includeSlides.manpower !== false) indexBullets.push(`3. 부서별 일일 투입 공수 매트릭스 (${quarterChunks.length}개 분기 집약)`);
+  if (includeSlides.gantt !== false) indexBullets.push("4. 프로젝트 종합 간트차트 일정 타임라인 (전체 일정 한눈에 보기)");
   if (includeSlides.details !== false) indexBullets.push("5. 프로젝트별 공사 및 공수 상세 명세서 (전수 수록)");
 
   sCover.addText(indexBullets.join("\n"), {
-    x: 4.20, y: 3.20, w: 4.93, h: 2.30,
+    x: 4.10, y: 3.32, w: 5.13, h: 2.20,
     fontSize: 10.5, color: "334155", fontFace: "맑은 고딕", align: "left", lineSpacing: 25, margin: 0
   });
 
   // 기간 및 작성 일자
-  sCover.addText(`설정 기간: ${periodStr}   |   보고서 작성일: ${today()}`, {
-    x: 3.5, y: 5.85, w: 6.33, h: 0.35,
-    fontSize: 10, color: C.gray, fontFace: "맑은 고딕", align: "center", margin: 0
+  sCover.addText(`고객사: ${selectedCustomer}   |   설정 기간: ${periodStr}   |   작성일: ${today()}`, {
+    x: 0.80, y: 5.70, w: 11.73, h: 0.30,
+    fontSize: 9.5, color: C.gray, fontFace: "맑은 고딕", align: "center", margin: 0
   });
 
-  // 하단 중앙 TW 로고 (image1)
+  // 하단 중앙 TW 로고
   try {
-    sCover.addImage({ data: TW_LOGO_COVER, x: 5.74, y: 6.45, w: 1.86, h: 0.41 });
+    sCover.addImage({ data: TW_LOGO_COVER, x: 5.74, y: 6.20, w: 1.86, h: 0.41 });
   } catch (e) {}
 
   // 하단 보안 문구
   sCover.addText(SECURITY_NOTICE, {
-    x: 3.80, y: 7.12, w: 5.73, h: 0.16,
+    x: 3.80, y: 6.85, w: 5.73, h: 0.16,
     fontSize: 6.5, color: "8493A1", fontFace: "맑은 고딕", align: "center", margin: 0
   });
 
   curPageNum++;
 
   // =============================================================
-  // SLIDE 2: 1. 프로젝트 종합 현황 요약 (Executive Summary & KPIs)
+  // SLIDE 2: 1. 프로젝트 종합 현황 요약 (고객사 전용 KPI 및 Site별 분석 - 2번 요구사항)
   // =============================================================
   if (includeSlides.summary !== false) {
     const s1 = x.addSlide();
-    head(s1, "1. 프로젝트 종합 현황 요약 (Executive Summary)", `${conditions(filters)} | 설정 기간: ${periodStr} | 기준: ${modeLabel}`, curPageNum++, totalReportPages);
+    head(s1, `1. [${selectedCustomer}] 프로젝트 종합 현황 요약`, `${conditions(filters)} | 설정 기간: ${periodStr} | 기준: ${modeLabel}`, curPageNum++, totalReportPages);
 
     // 4대 핵심 KPI 카드
     const kpiItems = [
-      { label: "대상 프로젝트", val: `${targetProjects.length} 건`, sub: `전체 ${projects.length}건 중 해당`, col: C.navy },
+      { label: `${selectedCustomer} 대상 프로젝트`, val: `${targetProjects.length} 건`, sub: `해당 고객사 전체 집계`, col: C.navy },
       { label: "기간 총 투입 공수", val: `${grandTotalManday} M/D`, sub: `산출 기간 합계 공수`, col: C.blue },
       { label: "일일 최대 투입(Peak)", val: `${grandPeak.val} 명`, sub: grandPeak.date.slice(5) || "-", col: C.red },
       { label: "평균 공사 진행률", val: `${avgProgress}%`, sub: `${modeLabel} 평균`, col: C.green }
@@ -570,71 +544,80 @@ export async function exportComprehensiveReport(projects, options = {}) {
 
     kpiItems.forEach((kpi, idx) => {
       const kx = 0.55 + idx * 3.08;
-      s1.addShape("roundRect", { x: kx, y: 1.12, w: 2.95, h: 0.92, fill: { color: C.light }, line: { color: C.line, width: 0.6 } });
-      s1.addText(kpi.label, { x: kx + 0.15, y: 1.22, w: 2.65, h: 0.20, fontSize: 8.5, color: C.gray, margin: 0 });
-      s1.addText(kpi.val, { x: kx + 0.15, y: 1.44, w: 2.65, h: 0.36, fontSize: 20, bold: true, color: kpi.col, margin: 0 });
-      s1.addText(kpi.sub, { x: kx + 0.15, y: 1.82, w: 2.65, h: 0.18, fontSize: 7.5, color: "94A3B8", margin: 0 });
+      s1.addShape("roundRect", { x: kx, y: 1.10, w: 2.95, h: 0.88, fill: { color: C.light }, line: { color: C.line, width: 0.6 } });
+      s1.addText(kpi.label, { x: kx + 0.15, y: 1.18, w: 2.65, h: 0.20, fontSize: 8.5, color: C.gray, margin: 0 });
+      s1.addText(kpi.val, { x: kx + 0.15, y: 1.40, w: 2.65, h: 0.34, fontSize: 19, bold: true, color: kpi.col, margin: 0 });
+      s1.addText(kpi.sub, { x: kx + 0.15, y: 1.76, w: 2.65, h: 0.18, fontSize: 7.5, color: "94A3B8", margin: 0 });
     });
 
-    // 고객사별 요약 블록
-    s1.addText("🏢 주요 고객사별 프로젝트 운영 현황", {
-      x: 0.55, y: 2.18, w: 12.0, h: 0.22, fontSize: 9.5, bold: true, color: C.navy, margin: 0
+    // 2번 요구사항 적용: 타 고객사(Samsung, Hyundai) 카드 완전 제거!
+    // 대신 선택된 고객사(selectedCustomer)의 주요 Site별 운영 현황 카드 배치!
+    s1.addText(`🏢 [${selectedCustomer}] 주요 Site별 프로젝트 공사 및 공수 운영 현황`, {
+      x: 0.55, y: 2.10, w: 12.0, h: 0.22, fontSize: 9.5, bold: true, color: C.navy, margin: 0
     });
 
-    const customers = ["SK on", "Samsung SDI", "Hyundai"];
-    customers.forEach((cust, cIdx) => {
-      const cProjects = targetProjects.filter(p => (p.customer || "SK on") === cust);
-      const cDone = cProjects.filter(p => (p.effProgress || 0) >= 100).length;
-      const cManday = cProjects.reduce((acc, p) => acc + (p.manpower?.totalManday || 0), 0);
-      const cx = 0.55 + cIdx * 4.10;
+    const uniqueSites = [...new Set(targetProjects.map(p => normalizeJVName(p.site || "기타")))].filter(Boolean);
+    const displaySites = uniqueSites.length > 0 ? uniqueSites.slice(0, 3) : ["기타"];
+    const siteColW = displaySites.length === 1 ? 12.2 : displaySites.length === 2 ? 6.0 : 3.95;
 
-      s1.addShape("roundRect", { x: cx, y: 2.45, w: 3.95, h: 0.70, fill: { color: "F8FAFC" }, line: { color: C.line, width: 0.5 } });
-      s1.addText(cust, { x: cx + 0.15, y: 2.52, w: 1.8, h: 0.22, fontSize: 10, bold: true, color: C.navy, margin: 0 });
-      s1.addText(`프로젝트 ${cProjects.length}건 (완료 ${cDone}건) | 누적 공수: ${cManday} M/D`, {
-        x: cx + 0.15, y: 2.80, w: 3.65, h: 0.22, fontSize: 8, color: C.blue, margin: 0
+    displaySites.forEach((siteName, sIdx) => {
+      const sProjects = targetProjects.filter(p => normalizeJVName(p.site || "기타") === siteName);
+      const sDone = sProjects.filter(p => (p.effProgress || 0) >= 100).length;
+      const sManday = sProjects.reduce((acc, p) => acc + (p.manpower?.totalManday || 0), 0);
+      const sx = 0.55 + sIdx * (siteColW + 0.15);
+
+      s1.addShape("roundRect", { x: sx, y: 2.36, w: siteColW, h: 0.68, fill: { color: "F8FAFC" }, line: { color: C.line, width: 0.5 } });
+      s1.addText(`Site: ${siteName}`, { x: sx + 0.15, y: 2.42, w: siteColW - 0.3, h: 0.22, fontSize: 10, bold: true, color: C.navy, margin: 0 });
+      s1.addText(`프로젝트 ${sProjects.length}건 (완료 ${sDone}건) | 누적 투입 공수: ${sManday} M/D`, {
+        x: sx + 0.15, y: 2.70, w: siteColW - 0.3, h: 0.22, fontSize: 8, color: C.blue, margin: 0
       });
     });
 
-    // 주요 프로젝트 요약 테이블 (상위 11건)
+    // 주요 프로젝트 요약 테이블 (상위 10건)
     s1.addText("📋 주요 프로젝트 진행 현황 요약 (PowerPoint 직접 편집 가능)", {
-      x: 0.55, y: 3.30, w: 12.0, h: 0.22, fontSize: 9.5, bold: true, color: C.navy, margin: 0
+      x: 0.55, y: 3.18, w: 12.0, h: 0.22, fontSize: 9.5, bold: true, color: C.navy, margin: 0
     });
 
-    const summaryHeader = ["No", "제조번호", "Site", "프로젝트명", `${isConstruction ? '공사 일정' : '전체 일정'}`, "공사 구분", "상태", `${isConstruction ? '공사진행률' : '진행률'}`];
-    const summaryRows = [
-      summaryHeader.map(h => ({ text: h, options: { bold: true, fill: C.navy, color: C.white, align: "center" } }))
+    const summaryTableRows = [
+      [
+        { text: "제조번호", options: { bold: true, fill: C.navy, color: C.white, align: "center" } },
+        { text: "프로젝트명", options: { bold: true, fill: C.navy, color: C.white, align: "center" } },
+        { text: "Site", options: { bold: true, fill: C.navy, color: C.white, align: "center" } },
+        { text: `${isConstruction ? '공사 기간' : '전체 일정'}`, options: { bold: true, fill: C.navy, color: C.white, align: "center" } },
+        { text: "상태", options: { bold: true, fill: C.navy, color: C.white, align: "center" } },
+        { text: "진행률", options: { bold: true, fill: C.navy, color: C.white, align: "center" } },
+        { text: "투입 공수", options: { bold: true, fill: C.navy, color: C.white, align: "center" } }
+      ]
     ];
 
-    targetProjects.slice(0, 11).forEach((p, idx) => {
+    targetProjects.slice(0, 10).forEach((p, idx) => {
       const isEven = idx % 2 === 1;
       const rowBg = isEven ? "F8FAFC" : C.white;
-      const cType = p.cp?.hasConstructionData ? (p.cp?.msStartDate ? '셋업/이설' : '공수투입') : '일반일정';
-      summaryRows.push([
-        { text: String(idx + 1), options: { align: "center", fill: rowBg } },
-        { text: normalizeJVName(p.manufacturingNo || '-'), options: { align: "center", bold: true, fill: rowBg } },
-        { text: normalizeJVName(p.site || '-'), options: { align: "center", fill: rowBg } },
-        { text: normalizeJVName(p.name || '-'), options: { align: "left", fill: rowBg } },
-        { text: `${(p.effStart || '-').slice(2)} ~ ${(p.effEnd || '-').slice(2)}`, options: { align: "center", fill: rowBg } },
-        { text: cType, options: { align: "center", color: cType !== '일반일정' ? C.blue : C.gray, fill: rowBg } },
-        { text: p.status || '-', options: { align: "center", fill: rowBg } },
-        { text: `${Math.round(p.effProgress || 0)}%`, options: { align: "center", bold: true, color: C.blue, fill: "EFF6FF" } }
+      summaryTableRows.push([
+        { text: normalizeJVName(p.manufacturingNo || "-"), options: { fill: rowBg, align: "center" } },
+        { text: normalizeJVName(p.name || "-"), options: { fill: rowBg } },
+        { text: normalizeJVName(p.site || "-"), options: { fill: rowBg, align: "center" } },
+        { text: `${p.effStart || "-"} ~ ${p.effEnd || "-"}`, options: { fill: rowBg, align: "center" } },
+        { text: p.status || "진행중", options: { fill: rowBg, align: "center", bold: true, color: p.status === "완료" ? C.green : C.blue } },
+        { text: `${Math.round(p.effProgress || 0)}%`, options: { fill: rowBg, align: "center", bold: true } },
+        { text: `${p.manpower?.totalManday || 0} M/D`, options: { fill: rowBg, align: "center", color: C.blue, bold: true } }
       ]);
     });
 
-    s1.addTable(summaryRows, {
+    s1.addTable(summaryTableRows, {
       x: 0.55,
-      y: 3.58,
-      w: 12.25,
-      colW: [0.6, 1.8, 1.4, 4.25, 2.1, 1.0, 0.9, 0.9],
+      y: 3.42,
+      w: 12.23,
+      colW: [1.6, 3.83, 1.4, 2.4, 1.0, 1.0, 1.0],
       fontSize: 8,
-      rowH: 0.24,
+      rowH: 0.28,
       margin: 0.03,
       border: { type: "solid", color: C.line, pt: 0.5 }
     });
   }
 
   // =============================================================
-  // SLIDE 2~: 2. 월간 공사 일정 달력 (설정 기간 내 모든 월별 생성!)
+  // SLIDE 3~: 2. 월간 공사 일정 달력 (웹앱과 동일한 주간 연속 가로 막대 렌더링 - 3번 요구사항)
   // =============================================================
   if (includeSlides.calendar !== false) {
     monthsInRange.forEach((mObj, mIdx) => {
@@ -647,41 +630,46 @@ export async function exportComprehensiveReport(projects, options = {}) {
       }, { date: "-", val: 0 });
 
       const cTitle = `2-${mIdx + 1}. ${mObj.label} ${isConstruction ? '공사 일정 달력' : '프로젝트 일정 달력'}`;
-      const cSub = `${modeLabel} | 월간 총 공수: ${mTotalManday} M/D | 일일 최대 투입: ${mPeak.val}명 (${mPeak.date.slice(5) || '-'})`;
+      const cSub = `${selectedCustomer} | ${modeLabel} | 월간 총 공수: ${mTotalManday} M/D | 일일 최대 피크: ${mPeak.val}명 (${mPeak.date.slice(5) || '-'})`;
       head(s2, cTitle, cSub, curPageNum++, totalReportPages);
 
       // 상단 미니 KPI
       const cKpis = [
         { label: "월간 총 투입 공수", val: `${mTotalManday} M/D`, color: C.blue },
-        { label: "일일 최대 투입(Peak)", val: `${mPeak.val} 명 (${mPeak.date.slice(5) || "-"})`, color: C.red },
+        { label: "일일 최대 피크", val: `${mPeak.val} 명 (${mPeak.date.slice(5) || "-"})`, color: C.red },
         { label: "당월 진행 프로젝트", val: `${targetProjects.length} 건`, color: C.navy },
         { label: "투입 부서 수", val: `${mMatrix.sortedDepts.length} 개 부서`, color: C.green }
       ];
       cKpis.forEach((kpi, idx) => {
         const kx = 0.55 + idx * 3.08;
         s2.addShape("roundRect", { x: kx, y: 0.95, w: 2.95, h: 0.38, fill: { color: C.light }, line: { color: C.line, width: 0.5 } });
-        s2.addText(`${kpi.label}: `, { x: kx + 0.12, y: 1.02, w: 1.5, h: 0.22, fontSize: 8, color: C.gray, margin: 0 });
+        s2.addText(`${kpi.label}: `, { x: kx + 0.12, y: 1.02, w: 1.45, h: 0.22, fontSize: 8, color: C.gray, margin: 0 });
         s2.addText(kpi.val, { x: kx + 1.25, y: 1.00, w: 1.6, h: 0.26, fontSize: 9.5, bold: true, color: kpi.color, margin: 0 });
       });
 
       const first = new Date(mObj.year, mObj.monthIdx, 1);
       const calStart = new Date(first);
       calStart.setDate(1 - first.getDay());
-      const x0 = 0.55, y0 = 1.62, cw = 12.25 / 7, ch = 0.88;
+      const x0 = 0.55, y0 = 1.60, cw = 12.23 / 7, ch = 0.86;
 
+      // 요일 헤더
       ["일", "월", "화", "수", "목", "금", "토"].forEach((v, i) => {
         s2.addText(v, {
-          x: x0 + i * cw, y: 1.42, w: cw, h: 0.18, fontSize: 8, bold: true, align: "center",
+          x: x0 + i * cw, y: 1.40, w: cw, h: 0.18, fontSize: 8, bold: true, align: "center",
           color: i === 0 ? C.red : i === 6 ? C.blue : C.gray, margin: 0
         });
       });
 
+      // 6개 주차 렌더링
       for (let w = 0; w < 6; w++) {
         const ws = new Date(calStart);
         ws.setDate(calStart.getDate() + w * 7);
         const we = new Date(ws);
         we.setDate(ws.getDate() + 6);
+        const wsStr = ws.toISOString().slice(0, 10);
+        const weStr = we.toISOString().slice(0, 10);
 
+        // 1단계: 날짜 셀 격자, 날짜 숫자 및 일일 총 공수 배지
         for (let k = 0; k < 7; k++) {
           const cur = new Date(ws);
           cur.setDate(ws.getDate() + k);
@@ -692,182 +680,221 @@ export async function exportComprehensiveReport(projects, options = {}) {
           s2.addShape("rect", {
             x: x0 + k * cw, y: y0 + w * ch, w: cw, h: ch,
             fill: { color: isCurMonth ? C.white : "F8FAFC" },
-            line: { color: C.line, width: 0.5 }
+            line: { color: C.line, width: 0.4 }
           });
 
-          // 날짜 숫자
+          // 날짜 번호
           s2.addText(String(cur.getDate()), {
             x: x0 + k * cw + 0.04, y: y0 + w * ch + 0.03, w: 0.35, h: 0.16,
             fontSize: 7.5, bold: isCurMonth, color: isCurMonth ? (k === 0 ? C.red : k === 6 ? C.blue : C.navy) : C.gray, margin: 0
           });
 
-          // 일일 공수 투입 인원 배지
+          // 일일 공수 배지
           if (dayMp > 0 && isCurMonth) {
             const bgCol = dayMp >= 20 ? "FEE2E2" : dayMp >= 10 ? "FEF3C7" : "E0F2FE";
             const txtCol = dayMp >= 20 ? C.red : dayMp >= 10 ? C.orange : C.blue;
             s2.addShape("roundRect", {
-              x: x0 + k * cw + 0.45, y: y0 + w * ch + 0.03, w: cw - 0.49, h: 0.14,
+              x: x0 + k * cw + 0.42, y: y0 + w * ch + 0.03, w: cw - 0.46, h: 0.14,
               fill: { color: bgCol }, line: { color: txtCol, width: 0.4 }
             });
             s2.addText(`👥 ${dayMp}명`, {
-              x: x0 + k * cw + 0.47, y: y0 + w * ch + 0.02, w: cw - 0.53, h: 0.15,
+              x: x0 + k * cw + 0.43, y: y0 + w * ch + 0.02, w: cw - 0.48, h: 0.15,
               fontSize: 6.5, bold: true, color: txtCol, align: "center", margin: 0
             });
           }
+        }
 
-          // 해당 일자에 활성화된 공사/셋업 프로젝트 막대 표시
-          if (isCurMonth) {
-            const activeProjects = targetProjects.filter(p => (!p.effStart || p.effStart <= curStr) && (!p.effEnd || p.effEnd >= curStr));
-            activeProjects.slice(0, 3).forEach((ap, pIdx) => {
-              const barY = y0 + w * ch + 0.21 + pIdx * 0.18;
-              const pCol = hex(ap.projectColor || C.blue);
-              s2.addShape("roundRect", {
-                x: x0 + k * cw + 0.04, y: barY, w: cw - 0.08, h: 0.15,
-                fill: { color: pCol, transparency: 80 }, line: { color: pCol, width: 0.4 }
-              });
-              s2.addText(`${normalizeJVName(ap.manufacturingNo || ap.name)}`, {
-                x: x0 + k * cw + 0.06, y: barY - 0.01, w: cw - 0.12, h: 0.15,
-                fontSize: 6, color: C.navy, margin: 0, fit: "shrink"
-              });
-            });
-            if (activeProjects.length > 3) {
-              s2.addText(`+${activeProjects.length - 3}건 외`, {
-                x: x0 + k * cw + 0.06, y: y0 + w * ch + 0.73, w: cw - 0.12, h: 0.12,
-                fontSize: 5.5, color: C.gray, margin: 0
-              });
-            }
-          }
+        // 2단계: 주차별 연속 가로 막대 (Continuous Spanning Bar - 3번 요구사항 완벽 구현)
+        const weekProjects = targetProjects.filter(p => {
+          if (!p.effStart || !p.effEnd) return false;
+          return p.effStart <= weStr && p.effEnd >= wsStr;
+        });
+
+        const maxLanes = 3;
+        const visibleProjects = weekProjects.slice(0, maxLanes);
+        const overflowCount = weekProjects.length - maxLanes;
+
+        visibleProjects.forEach((p, laneIdx) => {
+          const st = Math.max(0, Math.round((d(p.effStart) - ws) / DAY)); // 0 ~ 6
+          const en = Math.min(6, Math.round((d(p.effEnd) - ws) / DAY));   // 0 ~ 6
+          const bx = x0 + st * cw + 0.03;
+          const bw = Math.max(0.2, (en - st + 1) * cw - 0.06);
+          const by = y0 + w * ch + 0.20 + laneIdx * 0.13;
+          const barColor = hex(p.projectColor || C.blue);
+
+          // 둥근 연속 막대
+          s2.addShape("roundRect", {
+            x: bx, y: by, w: bw, h: 0.11,
+            fill: { color: barColor },
+            line: { color: barColor, transparency: 100 }
+          });
+
+          // 막대 라벨 (제조번호 + 프로젝트명 + 공사기간)
+          const barLabel = `${normalizeJVName(p.manufacturingNo || "")} · ${normalizeJVName(p.name || "")}${isConstruction && p.cp?.hasConstructionData ? ` (${p.effStart.slice(5)}~${p.effEnd.slice(5)})` : ''}`;
+          s2.addText(barLabel, {
+            x: bx + 0.03, y: by - 0.015, w: bw - 0.06, h: 0.12,
+            fontSize: 6, bold: true, color: C.white, fontFace: "맑은 고딕", margin: 0, fit: "shrink"
+          });
+        });
+
+        if (overflowCount > 0) {
+          s2.addText(`+${overflowCount}건 외`, {
+            x: x0 + 6 * cw - 0.75, y: y0 + w * ch + 0.20 + maxLanes * 0.13, w: 0.70, h: 0.12,
+            fontSize: 5.5, bold: true, color: C.gray, align: "right", margin: 0
+          });
         }
       }
     });
   }
 
   // =============================================================
-  // SLIDE 3~: 3. 부서별 일일 투입 공수 매트릭스 (설정 기간 내 모든 월별 생성!)
+  // SLIDE 4~: 3. 부서별 일일 투입 공수 매트릭스 (1슬라이드에 4개월치 집약 - 4번 요구사항)
   // =============================================================
   if (includeSlides.manpower !== false) {
-    monthsInRange.forEach((mObj, mIdx) => {
+    quarterChunks.forEach((chunkMonths, chunkIdx) => {
       const s3 = x.addSlide();
-      const mMatrix = getMonthDailyDeptMatrix(targetProjects, mObj.year, mObj.monthIdx);
-      const mTotalManday = mMatrix.days.reduce((acc, dStr) => acc + (mMatrix.dayDataMap[dStr]?.total || 0), 0);
-      const lastDateNum = new Date(mObj.year, mObj.monthIdx + 1, 0).getDate();
+      const chunkStartLabel = chunkMonths[0].label;
+      const chunkEndLabel = chunkMonths[chunkMonths.length - 1].label;
+      const chunkTotalManday = chunkMonths.reduce((acc, mObj) => {
+        const m = getMonthDailyDeptMatrix(targetProjects, mObj.year, mObj.monthIdx);
+        return acc + m.days.reduce((dAcc, dStr) => dAcc + (m.dayDataMap[dStr]?.total || 0), 0);
+      }, 0);
 
-      const mTitle = `3-${mIdx + 1}. ${mObj.label} 부서별 일일 투입 공수 매트릭스`;
-      const mSub = `월간 총 공수: ${mTotalManday} M/D | 1일~${lastDateNum}일 부서별 일일 인원(M/D) 상세 집계표 (PowerPoint 직접 수정 가능)`;
+      const mTitle = `3-${chunkIdx + 1}. 부서별 일일 투입 공수 매트릭스 (${chunkStartLabel} ~ ${chunkEndLabel})`;
+      const mSub = `${selectedCustomer} | 1개 슬라이드 내 ${chunkMonths.length}개월(분기) 통합 집약 | 총 공수: ${chunkTotalManday} M/D | PowerPoint 직접 수정 가능`;
       head(s3, mTitle, mSub, curPageNum++, totalReportPages);
 
-      // 매트릭스 테이블 헤더 구성
-      const matrixHeader = [
-        { text: "투입 부서", options: { bold: true, fill: C.navy, color: C.white, align: "center" } }
-      ];
-      mMatrix.days.forEach(dStr => {
-        const dObj = new Date(`${dStr}T00:00:00`);
-        const dayNum = dObj.getDate();
-        const dayOfWeek = dObj.getDay();
-        const isSun = dayOfWeek === 0;
-        const isSat = dayOfWeek === 6;
+      const N = chunkMonths.length; // 1 ~ 4
+      const availableH = 5.70; // 1.15 ~ 6.85
+      const blockH = availableH / N;
 
-        matrixHeader.push({
-          text: String(dayNum),
-          options: {
-            bold: true,
-            fill: isSun ? "DC2626" : isSat ? "2563EB" : C.navy,
-            color: C.white,
-            align: "center"
-          }
+      chunkMonths.forEach((mObj, subIdx) => {
+        const blockY = 1.15 + subIdx * blockH;
+        const mMatrix = getMonthDailyDeptMatrix(targetProjects, mObj.year, mObj.monthIdx);
+        const mTotal = mMatrix.days.reduce((acc, dStr) => acc + (mMatrix.dayDataMap[dStr]?.total || 0), 0);
+        const lastDateNum = new Date(mObj.year, mObj.monthIdx + 1, 0).getDate();
+
+        // 월 소제목 바
+        s3.addText(`▶ ${mObj.label} (월간 총 공수: ${mTotal} M/D)`, {
+          x: 0.52, y: blockY, w: 12.25, h: 0.18,
+          fontSize: 8, bold: true, color: C.navy, fontFace: "맑은 고딕", margin: 0
         });
-      });
-      matrixHeader.push({
-        text: "합계",
-        options: { bold: true, fill: "0F172A", color: C.white, align: "center" }
-      });
 
-      const matrixRows = [matrixHeader];
-
-      // 부서별 데이터 행
-      mMatrix.sortedDepts.forEach((dept, rIdx) => {
-        const isEven = rIdx % 2 === 1;
-        const rowBg = isEven ? "F8FAFC" : C.white;
-        const deptMonthSum = mMatrix.days.reduce((acc, dStr) => acc + (mMatrix.dayDataMap[dStr]?.[dept] || 0), 0);
-
-        const row = [
-          { text: dept, options: { bold: true, fill: rowBg, color: C.navy, align: "center" } }
+        // 테이블 헤더
+        const matrixHeader = [
+          { text: "구분", options: { bold: true, fill: C.navy, color: C.white, align: "center" } }
         ];
-
         mMatrix.days.forEach(dStr => {
-          const val = mMatrix.dayDataMap[dStr]?.[dept] || 0;
-          row.push({
-            text: val > 0 ? String(val) : "-",
+          const dObj = new Date(`${dStr}T00:00:00`);
+          const dayNum = dObj.getDate();
+          const dayOfWeek = dObj.getDay();
+          const isSun = dayOfWeek === 0, isSat = dayOfWeek === 6;
+
+          matrixHeader.push({
+            text: String(dayNum),
             options: {
-              align: "center",
-              fill: val > 0 ? (val >= 5 ? "FEF3C7" : "EFF6FF") : rowBg,
-              color: val > 0 ? (val >= 5 ? C.orange : C.blue) : "94A3B8",
-              bold: val > 0
+              bold: true,
+              fill: isSun ? "DC2626" : isSat ? "2563EB" : C.navy,
+              color: C.white,
+              align: "center"
             }
           });
         });
-
-        row.push({
-          text: `${deptMonthSum}`,
-          options: { bold: true, color: C.blue, fill: "DBEAFE", align: "center" }
+        matrixHeader.push({
+          text: "합계",
+          options: { bold: true, fill: "0F172A", color: C.white, align: "center" }
         });
-        matrixRows.push(row);
-      });
 
-      // 당일 총합 행
-      const totalRow = [
-        { text: "당일 총합 (명)", options: { bold: true, fill: "1E3A8A", color: C.white, align: "center" } }
-      ];
-      mMatrix.days.forEach(dStr => {
-        const val = mMatrix.dayDataMap[dStr]?.total || 0;
+        const matrixRows = [matrixHeader];
+
+        // 주요 부서 목록 (최대 4개)
+        const deptsToDisplay = mMatrix.sortedDepts.length > 0 ? mMatrix.sortedDepts.slice(0, 4) : ["기구", "제어", "설비기술", "비전"];
+        deptsToDisplay.forEach((dept, rIdx) => {
+          const isEven = rIdx % 2 === 1;
+          const rowBg = isEven ? "F8FAFC" : C.white;
+          const deptMonthSum = mMatrix.days.reduce((acc, dStr) => acc + (mMatrix.dayDataMap[dStr]?.[dept] || 0), 0);
+
+          const row = [
+            { text: dept, options: { bold: true, fill: rowBg, color: C.navy, align: "center" } }
+          ];
+          mMatrix.days.forEach(dStr => {
+            const val = mMatrix.dayDataMap[dStr]?.[dept] || 0;
+            row.push({
+              text: val > 0 ? String(val) : "-",
+              options: {
+                align: "center",
+                fill: val > 0 ? (val >= 5 ? "FEF3C7" : "EFF6FF") : rowBg,
+                color: val > 0 ? (val >= 5 ? C.orange : C.blue) : "94A3B8",
+                bold: val > 0
+              }
+            });
+          });
+          row.push({
+            text: `${deptMonthSum}`,
+            options: { bold: true, color: C.blue, fill: "DBEAFE", align: "center" }
+          });
+          matrixRows.push(row);
+        });
+
+        // 당일 총합 행
+        const totalRow = [
+          { text: "당일 합", options: { bold: true, fill: "1E3A8A", color: C.white, align: "center" } }
+        ];
+        mMatrix.days.forEach(dStr => {
+          const val = mMatrix.dayDataMap[dStr]?.total || 0;
+          totalRow.push({
+            text: val > 0 ? String(val) : "0",
+            options: {
+              bold: true,
+              color: val >= 20 ? "FEE2E2" : C.white,
+              fill: val >= 20 ? "B91C1C" : val > 0 ? "2563EB" : "475569",
+              align: "center"
+            }
+          });
+        });
         totalRow.push({
-          text: val > 0 ? String(val) : "0",
-          options: {
-            bold: true,
-            color: val >= 20 ? "FEE2E2" : C.white,
-            fill: val >= 20 ? "B91C1C" : val > 0 ? "2563EB" : "475569",
-            align: "center"
-          }
+          text: `${mTotal}`,
+          options: { bold: true, color: C.white, fill: "0F172A", align: "center" }
         });
-      });
-      totalRow.push({
-        text: `${mTotalManday}`,
-        options: { bold: true, color: C.white, fill: "0F172A", align: "center" }
-      });
-      matrixRows.push(totalRow);
+        matrixRows.push(totalRow);
 
-      const deptColW = 1.3;
-      const totalColW = 0.9;
-      const dayColW = (12.3 - deptColW - totalColW) / lastDateNum;
-      const colWidths = [deptColW, ...Array(lastDateNum).fill(dayColW), totalColW];
+        const deptColW = 0.85;
+        const totalColW = 0.70;
+        const dayColW = (12.25 - deptColW - totalColW) / lastDateNum;
+        const colWidths = [deptColW, ...Array(lastDateNum).fill(dayColW), totalColW];
 
-      s3.addTable(matrixRows, {
-        x: 0.52,
-        y: 1.25,
-        w: 12.3,
-        colW: colWidths,
-        fontSize: 7,
-        rowH: 0.28,
-        margin: 0.02,
-        border: { type: "solid", color: C.line, pt: 0.5 }
+        const rowH = N >= 4 ? 0.16 : 0.20;
+        const tableH = (matrixRows.length) * rowH;
+
+        s3.addTable(matrixRows, {
+          x: 0.52,
+          y: blockY + 0.19,
+          w: 12.25,
+          h: tableH,
+          colW: colWidths,
+          fontSize: 6,
+          rowH: rowH,
+          margin: 0.01,
+          border: { type: "solid", color: C.line, pt: 0.3 }
+        });
       });
     });
   }
 
   // =============================================================
-  // SLIDE 4~: 4. 종합 프로젝트 간트차트 (자동 페이징으로 전수 수록!)
+  // SLIDE 5~: 4. 프로젝트 종합 간트차트 일정 타임라인 (마일스톤 펼침 없이 한눈에 보기 - 5번 요구사항)
   // =============================================================
   if (includeSlides.gantt !== false) {
     for (let o = 0; o < ganttRows.length; o += perGanttSlide) {
       const gs = x.addSlide();
       const pageIndexInGantt = Math.floor(o / perGanttSlide) + 1;
-      const gTitle = `4. ${isConstruction ? '공사 종합 간트차트 일정' : '종합 프로젝트 간트차트 일정'} (${pageIndexInGantt}/${ganttSlideCount})`;
-      const gSub = `${modeLabel} | 타임라인: ${gStart.toISOString().slice(0, 10)} ~ ${gEnd.toISOString().slice(0, 10)} | 설정 기간: ${periodStr}`;
+      const gTitle = `4. ${selectedCustomer} ${isConstruction ? '공사 종합 간트차트 일정' : '종합 프로젝트 간트차트 일정'} (${pageIndexInGantt}/${ganttSlideCount})`;
+      const gSub = `${selectedCustomer} | 메인 프로젝트 일정 전수 조망 | 타임라인: ${gStart.toISOString().slice(0, 10)} ~ ${gEnd.toISOString().slice(0, 10)}`;
       head(gs, gTitle, gSub, curPageNum++, totalReportPages);
 
-      const lx = 0.45, cx = 4.35, cw = 8.4, y0 = 1.30, rh = 0.33;
+      const lx = 0.52, cx = 4.45, cw = 8.15, y0 = 1.30, rh = 0.29;
 
-      gs.addText("프로젝트 / 마일스톤 명칭", { x: lx, y: 1.05, w: 3.7, h: 0.18, fontSize: 8.5, bold: true, color: C.gray, margin: 0 });
+      gs.addText("프로젝트 명칭 (Site)", { x: lx, y: 1.05, w: 3.8, h: 0.18, fontSize: 8.5, bold: true, color: C.gray, margin: 0 });
 
       // 세로 눈금선 및 날짜 헤더
       for (let i = 0; i <= 6; i++) {
@@ -887,65 +914,59 @@ export async function exportComprehensiveReport(projects, options = {}) {
 
       ganttRows.slice(o, o + perGanttSlide).forEach((q, i) => {
         const y = y0 + i * rh;
-        const ind = q.main ? 0 : 0.25;
 
         // 라벨
         gs.addText(q.name, {
-          x: lx + ind, y: y + 0.04, w: 3.75 - ind, h: 0.18,
-          fontSize: q.main ? 8.5 : 7.5,
-          bold: q.main,
-          color: q.main ? C.navy : C.gray,
-          margin: 0,
-          fit: "shrink"
+          x: lx, y: y + 0.04, w: 3.85, h: 0.18,
+          fontSize: 8, bold: true, color: C.navy, margin: 0, fit: "shrink"
         });
 
         // 타임라인 막대
         const left = Math.max(0, (d(q.s) - gStart) / gSpan);
         const right = Math.min(1, (d(q.e) - gStart + DAY) / gSpan);
         const bx = cx + left * cw;
-        const bw = Math.max(0.05, (right - left) * cw);
-        const color = hex(q.p.projectColor);
-        const barH = q.main ? 0.16 : 0.10;
+        const bw = Math.max(0.06, (right - left) * cw);
+        const color = hex(q.p.projectColor || C.blue);
+        const barH = 0.15;
         const doneW = bw * Math.max(0, Math.min(100, q.v)) / 100;
 
         // 배경 바
-        gs.addShape(q.main ? "roundRect" : "rect", {
-          x: bx, y: y + 0.075, w: bw, h: barH,
-          fill: { color, transparency: q.main ? 70 : 85 },
-          line: { color, width: q.main ? 0.6 : 0.4, transparency: 40 }
+        gs.addShape("roundRect", {
+          x: bx, y: y + 0.065, w: bw, h: barH,
+          fill: { color, transparency: 70 },
+          line: { color, width: 0.6, transparency: 40 }
         });
 
         // 완료율 채움 바
         if (doneW > 0) {
-          gs.addShape(q.main ? "roundRect" : "rect", {
-            x: bx, y: y + 0.075, w: Math.max(0.03, doneW), h: barH,
+          gs.addShape("roundRect", {
+            x: bx, y: y + 0.065, w: Math.max(0.03, doneW), h: barH,
             fill: { color, transparency: 0 },
             line: { color, transparency: 100 }
           });
         }
 
-        // 진행률 텍스트
-        const progressLabel = q.main
-          ? `${isConstruction ? '공사 ' : ''}${Math.round(q.v)}%`
-          : `${Math.round(q.v)}%`;
+        // 일정 및 진행률 텍스트
+        const dateSpanStr = `${q.s ? q.s.slice(5) : ''}~${q.e ? q.e.slice(5) : ''}`;
+        const progressLabel = `${dateSpanStr} (${Math.round(q.v)}%)`;
 
         gs.addText(progressLabel, {
-          x: Math.min(bx + bw + 0.04, 12.35), y: y + 0.035, w: 0.65, h: 0.18,
-          fontSize: 7, bold: q.main, color: q.main ? C.navy : C.gray, margin: 0, fit: "shrink"
+          x: Math.min(bx + bw + 0.04, 12.35), y: y + 0.035, w: 0.85, h: 0.18,
+          fontSize: 6.5, bold: true, color: C.navy, margin: 0, fit: "shrink"
         });
       });
     }
   }
 
   // =============================================================
-  // SLIDE 5~: 5. 프로젝트별 공사 및 공수 상세 명세서 (전수 수록 페이징!)
+  // SLIDE 6~: 5. 프로젝트별 공사 및 공수 상세 명세서 (전수 수록)
   // =============================================================
   if (includeSlides.details !== false) {
     for (let o = 0; o < targetProjects.length; o += perDetailSlide) {
       const s5 = x.addSlide();
       const pageIndexInDetails = Math.floor(o / perDetailSlide) + 1;
-      const dTitle = `5. ${isConstruction ? '프로젝트별 공사 일정 및 투입 공수 명세' : '프로젝트별 일정 및 투입 공수 명세'} (${pageIndexInDetails}/${detailSlideCount})`;
-      const dSub = `프로젝트 총 ${targetProjects.length}건 전수 수록 | 상세 일정 및 부서별 투입 인원(M/D) 명세 (PowerPoint 직접 수정 가능)`;
+      const dTitle = `5. ${selectedCustomer} ${isConstruction ? '프로젝트별 공사 일정 및 투입 공수 명세' : '프로젝트별 일정 및 투입 공수 명세'} (${pageIndexInDetails}/${detailSlideCount})`;
+      const dSub = `${selectedCustomer} 프로젝트 총 ${targetProjects.length}건 전수 수록 | 상세 일정 및 부서별 투입 인원(M/D) 명세 (PowerPoint 직접 수정 가능)`;
       head(s5, dTitle, dSub, curPageNum++, totalReportPages);
 
       const detailHeader = [
@@ -959,44 +980,35 @@ export async function exportComprehensiveReport(projects, options = {}) {
         const globalIdx = o + idx + 1;
         let pKigu = 0, pJeeo = 0, pVision = 0, pEtc = 0, pPeriodSum = 0;
 
-        // 설정된 전체 월 범위의 공수 합산
         monthsInRange.forEach(mObj => {
-          const mMatrix = getMonthDailyDeptMatrix([p], mObj.year, mObj.monthIdx);
-          mMatrix.days.forEach(dStr => {
-            if (p.manpower?.departments) {
-              Object.entries(p.manpower.departments).forEach(([dk, dObj]) => {
-                const val = Number(dObj?.daily?.[dStr]) || 0;
-                if (val > 0) {
-                  pPeriodSum += val;
-                  if (dk.includes("기구")) pKigu += val;
-                  else if (dk.includes("제어")) pJeeo += val;
-                  else if (dk.includes("비전")) pVision += val;
-                  else pEtc += val;
-                }
-              });
-            } else if (p.manpower?.dailyTotal?.[dStr]) {
-              const val = Number(p.manpower.dailyTotal[dStr]) || 0;
-              pPeriodSum += val;
-              pEtc += val;
+          const m = getMonthDailyDeptMatrix([p], mObj.year, mObj.monthIdx);
+          m.days.forEach(dStr => {
+            const dayEntry = m.dayDataMap[dStr];
+            if (dayEntry) {
+              pKigu += dayEntry.depts?.["기구"] || 0;
+              pJeeo += dayEntry.depts?.["제어"] || 0;
+              pVision += dayEntry.depts?.["비전"] || 0;
+              const others = (dayEntry.total || 0) - (dayEntry.depts?.["기구"] || 0) - (dayEntry.depts?.["제어"] || 0) - (dayEntry.depts?.["비전"] || 0);
+              pEtc += Math.max(0, others);
+              pPeriodSum += dayEntry.total || 0;
             }
           });
         });
 
         const isEven = idx % 2 === 1;
         const rowBg = isEven ? "F8FAFC" : C.white;
-        const constrType = p.cp?.hasConstructionData ? (p.cp.msStartDate ? '공사' : '공수투입') : '일반일정';
 
         detailRows.push([
           { text: String(globalIdx), options: { align: "center", fill: rowBg } },
-          { text: normalizeJVName(p.manufacturingNo || '-'), options: { align: "center", bold: true, fill: rowBg } },
-          { text: normalizeJVName(p.site || '-'), options: { align: "center", fill: rowBg } },
-          { text: normalizeJVName(p.name || '-'), options: { align: "left", fill: rowBg } },
-          { text: `${(p.effStart || '-').slice(5)} ~ ${(p.effEnd || '-').slice(5)}`, options: { align: "center", bold: true, fill: rowBg } },
-          { text: constrType, options: { align: "center", color: constrType !== '일반일정' ? C.blue : C.gray, fill: rowBg } },
-          { text: pKigu > 0 ? `${pKigu}` : "-", options: { align: "center", fill: rowBg } },
-          { text: pJeeo > 0 ? `${pJeeo}` : "-", options: { align: "center", fill: rowBg } },
-          { text: pVision > 0 ? `${pVision}` : "-", options: { align: "center", fill: rowBg } },
-          { text: pEtc > 0 ? `${pEtc}` : "-", options: { align: "center", fill: rowBg } },
+          { text: normalizeJVName(p.manufacturingNo || "-"), options: { align: "center", fill: rowBg } },
+          { text: normalizeJVName(p.site || "-"), options: { align: "center", fill: rowBg } },
+          { text: normalizeJVName(p.name || "-"), options: { fill: rowBg } },
+          { text: `${p.effStart || "-"} ~ ${p.effEnd || "-"}`, options: { align: "center", fill: rowBg } },
+          { text: p.cp?.hasConstructionData ? "현장공사" : "전체일정", options: { align: "center", fill: rowBg } },
+          { text: pKigu > 0 ? String(pKigu) : "-", options: { align: "center", fill: rowBg } },
+          { text: pJeeo > 0 ? String(pJeeo) : "-", options: { align: "center", fill: rowBg } },
+          { text: pVision > 0 ? String(pVision) : "-", options: { align: "center", fill: rowBg } },
+          { text: pEtc > 0 ? String(pEtc) : "-", options: { align: "center", fill: rowBg } },
           { text: `${pPeriodSum} M/D`, options: { align: "center", bold: true, color: C.blue, fill: "EFF6FF" } },
           { text: `${p.manpower?.totalManday || pPeriodSum} M/D`, options: { align: "center", fill: rowBg } }
         ]);
@@ -1005,8 +1017,8 @@ export async function exportComprehensiveReport(projects, options = {}) {
       s5.addTable(detailRows, {
         x: 0.52,
         y: 1.25,
-        w: 12.3,
-        colW: [0.5, 1.3, 1.1, 2.7, 1.6, 0.9, 0.6, 0.6, 0.6, 0.6, 1.0, 0.8],
+        w: 12.25,
+        colW: [0.5, 1.3, 1.1, 2.7, 1.6, 0.9, 0.6, 0.6, 0.6, 0.6, 1.0, 0.85],
         fontSize: 7.5,
         rowH: 0.26,
         margin: 0.03,
@@ -1016,23 +1028,23 @@ export async function exportComprehensiveReport(projects, options = {}) {
   }
 
   // =============================================================
-  // SLIDE END: TW 공식 엔딩 슬라이드 (Ending Slide - Layout 4 규격)
+  // SLIDE END: TW 공식 엔딩 슬라이드
   // =============================================================
   const sEnd = x.addSlide();
   sEnd.background = { color: C.white };
 
-  // 중앙 공식 TW 로고 (image3)
+  // 중앙 공식 TW 로고
   try {
-    sEnd.addImage({ data: TW_LOGO_ENDING, x: 5.45, y: 3.30, w: 2.47, h: 0.55 });
+    sEnd.addImage({ data: TW_LOGO_ENDING, x: 5.45, y: 3.20, w: 2.47, h: 0.55 });
   } catch (e) {}
 
   // 하단 보안 문구
   sEnd.addText(SECURITY_NOTICE, {
-    x: 3.80, y: 7.12, w: 5.73, h: 0.16,
+    x: 3.80, y: 6.85, w: 5.73, h: 0.16,
     fontSize: 6.5, color: "8493A1", fontFace: "맑은 고딕", align: "center", margin: 0
   });
 
-  const filePrefix = isConstruction ? "TW_종합보고서_공사기준" : "TW_종합보고서_전체일정기준";
+  const filePrefix = `${selectedCustomer}_종합보고서_${isConstruction ? '공사기준' : '전체일정기준'}`;
   const dateTag = (startDate && endDate) ? `${startDate}_${endDate}` : today();
   await x.writeFile({
     fileName: `${filePrefix}_${dateTag}.pptx`,

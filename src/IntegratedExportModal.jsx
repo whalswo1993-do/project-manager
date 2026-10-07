@@ -17,6 +17,7 @@ export default function IntegratedExportModal({
   defaultMode = 'construction',
   defaultStartDate = '',
   defaultEndDate = '',
+  customer = '',
   filters = {},
   onExport
 }) {
@@ -183,11 +184,11 @@ export default function IntegratedExportModal({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '20px' }}>📊</span>
               <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#ffffff' }}>
-                종합 일정 보고서 PPT 내보내기
+                {customer ? `[${customer}] 종합 일정 보고서 PPT 내보내기` : "종합 일정 보고서 PPT 내보내기"}
               </h2>
             </div>
             <p style={{ margin: '4px 0 0 28px', fontSize: '12px', color: '#bfdbfe' }}>
-              간트차트와 공사 일정 달력을 통합한 맞춤형 보고서 (Office 네이티브 표/도형 100% 직접 수정 가능)
+              {customer ? `${customer} 프로젝트 전용 맞춤형 보고서` : '프로젝트 종합 보고서'} (Office 네이티브 표/도형 100% 직접 수정 가능)
             </p>
           </div>
           <button

@@ -646,7 +646,7 @@ export default function App() {
 
   const handleIntegratedExportSubmit = async (options) => {
     setMsg("종합 PPT 보고서 생성 중... (Office 네이티브 표/도형)");
-    await exportComprehensiveReport(view, options);
+    await exportComprehensiveReport(view, { ...options, customer: currentCustomer });
     setMsg("종합 PPT 보고서 생성을 완료했습니다. (PowerPoint에서 직접 수정 가능)");
   };
 
@@ -4230,6 +4230,7 @@ JSON 출력 예시:
         defaultMode={integratedModalSource === 'calendar' ? calendarMode : ganttMode}
         defaultStartDate={integratedModalSource === 'calendar' ? new Date(month.getFullYear(), month.getMonth(), 1).toISOString().slice(0, 10) : (ganttStartDate || `${new Date().toISOString().slice(0, 7)}-01`)}
         defaultEndDate={integratedModalSource === 'calendar' ? new Date(month.getFullYear(), month.getMonth() + 1, 0).toISOString().slice(0, 10) : (ganttEndDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10))}
+        customer={currentCustomer}
         filters={{ filter, siteFilter, personFilter, search }}
         onExport={handleIntegratedExportSubmit}
       />

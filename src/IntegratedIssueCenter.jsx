@@ -916,7 +916,8 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
                     name="modal-status"
                     checked={form.status === 'open'}
                     onChange={() => handleChange('status', 'open')}
-                  /> 접수/발생
+                  />
+                  <span>접수/발생</span>
                 </label>
                 <label className={form.status === 'in_progress' ? 'active' : ''}>
                   <input
@@ -924,7 +925,8 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
                     name="modal-status"
                     checked={form.status === 'in_progress'}
                     onChange={() => handleChange('status', 'in_progress')}
-                  /> 조치 진행중
+                  />
+                  <span>조치 진행중</span>
                 </label>
                 <label className={form.status === 'resolved' ? 'active' : ''}>
                   <input
@@ -935,7 +937,8 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
                       handleChange('status', 'resolved');
                       if (!form.resolvedDate) handleChange('resolvedDate', new Date().toISOString().slice(0, 10));
                     }}
-                  /> 조치 완료
+                  />
+                  <span>조치 완료</span>
                 </label>
               </div>
             </div>

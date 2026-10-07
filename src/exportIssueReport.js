@@ -44,7 +44,7 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
   }
 
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'TW Battery System';
+  wb.creator = 'TW System';
   wb.created = new Date();
 
   const ws = wb.addWorksheet('이슈 통합 관리 및 조치 이력', {
@@ -57,7 +57,7 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
   // 1. 대제목 헤더 (Row 1)
   ws.mergeCells(1, 1, 1, lastColIdx);
   const titleCell = ws.getCell(1, 1);
-  titleCell.value = 'TW Battery — 스태킹 · 노칭 공정 및 사이트별 이슈 통합 관리 보고서';
+  titleCell.value = 'TW — 스태킹 · 노칭 공정 및 사이트별 이슈 통합 관리 보고서';
   titleCell.font = { name: '맑은 고딕', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
   titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${C.navyDark}` } };
   titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };

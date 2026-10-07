@@ -766,12 +766,12 @@
   border: 1px solid var(--border-medium);
   border-radius: 18px;
   width: 100%;
-  max-width: 680px;
+  max-width: 740px;
   max-height: 90vh;
-  overflow-y: auto;
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   animation: modalScale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -781,19 +781,21 @@
 }
 
 .iic-modal-box.modal-resolve-compact {
-  max-width: 580px;
+  max-width: 600px;
 }
 
 .iic-modal-box.modal-detail {
-  max-width: 640px;
+  max-width: 700px;
 }
 
 .iic-modal-header {
-  padding: 16px 22px;
+  padding: 16px 24px;
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
+  background: var(--bg-card);
 }
 
 .iic-modal-header h3 {
@@ -823,10 +825,12 @@
 }
 
 .iic-modal-form {
-  padding: 18px 22px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .form-row-2 {
@@ -971,32 +975,63 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px 16px;
   font-size: 0.85rem;
   font-weight: 800;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 8px;
+  padding-bottom: 10px;
+}
+
+.section-legend > span {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .status-radio-group {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .status-radio-group label {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  white-space: nowrap !important;
+  word-break: keep-all;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.status-radio-group label:hover {
+  border-color: var(--border-medium);
+  color: var(--text-primary);
 }
 
 .status-radio-group label.active {
   color: var(--accent);
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.35);
+  font-weight: 800;
+}
+
+.status-radio-group label input[type="radio"] {
+  width: auto;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #2563eb;
 }
 
 .resolve-info-banner {
@@ -1065,10 +1100,20 @@
 
 /* ── Detail Modal Specifics ── */
 .detail-content {
-  padding: 18px 22px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.iic-modal-box.modal-detail .iic-modal-actions {
+  padding: 14px 24px;
+  margin-top: 0;
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  background: var(--bg-card);
 }
 
 .detail-tags {

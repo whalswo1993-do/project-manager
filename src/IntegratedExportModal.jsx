@@ -419,11 +419,11 @@ export default function IntegratedExportModal({
               boxSizing: 'border-box'
             }}>
               {[
-                { id: 'summary', title: '슬라이드 1: 표지 및 Executive KPI 요약 대시보드', desc: '총 투입 공수, 피크 인원, 프로젝트 상태 요약 및 리스트' },
-                { id: 'calendar', title: '슬라이드 2: 월간 공사 일정 달력 (Calendar View)', desc: '네이티브 달력 그리드 + 일자별 공수 배지 + 주차별 프로젝트 바' },
-                { id: 'manpower', title: '슬라이드 3: 일일 부서별 공수 매트릭스 표 (Daily Matrix)', desc: '1일~말일 일자별/부서별(기구, 제어, 비전 등) 투입 인원 및 총합 표' },
-                { id: 'gantt', title: '슬라이드 4: 종합 공사 간트차트 (Timeline Gantt Chart)', desc: '공사 일정 기준 타임라인 바 + 오늘선 + 마일스톤 + 진행률(%) 표기' },
-                { id: 'details', title: '슬라이드 5: 프로젝트별 공사 및 공수 상세 명세서 (Table)', desc: '제조번호, Site, 공사 일정, 공사 구분, 부서별 실적 명세' }
+                { id: 'summary', title: '섹션 1: 공식 표지 및 Executive KPI 요약 대시보드', desc: 'TW 공식 표지(INDEX/기간) + 총 투입 공수, 피크 인원, 고객사별 요약' },
+                { id: 'calendar', title: '섹션 2: 월간 공사 일정 달력 (설정 기간 내 모든 월 생성)', desc: '기간 내 모든 월별 달력 슬라이드 자동 생성 + 일자별 공수 배지 + 프로젝트 바' },
+                { id: 'manpower', title: '섹션 3: 부서별 일일 투입 공수 매트릭스 (설정 기간 내 모든 월 생성)', desc: '기간 내 모든 월별 1일~말일 일자별/부서별(기구, 제어, 비전 등) 투입 인원 및 총합 표' },
+                { id: 'gantt', title: '섹션 4: 종합 공사 간트차트 일정 (자동 페이징 전수 수록)', desc: '설정 기간 타임라인 바 + 오늘선 + 마일스톤 + 진행률(%) 표기 (누락 없는 멀티 슬라이드)' },
+                { id: 'details', title: '섹션 5: 프로젝트별 공사 및 공수 상세 명세서 (전수 수록)', desc: '프로젝트 총 건수 전수 수록 명세서 (제조번호, Site, 공사구분, 부서별 실적 등)' }
               ].map(item => (
                 <label
                   key={item.id}

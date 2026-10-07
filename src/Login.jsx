@@ -246,6 +246,10 @@ export default function Login() {
     }
   }
 
+  const isResetMode = mode === "reset";
+  const isTestResetMode = mode === "test-reset";
+  const isSignupMode = mode === "signup";
+
   return (
     <main className="login-page">
       <button

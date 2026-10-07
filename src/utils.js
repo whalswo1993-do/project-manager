@@ -84,9 +84,20 @@ export function getConstructionPeriod(p) {
     reason = '프로젝트 전체 기간';
   }
 
+  const finalStart = startDate || p.startDate || '';
+  const finalEnd = endDate || p.endDate || '';
+
+  // 공사 기준 진행률 계산
+  const progressVal = calculateConstructionProgress(p, {
+    startDate: finalStart,
+    endDate: finalEnd,
+    hasConstructionData,
+    constrMilestones
+  });
+
   return {
-    startDate: startDate || p.startDate,
-    endDate: endDate || p.endDate,
+    startDate: finalStart,
+    endDate: finalEnd,
     hasConstructionData,
     scheduleType,
     firstMpDate,
@@ -94,8 +105,47 @@ export function getConstructionPeriod(p) {
     msStartDate,
     msEndDate,
     reason,
-    constrMilestones
+    constrMilestones,
+    progress: progressVal
   };
+}
+
+/**
+ * 공사/셋업 일정 기준 진행률(%) 산출
+ * 1. 프로젝트 완료 상태면 100%
+ * 2. 공사 시작 전이면 0%
+ * 3. 공사 종료 후면 100%
+ * 4. 공사 진행 기간 중이면 공사 시작일부터 오늘까지의 경과율(%)
+ */
+export function calculateConstructionProgress(p, cpInfo = {}) {
+  if (!p) return 0;
+  if (p.status === '완료' || p.status === 'done') return 100;
+
+  const sDateStr = cpInfo.startDate || p.startDate;
+  const eDateStr = cpInfo.endDate || p.endDate;
+  if (!sDateStr || !eDateStr) {
+    return Number.isFinite(+p.value) ? +p.value : (p.progress || 0);
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const start = new Date(`${sDateStr}T00:00:00`);
+  const end = new Date(`${eDateStr}T00:00:00`);
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return Number.isFinite(+p.value) ? +p.value : (p.progress || 0);
+  }
+
+  if (today < start) return 0;
+  if (today >= end) return 100;
+
+  const totalTime = end.getTime() - start.getTime();
+  if (totalTime <= 0) return 100;
+
+  const elapsed = today.getTime() - start.getTime();
+  const pct = Math.round((elapsed / totalTime) * 100);
+  return Math.min(100, Math.max(0, pct));
 }
 
 /**

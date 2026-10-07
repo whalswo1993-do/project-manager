@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
 import Login from "./Login";
-import { exportGanttReport, exportCalendarReport } from "./reportExports";
+import { exportGanttReport, exportCalendarReport, exportComprehensiveReport } from "./reportExports";
+import IntegratedExportModal from "./IntegratedExportModal";
 import VisionSPC from "./VisionSPC";
 import IssueManagement from "./IssueManagement";
 import Quotations from "./Quotations";
@@ -623,6 +624,31 @@ export default function App() {
   useEffect(() => {
     try { localStorage.setItem('pm_gantt_end_date', ganttEndDate); } catch (e) {}
   }, [ganttEndDate]);
+
+  // 간트차트 일정 기준 모드 상태 관리 ('construction': 공사·셋업 일정 기준, 'project': 전체 프로젝트 일정 기준)
+  const [ganttMode, setGanttMode] = useState(() => {
+    try { return localStorage.getItem('pm_gantt_mode') || 'construction'; } catch (e) { return 'construction'; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('pm_gantt_mode', ganttMode); } catch (e) {}
+  }, [ganttMode]);
+
+  // 통합 PPT 종합 보고서 내보내기 모달 상태
+  const [showIntegratedExportModal, setShowIntegratedExportModal] = useState(false);
+  const [integratedModalSource, setIntegratedModalSource] = useState('gantt');
+
+  const openIntegratedExportModal = (source = 'gantt') => {
+    if (!canExportAnalysis) return showPermissionModal("종합 보고서 PPT 내보내기");
+    setIntegratedModalSource(source);
+    setShowIntegratedExportModal(true);
+  };
+
+  const handleIntegratedExportSubmit = async (options) => {
+    setMsg("종합 PPT 보고서 생성 중... (Office 네이티브 표/도형)");
+    await exportComprehensiveReport(view, options);
+    setMsg("종합 PPT 보고서 생성을 완료했습니다. (PowerPoint에서 직접 수정 가능)");
+  };
 
   const setQuickRange = (type) => {
     const now = new Date();
@@ -1260,9 +1286,15 @@ export default function App() {
     if (!ganttStartDate && !ganttEndDate) {
       return view;
     }
+    const isConstruction = ganttMode === 'construction';
     return view.filter(p => {
-      const pStart = p.startDate || "";
-      const pEnd = p.endDate || "";
+      let pStart = p.startDate || "";
+      let pEnd = p.endDate || "";
+      if (isConstruction) {
+        const cp = getConstructionPeriod(p);
+        pStart = cp.startDate || p.startDate || "";
+        pEnd = cp.endDate || p.endDate || "";
+      }
       if (ganttStartDate && ganttEndDate) {
         return (!pStart || pStart <= ganttEndDate) && (!pEnd || pEnd >= ganttStartDate);
       }
@@ -1274,7 +1306,7 @@ export default function App() {
       }
       return true;
     });
-  }, [view, ganttStartDate, ganttEndDate]);
+  }, [view, ganttStartDate, ganttEndDate, ganttMode]);
 
   async function save() {
     if (!editing && !create) return showPermissionModal("새 프로젝트 생성");
@@ -1870,17 +1902,50 @@ JSON 출력 예시:
   }
 
   const ganttBase = ganttView;
+  const isGanttConstruction = ganttMode === 'construction';
+
+  // 프로젝트별 간트차트 데이터(시작/종료일, 공사진행률, 마일스톤) 추출 헬퍼
+  const getProjectGanttData = (p) => {
+    if (isGanttConstruction) {
+      const cp = getConstructionPeriod(p);
+      return {
+        startDate: cp.startDate || p.startDate,
+        endDate: cp.endDate || p.endDate,
+        progress: cp.progress !== undefined ? cp.progress : (p.value ?? 0),
+        hasConstructionData: cp.hasConstructionData,
+        reason: cp.reason,
+        milestones: (cp.constrMilestones && cp.constrMilestones.length > 0) ? cp.constrMilestones : (p.milestones || []),
+        constrMilestones: cp.constrMilestones || []
+      };
+    }
+    return {
+      startDate: p.startDate,
+      endDate: p.endDate,
+      progress: p.value ?? (p.status === '완료' ? 100 : 0),
+      hasConstructionData: false,
+      reason: '프로젝트 전체 기간',
+      milestones: p.milestones || [],
+      constrMilestones: []
+    };
+  };
+
   const gs = ganttBase.length
     ? new Date(Math.min(
         ...(ganttStartDate ? [dt(ganttStartDate).getTime()] : []),
-        ...ganttBase.flatMap(p => [dt(p.startDate).getTime(), ...(p.milestones || []).map(m => dt(m.startDate).getTime())])
+        ...ganttBase.flatMap(p => {
+          const gd = getProjectGanttData(p);
+          return [dt(gd.startDate).getTime(), ...gd.milestones.map(m => dt(m.startDate).getTime())];
+        })
       ))
     : (ganttStartDate ? dt(ganttStartDate) : dt(iso()));
 
   const ge = ganttBase.length
     ? new Date(Math.max(
         ...(ganttEndDate ? [dt(ganttEndDate).getTime()] : []),
-        ...ganttBase.flatMap(p => [dt(p.endDate).getTime(), ...(p.milestones || []).map(m => dt(m.endDate).getTime())])
+        ...ganttBase.flatMap(p => {
+          const gd = getProjectGanttData(p);
+          return [dt(gd.endDate).getTime(), ...gd.milestones.map(m => dt(m.endDate).getTime())];
+        })
       ))
     : (ganttEndDate ? dt(ganttEndDate) : new Date(gs.getTime() + DAY));
 
@@ -2888,28 +2953,63 @@ JSON 출력 예시:
                   {collapsedSections.gantt ? '▸ 펼치기' : '▾ 접기'}
                 </button>
               </div>
-              <div className="view-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, whiteSpace: 'nowrap' }}>
-                <span style={{ whiteSpace: 'nowrap', fontSize: '13px', color: 'var(--text-secondary)', flexShrink: 0 }}>프로젝트 상위 · 마일스톤 하위 · 오늘선</span>
+              <div className="view-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, whiteSpace: 'nowrap', flexWrap: 'wrap' }}>
+                {/* 간트 일정 기준 모드 선택 토글 버튼 */}
+                <div style={{ display: 'inline-flex', background: 'var(--bg-card)', borderRadius: '6px', border: '1px solid var(--border-medium)', padding: '2px' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setGanttMode('construction'); }}
+                    style={{
+                      padding: '4px 9px',
+                      fontSize: '11px',
+                      fontWeight: ganttMode === 'construction' ? 700 : 500,
+                      background: ganttMode === 'construction' ? '#2563eb' : 'transparent',
+                      color: ganttMode === 'construction' ? '#ffffff' : 'var(--text-secondary)',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.2s'
+                    }}
+                    title="공수 투입 시점 및 셋업/이설/JC 일정을 기준으로 간트차트 막대와 진행률(%)을 표시합니다"
+                  >
+                    🏗️ 공사·셋업 일정 기준
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setGanttMode('project'); }}
+                    style={{
+                      padding: '4px 9px',
+                      fontSize: '11px',
+                      fontWeight: ganttMode === 'project' ? 700 : 500,
+                      background: ganttMode === 'project' ? '#2563eb' : 'transparent',
+                      color: ganttMode === 'project' ? '#ffffff' : 'var(--text-secondary)',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.2s'
+                    }}
+                    title="프로젝트 전체 계약 및 전 기간을 기준으로 간트차트 막대와 전체 진행률(%)을 표시합니다"
+                  >
+                    📋 전체 프로젝트 일정 기준
+                  </button>
+                </div>
+
                 <button
                   className="ppt-btn"
                   style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-                  onClick={async (e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
-                    if (!canExportAnalysis) return showPermissionModal("간트차트 PPT 내보내기");
-                    if (!ganttView.length) return setMsg("내보낼 프로젝트가 없습니다.");
-                    setMsg("간트차트 PPT 생성 중...");
-                    try {
-                      const periodLabel = (ganttStartDate || ganttEndDate)
-                        ? ` (기간: ${ganttStartDate || '시작'} ~ ${ganttEndDate || '종료'})`
-                        : '';
-                      await exportGanttReport(ganttView, { filter: filter + periodLabel, siteFilter, personFilter, search });
-                      setMsg("간트차트 PPT를 완료했습니다.");
-                    } catch (error) {
-                      setMsg("PPT 생성 실패: " + error.message);
-                    }
+                    openIntegratedExportModal('gantt');
                   }}
+                  title="간트차트, 공사일정 달력, 부서별 공수표가 통합된 종합 PPT 보고서를 내보냅니다 (직접 수정 가능)"
                 >
-                  📊 PPT 내보내기 ({ganttView.length}건) {!canExportAnalysis && "🔒"}
+                  📊 PPT 종합 보고서 내보내기 ({ganttView.length}건) {!canExportAnalysis && "🔒"}
                 </button>
               </div>
             </div>
@@ -3047,7 +3147,9 @@ JSON 출력 예시:
                       </button>
                     </div>
                   ) : (
-                    ganttView.map(p => (
+                    ganttView.map(p => {
+                      const gd = getProjectGanttData(p);
+                      return (
                       <div className="gblock" key={p.id}>
                         <div className="grow">
                           <button className="toggle" onClick={() => setGanttExpanded({ ...ganttExpanded, [p.id]: !ganttExpanded[p.id] })}>
@@ -3057,12 +3159,19 @@ JSON 출력 예시:
                             {p.manufacturingNo ? (
                               <b style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
                                 {p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')}
+                                {isGanttConstruction && gd.hasConstructionData && (
+                                  <span style={{ marginLeft: '4px', fontSize: '9px', padding: '1px 5px', background: 'rgba(37, 99, 235, 0.12)', color: '#2563eb', borderRadius: '3px', fontWeight: 700 }}>
+                                    공사
+                                  </span>
+                                )}
                               </b>
                             ) : null}
                             <b style={{ marginTop: '1px', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
                               {p.name}
                             </b>
-                            <small style={{ marginTop: '1px', fontSize: '8px' }}>{p.site} · {p.line || "-"}</small>
+                            <small style={{ marginTop: '1px', fontSize: '8px' }}>
+                              {p.site} · {p.line || "-"} · <span style={{ color: isGanttConstruction ? '#2563eb' : 'inherit', fontWeight: isGanttConstruction ? 700 : 'normal' }}>{gd.startDate ? gd.startDate.slice(5) : ''} ~ {gd.endDate ? gd.endDate.slice(5) : ''}</span>
+                            </small>
                           </div>
                           <div className="track">
                             {(ganttStartDate || ganttEndDate) && (
@@ -3081,18 +3190,24 @@ JSON 출력 예시:
                                 }}
                               />
                             )}
-                            <div className="projectbar" style={{ left: pos(p.startDate) + "%", width: Math.min(barW(p.startDate, p.endDate), 100 - pos(p.startDate)) + "%", background: p.projectColor }}>
-                              <i style={{ width: p.value + "%" }} />
-                              <span>{p.value}%</span>
+                            <div
+                              className="projectbar"
+                              style={{ left: pos(gd.startDate) + "%", width: Math.min(barW(gd.startDate, gd.endDate), 100 - pos(gd.startDate)) + "%", background: p.projectColor }}
+                              title={`${p.name} | ${isGanttConstruction ? '공사 일정' : '전체 일정'}: ${gd.startDate} ~ ${gd.endDate} | 진행률: ${gd.progress}% (${gd.reason})`}
+                            >
+                              <i style={{ width: gd.progress + "%" }} />
+                              <span>{isGanttConstruction ? (gd.hasConstructionData ? `공사 ${gd.progress}%` : `${gd.progress}%`) : `${gd.progress}%`}</span>
                             </div>
                             <div className="today" style={{ left: pos(iso()) + "%" }} />
                           </div>
                         </div>
-                        {ganttExpanded[p.id] && p.milestones.map(m => (
-                          <div className="grow sub" key={m.id}>
+                        {ganttExpanded[p.id] && gd.milestones.map(m => (
+                          <div className="grow sub" key={m.id || m.name}>
                             <span />
                             <div className="glabel">
-                              <span style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{m.name}</span>
+                              <span style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                                {m.name}
+                              </span>
                               <small style={{ fontSize: '8px' }}>{m.startDate} ~ {m.endDate}</small>
                             </div>
                             <div className="track">
@@ -3120,7 +3235,8 @@ JSON 출력 예시:
                           </div>
                         ))}
                       </div>
-                    ))
+                    );
+                  })
                   )}
                 </div>
               </>
@@ -3220,20 +3336,13 @@ JSON 출력 예시:
                 </button>
                 <button
                   className="ppt-btn"
-                  onClick={async (e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
-                    if (!canExportAnalysis) return showPermissionModal("일정 달력 PPT 내보내기");
-                    setMsg("일정 달력 및 일일 부서별 공수 PPT 생성 중...");
-                    try {
-                      await exportCalendarReport(view, month, { filter, siteFilter, personFilter, search }, calendarMode);
-                      setMsg("일정 달력 및 일일 부서별 공수 PPT 완료 (수정 가능한 표/도형 형식)");
-                    } catch (error) {
-                      setMsg("PPT 생성 실패: " + error.message);
-                    }
+                    openIntegratedExportModal('calendar');
                   }}
-                  title="파워포인트에서 직접 수정 가능한 네이티브 표 및 도형으로 내보냅니다 (이미지 캡쳐 X)"
+                  title="간트차트, 공사일정 달력, 부서별 공수표가 통합된 종합 PPT 보고서를 내보냅니다 (직접 수정 가능)"
                 >
-                  📊 PPT 내보내기 {!canExportAnalysis && "🔒"}
+                  📊 PPT 종합 보고서 내보내기 {!canExportAnalysis && "🔒"}
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)); }}>‹</button>
                 <b>{month.getFullYear()}년 {month.getMonth() + 1}월</b>
@@ -4126,6 +4235,17 @@ JSON 출력 예시:
           setMsg(m);
           setShowPasswordModal(false);
         }}
+      />
+
+      <IntegratedExportModal
+        isOpen={showIntegratedExportModal}
+        onClose={() => setShowIntegratedExportModal(false)}
+        projects={view}
+        defaultMode={integratedModalSource === 'calendar' ? calendarMode : ganttMode}
+        defaultStartDate={integratedModalSource === 'calendar' ? new Date(month.getFullYear(), month.getMonth(), 1).toISOString().slice(0, 10) : (ganttStartDate || `${new Date().toISOString().slice(0, 7)}-01`)}
+        defaultEndDate={integratedModalSource === 'calendar' ? new Date(month.getFullYear(), month.getMonth() + 1, 0).toISOString().slice(0, 10) : (ganttEndDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10))}
+        filters={{ filter, siteFilter, personFilter, search }}
+        onExport={handleIntegratedExportSubmit}
       />
     </main>
   );

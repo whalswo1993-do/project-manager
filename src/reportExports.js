@@ -817,18 +817,24 @@ export async function exportComprehensiveReport(projects, options = {}) {
 
         const matrixRows = [matrixHeader];
 
-        // 주요 부서 목록 (최대 4개)
-        const deptsToDisplay = mMatrix.sortedDepts.length > 0 ? mMatrix.sortedDepts.slice(0, 4) : ["기구", "제어", "설비기술", "비전"];
+        // 주요 부서 목록 (당월에 공수가 실제로 존재하는 부서들을 우선 포함하여 누락 원천 방지)
+        const activeDepts = mMatrix.sortedDepts.filter(dept => {
+          return mMatrix.days.some(dStr => (mMatrix.dayDataMap[dStr]?.depts?.[dept] || 0) > 0);
+        });
+        const fallbackDepts = ["기구", "제어", "설비기술", "비전", "비전 외주", "공통"];
+        const candidateDepts = activeDepts.length > 0 ? activeDepts : (mMatrix.sortedDepts.length > 0 ? mMatrix.sortedDepts : fallbackDepts);
+        const deptsToDisplay = candidateDepts.slice(0, 5);
+
         deptsToDisplay.forEach((dept, rIdx) => {
           const isEven = rIdx % 2 === 1;
           const rowBg = isEven ? "F8FAFC" : C.white;
-          const deptMonthSum = mMatrix.days.reduce((acc, dStr) => acc + (mMatrix.dayDataMap[dStr]?.[dept] || 0), 0);
+          const deptMonthSum = mMatrix.days.reduce((acc, dStr) => acc + (mMatrix.dayDataMap[dStr]?.depts?.[dept] || 0), 0);
 
           const row = [
             { text: dept, options: { bold: true, fill: rowBg, color: C.navy, align: "center" } }
           ];
           mMatrix.days.forEach(dStr => {
-            const val = mMatrix.dayDataMap[dStr]?.[dept] || 0;
+            const val = mMatrix.dayDataMap[dStr]?.depts?.[dept] || 0;
             row.push({
               text: val > 0 ? String(val) : "-",
               options: {

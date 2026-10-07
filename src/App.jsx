@@ -1886,6 +1886,7 @@ JSON 출력 예시:
 
   const span = Math.max(DAY, ge - gs + DAY);
   const pos = d => Math.max(0, Math.min(100, (dt(d) - gs) / span * 100));
+  const barW = (s, e) => Math.max(1, (dt(e) - dt(s) + DAY) / span * 100);
   const cells = monthCells(month);
 
   const monthMatrixData = useMemo(() => {

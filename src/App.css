@@ -1189,11 +1189,13 @@ body.theme-light button:active {
 
 /* ========================================================
    PROJECT ARTICLES (List View)
+   - 진행률 막대와 모든 액션 버튼의 수직 끝선을 칼같이 일치 정렬
+   - 내용이 길어져도 1열만 유연하게 확장되며 2열(바), 3열(버튼)은 완벽 고정
    ======================================================== */
 article {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px auto;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 160px 330px;
+  gap: 16px;
   align-items: center;
   padding: 10px 14px;
   border: 1px solid var(--border-subtle);
@@ -1202,6 +1204,7 @@ article {
   background: var(--bg-card);
   color: var(--text-primary);
   transition: all var(--dur-fast) var(--ease-in-out);
+  box-sizing: border-box;
 }
 
 article:hover {
@@ -1215,6 +1218,7 @@ article h3 {
   font-size: 13.5px;
   font-weight: 600;
   color: var(--text-primary);
+  word-break: break-word;
 }
 
 article p {
@@ -1222,23 +1226,33 @@ article p {
   font-size: 11.5px;
   color: var(--text-muted);
   line-height: 1.4;
+  word-break: break-word;
 }
 
 article aside {
+  width: 330px;
+  min-width: 330px;
+  max-width: 330px;
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 article aside button {
-  padding: 4px 8px;
+  padding: 5px 9px;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   transition: all var(--dur-fast) var(--ease-in-out);
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
 article aside button:hover {
@@ -1248,6 +1262,10 @@ article aside button:hover {
 
 /* Progress Bar (진행률 바 & 글자 잘림 완전 해결) */
 .bar {
+  width: 160px;
+  min-width: 160px;
+  max-width: 160px;
+  flex-shrink: 0;
   height: 20px;
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-subtle);
@@ -2075,6 +2093,8 @@ article aside button:hover {
   .grid { grid-template-columns: repeat(2, 1fr); }
   .people { grid-template-columns: repeat(3, 1fr); }
   article { grid-template-columns: 1fr; }
+  article aside { width: 100%; min-width: 0; max-width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+  .bar { width: 100%; min-width: 0; max-width: 100%; }
 }
 
 @media (max-width: 640px) {

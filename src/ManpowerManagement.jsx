@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import "./ManpowerManagement.css";
 import ExcelJS from "exceljs";
 import PptxGenJS from "pptxgenjs";
-import { normalizeJVName } from "./utils";
+import { normalizeJVName, getMonthDailyDeptMatrix } from "./utils";
 import { supabase } from "./supabase";
 import SmartProjectSelector from "./SmartProjectSelector";
 
@@ -465,6 +465,15 @@ export default function ManpowerManagement({
     } catch (e) {}
   };
 
+  // 계획공수 투입 달력 하단 일일 부서별 공수 매트릭스 표 표시 상태 (기본값: true)
+  const [showDailyDeptMatrixInMM, setShowDailyDeptMatrixInMM] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pm_manpower_show_daily_matrix');
+      if (saved !== null) return JSON.parse(saved);
+    } catch (e) {}
+    return true;
+  });
+
   const [collapsedSections, setCollapsedSections] = useState(() => {
     try {
       const saved = localStorage.getItem('pm_manpower_collapsed_sections');
@@ -853,6 +862,13 @@ export default function ManpowerManagement({
       return pRangeTotal > 0;
     });
   }, [filteredProjects, onlyActiveProjectsInMonth, effectiveStartDate, effectiveEndDate, deptFilter, activeDeptKeys]);
+
+  // 계획공수 투입 달력 하단 일일 부서별 공수 매트릭스 데이터 (Daily Department Matrix)
+  const calMatrixData = useMemo(() => {
+    const mat = getMonthDailyDeptMatrix(filteredProjects, year, month);
+    const totalMonthManday = mat.days.reduce((acc, dStr) => acc + (mat.dayDataMap[dStr]?.total || 0), 0);
+    return { ...mat, totalMonthManday };
+  }, [filteredProjects, year, month]);
 
   // Calendar cells generation (42 cells: 6 weeks x 7 days) for the visible month
   const calendarCells = useMemo(() => {
@@ -2461,6 +2477,28 @@ export default function ManpowerManagement({
               >
                 {collapsedSections.calendar ? '▸ 펼치기' : '▾ 접기'}
               </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const next = !showDailyDeptMatrixInMM;
+                  setShowDailyDeptMatrixInMM(next);
+                  try { localStorage.setItem('pm_manpower_show_daily_matrix', JSON.stringify(next)); } catch (err) {}
+                }}
+                style={{
+                  background: showDailyDeptMatrixInMM ? 'var(--accent)' : 'var(--bg-card-subtle)',
+                  color: showDailyDeptMatrixInMM ? '#fff' : 'var(--text-secondary)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '4px',
+                  padding: '2px 8px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+                title="당월 일일 부서별 공수 투입 현황 매트릭스 표 보기/접기"
+              >
+                📊 일일 부서별 공수표 {showDailyDeptMatrixInMM ? '접기' : '보기'}
+              </button>
             </div>
             <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
               * 날짜를 클릭하면 해당 일자의 프로젝트별 세부 투입 명단을 볼 수 있습니다.
@@ -2528,6 +2566,75 @@ export default function ManpowerManagement({
                 );
               })}
             </div>
+
+            {/* 📊 일일 부서별 공수 투입 현황 매트릭스 테이블 */}
+            {showDailyDeptMatrixInMM && (
+              <div className="cal-matrix-section" style={{ marginTop: '14px', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
+                <div className="cal-matrix-header">
+                  <h3>
+                    <span>📊</span>
+                    <span>{year}년 {month + 1}월 일일 부서별 공수 투입 현황 (Daily Department Matrix)</span>
+                  </h3>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    당월 누적 총 계획공수: <b style={{ color: 'var(--accent)', fontSize: '13.5px' }}>{calMatrixData.totalMonthManday}</b> M/D
+                  </span>
+                </div>
+                <div className="cal-matrix-table-wrap">
+                  <table className="cal-matrix-table">
+                    <thead>
+                      <tr>
+                        <th className="th-dept">구분 (부서)</th>
+                        {calMatrixData.days.map(dStr => {
+                          const dNum = parseInt(dStr.slice(8), 10);
+                          const dow = new Date(dStr).getDay();
+                          const wkndClass = dow === 0 ? 'th-weekend-sun' : dow === 6 ? 'th-weekend-sat' : '';
+                          return (
+                            <th key={dStr} className={wkndClass} title={dStr}>
+                              {dNum}
+                            </th>
+                          );
+                        })}
+                        <th style={{ background: '#0969da', color: '#fff' }}>월간 합계</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {calMatrixData.sortedDepts.map(dept => {
+                        let deptSum = 0;
+                        return (
+                          <tr key={dept}>
+                            <td className="td-dept">{dept}</td>
+                            {calMatrixData.days.map(dStr => {
+                              const val = calMatrixData.dayDataMap[dStr]?.depts?.[dept] || 0;
+                              deptSum += val;
+                              return (
+                                <td key={dStr} className={val > 0 ? "td-val-active" : ""}>
+                                  {val > 0 ? val : "-"}
+                                </td>
+                              );
+                            })}
+                            <td className="td-total-sum">{deptSum > 0 ? `${deptSum}명` : "-"}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="row-total">
+                        <td className="td-dept" style={{ color: 'var(--accent)' }}>당일 총합 (명)</td>
+                        {calMatrixData.days.map(dStr => {
+                          const val = calMatrixData.dayDataMap[dStr]?.total || 0;
+                          return (
+                            <td key={dStr} className={val > 0 ? "td-total-cell-active" : ""}>
+                              {val > 0 ? <b>{val}</b> : "0"}
+                            </td>
+                          );
+                        })}
+                        <td style={{ background: 'var(--accent)', color: '#fff', fontSize: '12px' }}>
+                          <b>{calMatrixData.totalMonthManday} M/D</b>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <div

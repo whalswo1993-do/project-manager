@@ -46,8 +46,8 @@ export async function exportCalendarReport(projects, month, filters = {}, mode =
   // SLIDE 1: 월간 달력 슬라이드 (100% Native Shapes & TextBoxes)
   // =============================================================
   const s1 = x.addSlide();
-  const mainTitle = isConstruction ? `${monthLabel} 공사·셋업 및 공수 투입 일정 달력` : `${monthLabel} 프로젝트 일정 달력`;
-  const subText = `${conditions(filters)} | 월간 총 공수: ${totalMonthManday} M/D | 일일 피크: ${peakDayEntry.val}명(${peakDayEntry.date.slice(5) || '-'}) | 기준: ${isConstruction ? '공수 투입 및 셋업·이설·JC 시작 기준' : '프로젝트 전체 기간'}`;
+  const mainTitle = isConstruction ? `${monthLabel} 공사 일정 달력` : `${monthLabel} 프로젝트 일정 달력`;
+  const subText = `${conditions(filters)} | 월간 총 공수: ${totalMonthManday} M/D | 일일 피크: ${peakDayEntry.val}명(${peakDayEntry.date.slice(5) || '-'}) | 기준: ${isConstruction ? '공사 시작 기준' : '프로젝트 전체 기간'}`;
   head(s1, mainTitle, subText, 1);
 
   // 상단 KPI 카드 블록 (Native roundRect & Text)
@@ -237,14 +237,14 @@ export async function exportCalendarReport(projects, month, filters = {}, mode =
   // SLIDE 3: 당월 공사 진행 프로젝트 및 부서별 투입 공수 명세표 (100% Native Table)
   // =============================================================
   const s3 = x.addSlide();
-  head(s3, `${monthLabel} 프로젝트별 공사(셋업·이설) 일정 및 투입 공수 명세`, "각 프로젝트별 실제 공사 기간과 부서별 상세 투입 인원(M/D) 내역입니다. (직접 편집 가능)", 3);
+  head(s3, `${monthLabel} 프로젝트별 공사 일정 및 투입 공수 명세`, "각 프로젝트별 실제 공사 기간과 부서별 상세 투입 인원(M/D) 내역입니다. (직접 편집 가능)", 3);
 
   const monthStartStr = `${curYear}-${String(curMonthIdx + 1).padStart(2, '0')}-01`;
   const monthEndStr = matrix.days[matrix.days.length - 1];
   const activeProjectsInMonth = mappedProjects.filter(p => p.effStart <= monthEndStr && p.effEnd >= monthStartStr);
 
   const detailHeader = [
-    "No", "제조번호", "Site", "프로젝트명", "공사/셋업 일정", "공사 구분", "기구", "제어", "비전", "기타", "당월 공수", "전체 공수"
+    "No", "제조번호", "Site", "프로젝트명", "공사 일정", "공사 구분", "기구", "제어", "비전", "기타", "당월 공수", "전체 공수"
   ];
   const detailRows = [
     detailHeader.map(h => ({ text: h, options: { bold: true, fill: C.navy, color: C.white, align: "center" } }))
@@ -312,7 +312,7 @@ export async function exportCalendarReport(projects, month, filters = {}, mode =
 /**
  * =========================================================================================
  * 📊 간트차트 & 공사일정 달력 통합 종합 보고서 PPT 내보내기 (100% Native Shapes & Tables)
- * - 공사·셋업 일정 기준 vs 전체 프로젝트 일정 기준 선택 가능
+ * - 공사 일정 기준 vs 전체 프로젝트 일정 기준 선택 가능
  * - 임의 기간(startDate ~ endDate) 설정 및 해당 기간 필터링
  * - 슬라이드 구성 선택 (요약, 달력, 일일 부서별 공수표, 간트차트, 상세 명세서)
  * - 파워포인트에서 100% 직접 수정 가능 (이미지 캡쳐 절대 사용 안 함)
@@ -336,8 +336,8 @@ export async function exportComprehensiveReport(projects, options = {}) {
   } = options;
 
   const isConstruction = mode === 'construction';
-  const modeLabel = isConstruction ? "공사·셋업 및 공수 투입 일정 기준" : "전체 프로젝트 일정 기준";
-  const pptTitle = isConstruction ? "TW 현장 공사·셋업 종합 일정 보고서" : "TW 전체 프로젝트 종합 일정 보고서";
+  const modeLabel = isConstruction ? "공사 일정 기준" : "전체 프로젝트 일정 기준";
+  const pptTitle = isConstruction ? "TW 공사 종합 일정 보고서" : "TW 전체 프로젝트 종합 일정 보고서";
   const x = ppt(pptTitle);
 
   // 1. 각 프로젝트의 일정 및 진행률 매핑
@@ -400,7 +400,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
   // =============================================================
   if (includeSlides.summary !== false) {
     const s1 = x.addSlide();
-    head(s1, `TW 프로젝트 종합 일정 보고서 (${isConstruction ? '공사·셋업' : '전체일정'})`, `${conditions(filters)} | 설정 기간: ${periodStr} | 기준: ${modeLabel}`, pageIndex++);
+    head(s1, `TW 프로젝트 종합 일정 보고서 (${isConstruction ? '공사' : '전체일정'})`, `${conditions(filters)} | 설정 기간: ${periodStr} | 기준: ${modeLabel}`, pageIndex++);
 
     const kpiItems = [
       { label: "대상 프로젝트", val: `${targetProjects.length} 건`, sub: `전체 ${projects.length}건 중`, col: C.navy },
@@ -418,7 +418,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
     });
 
     // 요약 테이블 (상위 12개 프로젝트)
-    const summaryHeader = ["제조번호", "Site", "프로젝트명", `${isConstruction ? '공사/셋업 일정' : '전체 일정'}`, "공사 구분", "상태", `${isConstruction ? '공사진행률' : '진행률'}`];
+    const summaryHeader = ["제조번호", "Site", "프로젝트명", `${isConstruction ? '공사 일정' : '전체 일정'}`, "공사 구분", "상태", `${isConstruction ? '공사진행률' : '진행률'}`];
     const summaryRows = [
       summaryHeader.map(h => ({ text: h, options: { bold: true, fill: C.navy, color: C.white, align: "center" } }))
     ];
@@ -459,7 +459,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
   // =============================================================
   if (includeSlides.calendar !== false) {
     const s2 = x.addSlide();
-    const cTitle = isConstruction ? `${monthLabel} 공사·셋업 및 공수 투입 달력` : `${monthLabel} 프로젝트 일정 달력`;
+    const cTitle = isConstruction ? `${monthLabel} 공사 일정 달력` : `${monthLabel} 프로젝트 일정 달력`;
     const cSub = `기준: ${modeLabel} | 월간 총 공수: ${totalMonthManday} M/D | 일일 최대 투입: ${peakDayEntry.val}명 | 기간: ${periodStr}`;
     head(s2, cTitle, cSub, pageIndex++);
 
@@ -695,7 +695,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
     const perSlide = 16;
     for (let o = 0; o < ganttRows.length; o += perSlide) {
       const gs = x.addSlide();
-      const gTitle = isConstruction ? "종합 공사·셋업 간트차트" : "종합 프로젝트 간트차트";
+      const gTitle = isConstruction ? "공사 종합 간트차트" : "종합 프로젝트 간트차트";
       const gSub = `${modeLabel} | 타임라인: ${gStart.toISOString().slice(0, 10)} ~ ${gEnd.toISOString().slice(0, 10)} | 설정 기간: ${periodStr}`;
       head(gs, gTitle, gSub, pageIndex++);
 
@@ -776,10 +776,10 @@ export async function exportComprehensiveReport(projects, options = {}) {
   // =============================================================
   if (includeSlides.details !== false) {
     const s5 = x.addSlide();
-    head(s5, `${isConstruction ? '공사·셋업 일정 및 부서별 투입 공수 명세' : '프로젝트 일정 및 투입 공수 명세'}`, "각 프로젝트별 상세 일정과 부서별 투입 인원(M/D) 내역입니다. (직접 편집 가능)", pageIndex++);
+    head(s5, `${isConstruction ? '공사 일정 및 부서별 투입 공수 명세' : '프로젝트 일정 및 투입 공수 명세'}`, "각 프로젝트별 상세 일정과 부서별 투입 인원(M/D) 내역입니다. (직접 편집 가능)", pageIndex++);
 
     const detailHeader = [
-      "No", "제조번호", "Site", "프로젝트명", `${isConstruction ? '공사/셋업 일정' : '전체 일정'}`, "공사 구분", "기구", "제어", "비전", "기타", "기준월 공수", "전체 공수"
+      "No", "제조번호", "Site", "프로젝트명", `${isConstruction ? '공사 일정' : '전체 일정'}`, "공사 구분", "기구", "제어", "비전", "기타", "기준월 공수", "전체 공수"
     ];
     const detailRows = [
       detailHeader.map(h => ({ text: h, options: { bold: true, fill: C.navy, color: C.white, align: "center" } }))
@@ -808,7 +808,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
 
       const isEven = idx % 2 === 1;
       const rowBg = isEven ? "F8FAFC" : C.white;
-      const constrType = p.cp?.hasConstructionData ? (p.cp.msStartDate ? '셋업/이설' : '공수투입') : '일반일정';
+      const constrType = p.cp?.hasConstructionData ? (p.cp.msStartDate ? '공사' : '공수투입') : '일반일정';
 
       detailRows.push([
         { text: String(idx + 1), options: { align: "center", fill: rowBg } },
@@ -838,7 +838,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
     });
   }
 
-  const filePrefix = isConstruction ? "TW_종합보고서_공사셋업기준" : "TW_종합보고서_전체일정기준";
+  const filePrefix = isConstruction ? "TW_종합보고서_공사기준" : "TW_종합보고서_전체일정기준";
   const dateTag = (startDate && endDate) ? `${startDate}_${endDate}` : today();
   await x.writeFile({
     fileName: `${filePrefix}_${dateTag}.pptx`,

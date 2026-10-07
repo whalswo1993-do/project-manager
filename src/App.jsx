@@ -625,7 +625,7 @@ export default function App() {
     try { localStorage.setItem('pm_gantt_end_date', ganttEndDate); } catch (e) {}
   }, [ganttEndDate]);
 
-  // 간트차트 일정 기준 모드 상태 관리 ('construction': 공사·셋업 일정 기준, 'project': 전체 프로젝트 일정 기준)
+  // 간트차트 일정 기준 모드 상태 관리 ('construction': 공사 일정 기준, 'project': 전체 프로젝트 일정 기준)
   const [ganttMode, setGanttMode] = useState(() => {
     try { return localStorage.getItem('pm_gantt_mode') || 'construction'; } catch (e) { return 'construction'; }
   });
@@ -2981,9 +2981,9 @@ JSON 출력 예시:
                       gap: '4px',
                       transition: 'all 0.2s'
                     }}
-                    title="공수 투입 시점 및 셋업/이설/JC 일정을 기준으로 간트차트 막대와 진행률(%)을 표시합니다"
+                    title="공수 투입 시점 및 현장 공사 일정을 기준으로 간트차트 막대와 진행률(%)을 표시합니다"
                   >
-                    🏗️ 공사·셋업 일정 기준
+                    🏗️ 공사 일정 기준
                   </button>
                   <button
                     type="button"
@@ -3261,7 +3261,7 @@ JSON 출력 예시:
             }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <h2>{calendarMode === 'construction' ? '🏗️ 공사·셋업 및 공수 투입 일정 달력' : '📅 프로젝트 일정 달력'}</h2>
+                  <h2>{calendarMode === 'construction' ? '🏗️ 공사 및 공수 투입 일정 달력' : '📅 프로젝트 일정 달력'}</h2>
                   <div className="cal-mode-toggle" onClick={e => e.stopPropagation()}>
                     <button
                       type="button"
@@ -3270,9 +3270,9 @@ JSON 출력 예시:
                         setCalendarMode('construction');
                         try { localStorage.setItem('pm_calendar_mode', 'construction'); } catch (err) {}
                       }}
-                      title="공수가 처음 반영되는 시점 또는 이설/J·C/셋업 마일스톤 시작 시점부터 실제 현장 작업 기간만 표시합니다"
+                      title="공수가 처음 반영되는 시점 또는 현장 공사 시작 시점부터 실제 현장 작업 기간만 표시합니다"
                     >
-                      🏗️ 공사·셋업 일정 (공수 기준)
+                      🏗️ 공사 일정 (공수 기준)
                     </button>
                     <button
                       type="button"
@@ -3304,7 +3304,7 @@ JSON 출력 예시:
                 </div>
                 <p>
                   {calendarMode === 'construction'
-                    ? '공수가 처음 반영되거나 이설/J·C/셋업 마일스톤이 시작되는 실제 현장 작업 기간을 연속 막대로 표시합니다. 막대를 누르면 상세 정보가 열립니다.'
+                    ? '공수가 처음 반영되거나 마일스톤이 시작되는 실제 현장 공사 기간을 연속 막대로 표시합니다. 막대를 누르면 상세 정보가 열립니다.'
                     : '프로젝트 전체 기간을 얇은 연속 막대로 표시합니다. 막대를 누르면 상세 정보가 열립니다.'}
                 </p>
               </div>

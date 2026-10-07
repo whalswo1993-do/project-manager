@@ -79,7 +79,7 @@ export function getConstructionPeriod(p) {
     endDate = msEndDate;
     hasConstructionData = true;
     scheduleType = 'construction';
-    reason = `공사/셋업 마일스톤 기준 (${msStartDate} ~ ${msEndDate})`;
+    reason = `공사 마일스톤 기준 (${msStartDate} ~ ${msEndDate})`;
   } else {
     reason = '프로젝트 전체 기간';
   }

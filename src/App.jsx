@@ -3261,7 +3261,7 @@ JSON 출력 예시:
             }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <h2>{calendarMode === 'construction' ? '🏗️ 공사 및 공수 투입 일정 달력' : '📅 프로젝트 일정 달력'}</h2>
+                  <h2>{calendarMode === 'construction' ? '🏗️ 공사일정 달력' : '📅 프로젝트 일정 달력'}</h2>
                   <div className="cal-mode-toggle" onClick={e => e.stopPropagation()}>
                     <button
                       type="button"

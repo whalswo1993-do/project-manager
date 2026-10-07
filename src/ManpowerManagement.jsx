@@ -1994,7 +1994,7 @@ export default function ManpowerManagement({
       titleCell.alignment = { vertical: "middle" };
       ws1.getRow(1).height = 30;
 
-      ws1.getCell("A2").value = `기준일: ${today} | 공수 통합관리 & 프로젝트 이슈관리(일보) 연동 분석`;
+      ws1.getCell("A2").value = `기준일: ${today} | 공수 통합관리 & 이슈 통합관리(일보) 연동 분석`;
       ws1.getCell("A2").font = { name: "Malgun Gothic", size: 9, color: { argb: "FF64748B" } };
 
       const headers = [
@@ -2809,7 +2809,7 @@ export default function ManpowerManagement({
               </button>
             </div>
             <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-              * 프로젝트 마스터플랜의 계획 공수와 [프로젝트 이슈관리]에 등록된 일자별 공사일보 실투입 공수를 비교 분석합니다.
+              * 프로젝트 마스터플랜의 계획 공수와 [이슈 통합관리]에 등록된 일자별 공사일보 실투입 공수를 비교 분석합니다.
             </span>
           </div>
 
@@ -2831,7 +2831,7 @@ export default function ManpowerManagement({
                 gap: '4px',
                 fontWeight: 500
               }}
-              title="프로젝트 이슈관리의 최신 일보 데이터를 다시 불러옵니다"
+              title="이슈 통합관리의 최신 일보 데이터를 다시 불러옵니다"
             >
               {isLoadingReports ? "⏳ 로딩 중..." : "🔄 일보 새로고침"}
             </button>
@@ -3110,7 +3110,7 @@ export default function ManpowerManagement({
                       {selectedProjectComp.actualTotal.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 'normal', color: 'var(--text-tertiary)' }}>M/D</span>
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      프로젝트 이슈관리 등록 일보 <b>{selectedProjectComp.reportCount}건</b> 합산
+                      이슈 통합관리 등록 일보 <b>{selectedProjectComp.reportCount}건</b> 합산
                     </div>
                   </div>
 
@@ -3244,7 +3244,7 @@ export default function ManpowerManagement({
 
                   {selectedProjectComp.reports.length === 0 ? (
                     <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', background: 'var(--bg-card)', borderRadius: '8px', border: '1px dashed var(--border-subtle)' }}>
-                      등록된 공사일보가 없습니다. [프로젝트 이슈관리] 메뉴에서 일보를 등록하면 실투입 공수가 자동으로 집계됩니다.
+                      등록된 공사일보가 없습니다. [이슈 통합관리] 메뉴에서 일보를 등록하면 실투입 공수가 자동으로 집계됩니다.
                     </div>
                   ) : (
                     <div style={{ overflowX: 'auto', border: '1px solid var(--border-faint)', borderRadius: '8px', background: 'var(--bg-card)' }}>

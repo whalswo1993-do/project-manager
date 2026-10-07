@@ -2091,7 +2091,7 @@ JSON 출력 예시:
               onClick={() => switchView("issues")}
             >
               <span className="nav-tab-icon">📋</span>
-              <span className="nav-tab-label">프로젝트 이슈 관리</span>
+              <span className="nav-tab-label">이슈 통합 관리</span>
             </button>
             <button
               type="button"
@@ -2371,7 +2371,7 @@ JSON 출력 예시:
       {currentView === "vision-spc" ? (
         <ErrorBoundary><VisionSPC currentCustomer={currentCustomer} /></ErrorBoundary>
       ) : currentView === "issues" ? (
-        <IssueManagement projects={currentCustomerProjects} role={role} onPermissionDenied={showPermissionModal} selectedYears={selectedYears} currentCustomer={currentCustomer} />
+        <IssueManagement projects={currentCustomerProjects} sites={sites} role={role} onPermissionDenied={showPermissionModal} selectedYears={selectedYears} currentCustomer={currentCustomer} />
       ) : currentView === "quotations" ? (
         <Quotations projects={currentCustomerProjects} session={session} role={role} onPermissionDenied={showPermissionModal} currentCustomer={currentCustomer} />
       ) : currentView === "manpower" ? (

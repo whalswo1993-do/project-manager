@@ -5,14 +5,19 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as XLSX from 'xlsx';
 import pptxgen from 'pptxgenjs';
 import SmartProjectSelector from './SmartProjectSelector';
+import IntegratedIssueCenter from './IntegratedIssueCenter';
+import { exportIssuesPpt } from './exportIssuePpt';
+import { fetchRemoteIssues, getRegisteredSiteNames } from './issueService';
 
-export default function IssueManagement({ projects, role, onPermissionDenied }) {
+export default function IssueManagement({ projects, sites = [], role, onPermissionDenied, selectedYears, currentCustomer }) {
+    const [externalNewIssueData, setExternalNewIssueData] = useState(null);
     const [activeIssueSection, setActiveIssueSection] = useState(() => {
         try {
             const saved = localStorage.getItem('pm_issue_active_section');
-            if (saved && ['all', 'register', 'list', 'analyze'].includes(saved)) return saved;
+            if (saved === 'daily-report') return saved;
+            if (saved && ['all', 'register', 'list'].includes(saved)) return 'daily-report';
         } catch (e) {}
-        return 'all';
+        return 'integrated-issues';
     });
 
     useEffect(() => {
@@ -82,11 +87,15 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
         workMap: null
     });
     
-    // Analyze Tab States
+    // 이슈 통합분석 PPT 팝업 상태
+    const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
+    const [analysisMode, setAnalysisMode] = useState('issues'); // 'issues' | 'reports'
+    const [analysisSite, setAnalysisSite] = useState('all');
     const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10));
     const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analyzeMsg, setAnalyzeMsg] = useState('');
+    const registeredSiteNames = useMemo(() => getRegisteredSiteNames(sites, projects), [sites, projects]);
 
     const fileInputRef = useRef(null);
 
@@ -108,7 +117,7 @@ export default function IssueManagement({ projects, role, onPermissionDenied }) 
     }, [projects]);
 
     useEffect(() => {
-        if (activeIssueSection !== 'analyze' && selectedProject) {
+        if (activeIssueSection === 'daily-report' && selectedProject) {
             loadReports(selectedProject);
         }
     }, [selectedProject, activeIssueSection]);
@@ -1995,8 +2004,46 @@ ${allText.substring(0, 100000)}
         toggleAllReports(expand);
     };
 
-    const generatePPT = async () => {
-        if (!canRunAIAnalysis) return notifyPermission('AI 통합 분석 & PPT 보고서');
+    // 이슈 분석: 이슈 통합 관리에 등록된 이슈/조치 이력을 기간·SITE로 모아 PPT 생성 (AI 호출 없음)
+    const generateIssuesPPT = async () => {
+        if (!canRunAIAnalysis) return notifyPermission('이슈 통합분석 PPT');
+        if (startDate > endDate) return setAnalyzeMsg('오류: 시작일이 종료일보다 클 수 없습니다.');
+
+        setIsAnalyzing(true);
+        setAnalyzeMsg('등록된 이슈를 수집하는 중...');
+        try {
+            const allIssues = await fetchRemoteIssues();
+            setAnalyzeMsg('PPT 보고서를 생성 중입니다...');
+            const { total } = await exportIssuesPpt({ issues: allIssues, startDate, endDate, siteFilter: analysisSite });
+            setAnalyzeMsg(`🎉 이슈 ${total}건 분석 PPT 생성이 완료되었습니다!`);
+        } catch (error) {
+            console.error(error);
+            setAnalyzeMsg('오류 발생: ' + error.message);
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleGenerateAnalysis = () => {
+        if (analysisMode === 'issues') return generateIssuesPPT();
+        return generateReportsPPT();
+    };
+
+    const applyQuickPeriod = (days) => {
+        const end = new Date();
+        const start = new Date(Date.now() - days * 86400000);
+        setStartDate(start.toISOString().slice(0, 10));
+        setEndDate(end.toISOString().slice(0, 10));
+    };
+
+    const openAnalysisModal = () => {
+        if (!canRunAIAnalysis) return notifyPermission('이슈 통합분석 PPT');
+        setAnalyzeMsg('');
+        setIsAnalysisModalOpen(true);
+    };
+
+    const generateReportsPPT = async () => {
+        if (!canRunAIAnalysis) return notifyPermission('이슈 통합분석 PPT');
         if (startDate > endDate) return setAnalyzeMsg('시작일이 종료일보다 클 수 없습니다.');
         
         const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -2143,15 +2190,29 @@ ${compiledText.substring(0, 30000)}
                         </div>
                         <div className="system-title-text">
                             <h2>
-                                프로젝트 이슈 및 일보관리 시스템 (Issue & Daily Log Management)
+                                이슈 통합 관리 시스템 (Integrated Issue & Daily Log System)
                             </h2>
                             <p>
-                                공사일보 텍스트 축적 및 AI 기반 자동 PPT 보고서 생성
+                                스태킹/노칭 2대 공정 통합 이슈 트래킹 · 사이트(양산) 및 프로젝트 대응 이력 관리 · 공사일보 관리
                             </p>
                         </div>
                     </div>
 
                     <div className="system-header-actions">
+                        <button
+                            type="button"
+                            onClick={openAnalysisModal}
+                            title={!canRunAIAnalysis ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : "기간을 설정하여 이슈/공사일보 분석 PPT를 다운로드합니다"}
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                padding: '7px 16px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+                                fontSize: '13px', fontWeight: 800, color: '#ffffff',
+                                background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)', whiteSpace: 'nowrap'
+                            }}
+                        >
+                            📊 이슈 통합분석 PPT {!canRunAIAnalysis && "🔒"}
+                        </button>
                         <button
                             type="button"
                             onClick={() => setAllSections(true)}
@@ -2175,51 +2236,42 @@ ${compiledText.substring(0, 30000)}
                 <div className="system-sub-nav">
                     <button
                         type="button"
-                        className={`system-sub-btn ${activeIssueSection === 'all' ? 'active' : ''}`}
-                        onClick={() => setActiveIssueSection('all')}
+                        className={`system-sub-btn ${activeIssueSection === 'integrated-issues' ? 'active' : ''}`}
+                        onClick={() => setActiveIssueSection('integrated-issues')}
+                        style={{ fontWeight: activeIssueSection === 'integrated-issues' ? 800 : 700 }}
                     >
-                        🌐 전체 표시
+                        🚨 이슈 목록 / 현황
                     </button>
                     <button
                         type="button"
-                        className={`system-sub-btn ${activeIssueSection === 'register' ? 'active' : ''}`}
+                        className={`system-sub-btn ${activeIssueSection === 'daily-report' ? 'active' : ''}`}
                         onClick={() => {
-                            setActiveIssueSection('register');
+                            setActiveIssueSection('daily-report');
                             setCollapsedSections(prev => ({ ...prev, inputForm: false, upload: false }));
                         }}
+                        style={{ fontWeight: activeIssueSection === 'daily-report' ? 800 : 700 }}
                     >
-                        ✏️ 공사일보 등록/업로드
-                    </button>
-                    <button
-                        type="button"
-                        className={`system-sub-btn ${activeIssueSection === 'list' ? 'active' : ''}`}
-                        onClick={() => setActiveIssueSection('list')}
-                    >
-                        📋 등록된 일보 목록
-                    </button>
-                    <button
-                        type="button"
-                        className={`system-sub-btn ${activeIssueSection === 'analyze' ? 'active' : ''}`}
-                        onClick={() => {
-                            if (!canRunAIAnalysis) {
-                                notifyPermission('AI 통합 분석 & PPT 보고서');
-                                return;
-                            }
-                            setActiveIssueSection('analyze');
-                        }}
-                        title={!canRunAIAnalysis ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : ""}
-                    >
-                        📊 AI 프로젝트 통합 분석 & PPT {!canRunAIAnalysis && "🔒"}
+                        📝 공사일보 관리
                     </button>
                 </div>
             </div>
 
             <input type="file" ref={fileInputRef} onChange={(e) => handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, .csv" style={{display: 'none'}} />
 
-            {activeIssueSection !== 'analyze' ? (
-                <div className={`main-container ${activeIssueSection !== 'all' ? 'single-pane' : ''}`}>
-                    {(activeIssueSection === 'all' || activeIssueSection === 'register') && (
-                        <aside className="sidebar" style={{ maxWidth: activeIssueSection === 'register' ? '860px' : 'none', margin: activeIssueSection === 'register' ? '0 auto' : '0', width: '100%' }}>
+            {activeIssueSection === 'integrated-issues' ? (
+                <IntegratedIssueCenter
+                    projects={projects}
+                    sites={sites}
+                    role={role}
+                    currentCustomer={currentCustomer}
+                    onPermissionDenied={onPermissionDenied}
+                    externalNewIssueData={externalNewIssueData}
+                    onClearExternalData={() => setExternalNewIssueData(null)}
+                />
+            ) : (
+                <div className="main-container">
+                    {(activeIssueSection === 'daily-report' || activeIssueSection === 'all' || activeIssueSection === 'register') && (
+                        <aside className="sidebar">
                         {!canEditReport && (
                             <div style={{background: 'var(--warning-bg)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '10px', padding: '10px 14px', marginBottom: '14px', fontSize: '12px', color: 'var(--warning)', lineHeight: '1.5'}}>
                                 🔒 <b>{isGrade1 ? 'Grade 1 (조회 전용)' : 'Grade 2 (부서 담당자)'} 안내</b><br/>
@@ -2611,7 +2663,7 @@ ${compiledText.substring(0, 30000)}
                     </aside>
                     )}
 
-                    {(activeIssueSection === 'all' || activeIssueSection === 'list') && (
+                    {(activeIssueSection === 'daily-report' || activeIssueSection === 'all' || activeIssueSection === 'list') && (
                     <div className="content-area">
                         {!selectedProject ? (
                             <div className="empty-state">
@@ -2776,8 +2828,44 @@ ${compiledText.substring(0, 30000)}
                                                                 </div>
                                                             </div>
                                                             {(report.special_notes || report.issues) && (
-                                                                <div>
-                                                                    <div style={{fontWeight: 700, color: 'var(--text-color)', marginBottom: '0.3rem'}}>특이/이슈사항</div>
+                                                                <div style={{background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '10px 12px'}}>
+                                                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', flexWrap: 'wrap', gap: '6px'}}>
+                                                                        <div style={{fontWeight: 700, color: 'var(--text-color)'}}>🚨 특이/이슈사항</div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                const note = report.special_notes || report.issues;
+                                                                                const currentProj = (projects || []).find(p => String(p.id) === String(selectedProject));
+                                                                                setExternalNewIssueData({
+                                                                                    issueType: 'project',
+                                                                                    projectId: selectedProject,
+                                                                                    projectName: currentProj?.name || '',
+                                                                                    siteName: currentProj?.site || '',
+                                                                                    customer: currentProj?.customer || currentCustomer,
+                                                                                    occurredDate: report.report_date,
+                                                                                    title: note.split('\n')[0].replace(/^[-*•\d\.\s]+/, '').slice(0, 45) || '일보 특이사항 이슈',
+                                                                                    symptom: note,
+                                                                                    processType: /스태킹|스택|stack/i.test(note) ? 'stacking' : /노칭|notch/i.test(note) ? 'notching' : 'stacking'
+                                                                                });
+                                                                                setActiveIssueSection('integrated-issues');
+                                                                            }}
+                                                                            style={{
+                                                                                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                                                                                color: '#ffffff',
+                                                                                border: 'none',
+                                                                                borderRadius: '6px',
+                                                                                padding: '3px 9px',
+                                                                                fontSize: '11px',
+                                                                                fontWeight: 700,
+                                                                                cursor: 'pointer',
+                                                                                boxShadow: '0 1px 3px rgba(37, 99, 235, 0.25)'
+                                                                            }}
+                                                                            title="이 특이사항을 스태킹/노칭 이슈 관리 센터의 정식 이슈로 등록합니다"
+                                                                        >
+                                                                            👉 이슈 센터로 등록
+                                                                        </button>
+                                                                    </div>
                                                                     <div style={{whiteSpace: 'pre-wrap', color: 'var(--text-color)'}}>{report.special_notes || report.issues}</div>
                                                                 </div>
                                                             )}
@@ -2815,38 +2903,166 @@ ${compiledText.substring(0, 30000)}
                     </div>
                     )}
                 </div>
-            ) : (
-                <div style={{padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', overflowY: 'auto', background: 'var(--bg-color)'}}>
-                    <div style={{background: 'var(--panel-bg)', border: '1px solid var(--border-color)', padding: '2.5rem', borderRadius: '14px', boxShadow: 'var(--shadow-md)', width: '100%', maxWidth: '700px', textAlign: 'center', color: 'var(--text-color)'}}>
-                        <h2 style={{margin: '0 0 1rem 0', color: 'var(--text-color)'}}>📊 AI 전체 프로젝트 통합 분석</h2>
-                        <p style={{color: 'var(--text-muted)', marginBottom: '2rem'}}>선택한 기간 동안 등록된 모든 프로젝트의 공사일보를 한 번에 수집하여,<br/>Gemini AI가 종합 1페이지 요약과 프로젝트별 이슈를 분석해 PPT로 만들어 줍니다.</p>
-                        
-                        <div style={{display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '2rem', alignItems: 'center'}}>
-                            <div style={{textAlign: 'left'}}>
-                                <label style={{display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.3rem'}}>시작일</label>
-                                <input type="date" className="project-select" value={startDate} onChange={e => setStartDate(e.target.value)} style={{width: '200px'}} />
+            )}
+
+            {/* 이슈 통합분석 PPT 팝업 모달 */}
+            {isAnalysisModalOpen && (
+                <div className="aim-overlay" onClick={() => !isAnalyzing && setIsAnalysisModalOpen(false)}>
+                    <div className="aim-modal" onClick={e => e.stopPropagation()}>
+                        <div className="aim-header">
+                            <div className="aim-title-group">
+                                <span className="aim-title-icon">📊</span>
+                                <div>
+                                    <h3 className="aim-title">이슈 통합분석 PPT 보고서 다운로드</h3>
+                                    <p className="aim-subtitle">분석 대상(이슈 또는 프로젝트 공사일보)과 기간을 선택하여 PPT를 생성합니다.</p>
+                                </div>
                             </div>
-                            <span style={{color: 'var(--text-muted)', marginTop: '1.2rem'}}>~</span>
-                            <div style={{textAlign: 'left'}}>
-                                <label style={{display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.3rem'}}>종료일</label>
-                                <input type="date" className="project-select" value={endDate} onChange={e => setEndDate(e.target.value)} style={{width: '200px'}} />
-                            </div>
+                            <button
+                                type="button"
+                                className="aim-close-btn"
+                                onClick={() => !isAnalyzing && setIsAnalysisModalOpen(false)}
+                                disabled={isAnalyzing}
+                                title="닫기"
+                            >
+                                ✕
+                            </button>
                         </div>
 
-                        <button 
-                            className="ppt-btn"
-                            style={{ width: '100%', padding: '13px 24px', fontSize: '15px' }}
-                            onClick={generatePPT}
-                            disabled={isAnalyzing}
-                        >
-                            📊 {isAnalyzing ? '분석 및 PPT 생성 중...' : '전체 프로젝트 분석 및 PPT 다운로드 📥'}
-                        </button>
+                        <div className="aim-body">
+                            {/* 분석 유형 선택 */}
+                            <div className="aim-section">
+                                <label className="aim-label">1. 분석 보고서 유형 선택 *</label>
+                                <div className="aim-mode-grid">
+                                    <button
+                                        type="button"
+                                        className={`aim-mode-card ${analysisMode === 'issues' ? 'selected' : ''}`}
+                                        onClick={() => { setAnalysisMode('issues'); setAnalyzeMsg(''); }}
+                                    >
+                                        <div className="aim-mode-badge issues">🚨 이슈 분석</div>
+                                        <div className="aim-mode-name">스태킹 · 노칭 공정 이슈 종합 분석</div>
+                                        <div className="aim-mode-desc">
+                                            스태킹/노칭 공정별 조치 현황, 완료율, 미결 이슈 현황 및 전체 조치 이력 카드 슬라이드
+                                        </div>
+                                    </button>
 
-                        {analyzeMsg && (
-                            <div style={{marginTop: '1.5rem', padding: '1rem', borderRadius: '8px', background: analyzeMsg.includes('오류') ? 'var(--danger-bg)' : 'rgba(37, 99, 235, 0.12)', color: analyzeMsg.includes('오류') ? 'var(--danger)' : 'var(--primary)', fontWeight: 500}}>
-                                {analyzeMsg}
+                                    <button
+                                        type="button"
+                                        className={`aim-mode-card ${analysisMode === 'reports' ? 'selected' : ''}`}
+                                        onClick={() => { setAnalysisMode('reports'); setAnalyzeMsg(''); }}
+                                    >
+                                        <div className="aim-mode-badge reports">📝 공사일보 분석</div>
+                                        <div className="aim-mode-name">프로젝트 공사일보 AI 종합 분석</div>
+                                        <div className="aim-mode-desc">
+                                            수집된 공사일보 데이터를 Gemini AI가 종합 1페이지 요약 및 프로젝트별 이슈로 자동 분석
+                                        </div>
+                                    </button>
+                                </div>
                             </div>
-                        )}
+
+                            {/* 옵션: 이슈 분석 시 사이트 필터 */}
+                            {analysisMode === 'issues' && (
+                                <div className="aim-section">
+                                    <label className="aim-label">2. 대상 SITE 선택 (등록 사이트 기준)</label>
+                                    <div className="aim-site-select-wrap">
+                                        <select
+                                            className="aim-select"
+                                            value={analysisSite}
+                                            onChange={e => setAnalysisSite(e.target.value)}
+                                        >
+                                            <option value="all">🌐 전체 사이트 (모든 등록 SITE 대상)</option>
+                                            {registeredSiteNames.map(s => (
+                                                <option key={s} value={s}>{s}</option>
+                                            ))}
+                                        </select>
+                                        <span className="aim-hint">
+                                            * 등록된 SITE: {registeredSiteNames.join(', ')}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 기간 설정 */}
+                            <div className="aim-section">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                    <label className="aim-label" style={{ margin: 0 }}>
+                                        {analysisMode === 'issues' ? '3. 분석 대상 기간 설정 *' : '2. 공사일보 수집 기간 설정 *'}
+                                    </label>
+                                    <div className="aim-quick-pills">
+                                        <button type="button" onClick={() => applyQuickPeriod(7)} className="aim-quick-btn">최근 7일</button>
+                                        <button type="button" onClick={() => applyQuickPeriod(14)} className="aim-quick-btn">최근 14일</button>
+                                        <button type="button" onClick={() => applyQuickPeriod(30)} className="aim-quick-btn">최근 30일</button>
+                                        <button type="button" onClick={() => applyQuickPeriod(90)} className="aim-quick-btn">최근 3개월</button>
+                                    </div>
+                                </div>
+
+                                <div className="aim-date-row">
+                                    <div className="aim-date-field">
+                                        <span className="aim-date-tag">시작일</span>
+                                        <input
+                                            type="date"
+                                            className="aim-date-input"
+                                            value={startDate}
+                                            onChange={e => setStartDate(e.target.value)}
+                                        />
+                                    </div>
+                                    <span className="aim-date-sep">~</span>
+                                    <div className="aim-date-field">
+                                        <span className="aim-date-tag">종료일</span>
+                                        <input
+                                            type="date"
+                                            className="aim-date-input"
+                                            value={endDate}
+                                            onChange={e => setEndDate(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 안내 정보 박스 */}
+                            <div className="aim-guide-box">
+                                <span style={{ fontSize: '15px' }}>💡</span>
+                                <div>
+                                    {analysisMode === 'issues' ? (
+                                        <span>
+                                            설정한 기간({startDate} ~ {endDate}) 동안 등록된 {analysisSite === 'all' ? '전체 사이트' : analysisSite}의 스태킹/노칭 이슈를 취합하여 16:9 와이드 프레젠테이션(PPTX)으로 즉시 내보냅니다.
+                                        </span>
+                                    ) : (
+                                        <span>
+                                            선택한 기간({startDate} ~ {endDate}) 동안 등록된 모든 프로젝트의 공사일보를 수집하여, Gemini AI가 종합 1페이지 요약과 프로젝트별 이슈를 분석해 PPT로 만들어 줍니다.
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* 진행 메시지 및 상태 */}
+                            {analyzeMsg && (
+                                <div className={`aim-msg-box ${analyzeMsg.includes('오류') || analyzeMsg.includes('초과') ? 'error' : analyzeMsg.includes('완료') ? 'success' : 'loading'}`}>
+                                    {isAnalyzing && <span className="aim-spinner">⏳</span>}
+                                    <span>{analyzeMsg}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="aim-footer">
+                            <button
+                                type="button"
+                                className="aim-btn-cancel"
+                                onClick={() => setIsAnalysisModalOpen(false)}
+                                disabled={isAnalyzing}
+                            >
+                                닫기
+                            </button>
+                            <button
+                                type="button"
+                                className="aim-btn-execute"
+                                onClick={handleGenerateAnalysis}
+                                disabled={isAnalyzing}
+                            >
+                                📊 {isAnalyzing 
+                                    ? (analysisMode === 'issues' ? '이슈 PPT 생성 중...' : 'AI 일보 분석 및 PPT 생성 중...') 
+                                    : (analysisMode === 'issues' ? '이슈 분석 PPT 다운로드 📥' : '프로젝트 공사일보 분석 PPT 다운로드 📥')}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

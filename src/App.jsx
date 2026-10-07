@@ -11,7 +11,7 @@ import PasswordChangeModal from "./PasswordChangeModal";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as XLSX from "xlsx";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { normalizeJVName } from "./utils";
+import { normalizeJVName, getConstructionPeriod, getMonthDailyDeptMatrix, getDailyDepartmentManpower } from "./utils";
 import { SkOnLogo, SamsungSdiLogo, HyundaiLogo } from "./CustomerLogos";
 import {
   isAccountDeleted,
@@ -342,6 +342,12 @@ export default function App() {
   const [ganttExpanded, setGanttExpanded] = useState({});
   const [month, setMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
+  const [calendarMode, setCalendarMode] = useState(() => {
+    return localStorage.getItem("pm_calendar_mode") || "construction"; // 기본값: 공사/셋업/공수 일정
+  });
+  const [showDailyDeptMatrix, setShowDailyDeptMatrix] = useState(() => {
+    return localStorage.getItem("pm_show_daily_dept_matrix") !== "false"; // 기본값: 펼침
+  });
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("전체");
   const [siteFilter, setSiteFilter] = useState("전체");
@@ -1880,8 +1886,13 @@ JSON 출력 예시:
 
   const span = Math.max(DAY, ge - gs + DAY);
   const pos = d => Math.max(0, Math.min(100, (dt(d) - gs) / span * 100));
-  const barW = (s, e) => Math.max(1, (dt(e) - dt(s) + DAY) / span * 100);
   const cells = monthCells(month);
+
+  const monthMatrixData = useMemo(() => {
+    const mat = getMonthDailyDeptMatrix(view, month.getFullYear(), month.getMonth());
+    const totalMonthManday = mat.days.reduce((acc, dStr) => acc + (mat.dayDataMap[dStr]?.total || 0), 0);
+    return { ...mat, totalMonthManday };
+  }, [view, month]);
 
   if (isPasswordRecovery) {
     return (
@@ -3136,8 +3147,32 @@ JSON 출력 예시:
               if (e.target.tagName !== 'BUTTON') toggleSection('calendar');
             }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <h2>프로젝트 일정 달력</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h2>{calendarMode === 'construction' ? '🏗️ 공사·셋업 및 공수 투입 일정 달력' : '📅 프로젝트 일정 달력'}</h2>
+                  <div className="cal-mode-toggle" onClick={e => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className={`cal-mode-btn ${calendarMode === 'construction' ? 'active' : ''}`}
+                      onClick={() => {
+                        setCalendarMode('construction');
+                        try { localStorage.setItem('pm_calendar_mode', 'construction'); } catch (err) {}
+                      }}
+                      title="공수가 처음 반영되는 시점 또는 이설/J·C/셋업 마일스톤 시작 시점부터 실제 현장 작업 기간만 표시합니다"
+                    >
+                      🏗️ 공사·셋업 일정 (공수 기준)
+                    </button>
+                    <button
+                      type="button"
+                      className={`cal-mode-btn ${calendarMode === 'project' ? 'active' : ''}`}
+                      onClick={() => {
+                        setCalendarMode('project');
+                        try { localStorage.setItem('pm_calendar_mode', 'project'); } catch (err) {}
+                      }}
+                      title="프로젝트 시작일부터 종료일까지 전체 일정을 표시합니다"
+                    >
+                      📋 전체 프로젝트 일정
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); toggleSection('calendar'); }}
@@ -3154,22 +3189,48 @@ JSON 출력 예시:
                     {collapsedSections.calendar ? '▸ 펼치기' : '▾ 접기'}
                   </button>
                 </div>
-                <p>프로젝트 기간을 얇은 연속 막대로 표시합니다. 막대를 누르면 상세 정보가 열립니다.</p>
+                <p>
+                  {calendarMode === 'construction'
+                    ? '공수가 처음 반영되거나 이설/J·C/셋업 마일스톤이 시작되는 실제 현장 작업 기간을 연속 막대로 표시합니다. 막대를 누르면 상세 정보가 열립니다.'
+                    : '프로젝트 전체 기간을 얇은 연속 막대로 표시합니다. 막대를 누르면 상세 정보가 열립니다.'}
+                </p>
               </div>
               <div className="cal-actions">
+                <button
+                  type="button"
+                  className={`cal-mode-btn ${showDailyDeptMatrix ? 'active' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const next = !showDailyDeptMatrix;
+                    setShowDailyDeptMatrix(next);
+                    try { localStorage.setItem('pm_show_daily_dept_matrix', String(next)); } catch (err) {}
+                  }}
+                  style={{
+                    background: showDailyDeptMatrix ? 'rgba(37, 99, 235, 0.12)' : 'var(--bg-card)',
+                    color: showDailyDeptMatrix ? '#2563eb' : 'var(--text-secondary)',
+                    border: '1px solid var(--border-medium)',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    fontWeight: '700'
+                  }}
+                  title="일일단위 부서별 인원 수 및 총합을 볼 수 있는 매트릭스 표를 펼치거나 접습니다"
+                >
+                  📊 일일 부서별 공수표 {showDailyDeptMatrix ? '접기' : '보기'}
+                </button>
                 <button
                   className="ppt-btn"
                   onClick={async (e) => {
                     e.stopPropagation();
                     if (!canExportAnalysis) return showPermissionModal("일정 달력 PPT 내보내기");
-                    setMsg("일정 달력 PPT 생성 중...");
+                    setMsg("일정 달력 및 일일 부서별 공수 PPT 생성 중...");
                     try {
-                      await exportCalendarReport(view, month, { filter, siteFilter, personFilter, search });
-                      setMsg("일정 달력 PPT를 완료했습니다.");
+                      await exportCalendarReport(view, month, { filter, siteFilter, personFilter, search }, calendarMode);
+                      setMsg("일정 달력 및 일일 부서별 공수 PPT 완료 (수정 가능한 표/도형 형식)");
                     } catch (error) {
                       setMsg("PPT 생성 실패: " + error.message);
                     }
                   }}
+                  title="파워포인트에서 직접 수정 가능한 네이티브 표 및 도형으로 내보냅니다 (이미지 캡쳐 X)"
                 >
                   📊 PPT 내보내기 {!canExportAnalysis && "🔒"}
                 </button>
@@ -3188,13 +3249,29 @@ JSON 출력 예시:
                     const weekDays = cells.slice(weekIndex * 7, weekIndex * 7 + 7);
                     const weekStart = iso(weekDays[0]);
                     const weekEnd = iso(weekDays[6]);
-                    const weekProjects = view.filter(p => p.startDate <= weekEnd && p.endDate >= weekStart);
-                    const lanes = weekProjects.map((p, lane) => ({
-                      p,
-                      lane,
-                      start: Math.max(0, Math.round((dt(p.startDate) - dt(weekStart)) / DAY)),
-                      end: Math.min(6, Math.round((dt(p.endDate) - dt(weekStart)) / DAY))
-                    }));
+
+                    const getProjectEffectiveDates = (p) => {
+                      if (calendarMode === 'construction') {
+                        return getConstructionPeriod(p);
+                      }
+                      return { startDate: p.startDate, endDate: p.endDate, hasConstructionData: true };
+                    };
+
+                    const weekProjects = view.filter(p => {
+                      const eff = getProjectEffectiveDates(p);
+                      return eff.startDate <= weekEnd && eff.endDate >= weekStart;
+                    });
+
+                    const lanes = weekProjects.map((p, lane) => {
+                      const eff = getProjectEffectiveDates(p);
+                      return {
+                        p,
+                        eff,
+                        lane,
+                        start: Math.max(0, Math.round((dt(eff.startDate) - dt(weekStart)) / DAY)),
+                        end: Math.min(6, Math.round((dt(eff.endDate) - dt(weekStart)) / DAY))
+                      };
+                    });
                     const rowHeight = Math.max(82, lanes.length * 21 + 32);
 
                     return (
@@ -3202,12 +3279,33 @@ JSON 출력 예시:
                         <div className="date-cells" style={{ height: '100%' }}>
                           {weekDays.map(d => {
                             const dStr = iso(d);
-                            let dayManpower = 0;
-                            view.forEach(p => {
-                              if (p.manpower?.dailyTotal?.[dStr]) dayManpower += Number(p.manpower.dailyTotal[dStr]) || 0;
-                            });
+                            const dayDeptStat = getDailyDepartmentManpower(view, dStr);
+                            const dayManpower = dayDeptStat.total;
+                            const deptEntries = Object.entries(dayDeptStat.depts);
+                            const deptSummaryStr = deptEntries.map(([k, v]) => `${k} ${v}명`).join(', ');
+
                             return (
-                              <div className={monthKey(d) === monthKey(month) ? "date-cell" : "date-cell other"} key={dStr}>
+                              <div
+                                className={monthKey(d) === monthKey(month) ? "date-cell" : "date-cell other"}
+                                key={dStr}
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => {
+                                  const activeProjectsOnDay = view.filter(p => {
+                                    const eff = getProjectEffectiveDates(p);
+                                    return eff.startDate <= dStr && eff.endDate >= dStr;
+                                  });
+                                  setSelectedDay({
+                                    date: dStr,
+                                    isSingleDay: true,
+                                    totalManpower: dayManpower,
+                                    dayDeptStat: dayDeptStat,
+                                    active: activeProjectsOnDay,
+                                    starts: view.filter(p => getProjectEffectiveDates(p).startDate === dStr),
+                                    ends: view.filter(p => getProjectEffectiveDates(p).endDate === dStr)
+                                  });
+                                }}
+                                title={dayManpower > 0 ? `당일 투입 공수: 총 ${dayManpower}명 (${deptSummaryStr}) - 클릭하여 상세 보기` : `${dStr} - 클릭하여 일정 보기`}
+                              >
                                 <b>{d.getDate()}</b>
                                 {dayManpower > 0 && (
                                   <span
@@ -3223,7 +3321,6 @@ JSON 출력 예시:
                                       marginTop: '2px',
                                       marginLeft: '3px'
                                     }}
-                                    title={`당일 프로젝트 투입 공수: ${dayManpower}명`}
                                   >
                                     👥 {dayManpower}명
                                   </span>
@@ -3233,7 +3330,7 @@ JSON 출력 예시:
                           })}
                         </div>
                         <div className="event-lanes" style={{ height: `${lanes.length * 21}px` }}>
-                          {lanes.map(({ p, lane, start, end }) => (
+                          {lanes.map(({ p, eff, lane, start, end }) => (
                             <button
                               key={p.id}
                               className="calendar-bar"
@@ -3241,12 +3338,20 @@ JSON 출력 예시:
                               onClick={() => setSelectedDay({
                                 date: `${weekStart} ~ ${weekEnd}`,
                                 active: [p],
-                                starts: p.startDate >= weekStart && p.startDate <= weekEnd ? [p] : [],
-                                ends: p.endDate >= weekStart && p.endDate <= weekEnd ? [p] : []
+                                starts: eff.startDate >= weekStart && eff.startDate <= weekEnd ? [p] : [],
+                                ends: eff.endDate >= weekStart && eff.endDate <= weekEnd ? [p] : []
                               })}
-                              title={`${p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}${p.name} · ${p.startDate}~${p.endDate}`}
+                              title={`${p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}${p.name} · ${calendarMode === 'construction' ? '공사기간' : '프로젝트기간'}: ${eff.startDate}~${eff.endDate}`}
                             >
-                              <span>{p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}</span>
+                              <span>
+                                {p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}
+                                {p.name}
+                                {calendarMode === 'construction' && eff.hasConstructionData && (
+                                  <small style={{ opacity: 0.9, marginLeft: '4px', fontSize: '9px', fontWeight: 600 }}>
+                                    ({eff.startDate.slice(5)}~{eff.endDate.slice(5)})
+                                  </small>
+                                )}
+                              </span>
                             </button>
                           ))}
                         </div>
@@ -3254,6 +3359,75 @@ JSON 출력 예시:
                     );
                   })}
                 </div>
+
+                {/* 📊 일일 부서별 투입 공수 현황 매트릭스 테이블 */}
+                {showDailyDeptMatrix && (
+                  <div className="cal-matrix-section">
+                    <div className="cal-matrix-header">
+                      <h3>
+                        <span>📊</span>
+                        <span>{month.getFullYear()}년 {month.getMonth() + 1}월 일일 부서별 공수 투입 현황 (Daily Department Matrix)</span>
+                      </h3>
+                      <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        당월 누적 총 공수: <b style={{ color: 'var(--accent)', fontSize: '13.5px' }}>{monthMatrixData.totalMonthManday}</b> M/D
+                      </span>
+                    </div>
+                    <div className="cal-matrix-table-wrap">
+                      <table className="cal-matrix-table">
+                        <thead>
+                          <tr>
+                            <th className="th-dept">구분 (부서)</th>
+                            {monthMatrixData.days.map(dStr => {
+                              const dNum = parseInt(dStr.slice(8), 10);
+                              const dow = new Date(dStr).getDay();
+                              const wkndClass = dow === 0 ? 'th-weekend-sun' : dow === 6 ? 'th-weekend-sat' : '';
+                              return (
+                                <th key={dStr} className={wkndClass} title={dStr}>
+                                  {dNum}
+                                </th>
+                              );
+                            })}
+                            <th style={{ background: '#0969da', color: '#fff' }}>월간 합계</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {monthMatrixData.sortedDepts.map(dept => {
+                            let deptSum = 0;
+                            return (
+                              <tr key={dept}>
+                                <td className="td-dept">{dept}</td>
+                                {monthMatrixData.days.map(dStr => {
+                                  const val = monthMatrixData.dayDataMap[dStr]?.depts?.[dept] || 0;
+                                  deptSum += val;
+                                  return (
+                                    <td key={dStr} className={val > 0 ? "td-val-active" : ""}>
+                                      {val > 0 ? val : "-"}
+                                    </td>
+                                  );
+                                })}
+                                <td className="td-total-sum">{deptSum > 0 ? `${deptSum}명` : "-"}</td>
+                              </tr>
+                            );
+                          })}
+                          <tr className="row-total">
+                            <td className="td-dept" style={{ color: 'var(--accent)' }}>당일 총합 (명)</td>
+                            {monthMatrixData.days.map(dStr => {
+                              const val = monthMatrixData.dayDataMap[dStr]?.total || 0;
+                              return (
+                                <td key={dStr} className={val > 0 ? "td-total-cell-active" : ""}>
+                                  {val > 0 ? <b>{val}</b> : "0"}
+                                </td>
+                              );
+                            })}
+                            <td style={{ background: 'var(--accent)', color: '#fff', fontSize: '12px' }}>
+                              <b>{monthMatrixData.totalMonthManday} M/D</b>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <div 
@@ -3442,16 +3616,46 @@ JSON 출력 예시:
             <div className="back" onMouseDown={() => setSelectedDay(null)} style={{ zIndex: 99999 }}>
               <div className="modal" onMouseDown={e => e.stopPropagation()}>
                 <button className="close" onClick={() => setSelectedDay(null)}>×</button>
-                <h2>{selectedDay.date} 프로젝트</h2>
-                <div className="day-summary">진행 {selectedDay.active.length} · 착수 {selectedDay.starts.length} · 종료 {selectedDay.ends.length}</div>
-                {selectedDay.active.map(p => (
-                  <div className="dayevent" key={p.id}>
-                    <i style={{ background: p.projectColor }} />
-                    <b>{p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}</b>
-                    <span>{p.site} · {p.line || "Line 미입력"}</span>
-                    <span>{p.startDate} ~ {p.endDate}</span>
+                <h2>{selectedDay.date} {selectedDay.isSingleDay ? '일정 및 투입 공수' : '프로젝트'}</h2>
+
+                {/* 당일 부서별 공수 투입 카드 */}
+                {selectedDay.dayDeptStat && selectedDay.dayDeptStat.total > 0 && (
+                  <div style={{ margin: '14px 0 16px', background: 'var(--bg-card-subtle)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                        👥 당일 부서별 공수 투입 현황
+                      </span>
+                      <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--accent)' }}>
+                        총합 {selectedDay.dayDeptStat.total}명
+                      </span>
+                    </div>
+                    <div className="selected-day-dept-cards" style={{ margin: 0, padding: 0, background: 'transparent', border: 'none' }}>
+                      {Object.entries(selectedDay.dayDeptStat.depts).map(([deptName, val]) => (
+                        <div className="selected-day-dept-card" key={deptName}>
+                          <div className="dept-name">{deptName}</div>
+                          <div className="dept-val">{val}명</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))}
+                )}
+
+                <div className="day-summary">진행 {selectedDay.active.length} · 착수 {selectedDay.starts.length} · 종료 {selectedDay.ends.length}</div>
+                {selectedDay.active.map(p => {
+                  const cp = getConstructionPeriod(p);
+                  return (
+                    <div className="dayevent" key={p.id}>
+                      <i style={{ background: p.projectColor }} />
+                      <b>{p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}</b>
+                      <span>{p.site} · {p.line || "Line 미입력"}</span>
+                      <span>
+                        {calendarMode === 'construction' && cp.hasConstructionData
+                          ? `공사기간: ${cp.startDate} ~ ${cp.endDate} (전체: ${p.startDate}~${p.endDate})`
+                          : `${p.startDate} ~ ${p.endDate}`}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

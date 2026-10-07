@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import {
   isAccountDeleted,
@@ -8,6 +8,7 @@ import {
   saveCustomUserProfile,
   recordUserAccess,
 } from "./authService";
+import "./Login.css";
 
 export default function Login() {
   const [mode, setMode] = useState("login"); // "login" | "signup" | "reset" | "test-reset"
@@ -18,6 +19,25 @@ export default function Login() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState(() => {
+    try {
+      return localStorage.getItem("pm_theme_mode") || "dark";
+    } catch (e) {
+      return "dark";
+    }
+  });
+
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute("data-theme", currentTheme);
+      document.body.className = `theme-${currentTheme}`;
+      localStorage.setItem("pm_theme_mode", currentTheme);
+    } catch (e) {}
+  }, [currentTheme]);
+
+  const toggleTheme = () => {
+    setCurrentTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
 
   async function performLogin(targetEmail, targetPassword) {
     setMessage("");
@@ -226,37 +246,50 @@ export default function Login() {
     }
   }
 
-  const isResetMode = mode === "reset";
-  const isTestResetMode = mode === "test-reset";
-  const isSignupMode = mode === "signup";
-
   return (
     <main className="login-page">
-      <form className="login-card" onSubmit={submit}>
-        <picture>
-          <source srcSet={`${import.meta.env.BASE_URL || '/'}tw-logo-dark.png`.replace('//', '/')} media="(prefers-color-scheme: dark)" />
-          <img src={`${import.meta.env.BASE_URL || '/'}tw-logo.png`.replace('//', '/')} alt="TW 로고" />
-        </picture>
-        <h1 style={{ fontSize: "22px", margin: "0 0 4px", textAlign: "center", color: "var(--text-primary)" }}>
-          Project Management
-        </h1>
+      <button
+        type="button"
+        className="login-theme-toggle"
+        onClick={toggleTheme}
+        title={currentTheme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
+      >
+        <span>{currentTheme === "dark" ? "☀️ 라이트 모드" : "🌙 다크 모드"}</span>
+      </button>
 
-        <div style={{ textAlign: "center", marginBottom: "8px" }}>
-          {isResetMode && (
-            <p style={{ margin: 0, fontSize: "13px", color: "#64748b" }}>
-              비밀번호를 재설정할 회사 이메일을 입력해 주세요.
-            </p>
-          )}
-          {isTestResetMode && (
-            <p style={{ margin: 0, fontSize: "13px", color: "#0284c7", fontWeight: 600 }}>
-              테스트 계정 ({emailInput}) 새 비밀번호 설정
-            </p>
-          )}
-          {isSignupMode && (
-            <p style={{ margin: 0, fontSize: "13px", color: "#64748b" }}>
-              TW Group 신규 계정을 생성합니다.
-            </p>
-          )}
+      <form className="login-card" onSubmit={submit}>
+        <div className="login-logo-container">
+          <img
+            src={
+              currentTheme === "dark"
+                ? `${import.meta.env.BASE_URL || "/"}/tw-logo-dark.png`.replace("//", "/")
+                : `${import.meta.env.BASE_URL || "/"}/tw-logo.png`.replace("//", "/")
+            }
+            alt="(주)TW 로고"
+            className="login-logo-img"
+          />
+        </div>
+
+        <div className="login-card-header">
+          <span className="login-badge-label">Project Management</span>
+          <h1>
+            {isSignupMode
+              ? "신규 임직원 회원가입"
+              : isResetMode
+              ? "비밀번호 찾기 / 재설정"
+              : isTestResetMode
+              ? "새 비밀번호 설정"
+              : "프로젝트 관리 시스템"}
+          </h1>
+          <p className="login-subtext">
+            {isResetMode
+              ? "비밀번호를 재설정할 사내 이메일을 입력해 주세요."
+              : isTestResetMode
+              ? `사내 테스트 계정 (${emailInput}) 새 비밀번호를 설정합니다.`
+              : isSignupMode
+              ? "TW Group 임직원 계정을 생성합니다."
+              : "회사 이메일 계정(@twgroup.co.kr)으로 로그인하세요."}
+          </p>
         </div>
 
         <input
@@ -295,7 +328,7 @@ export default function Login() {
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder={isTestResetMode ? "새 비밀번호 (6자리 이상)" : "비밀번호"}
+            placeholder={isTestResetMode ? "새 비밀번호 (6자리 이상)" : "비밀번호 입력"}
             autoComplete={isSignupMode || isTestResetMode ? "new-password" : "current-password"}
             minLength={6}
             required
@@ -314,20 +347,20 @@ export default function Login() {
           />
         )}
 
-        <button className="primary" disabled={submitting} style={{ height: "42px", fontWeight: "bold", fontSize: "14px" }}>
+        <button className="primary" disabled={submitting}>
           {submitting
             ? "처리 중..."
             : isResetMode
-            ? "재설정 인증 메일 발송"
+            ? "재설정 링크 메일 발송"
             : isTestResetMode
             ? "비밀번호 재설정 완료"
             : isSignupMode
-            ? "회원가입"
+            ? "회원가입 신청"
             : "로그인"}
         </button>
 
         {/* 하단 모드 전환 네비게이션 */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "4px" }}>
+        <div className="login-links-container">
           {mode === "login" && (
             <>
               <button
@@ -338,21 +371,19 @@ export default function Login() {
                   setMessage("");
                 }}
                 disabled={submitting}
-                style={{ fontSize: "13px" }}
               >
-                처음이신가요? 회원가입
+                처음이신가요? <strong>회원가입 신청</strong>
               </button>
               <button
                 type="button"
-                className="link"
+                className="link link-subtle"
                 onClick={() => {
                   setMode("reset");
                   setMessage("");
                 }}
                 disabled={submitting}
-                style={{ fontSize: "12px", color: "#64748b" }}
               >
-                비밀번호를 잊으셨나요? 비밀번호 찾기 / 재설정
+                비밀번호를 잊으셨나요? 비밀번호 재설정
               </button>
             </>
           )}
@@ -366,9 +397,8 @@ export default function Login() {
                 setMessage("");
               }}
               disabled={submitting}
-              style={{ fontSize: "13px" }}
             >
-              이미 계정이 있으신가요? 로그인
+              ← 이미 계정이 있으신가요? 로그인
             </button>
           )}
 
@@ -381,7 +411,6 @@ export default function Login() {
                 setMessage("");
               }}
               disabled={submitting}
-              style={{ fontSize: "13px", color: "#075ca8" }}
             >
               ← 로그인으로 돌아가기
             </button>
@@ -389,39 +418,33 @@ export default function Login() {
         </div>
 
         {isSignupMode && (
-          <p className="signup-guide" style={{ fontSize: "12px", color: "#64748b", margin: "4px 0", lineHeight: "1.5" }}>
+          <p className="login-guide-box">
             TW Group 임직원만 가입 가능합니다.<br />
             회원가입 후 회사 이메일 인증을 완료해야 서비스를 이용할 수 있습니다.
           </p>
         )}
 
         {isResetMode && (
-          <p style={{ fontSize: "12px", color: "#64748b", margin: "4px 0", lineHeight: "1.5", textAlign: "center" }}>
+          <p className="login-guide-box">
             가입된 사내 이메일 주소로 안전한 비밀번호 재설정 링크가 전송됩니다.
           </p>
         )}
 
         {message && (
-          <div style={{
-            padding: "10px 14px",
-            borderRadius: "8px",
-            background: message.includes("완료") || message.includes("발송") || message.includes("성공")
-              ? "var(--info-muted)"
-              : "var(--danger-muted)",
-            border: `1px solid ${message.includes("완료") || message.includes("발송") || message.includes("성공")
-              ? "rgba(2,132,199,0.25)"
-              : "rgba(220,38,38,0.25)"}`,
-            color: message.includes("완료") || message.includes("발송") || message.includes("성공")
-              ? "var(--info)"
-              : "var(--danger)",
-            fontSize: "13px",
-            lineHeight: "1.4",
-            fontWeight: 500,
-            textAlign: "center"
-          }}>
+          <div
+            className={`login-message-banner ${
+              message.includes("완료") || message.includes("발송") || message.includes("성공")
+                ? "info"
+                : "danger"
+            }`}
+          >
             {message}
           </div>
         )}
+
+        <div className="login-footer-copy">
+          © (주)TW · 스마트 프로젝트 관리 시스템
+        </div>
       </form>
     </main>
   );

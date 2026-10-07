@@ -1,0 +1,309 @@
+/* ========================================================
+   LOGIN PAGE — PREMIUM AESTHETICS & RESPONSIVE DESIGN
+   ======================================================== */
+
+.login-page {
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-canvas, #0a0e17);
+  background-image: 
+    radial-gradient(circle at 50% 18%, rgba(37, 99, 235, 0.14) 0%, transparent 60%),
+    radial-gradient(circle at 85% 80%, rgba(99, 102, 241, 0.08) 0%, transparent 50%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  transition: background-color 0.25s ease;
+}
+
+[data-theme="light"] .login-page,
+body.theme-light .login-page {
+  background-color: #f1f5f9;
+  background-image: 
+    radial-gradient(circle at 50% 15%, rgba(37, 99, 235, 0.08) 0%, transparent 60%),
+    radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+}
+
+/* 테마 토글 버튼 (우측 상단) */
+.login-theme-toggle {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--bg-card, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--border-medium, rgba(255, 255, 255, 0.15));
+  color: var(--text-secondary, #cbd5e1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10;
+}
+
+.login-theme-toggle:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.12));
+  color: var(--text-primary, #ffffff);
+  border-color: var(--accent, #3b82f6);
+  transform: translateY(-1px);
+}
+
+/* 메인 로그인 카드 */
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  background: var(--bg-card, #10121a);
+  border: 1px solid var(--border-medium, rgba(255, 255, 255, 0.12));
+  border-radius: 24px;
+  padding: 38px 32px 30px;
+  box-shadow: 
+    0 24px 50px -12px rgba(0, 0, 0, 0.5),
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    0 0 0 1px var(--border-faint, rgba(255, 255, 255, 0.04));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  animation: loginCardAppear 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes loginCardAppear {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 브랜드 로고 래퍼 */
+.login-logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.login-logo-img {
+  height: 42px;
+  width: auto;
+  max-width: 200px;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+}
+
+.login-logo-img:hover {
+  transform: scale(1.02);
+}
+
+/* 카드 상단 헤더 */
+.login-card-header {
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.login-badge-label {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent, #3b82f6);
+  background: var(--accent-muted, rgba(37, 99, 235, 0.12));
+  border: 1px solid var(--accent-border, rgba(37, 99, 235, 0.25));
+  padding: 3px 10px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.login-card h1 {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #ffffff);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.login-subtext {
+  font-size: 13px;
+  color: var(--text-tertiary, #94a3b8);
+  margin: 0;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* 폼 인풋 필드 */
+.login-card input {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  height: 46px;
+  padding: 0 16px;
+  font-size: 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border-medium, rgba(255, 255, 255, 0.18)) !important;
+  background-color: var(--input-bg, #0c1220) !important;
+  color: var(--text-primary, #ffffff) !important;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.login-card input:focus {
+  border-color: var(--accent, #3b82f6) !important;
+  box-shadow: 0 0 0 3px var(--accent-glow, rgba(59, 130, 246, 0.25)) !important;
+}
+
+.login-card input::placeholder {
+  color: var(--text-muted, #64748b) !important;
+  opacity: 0.8;
+}
+
+/* 주요 제출 버튼 */
+.login-card button.primary {
+  width: 100%;
+  height: 46px;
+  box-sizing: border-box;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.login-card button.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  box-shadow: 0 6px 22px rgba(37, 99, 235, 0.5);
+  transform: translateY(-1px);
+}
+
+.login-card button.primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.login-card button.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 하단 링크 버튼 (브라우저 기본 버튼 스타일 완벽 초기화) */
+.login-links-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.login-card button.link {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary, #94a3b8);
+  padding: 6px 10px;
+  border-radius: 8px;
+  text-align: center;
+  transition: all 0.15s ease;
+  line-height: 1.4;
+  width: 100%;
+}
+
+.login-card button.link:hover:not(:disabled) {
+  color: var(--accent, #3b82f6) !important;
+  background: var(--accent-muted, rgba(37, 99, 235, 0.10)) !important;
+}
+
+.login-card button.link.link-subtle {
+  font-size: 12px;
+  color: var(--text-tertiary, #64748b);
+}
+
+.login-card button.link.link-subtle:hover:not(:disabled) {
+  color: var(--accent, #3b82f6);
+}
+
+/* 가이드 및 안내 문구 */
+.login-guide-box {
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+  margin: 2px 0 0;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* 상태 알림 메시지 배너 */
+.login-message-banner {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 500;
+  text-align: center;
+  box-sizing: border-box;
+  animation: loginCardAppear 0.2s ease;
+}
+
+.login-message-banner.info {
+  background: var(--info-muted, rgba(2, 132, 199, 0.12));
+  border: 1px solid rgba(2, 132, 199, 0.3);
+  color: var(--info, #38bdf8);
+}
+
+.login-message-banner.danger {
+  background: var(--danger-muted, rgba(220, 38, 38, 0.12));
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: var(--danger, #f87171);
+}
+
+/* 하단 카피라이트 */
+.login-footer-copy {
+  margin-top: 20px;
+  font-size: 11.5px;
+  color: var(--text-muted, #64748b);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+/* 모바일 대응 */
+@media (max-width: 480px) {
+  .login-card {
+    padding: 30px 20px 24px;
+    border-radius: 20px;
+  }
+  .login-theme-toggle {
+    top: 16px;
+    right: 16px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}

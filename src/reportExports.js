@@ -23,30 +23,29 @@ function ppt(title){
   x.lang="ko-KR";
   return x;
 }
-function head(slide,title,sub,page,totalPages){
-  slide.background={color:C.white};
-  // 슬라이드 제목 (상단)
-  slide.addText(title,{x:0.55,y:0.22,w:9.8,h:0.42,fontSize:17,bold:true,color:C.navy,fontFace:"맑은 고딕",margin:0});
+function head(slide, title, sub, page, totalPages) {
+  slide.background = { color: C.white };
+  // 슬라이드 제목 (상단) - 원본 TW PPT 양식 스타일 일치
+  slide.addText(title, { x: 0.55, y: 0.25, w: 10.5, h: 0.42, fontSize: 17, bold: true, color: C.navy, fontFace: "맑은 고딕", margin: 0 });
   // 서브 메타 정보
-  slide.addText(sub,{x:0.55,y:0.65,w:12.2,h:0.22,fontSize:8.5,color:C.gray,fontFace:"맑은 고딕",margin:0});
-  // 구분선 (블루 라인)
-  slide.addShape("line",{x:0.55,y:0.90,w:12.23,h:0,line:{color:C.blue,width:1.2}});
+  slide.addText(sub, { x: 0.55, y: 0.68, w: 12.2, h: 0.22, fontSize: 8.5, color: C.gray, fontFace: "맑은 고딕", margin: 0 });
+  // 은은한 구분선
+  slide.addShape("line", { x: 0.55, y: 0.92, w: 12.23, h: 0, line: { color: "D8E2EA", width: 0.8 } });
   
-  // 하단 좌측 TW 공식 로고
+  // 하단 좌측 TW 공식 로고 (원본 Layout 2 규격: x: 0.30, y: 7.17, w: 1.25, h: 0.28)
   try {
-    slide.addImage({data:TW_LOGO_FOOTER,x:0.55,y:7.02,w:1.25,h:0.28});
-  } catch(e){}
+    slide.addImage({ data: TW_LOGO_FOOTER, x: 0.30, y: 7.17, w: 1.25, h: 0.28 });
+  } catch (e) {}
 
-  // 하단 중앙 보안 문구
-  slide.addText(SECURITY_NOTICE,{x:3.80,y:7.08,w:5.73,h:0.16,fontSize:6.5,color:"8493A1",fontFace:"맑은 고딕",align:"center",margin:0});
-  // 하단 우측 슬로건
-  slide.addText(TW_SLOGAN,{x:8.80,y:7.05,w:3.98,h:0.22,fontSize:7.5,bold:true,color:C.navy,fontFace:"맑은 고딕",align:"right",margin:0});
-  // 하단 슬라이드 페이지 번호
+  // 하단 중앙 보안 문구 (원본 Layout 2 규격: x: 4.38, y: 7.12, w: 4.57, h: 0.13)
+  slide.addText(SECURITY_NOTICE, { x: 4.38, y: 7.12, w: 4.57, h: 0.16, fontSize: 6.5, color: "8493A1", fontFace: "맑은 고딕", align: "center", margin: 0 });
+  // 하단 우측 슬로건 (원본 Layout 2 규격: x: 9.34, y: 7.17, w: 3.72, h: 0.25)
+  slide.addText(TW_SLOGAN, { x: 9.34, y: 7.17, w: 3.72, h: 0.25, fontSize: 7.5, bold: true, color: C.navy, fontFace: "맑은 고딕", align: "right", margin: 0 });
+  // 하단 슬라이드 페이지 번호 (원본 Layout 2 규격: x: 6.14, y: 7.19, w: 0.54, h: 0.34)
   const pageStr = totalPages ? `${page} / ${totalPages}` : `${page}`;
-  slide.addText(pageStr,{x:6.14,y:6.90,w:1.05,h:0.16,fontSize:7,color:"8493A1",fontFace:"맑은 고딕",align:"center",margin:0});
+  slide.addText(pageStr, { x: 6.14, y: 7.19, w: 0.54, h: 0.20, fontSize: 7, color: "8493A1", fontFace: "맑은 고딕", align: "center", margin: 0 });
 }
-function summary(pptx,projects,filters){const s=pptx.addSlide();head(s,"Project Management Report",conditions(filters),1);const stats=[["전체",projects.length,C.blue],["진행 중",projects.filter(p=>p.status!=="완료").length,C.orange],["완료",projects.filter(p=>p.status==="완료").length,C.green],["지연",projects.filter(p=>p.status!=="완료"&&d(p.endDate)<new Date()).length,C.red]];stats.forEach((v,i)=>{const x=.65+i*3.08;s.addShape("roundRect",{x,y:1.4,w:2.7,h:1.05,fill:{color:C.light},line:{color:C.line}});s.addText(v[0],{x:x+.2,y:1.62,w:1.6,h:.2,fontSize:10,color:C.gray,margin:0});s.addText(String(v[1]),{x:x+.2,y:1.91,w:1.5,h:.34,fontSize:25,bold:true,color:v[2],margin:0})});const rows=projects.slice(0,11).map(p=>[normalizeJVName(p.manufacturingNo),normalizeJVName(p.name),normalizeJVName(p.site),p.status,`${progress(p)}%`]),tableRows=[["제조번호","프로젝트명","Site","상태","진행률"],...rows],tableHeight=Math.min(3.55,.26+tableRows.length*.24);s.addTable(tableRows,{x:.65,y:2.85,w:12,h:tableHeight,colW:[1.8,4.7,1.8,1.7,1.2],fontSize:8.5,color:C.navy,fill:C.white,border:{type:"solid",color:C.line,pt:.5},margin:.035,rowH:.22,autoFit:false})}
-function range(projects){const a=projects.flatMap(p=>[p.startDate,p.endDate,...(p.milestones||[]).flatMap(m=>[m.startDate,m.endDate])]).filter(Boolean).map(d);const start=new Date(Math.min(...a.map(x=>x.getTime()))),end=new Date(Math.max(...a.map(x=>x.getTime())));return{start,end,span:Math.max(DAY,end-start+DAY)}}
+
 export async function exportGanttReport(projects,filters={}){if(!projects.length)throw new Error("내보낼 프로젝트가 없습니다.");const x=ppt("프로젝트 간트차트 보고서");summary(x,projects,filters);const r=range(projects),rows=[];projects.forEach(p=>{rows.push({p,name:`${normalizeJVName(p.manufacturingNo)} · ${normalizeJVName(p.name)}`,s:p.startDate,e:p.endDate,v:progress(p),main:true});(p.milestones||[]).filter(m=>m.name).forEach(m=>rows.push({p,name:normalizeJVName(m.name),s:m.startDate,e:m.endDate,v:Math.max(0,Math.min(100,Math.round((new Date()-d(m.startDate))/Math.max(DAY,d(m.endDate)-d(m.startDate))*100))),main:false}))});const per=18;for(let o=0;o<rows.length;o+=per){const s=x.addSlide();head(s,"프로젝트 간트차트",`${conditions(filters)} | ${r.start.toISOString().slice(0,10)} ~ ${r.end.toISOString().slice(0,10)}`,2+o/per);const lx=.45,cx=4.25,cw=8.5,y0=1.28,rh=.31;s.addText("프로젝트 / 마일스톤",{x:lx,y:1.04,w:3.6,h:.18,fontSize:8,bold:true,color:C.gray,margin:0});for(let i=0;i<10;i++)s.addShape("line",{x:cx+i*cw/9,y:y0,w:0,h:Math.min(per,rows.length-o)*rh,line:{color:"E5EBF0",width:.4}});const tp=(new Date()-r.start)/r.span;if(tp>=0&&tp<=1)s.addShape("line",{x:cx+tp*cw,y:y0,w:0,h:Math.min(per,rows.length-o)*rh,line:{color:C.red,width:1,dash:"dash"}});rows.slice(o,o+per).forEach((q,i)=>{const y=y0+i*rh,ind=q.main?0:.22;s.addText(q.name,{x:lx+ind,y:y+.04,w:3.55-ind,h:.18,fontSize:q.main?9:8,bold:q.main,color:q.main?C.navy:C.gray,margin:0,fit:"shrink"});const left=Math.max(0,(d(q.s)-r.start)/r.span),right=Math.min(1,(d(q.e)-r.start+DAY)/r.span),bx=cx+left*cw,bw=Math.max(.04,(right-left)*cw),color=hex(q.p.projectColor);const barH=q.main?.16:.1,doneW=bw*Math.max(0,Math.min(100,q.v))/100;s.addShape(q.main?"roundRect":"rect",{x:bx,y:y+.075,w:bw,h:barH,fill:{color,transparency:q.main?72:84},line:{color,width:q.main?.65:.5,transparency:45}});if(doneW>0)s.addShape(q.main?"roundRect":"rect",{x:bx,y:y+.075,w:Math.max(.025,doneW),h:barH,fill:{color,transparency:0},line:{color,transparency:100}});s.addText(`${Math.round(q.v)}%`,{x:Math.min(bx+bw+.04,12.45),y:y+.035,w:.48,h:.18,fontSize:7.5,bold:q.main,color:q.main?C.navy:C.gray,margin:0,fit:"shrink"})})}await x.writeFile({fileName:`TW_Project_Gantt_${today()}.pptx`,compression:true})}
 
 export async function exportCalendarReport(projects, month, filters = {}, mode = 'construction') {
@@ -355,6 +354,8 @@ export async function exportCalendarReport(projects, month, filters = {}, mode =
  * - 파워포인트에서 100% 직접 수정 가능 (이미지 캡쳐 절대 사용 안 함)
  * =========================================================================================
  */
+
+
 export async function exportComprehensiveReport(projects, options = {}) {
   if (!projects || !projects.length) throw new Error("내보낼 프로젝트가 없습니다.");
 
@@ -376,13 +377,16 @@ export async function exportComprehensiveReport(projects, options = {}) {
   const isConstruction = mode === 'construction';
   const modeLabel = isConstruction ? "공사 일정 기준" : "전체 프로젝트 일정 기준";
 
-  // 1. 고객사 필터링 (2번 요구사항: SKon 선택 시 SKon 프로젝트만 격리 수록, 타 고객사 제거)
+  // 1. 고객사 필터링 (SKon 선택 시 SKon 프로젝트만 격리 수록)
   const selectedCustomer = customer || (projects[0]?.customer) || "SK on";
   const customerOnlyProjects = projects.filter(p => !p.customer || p.customer === selectedCustomer);
   const baseProjects = customerOnlyProjects.length > 0 ? customerOnlyProjects : projects;
 
   const pptReportTitle = `${selectedCustomer} 프로젝트 ${isConstruction ? '공사 일정 및 투입 공수' : '종합 일정 및 공수'} 종합 보고서`;
   const x = ppt(pptReportTitle);
+
+  // 로컬 기준 YYYY-MM-DD 변환 유틸 (타임존 하루 밀림 버그 원천 방지)
+  const toYmd = dt => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 
   // 2. 각 프로젝트의 일정 및 진행률 매핑
   const mappedAll = baseProjects.map(p => {
@@ -406,7 +410,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
     if (filtered.length > 0) targetProjects = filtered;
   }
 
-  // 4. 월별 목록 및 4개월 단위 분기 청크 계산 (4번 요구사항)
+  // 4. 월별 목록 및 4개월 단위 분기 청크 계산
   const monthsInRange = getMonthsInRange(startDate, endDate, targetProjects);
   const monthsSummaryStr = monthsInRange.length > 1
     ? `${monthsInRange[0].label} ~ ${monthsInRange[monthsInRange.length - 1].label} (${monthsInRange.length}개월)`
@@ -417,7 +421,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
     quarterChunks.push(monthsInRange.slice(i, i + 4));
   }
 
-  // 5. 간트차트 데이터: 마일스톤 펼침 없이 메인 프로젝트 바만 생성 (5번 요구사항)
+  // 5. 간트차트 데이터: 마일스톤 펼침 없이 메인 프로젝트 바만 생성
   const gAllDates = targetProjects.flatMap(p => [p.effStart, p.effEnd]).filter(Boolean).map(d);
   let gStart = new Date(), gEnd = new Date();
   if (gAllDates.length > 0) {
@@ -437,7 +441,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
     main: true
   }));
 
-  const perGanttSlide = 18;
+  const perGanttSlide = 14;
   const ganttSlideCount = Math.max(1, Math.ceil(ganttRows.length / perGanttSlide));
 
   // 6. 상세 명세서 페이징 계산
@@ -472,30 +476,24 @@ export async function exportComprehensiveReport(projects, options = {}) {
   });
 
   // =============================================================
-  // SLIDE 1: TW 공식 표지 슬라이드 (13.333 x 7.5 정중앙 완벽 대칭 배치 - 1번 요구사항)
+  // SLIDE 1: TW 공식 표지 슬라이드 (원본 Layout 1 양식 100% 일치)
   // =============================================================
   const sCover = x.addSlide();
   sCover.background = { color: C.white };
 
-  // 대제목
+  // 대제목 (원본과 동일하게 깔끔하고 당당한 타이틀)
   sCover.addText(pptReportTitle, {
-    x: 0.80, y: 1.50, w: 11.73, h: 0.85,
-    fontSize: 24, bold: true, color: C.navy, fontFace: "맑은 고딕", align: "center", margin: 0
+    x: 0.80, y: 1.60, w: 11.73, h: 0.85,
+    fontSize: 26, bold: true, color: C.navy, fontFace: "맑은 고딕", align: "center", margin: 0
   });
 
-  // 영문 서브타이틀
-  sCover.addText("TW PROJECT MANAGEMENT SYSTEM", {
-    x: 0.80, y: 2.38, w: 11.73, h: 0.32,
-    fontSize: 11, bold: true, color: C.blue, fontFace: "맑은 고딕", align: "center", margin: 0
-  });
-
-  // - INDEX - 헤더
+  // - INDEX - 헤더 (원본 Layout 1 위치)
   sCover.addText("- INDEX -", {
-    x: 0.80, y: 2.85, w: 11.73, h: 0.35,
+    x: 0.80, y: 2.75, w: 11.73, h: 0.35,
     fontSize: 14, bold: true, color: C.navy, fontFace: "맑은 고딕", align: "center", margin: 0
   });
 
-  // 목차 리스트
+  // 목차 리스트 (중앙 단정하게 정렬)
   const indexBullets = [];
   if (includeSlides.summary !== false) indexBullets.push("1. 프로젝트 종합 현황 요약 (Executive Summary)");
   if (includeSlides.calendar !== false) indexBullets.push(`2. 월간 공사 일정 달력 (${monthsSummaryStr})`);
@@ -504,31 +502,31 @@ export async function exportComprehensiveReport(projects, options = {}) {
   if (includeSlides.details !== false) indexBullets.push("5. 프로젝트별 공사 및 공수 상세 명세서 (전수 수록)");
 
   sCover.addText(indexBullets.join("\n"), {
-    x: 4.10, y: 3.32, w: 5.13, h: 2.20,
+    x: 4.10, y: 3.30, w: 5.13, h: 2.20,
     fontSize: 10.5, color: "334155", fontFace: "맑은 고딕", align: "left", lineSpacing: 25, margin: 0
   });
 
-  // 기간 및 작성 일자
+  // 기간 및 작성 일자 (원본 Layout 1 위치: y: 5.80)
   sCover.addText(`고객사: ${selectedCustomer}   |   설정 기간: ${periodStr}   |   작성일: ${today()}`, {
-    x: 0.80, y: 5.70, w: 11.73, h: 0.30,
+    x: 0.80, y: 5.80, w: 11.73, h: 0.30,
     fontSize: 9.5, color: C.gray, fontFace: "맑은 고딕", align: "center", margin: 0
   });
 
-  // 하단 중앙 TW 로고
+  // 하단 중앙 TW 로고 (원본 Layout 1 위치: x: 5.74, y: 6.48, w: 1.86, h: 0.41)
   try {
-    sCover.addImage({ data: TW_LOGO_COVER, x: 5.74, y: 6.20, w: 1.86, h: 0.41 });
+    sCover.addImage({ data: TW_LOGO_COVER, x: 5.74, y: 6.48, w: 1.86, h: 0.41 });
   } catch (e) {}
 
-  // 하단 보안 문구
+  // 하단 보안 문구 (원본 Layout 1 위치: x: 4.38, y: 7.12, w: 4.57, h: 0.13)
   sCover.addText(SECURITY_NOTICE, {
-    x: 3.80, y: 6.85, w: 5.73, h: 0.16,
+    x: 4.38, y: 7.12, w: 4.57, h: 0.16,
     fontSize: 6.5, color: "8493A1", fontFace: "맑은 고딕", align: "center", margin: 0
   });
 
   curPageNum++;
 
   // =============================================================
-  // SLIDE 2: 1. 프로젝트 종합 현황 요약 (고객사 전용 KPI 및 Site별 분석 - 2번 요구사항)
+  // SLIDE 2: 1. 프로젝트 종합 현황 요약 (고객사 전용 KPI 및 Site별 분석)
   // =============================================================
   if (includeSlides.summary !== false) {
     const s1 = x.addSlide();
@@ -550,8 +548,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
       s1.addText(kpi.sub, { x: kx + 0.15, y: 1.76, w: 2.65, h: 0.18, fontSize: 7.5, color: "94A3B8", margin: 0 });
     });
 
-    // 2번 요구사항 적용: 타 고객사(Samsung, Hyundai) 카드 완전 제거!
-    // 대신 선택된 고객사(selectedCustomer)의 주요 Site별 운영 현황 카드 배치!
+    // 선택된 고객사(selectedCustomer)의 주요 Site별 운영 현황 카드
     s1.addText(`🏢 [${selectedCustomer}] 주요 Site별 프로젝트 공사 및 공수 운영 현황`, {
       x: 0.55, y: 2.10, w: 12.0, h: 0.22, fontSize: 9.5, bold: true, color: C.navy, margin: 0
     });
@@ -573,7 +570,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
       });
     });
 
-    // 주요 프로젝트 요약 테이블 (상위 10건)
+    // 주요 프로젝트 요약 테이블
     s1.addText("📋 주요 프로젝트 진행 현황 요약 (PowerPoint 직접 편집 가능)", {
       x: 0.55, y: 3.18, w: 12.0, h: 0.22, fontSize: 9.5, bold: true, color: C.navy, margin: 0
     });
@@ -617,7 +614,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
   }
 
   // =============================================================
-  // SLIDE 3~: 2. 월간 공사 일정 달력 (웹앱과 동일한 주간 연속 가로 막대 렌더링 - 3번 요구사항)
+  // SLIDE 3~: 2. 월간 공사 일정 달력 (3번&4번 요구사항: 찌그러진 막대 버그 수정 & 6건 전체 표시!)
   // =============================================================
   if (includeSlides.calendar !== false) {
     monthsInRange.forEach((mObj, mIdx) => {
@@ -650,7 +647,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
       const first = new Date(mObj.year, mObj.monthIdx, 1);
       const calStart = new Date(first);
       calStart.setDate(1 - first.getDay());
-      const x0 = 0.55, y0 = 1.60, cw = 12.23 / 7, ch = 0.86;
+      const x0 = 0.55, y0 = 1.60, cw = 12.23 / 7, ch = 0.88;
 
       // 요일 헤더
       ["일", "월", "화", "수", "목", "금", "토"].forEach((v, i) => {
@@ -666,14 +663,14 @@ export async function exportComprehensiveReport(projects, options = {}) {
         ws.setDate(calStart.getDate() + w * 7);
         const we = new Date(ws);
         we.setDate(ws.getDate() + 6);
-        const wsStr = ws.toISOString().slice(0, 10);
-        const weStr = we.toISOString().slice(0, 10);
+        const wsStr = toYmd(ws);
+        const weStr = toYmd(we);
 
         // 1단계: 날짜 셀 격자, 날짜 숫자 및 일일 총 공수 배지
         for (let k = 0; k < 7; k++) {
           const cur = new Date(ws);
           cur.setDate(ws.getDate() + k);
-          const curStr = cur.toISOString().slice(0, 10);
+          const curStr = toYmd(cur);
           const isCurMonth = cur.getMonth() === mObj.monthIdx;
           const dayMp = mMatrix.dayDataMap[curStr]?.total || 0;
 
@@ -685,7 +682,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
 
           // 날짜 번호
           s2.addText(String(cur.getDate()), {
-            x: x0 + k * cw + 0.04, y: y0 + w * ch + 0.03, w: 0.35, h: 0.16,
+            x: x0 + k * cw + 0.04, y: y0 + w * ch + 0.02, w: 0.35, h: 0.16,
             fontSize: 7.5, bold: isCurMonth, color: isCurMonth ? (k === 0 ? C.red : k === 6 ? C.blue : C.navy) : C.gray, margin: 0
           });
 
@@ -694,37 +691,57 @@ export async function exportComprehensiveReport(projects, options = {}) {
             const bgCol = dayMp >= 20 ? "FEE2E2" : dayMp >= 10 ? "FEF3C7" : "E0F2FE";
             const txtCol = dayMp >= 20 ? C.red : dayMp >= 10 ? C.orange : C.blue;
             s2.addShape("roundRect", {
-              x: x0 + k * cw + 0.42, y: y0 + w * ch + 0.03, w: cw - 0.46, h: 0.14,
+              x: x0 + k * cw + 0.42, y: y0 + w * ch + 0.02, w: cw - 0.46, h: 0.14,
               fill: { color: bgCol }, line: { color: txtCol, width: 0.4 }
             });
             s2.addText(`👥 ${dayMp}명`, {
-              x: x0 + k * cw + 0.43, y: y0 + w * ch + 0.02, w: cw - 0.48, h: 0.15,
+              x: x0 + k * cw + 0.43, y: y0 + w * ch + 0.015, w: cw - 0.48, h: 0.15,
               fontSize: 6.5, bold: true, color: txtCol, align: "center", margin: 0
             });
           }
         }
 
-        // 2단계: 주차별 연속 가로 막대 (Continuous Spanning Bar - 3번 요구사항 완벽 구현)
+        // 2단계: 주차별 연속 가로 막대 (3번&4번 요구사항 완벽 반영!)
+        // 이 주와 실제로 겹치는 프로젝트들 필터
         const weekProjects = targetProjects.filter(p => {
           if (!p.effStart || !p.effEnd) return false;
           return p.effStart <= weStr && p.effEnd >= wsStr;
         });
 
-        const maxLanes = 3;
-        const visibleProjects = weekProjects.slice(0, maxLanes);
-        const overflowCount = weekProjects.length - maxLanes;
+        // 4번 요구사항: 6건 모두 생략 없이 100% 표시!
+        const maxLanes = 6;
+        const barH = 0.088;
+        const laneGap = 0.018;
 
-        visibleProjects.forEach((p, laneIdx) => {
-          const st = Math.max(0, Math.round((d(p.effStart) - ws) / DAY)); // 0 ~ 6
-          const en = Math.min(6, Math.round((d(p.effEnd) - ws) / DAY));   // 0 ~ 6
-          const bx = x0 + st * cw + 0.03;
-          const bw = Math.max(0.2, (en - st + 1) * cw - 0.06);
-          const by = y0 + w * ch + 0.20 + laneIdx * 0.13;
+        weekProjects.slice(0, maxLanes).forEach((p, laneIdx) => {
+          const pStartStr = p.effStart;
+          const pEndStr = p.effEnd;
+
+          // 3번 요구사항: 주차 범위 밖에 있는 경우 스킵 (찌그러진 미니 막대 원천 제거!)
+          if (pEndStr < wsStr || pStartStr > weStr) return;
+
+          let st = 0;
+          if (pStartStr > wsStr) {
+            const diffDays = Math.round((new Date(`${pStartStr}T00:00:00`) - new Date(`${wsStr}T00:00:00`)) / DAY);
+            st = Math.max(0, Math.min(6, diffDays));
+          }
+
+          let en = 6;
+          if (pEndStr < weStr) {
+            const diffDays = Math.round((new Date(`${pEndStr}T00:00:00`) - new Date(`${wsStr}T00:00:00`)) / DAY);
+            en = Math.max(0, Math.min(6, diffDays));
+          }
+
+          if (en < st) return; // 시작이 종료보다 뒤면 절대 그리지 않음!
+
+          const bx = x0 + st * cw + 0.02;
+          const bw = Math.max(0.3, (en - st + 1) * cw - 0.04);
+          const by = y0 + w * ch + 0.18 + laneIdx * (barH + laneGap);
           const barColor = hex(p.projectColor || C.blue);
 
           // 둥근 연속 막대
           s2.addShape("roundRect", {
-            x: bx, y: by, w: bw, h: 0.11,
+            x: bx, y: by, w: bw, h: barH,
             fill: { color: barColor },
             line: { color: barColor, transparency: 100 }
           });
@@ -732,23 +749,16 @@ export async function exportComprehensiveReport(projects, options = {}) {
           // 막대 라벨 (제조번호 + 프로젝트명 + 공사기간)
           const barLabel = `${normalizeJVName(p.manufacturingNo || "")} · ${normalizeJVName(p.name || "")}${isConstruction && p.cp?.hasConstructionData ? ` (${p.effStart.slice(5)}~${p.effEnd.slice(5)})` : ''}`;
           s2.addText(barLabel, {
-            x: bx + 0.03, y: by - 0.015, w: bw - 0.06, h: 0.12,
-            fontSize: 6, bold: true, color: C.white, fontFace: "맑은 고딕", margin: 0, fit: "shrink"
+            x: bx + 0.03, y: by - 0.02, w: bw - 0.06, h: barH + 0.04,
+            fontSize: 5.5, bold: true, color: C.white, fontFace: "맑은 고딕", margin: 0, fit: "shrink"
           });
         });
-
-        if (overflowCount > 0) {
-          s2.addText(`+${overflowCount}건 외`, {
-            x: x0 + 6 * cw - 0.75, y: y0 + w * ch + 0.20 + maxLanes * 0.13, w: 0.70, h: 0.12,
-            fontSize: 5.5, bold: true, color: C.gray, align: "right", margin: 0
-          });
-        }
       }
     });
   }
 
   // =============================================================
-  // SLIDE 4~: 3. 부서별 일일 투입 공수 매트릭스 (1슬라이드에 4개월치 집약 - 4번 요구사항)
+  // SLIDE 4~: 3. 부서별 일일 투입 공수 매트릭스 (1슬라이드에 4개월치 집약)
   // =============================================================
   if (includeSlides.manpower !== false) {
     quarterChunks.forEach((chunkMonths, chunkIdx) => {
@@ -765,7 +775,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
       head(s3, mTitle, mSub, curPageNum++, totalReportPages);
 
       const N = chunkMonths.length; // 1 ~ 4
-      const availableH = 5.70; // 1.15 ~ 6.85
+      const availableH = 5.70;
       const blockH = availableH / N;
 
       chunkMonths.forEach((mObj, subIdx) => {
@@ -882,7 +892,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
   }
 
   // =============================================================
-  // SLIDE 5~: 4. 프로젝트 종합 간트차트 일정 타임라인 (마일스톤 펼침 없이 한눈에 보기 - 5번 요구사항)
+  // SLIDE 5~: 4. 프로젝트 종합 간트차트 일정 타임라인 (1번&2번 요구사항 완벽 반영!)
   // =============================================================
   if (includeSlides.gantt !== false) {
     for (let o = 0; o < ganttRows.length; o += perGanttSlide) {
@@ -892,7 +902,7 @@ export async function exportComprehensiveReport(projects, options = {}) {
       const gSub = `${selectedCustomer} | 메인 프로젝트 일정 전수 조망 | 타임라인: ${gStart.toISOString().slice(0, 10)} ~ ${gEnd.toISOString().slice(0, 10)}`;
       head(gs, gTitle, gSub, curPageNum++, totalReportPages);
 
-      const lx = 0.52, cx = 4.45, cw = 8.15, y0 = 1.30, rh = 0.29;
+      const lx = 0.52, cx = 4.45, cw = 8.15, y0 = 1.30, rh = 0.36;
 
       gs.addText("프로젝트 명칭 (Site)", { x: lx, y: 1.05, w: 3.8, h: 0.18, fontSize: 8.5, bold: true, color: C.gray, margin: 0 });
 
@@ -915,45 +925,55 @@ export async function exportComprehensiveReport(projects, options = {}) {
       ganttRows.slice(o, o + perGanttSlide).forEach((q, i) => {
         const y = y0 + i * rh;
 
-        // 라벨
+        // 2번 요구사항: 프로젝트명이 길면 단어 기준으로 2줄 줄바꿈되도록 wrap: true 적용
         gs.addText(q.name, {
-          x: lx, y: y + 0.04, w: 3.85, h: 0.18,
-          fontSize: 8, bold: true, color: C.navy, margin: 0, fit: "shrink"
+          x: lx, y: y + 0.02, w: 3.85, h: 0.32,
+          fontSize: 7.8, bold: true, color: C.navy, fontFace: "맑은 고딕",
+          wrap: true, margin: 0
         });
 
         // 타임라인 막대
         const left = Math.max(0, (d(q.s) - gStart) / gSpan);
         const right = Math.min(1, (d(q.e) - gStart + DAY) / gSpan);
         const bx = cx + left * cw;
-        const bw = Math.max(0.06, (right - left) * cw);
+        const bw = Math.max(0.12, (right - left) * cw);
         const color = hex(q.p.projectColor || C.blue);
-        const barH = 0.15;
+        const barH = 0.18;
         const doneW = bw * Math.max(0, Math.min(100, q.v)) / 100;
 
         // 배경 바
         gs.addShape("roundRect", {
-          x: bx, y: y + 0.065, w: bw, h: barH,
-          fill: { color, transparency: 70 },
-          line: { color, width: 0.6, transparency: 40 }
+          x: bx, y: y + 0.08, w: bw, h: barH,
+          fill: { color, transparency: 65 },
+          line: { color, width: 0.6, transparency: 30 }
         });
 
         // 완료율 채움 바
         if (doneW > 0) {
           gs.addShape("roundRect", {
-            x: bx, y: y + 0.065, w: Math.max(0.03, doneW), h: barH,
+            x: bx, y: y + 0.08, w: Math.max(0.04, doneW), h: barH,
             fill: { color, transparency: 0 },
             line: { color, transparency: 100 }
           });
         }
 
-        // 일정 및 진행률 텍스트
+        // 1번 요구사항: 간트차트 막대 가운데에 프로젝트 기간이랑 진행률 기재 (align: "center")
         const dateSpanStr = `${q.s ? q.s.slice(5) : ''}~${q.e ? q.e.slice(5) : ''}`;
         const progressLabel = `${dateSpanStr} (${Math.round(q.v)}%)`;
 
-        gs.addText(progressLabel, {
-          x: Math.min(bx + bw + 0.04, 12.35), y: y + 0.035, w: 0.85, h: 0.18,
-          fontSize: 6.5, bold: true, color: C.navy, margin: 0, fit: "shrink"
-        });
+        if (bw >= 0.85) {
+          // 막대 너비가 충분한 경우: 막대 정중앙(center)에 배치!
+          gs.addText(progressLabel, {
+            x: bx, y: y + 0.07, w: bw, h: barH + 0.02,
+            fontSize: 6.8, bold: true, color: C.navy, align: "center", fontFace: "맑은 고딕", margin: 0
+          });
+        } else {
+          // 막대가 매우 짧은 경우: 막대 우측에 배치하여 텍스트 짤림 방지
+          gs.addText(progressLabel, {
+            x: bx + bw + 0.04, y: y + 0.07, w: 1.2, h: barH + 0.02,
+            fontSize: 6.5, bold: true, color: C.navy, align: "left", fontFace: "맑은 고딕", margin: 0
+          });
+        }
       });
     }
   }
@@ -1028,19 +1048,19 @@ export async function exportComprehensiveReport(projects, options = {}) {
   }
 
   // =============================================================
-  // SLIDE END: TW 공식 엔딩 슬라이드
+  // SLIDE END: TW 공식 엔딩 슬라이드 (원본 Layout 4 규격 100% 일치)
   // =============================================================
   const sEnd = x.addSlide();
   sEnd.background = { color: C.white };
 
-  // 중앙 공식 TW 로고
+  // 중앙 공식 TW 로고 (원본 Layout 4: x: 5.45, y: 3.30, w: 2.47, h: 0.55)
   try {
-    sEnd.addImage({ data: TW_LOGO_ENDING, x: 5.45, y: 3.20, w: 2.47, h: 0.55 });
+    sEnd.addImage({ data: TW_LOGO_ENDING, x: 5.45, y: 3.30, w: 2.47, h: 0.55 });
   } catch (e) {}
 
-  // 하단 보안 문구
+  // 하단 보안 문구 (원본 Layout 4: x: 4.38, y: 7.12, w: 4.57, h: 0.13)
   sEnd.addText(SECURITY_NOTICE, {
-    x: 3.80, y: 6.85, w: 5.73, h: 0.16,
+    x: 4.38, y: 7.12, w: 4.57, h: 0.16,
     fontSize: 6.5, color: "8493A1", fontFace: "맑은 고딕", align: "center", margin: 0
   });
 

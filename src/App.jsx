@@ -2405,7 +2405,15 @@ JSON 출력 예시:
                 </div>
               </div>
 
-              <div className="system-header-actions">
+              <div className="system-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="ppt-btn"
+                  onClick={() => openIntegratedExportModal('system')}
+                  title="간트차트, 공사일정 달력, 부서별 공수표가 통합된 종합 PPT 보고서를 내보냅니다 (Office 네이티브 수정 가능)"
+                >
+                  📊 PPT 종합 보고서 내보내기 {!canExportAnalysis && "🔒"}
+                </button>
                 <button
                   type="button"
                   onClick={() => setAllSections(true)}
@@ -2999,18 +3007,6 @@ JSON 출력 예시:
                     📋 전체 프로젝트 일정 기준
                   </button>
                 </div>
-
-                <button
-                  className="ppt-btn"
-                  style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openIntegratedExportModal('gantt');
-                  }}
-                  title="간트차트, 공사일정 달력, 부서별 공수표가 통합된 종합 PPT 보고서를 내보냅니다 (직접 수정 가능)"
-                >
-                  📊 PPT 종합 보고서 내보내기 ({ganttView.length}건) {!canExportAnalysis && "🔒"}
-                </button>
               </div>
             </div>
 
@@ -3333,16 +3329,6 @@ JSON 출력 예시:
                   title="일일단위 부서별 인원 수 및 총합을 볼 수 있는 매트릭스 표를 펼치거나 접습니다"
                 >
                   📊 일일 부서별 공수표 {showDailyDeptMatrix ? '접기' : '보기'}
-                </button>
-                <button
-                  className="ppt-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openIntegratedExportModal('calendar');
-                  }}
-                  title="간트차트, 공사일정 달력, 부서별 공수표가 통합된 종합 PPT 보고서를 내보냅니다 (직접 수정 가능)"
-                >
-                  📊 PPT 종합 보고서 내보내기 {!canExportAnalysis && "🔒"}
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)); }}>‹</button>
                 <b>{month.getFullYear()}년 {month.getMonth() + 1}월</b>

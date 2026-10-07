@@ -3,6 +3,8 @@ import { getConstructionPeriod, normalizeJVName } from './utils';
 
 /**
  * 간트차트 & 공사일정 달력 통합 종합 PPT 내보내기 모달
+ * - 현재 보고 있는 화면(뷰포트) 정중앙에 fixed 팝업
+ * - 모든 텍스트 줄바꿈 방지 (white-space: nowrap)
  * - 일정 기준 선택: 공사·셋업 일정 기준 vs 전체 프로젝트 일정 기준
  * - 기간 설정: 시작일 ~ 종료일 및 퀵 프리셋
  * - 슬라이드 구성 선택: 표지/KPI, 달력, 일일 부서별 공수표, 간트차트, 상세 명세서
@@ -101,7 +103,6 @@ export default function IntegratedExportModal({
   };
 
   const handleExecuteExport = async () => {
-    // 최소 1개 이상의 슬라이드 선택 필요
     const selectedCount = Object.values(slides).filter(Boolean).length;
     if (selectedCount === 0) {
       setExportError('최소 1개 이상의 슬라이드를 선택해주세요.');
@@ -127,38 +128,64 @@ export default function IntegratedExportModal({
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 9999 }}>
+    <div
+      className="back"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isExporting) onClose();
+      }}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 99999,
+        background: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px'
+      }}
+    >
       <div
-        className="modal-card"
+        className="modal"
         onClick={e => e.stopPropagation()}
         style={{
-          maxWidth: '680px',
-          width: '95%',
+          width: '780px',
+          maxWidth: '95vw',
           maxHeight: '92vh',
+          background: 'var(--bg-card, #ffffff)',
+          border: '1px solid var(--border-medium, #cbd5e1)',
+          borderRadius: '16px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
           display: 'flex',
           flexDirection: 'column',
-          borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          animation: 'modalFadeIn 0.2s ease-out'
         }}
       >
         {/* 모달 헤더 */}
         <div style={{
-          padding: '20px 24px',
+          padding: '18px 24px',
           background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
           color: '#ffffff',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'flex-start'
+          alignItems: 'center',
+          flexShrink: 0
         }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '22px' }}>📊</span>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: '20px' }}>📊</span>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap' }}>
                 종합 일정 보고서 PPT 내보내기
               </h2>
             </div>
-            <p style={{ margin: '6px 0 0 30px', fontSize: '12px', color: '#bfdbfe', opacity: 0.95 }}>
+            <p style={{ margin: '4px 0 0 28px', fontSize: '12px', color: '#bfdbfe', whiteSpace: 'nowrap' }}>
               간트차트와 공사일정 달력을 통합한 맞춤형 보고서 (Office 네이티브 표/도형 100% 직접 수정 가능)
             </p>
           </div>
@@ -178,7 +205,7 @@ export default function IntegratedExportModal({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'background 0.2s'
+              flexShrink: 0
             }}
           >
             ✕
@@ -186,28 +213,45 @@ export default function IntegratedExportModal({
         </div>
 
         {/* 모달 바디 (스크롤) */}
-        <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{
+          padding: '22px 24px',
+          overflowY: 'auto',
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '18px'
+        }}>
           
           {/* 1. 일정 산출 기준 선택 */}
           <section>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{
+              fontSize: '13px',
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              marginBottom: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              whiteSpace: 'nowrap'
+            }}>
               <span>🎯</span>
-              <span>1. 일정 산출 기준 선택</span>
-              <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 'normal' }}>(필수)</span>
+              <span style={{ whiteSpace: 'nowrap' }}>1. 일정 산출 기준 선택</span>
+              <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 500, whiteSpace: 'nowrap' }}>(필수)</span>
             </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div
                 onClick={() => setMode('construction')}
                 style={{
-                  border: `2px solid ${mode === 'construction' ? '#2563eb' : 'var(--border-subtle)'}`,
-                  background: mode === 'construction' ? 'rgba(37, 99, 235, 0.05)' : 'var(--bg-card-subtle)',
+                  border: `2px solid ${mode === 'construction' ? '#2563eb' : 'var(--border-subtle, #e2e8f0)'}`,
+                  background: mode === 'construction' ? 'rgba(37, 99, 235, 0.05)' : 'var(--bg-card-subtle, #f8fafc)',
                   borderRadius: '10px',
-                  padding: '14px',
+                  padding: '12px 14px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.15s'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', whiteSpace: 'nowrap' }}>
                   <input
                     type="radio"
                     name="scheduleMode"
@@ -215,27 +259,27 @@ export default function IntegratedExportModal({
                     onChange={() => setMode('construction')}
                     style={{ cursor: 'pointer' }}
                   />
-                  <b style={{ fontSize: '13px', color: mode === 'construction' ? '#2563eb' : 'var(--text-primary)' }}>
+                  <b style={{ fontSize: '13px', color: mode === 'construction' ? '#2563eb' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                     🏗️ 공사·셋업 일정 기준 (추천)
                   </b>
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4, paddingLeft: '24px' }}>
-                  공수 투입 시점 및 셋업/이설/JC 등 <b>실제 현장 공사 기간 및 공사 진행률</b> 중심으로 보고서를 작성합니다.
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '24px', whiteSpace: 'nowrap' }}>
+                  공수 투입 시점 및 셋업/이설/JC 등 <b>현장 공사 기간 및 공사진행률</b> 기준
                 </div>
               </div>
 
               <div
                 onClick={() => setMode('project')}
                 style={{
-                  border: `2px solid ${mode === 'project' ? '#2563eb' : 'var(--border-subtle)'}`,
-                  background: mode === 'project' ? 'rgba(37, 99, 235, 0.05)' : 'var(--bg-card-subtle)',
+                  border: `2px solid ${mode === 'project' ? '#2563eb' : 'var(--border-subtle, #e2e8f0)'}`,
+                  background: mode === 'project' ? 'rgba(37, 99, 235, 0.05)' : 'var(--bg-card-subtle, #f8fafc)',
                   borderRadius: '10px',
-                  padding: '14px',
+                  padding: '12px 14px',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.15s'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', whiteSpace: 'nowrap' }}>
                   <input
                     type="radio"
                     name="scheduleMode"
@@ -243,12 +287,12 @@ export default function IntegratedExportModal({
                     onChange={() => setMode('project')}
                     style={{ cursor: 'pointer' }}
                   />
-                  <b style={{ fontSize: '13px', color: mode === 'project' ? '#2563eb' : 'var(--text-primary)' }}>
+                  <b style={{ fontSize: '13px', color: mode === 'project' ? '#2563eb' : 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                     📋 전체 프로젝트 일정 기준
                   </b>
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4, paddingLeft: '24px' }}>
-                  설계 및 사전 준비를 포함한 <b>프로젝트 계약 전 기간 및 전체 종합 진행률</b> 기준으로 보고서를 작성합니다.
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', paddingLeft: '24px', whiteSpace: 'nowrap' }}>
+                  설계 및 사전 준비를 포함한 <b>프로젝트 계약 전 기간 및 전체 종합진행률</b> 기준
                 </div>
               </div>
             </div>
@@ -256,23 +300,23 @@ export default function IntegratedExportModal({
 
           {/* 2. 기간 설정 */}
           <section>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
                 <span>📅</span>
-                <span>2. 보고서 대상 기간 설정</span>
+                <span style={{ whiteSpace: 'nowrap' }}>2. 보고서 대상 기간 설정</span>
               </div>
-              <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600 }}>
+              <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 포함 대상: <b>{matchingProjectsCount}</b>건 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>(전체 {projects.length}건)</span>
               </span>
             </div>
 
             <div style={{
-              background: 'var(--bg-card-subtle)',
-              border: '1px solid var(--border-subtle)',
+              background: 'var(--bg-card-subtle, #f8fafc)',
+              border: '1px solid var(--border-subtle, #e2e8f0)',
               borderRadius: '10px',
               padding: '12px 14px'
             }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', whiteSpace: 'nowrap' }}>
                 <input
                   type="date"
                   value={startDate}
@@ -280,14 +324,14 @@ export default function IntegratedExportModal({
                   style={{
                     padding: '6px 10px',
                     fontSize: '12px',
-                    border: '1px solid var(--input-border)',
+                    border: '1px solid var(--input-border, #cbd5e1)',
                     borderRadius: '6px',
-                    background: 'var(--input-bg)',
-                    color: 'var(--input-text)'
+                    background: 'var(--input-bg, #fff)',
+                    color: 'var(--input-text, #0f172a)'
                   }}
                   title="조회 시작일"
                 />
-                <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>~</span>
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 700, whiteSpace: 'nowrap' }}>~</span>
                 <input
                   type="date"
                   value={endDate}
@@ -295,53 +339,53 @@ export default function IntegratedExportModal({
                   style={{
                     padding: '6px 10px',
                     fontSize: '12px',
-                    border: '1px solid var(--input-border)',
+                    border: '1px solid var(--input-border, #cbd5e1)',
                     borderRadius: '6px',
-                    background: 'var(--input-bg)',
-                    color: 'var(--input-text)'
+                    background: 'var(--input-bg, #fff)',
+                    color: 'var(--input-text, #0f172a)'
                   }}
                   title="조회 종료일"
                 />
 
-                <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto', whiteSpace: 'nowrap' }}>
                   <button
                     type="button"
                     onClick={() => handleQuickRange('thisMonth')}
-                    style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                    style={{ padding: '5px 9px', fontSize: '11px', background: 'var(--bg-card, #fff)', border: '1px solid var(--border-medium, #cbd5e1)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}
                   >
                     이번 달
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickRange('nextMonth')}
-                    style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                    style={{ padding: '5px 9px', fontSize: '11px', background: 'var(--bg-card, #fff)', border: '1px solid var(--border-medium, #cbd5e1)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}
                   >
                     다음 달
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickRange('thisQuarter')}
-                    style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                    style={{ padding: '5px 9px', fontSize: '11px', background: 'var(--bg-card, #fff)', border: '1px solid var(--border-medium, #cbd5e1)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}
                   >
                     이번 분기
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickRange('thisYear')}
-                    style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-medium)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                    style={{ padding: '5px 9px', fontSize: '11px', background: 'var(--bg-card, #fff)', border: '1px solid var(--border-medium, #cbd5e1)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}
                   >
                     올해 전체
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickRange('all')}
-                    style={{ padding: '4px 8px', fontSize: '11px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}
+                    style={{ padding: '5px 9px', fontSize: '11px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '4px', cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}
                   >
                     전체 기간
                   </button>
                 </div>
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 💡 설정하신 기간과 겹치거나 진행 중인 프로젝트만 추출하여 종합 보고서를 작성합니다. (미설정 시 전체 대상)
               </div>
             </div>
@@ -349,22 +393,22 @@ export default function IntegratedExportModal({
 
           {/* 3. 포함할 슬라이드 구성 선택 */}
           <section>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
               <span>📑</span>
-              <span>3. 포함할 보고서 슬라이드 선택</span>
+              <span style={{ whiteSpace: 'nowrap' }}>3. 포함할 보고서 슬라이드 선택</span>
             </div>
 
             <div style={{
               display: 'flex',
               flexDirection: 'column',
               gap: '6px',
-              background: 'var(--bg-card-subtle)',
-              border: '1px solid var(--border-subtle)',
+              background: 'var(--bg-card-subtle, #f8fafc)',
+              border: '1px solid var(--border-subtle, #e2e8f0)',
               borderRadius: '10px',
-              padding: '12px 14px'
+              padding: '10px 14px'
             }}>
               {[
-                { id: 'summary', title: '슬라이드 1: 표지 및 Executive KPI 요약 대시보드', desc: '총 투입 공수, 피크 인원, 프로젝트 상태 요약 및 주요 리스트' },
+                { id: 'summary', title: '슬라이드 1: 표지 및 Executive KPI 요약 대시보드', desc: '총 투입 공수, 피크 인원, 프로젝트 상태 요약 및 리스트' },
                 { id: 'calendar', title: '슬라이드 2: 월간 일정 달력 (Calendar View)', desc: '네이티브 달력 그리드 + 일자별 공수 배지 + 주차별 프로젝트 바' },
                 { id: 'manpower', title: '슬라이드 3: 일일 부서별 공수 매트릭스 표 (Daily Matrix)', desc: '1일~말일 일자별/부서별(기구, 제어, 비전 등) 투입 인원 및 총합 표' },
                 { id: 'gantt', title: '슬라이드 4: 종합 프로젝트 간트차트 (Timeline Gantt Chart)', desc: '설정 기준 일정 막대 + 오늘선 + 마일스톤 + 진행률(%) 표기' },
@@ -374,51 +418,51 @@ export default function IntegratedExportModal({
                   key={item.id}
                   style={{
                     display: 'flex',
-                    alignItems: 'flex-start',
+                    alignItems: 'center',
                     gap: '10px',
                     padding: '6px 8px',
                     borderRadius: '6px',
                     cursor: 'pointer',
                     background: slides[item.id] ? 'rgba(37, 99, 235, 0.04)' : 'transparent',
-                    transition: 'background 0.2s'
+                    whiteSpace: 'nowrap'
                   }}
                 >
                   <input
                     type="checkbox"
                     checked={slides[item.id]}
                     onChange={() => handleToggleSlide(item.id)}
-                    style={{ marginTop: '3px', cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', flexShrink: 0 }}
                   />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: slides[item.id] ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: slides[item.id] ? 'var(--text-primary)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {item.title}
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>
-                      {item.desc}
-                    </div>
+                    </span>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      ({item.desc})
+                    </span>
                   </div>
                 </label>
               ))}
             </div>
           </section>
 
-          {/* 품질 및 수정 가능 안내 */}
+          {/* 안내 박스 */}
           <div style={{
             background: 'rgba(16, 185, 129, 0.08)',
-            border: '1px solid rgba(16, 185, 129, 0.2)',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
             borderRadius: '8px',
             padding: '10px 14px',
-            fontSize: '11px',
+            fontSize: '11.5px',
             color: '#065f46',
-            lineHeight: 1.5,
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '8px',
+            whiteSpace: 'nowrap'
           }}>
-            <span style={{ fontSize: '16px' }}>✨</span>
-            <div>
-              <b>100% Native Office 객체 생성:</b> 이미지 캡쳐를 쓰지 않고 파워포인트 기본 표와 도형으로 제작되어, 다운로드 후 텍스트 수정, 수치 변경, 서식 조정을 자유롭게 하실 수 있습니다.
-            </div>
+            <span style={{ fontSize: '16px', flexShrink: 0 }}>✨</span>
+            <span style={{ whiteSpace: 'nowrap' }}>
+              <b>100% Native Office 객체:</b> 이미지 캡쳐 없이 PowerPoint 기본 표와 도형으로 생성되어 텍스트, 수치, 서식을 자유롭게 직접 수정할 수 있습니다.
+            </span>
           </div>
 
           {exportError && (
@@ -428,7 +472,8 @@ export default function IntegratedExportModal({
               color: '#dc2626',
               borderRadius: '8px',
               padding: '10px 14px',
-              fontSize: '12px'
+              fontSize: '12px',
+              whiteSpace: 'nowrap'
             }}>
               ⚠️ {exportError}
             </div>
@@ -438,13 +483,15 @@ export default function IntegratedExportModal({
 
         {/* 모달 풋터 */}
         <div style={{
-          padding: '16px 24px',
-          background: 'var(--bg-card-subtle)',
-          borderTop: '1px solid var(--border-subtle)',
+          padding: '14px 24px',
+          background: 'var(--bg-card-subtle, #f8fafc)',
+          borderTop: '1px solid var(--border-subtle, #e2e8f0)',
           display: 'flex',
           justifyContent: 'flex-end',
           alignItems: 'center',
-          gap: '10px'
+          gap: '10px',
+          flexShrink: 0,
+          whiteSpace: 'nowrap'
         }}>
           <button
             type="button"
@@ -453,12 +500,13 @@ export default function IntegratedExportModal({
             style={{
               padding: '8px 16px',
               fontSize: '13px',
-              border: '1px solid var(--border-medium)',
+              border: '1px solid var(--border-medium, #cbd5e1)',
               borderRadius: '8px',
-              background: 'var(--bg-card)',
-              color: 'var(--text-secondary)',
+              background: 'var(--bg-card, #fff)',
+              color: 'var(--text-secondary, #475569)',
               cursor: 'pointer',
-              fontWeight: 500
+              fontWeight: 600,
+              whiteSpace: 'nowrap'
             }}
           >
             취소
@@ -469,7 +517,7 @@ export default function IntegratedExportModal({
             onClick={handleExecuteExport}
             disabled={isExporting}
             style={{
-              padding: '8px 20px',
+              padding: '8px 22px',
               fontSize: '13px',
               borderRadius: '8px',
               background: isExporting ? '#93c5fd' : '#2563eb',
@@ -480,18 +528,19 @@ export default function IntegratedExportModal({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)'
+              boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)',
+              whiteSpace: 'nowrap'
             }}
           >
             {isExporting ? (
               <>
-                <span className="spinner" style={{ width: '14px', height: '14px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 1s linear infinite' }} />
-                <span>보고서 생성 중...</span>
+                <span className="spinner" style={{ width: '14px', height: '14px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
+                <span style={{ whiteSpace: 'nowrap' }}>보고서 생성 중...</span>
               </>
             ) : (
               <>
                 <span>📥</span>
-                <span>종합 PPT 보고서 다운로드 (.pptx)</span>
+                <span style={{ whiteSpace: 'nowrap' }}>종합 PPT 보고서 다운로드 (.pptx)</span>
               </>
             )}
           </button>

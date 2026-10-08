@@ -183,7 +183,7 @@ export async function exportCalendarReport(projects, month, filters = {}, mode =
 
   const lastDateNum = matrix.days.length;
   const tableHeaders = [
-    { text: "구분 (부서)", options: { bold: true, fill: C.navy, color: C.white, align: "center" } }
+    { text: "구분 (부서)", options: { bold: true, fill: "334155", color: C.white, align: "center" } }
   ];
   for (let day = 1; day <= lastDateNum; day++) {
     const curD = new Date(curYear, curMonthIdx, day);
@@ -193,13 +193,13 @@ export async function exportCalendarReport(projects, month, filters = {}, mode =
       text: `${day}`,
       options: {
         bold: true,
-        fill: isWknd ? "2E4A62" : C.navy,
-        color: dayOfWeek === 0 ? "FCA5A5" : dayOfWeek === 6 ? "93C5FD" : C.white,
+        fill: isWknd ? "475569" : "334155",
+        color: dayOfWeek === 0 ? "FCA5A5" : dayOfWeek === 6 ? "E2E8F0" : C.white,
         align: "center"
       }
     });
   }
-  tableHeaders.push({ text: "월간 합계", options: { bold: true, fill: C.blue, color: C.white, align: "center" } });
+  tableHeaders.push({ text: "월간 합계", options: { bold: true, fill: C.orange, color: C.white, align: "center" } });
 
   const matrixRows = [tableHeaders];
 
@@ -208,7 +208,7 @@ export async function exportCalendarReport(projects, month, filters = {}, mode =
   deptsToDisplay.forEach(dept => {
     let deptMonthSum = 0;
     const row = [
-      { text: dept, options: { bold: true, fill: "F1F5F9", color: C.navy, align: "center" } }
+      { text: dept, options: { bold: true, fill: "F8FAFC", color: "0F172A", align: "center" } }
     ];
     matrix.days.forEach(dStr => {
       const val = matrix.dayDataMap[dStr]?.depts?.[dept] || 0;
@@ -217,22 +217,22 @@ export async function exportCalendarReport(projects, month, filters = {}, mode =
         text: val > 0 ? String(val) : "-",
         options: {
           bold: val > 0,
-          color: val > 0 ? C.navy : "94A3B8",
-          fill: val > 0 ? "EFF6FF" : C.white,
+          color: val > 0 ? "0F172A" : "94A3B8",
+          fill: C.white,
           align: "center"
         }
       });
     });
     row.push({
-      text: `${deptMonthSum}`,
-      options: { bold: true, color: C.blue, fill: "DBEAFE", align: "center" }
+      text: `${deptMonthSum}명`,
+      options: { bold: true, color: "0F172A", fill: "FFEDD5", align: "center" }
     });
     matrixRows.push(row);
   });
 
   // 당일 총합 (Daily Total) 행
   const totalRow = [
-    { text: "당일 총합 (명)", options: { bold: true, fill: "1E3A8A", color: C.white, align: "center" } }
+    { text: "당일 총합 (명)", options: { bold: true, fill: C.orange, color: C.white, align: "center" } }
   ];
   matrix.days.forEach(dStr => {
     const val = matrix.dayDataMap[dStr]?.total || 0;
@@ -240,15 +240,15 @@ export async function exportCalendarReport(projects, month, filters = {}, mode =
       text: val > 0 ? String(val) : "0",
       options: {
         bold: true,
-        color: val >= 20 ? "FEE2E2" : C.white,
-        fill: val >= 20 ? "B91C1C" : val > 0 ? "2563EB" : "475569",
+        color: "0F172A",
+        fill: val > 0 ? "FFEDD5" : "F1F5F9",
         align: "center"
       }
     });
   });
   totalRow.push({
-    text: `${totalMonthManday}`,
-    options: { bold: true, color: C.white, fill: "0F172A", align: "center" }
+    text: `${totalMonthManday} M/D`,
+    options: { bold: true, color: C.white, fill: C.orange, align: "center" }
   });
   matrixRows.push(totalRow);
 

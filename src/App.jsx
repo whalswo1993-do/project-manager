@@ -3467,7 +3467,7 @@ JSON 출력 예시:
                         <span>{month.getFullYear()}년 {month.getMonth() + 1}월 일일 부서별 공수 투입 현황 (Daily Department Matrix)</span>
                       </h3>
                       <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        당월 누적 총 공수: <b style={{ color: 'var(--accent)', fontSize: '13.5px' }}>{monthMatrixData.totalMonthManday}</b> M/D
+                        당월 누적 총 공수: <b style={{ color: '#ea580c', fontSize: '13.5px' }}>{monthMatrixData.totalMonthManday}</b> M/D
                       </span>
                     </div>
                     <div className="cal-matrix-table-wrap">
@@ -3485,7 +3485,7 @@ JSON 출력 예시:
                                 </th>
                               );
                             })}
-                            <th style={{ background: '#0969da', color: '#fff' }}>월간 합계</th>
+                            <th style={{ background: '#ea580c', color: '#fff' }}>월간 합계</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -3508,7 +3508,7 @@ JSON 출력 예시:
                             );
                           })}
                           <tr className="row-total">
-                            <td className="td-dept" style={{ color: 'var(--accent)' }}>당일 총합 (명)</td>
+                            <td className="td-dept" style={{ color: '#ea580c' }}>당일 총합 (명)</td>
                             {monthMatrixData.days.map(dStr => {
                               const val = monthMatrixData.dayDataMap[dStr]?.total || 0;
                               return (
@@ -3517,7 +3517,7 @@ JSON 출력 예시:
                                 </td>
                               );
                             })}
-                            <td style={{ background: 'var(--accent)', color: '#fff', fontSize: '12px' }}>
+                            <td style={{ background: '#ea580c', color: '#fff', fontSize: '12px' }}>
                               <b>{monthMatrixData.totalMonthManday} M/D</b>
                             </td>
                           </tr>

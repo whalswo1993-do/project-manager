@@ -1607,7 +1607,7 @@ article aside button:hover {
 }
 
 .cal-matrix-table th.th-weekend-sat {
-  color: #3b82f6;
+  color: var(--text-secondary, #475569);
 }
 
 .cal-matrix-table th.th-dept {
@@ -1633,27 +1633,48 @@ article aside button:hover {
 }
 
 .cal-matrix-table td.td-val-active {
-  background: rgba(37, 99, 235, 0.08);
-  color: #1d4ed8;
+  background: var(--bg-card, #ffffff);
+  color: #0f172a;
   font-weight: 700;
 }
 
+[data-theme="dark"] .cal-matrix-table td.td-val-active {
+  background: var(--bg-card);
+  color: #f8fafc;
+}
+
 .cal-matrix-table td.td-total-sum {
-  background: rgba(37, 99, 235, 0.14);
-  color: #1e3a8a;
+  background: #fff7ed;
+  color: #0f172a;
   font-weight: 800;
+}
+
+[data-theme="dark"] .cal-matrix-table td.td-total-sum {
+  background: rgba(234, 88, 12, 0.18);
+  color: #f8fafc;
 }
 
 .cal-matrix-table tr.row-total td {
-  background: #f1f5f9;
+  background: #f8fafc;
   font-weight: 800;
   border-top: 2px solid var(--border-medium);
-  color: var(--text-primary);
+  color: #0f172a;
+}
+
+[data-theme="dark"] .cal-matrix-table tr.row-total td {
+  background: #1e293b;
+  color: #f8fafc;
 }
 
 .cal-matrix-table tr.row-total td.td-total-cell-active {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #ffedd5;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .cal-matrix-table tr.row-total td.td-total-cell-active {
+  background: rgba(234, 88, 12, 0.28);
+  color: #fff;
 }
 
 .selected-day-dept-cards {

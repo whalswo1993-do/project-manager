@@ -66,11 +66,17 @@ export default function Login() {
         return;
       }
 
-      // 3. 일반 Supabase Auth 로그인
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // 3. 일반 Supabase Auth 로그인 (최대 10초 타임아웃 보호)
+      const authPromise = supabase.auth.signInWithPassword({
         email,
         password: targetPassword,
       });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("서버 응답 시간이 초과되었습니다. 네트워크 상태를 확인해 주세요.")), 10000)
+      );
+
+      const { data, error } = await Promise.race([authPromise, timeoutPromise]);
 
       if (error) {
         const lowerMessage = error.message.toLowerCase();

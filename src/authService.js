@@ -88,13 +88,13 @@ export async function recordUserAccess(email, extraData = {}) {
   current[normalized] = updatedInfo;
   saveAllUserLastAccess(current);
 
-  // 2. 테스트 계정인 경우 테스트 프로필에도 저장
+  // 2. 테스트 계정인 경우 테스트 프로필에도 저장 (무한 루프 방지를 위해 notify: false 전달)
   const testAcc = findTestAccount(normalized);
   if (testAcc) {
     updateTestProfile(testAcc.id || normalized, {
       last_sign_in_at: updatedInfo.last_sign_in_at,
       last_active_at: now
-    });
+    }, { notify: false });
   }
 
   // 3. 커스텀 프로필 캐시에도 저장
@@ -412,7 +412,7 @@ export function saveTestProfiles(profiles) {
 }
 
 // 특정 테스트 계정 프로필 업데이트 (ID 또는 이메일로 검색하여 권한/활성상태 등 변경)
-export function updateTestProfile(idOrEmail, updates) {
+export function updateTestProfile(idOrEmail, updates, options = { notify: true }) {
   const list = getTestProfiles();
   const targetIdx = list.findIndex(p => 
     p.id === idOrEmail || 
@@ -427,11 +427,13 @@ export function updateTestProfile(idOrEmail, updates) {
     // 현재 활성화된 세션의 사용자라면 세션 객체도 실시간 업데이트
     const current = getActiveTestSession();
     if (current && (current.user.id === list[targetIdx].id || current.user.email.toLowerCase() === list[targetIdx].email.toLowerCase())) {
-      current.user.role = list[targetIdx].role;
-      setActiveTestSession(current);
+      if (updates.role && current.user.role !== updates.role) {
+        current.user.role = list[targetIdx].role;
+        setActiveTestSession(current, { notify: false });
+      }
     }
 
-    if (typeof window !== "undefined") {
+    if (options?.notify !== false && typeof window !== "undefined") {
       window.dispatchEvent(new Event("auth-changed"));
     }
 
@@ -463,7 +465,7 @@ export function getActiveTestSession() {
 }
 
 // 테스트 세션 저장
-export function setActiveTestSession(session) {
+export function setActiveTestSession(session, options = { notify: true }) {
   try {
     if (typeof localStorage !== "undefined") {
       if (session) {
@@ -472,7 +474,7 @@ export function setActiveTestSession(session) {
         localStorage.removeItem(TEST_SESSION_KEY);
       }
     }
-    if (typeof window !== "undefined") {
+    if (options?.notify !== false && typeof window !== "undefined") {
       window.dispatchEvent(new Event("auth-changed"));
     }
   } catch (e) {
@@ -501,8 +503,9 @@ export async function ensureSupabaseAuth() {
       return true;
     }
 
-    const token = (typeof localStorage !== "undefined" && localStorage.getItem(BG_REFRESH_TOKEN_KEY)) || INITIAL_REFRESH_TOKEN;
-    if (token) {
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem(BG_REFRESH_TOKEN_KEY) : null;
+    // INITIAL_REFRESH_TOKEN 등 더미/단축 토큰은 400 Bad Request 유발하므로 실제 토큰만 재시도
+    if (token && token.length > 20 && token !== "c6w7xv7ho63t") {
       const res = await supabase.auth.refreshSession({ refresh_token: token });
       if (res?.data?.session) {
         if (res.data.session.refresh_token && typeof localStorage !== "undefined") {
@@ -512,7 +515,7 @@ export async function ensureSupabaseAuth() {
       }
     }
   } catch (e) {
-    console.warn("ensureSupabaseAuth error:", e);
+    console.warn("ensureSupabaseAuth warning:", e);
   }
   return false;
 }
@@ -560,8 +563,15 @@ export async function authenticateTestAccount(email, password) {
     };
   }
 
-  // 6. Supabase 백그라운드 DB 연결 토큰 확보
-  await ensureSupabaseAuth();
+  // 6. Supabase 백그라운드 DB 연결 토큰 확보 (최대 1.5초 제한으로 로그인 블로킹 방지)
+  try {
+    await Promise.race([
+      ensureSupabaseAuth(),
+      new Promise(resolve => setTimeout(resolve, 1500))
+    ]);
+  } catch (e) {
+    console.warn("Background auth check warning:", e);
+  }
 
   // 7. 세션 생성
   const nowIso = new Date().toISOString();

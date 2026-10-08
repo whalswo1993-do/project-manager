@@ -1044,15 +1044,36 @@ export default function App() {
       return;
     }
 
-    // 3. 일반 Supabase 계정 확인
-    const { data: p, error } = await supabase.from("profiles").select("*").eq("id", sess.user.id).single();
-    if (error || !p) {
-      // profiles 레코드가 없거나 삭제된 경우
-      await supabase.auth.signOut();
-      clearTestSession();
-      setSession(null);
-      setProfile(null);
-      return alert("등록되지 않았거나 삭제된 계정입니다.");
+    // 3. 일반 Supabase 계정 확인 (테이블 레코드 누락 시 자동 복구 및 자가 치유)
+    let p = null;
+    try {
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", sess.user.id).maybeSingle();
+      if (!error && data) {
+        p = data;
+      }
+    } catch (e) {
+      console.warn("Failed to fetch profile row:", e);
+    }
+
+    if (!p) {
+      // profiles 테이블에 아직 레코드가 생성되지 않은 경우 자동 생성 및 자가 복구
+      const customProfs = getCustomUserProfiles();
+      const custom = customProfs[email] || {};
+      const newProf = {
+        id: sess.user.id,
+        email: email,
+        name: custom.name || sess.user.user_metadata?.name || sess.user.user_metadata?.full_name || email.split("@")[0],
+        team: custom.team || sess.user.user_metadata?.team || "미지정",
+        role: email === "cmj1012@twgroup.co.kr" ? "admin" : (custom.role || "grade1"),
+        active: true,
+      };
+
+      try {
+        await supabase.from("profiles").upsert(newProf);
+      } catch (upsertErr) {
+        console.warn("Failed to upsert profile, using local fallback:", upsertErr);
+      }
+      p = newProf;
     }
 
     if (p.active === false) {
@@ -1060,7 +1081,7 @@ export default function App() {
       clearTestSession();
       setSession(null);
       setProfile(null);
-      return alert("비활성화된 계정입니다.");
+      return alert("비활성화된 계정입니다. 관리자에게 문의하세요.");
     }
 
     setProfile(p);

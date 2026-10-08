@@ -41,7 +41,7 @@ import {
 } from "./masterPlanParser";
 
 const DAY = 86400000;
-const STATUSES = ["검토중", "PO대기중", "제작 및 운송중", "진행중", "완료"];
+const STATUSES = ["검토중", "PO대기중", "제작중", "진행중", "완료"];
 const DEPTS = ["소장", "설계", "설비기술", "기구", "기구 외주", "비전", "비전 외주", "제어", "제어 외주", "전장", "전장 외주", "Supervisor", "안전"];
 // 고대비 & 고시인성 프리미엄 테마 팔레트 (어두운 보라색/남색 배제, 주황·노랑·에메랄드·하늘색 중심)
 const COLORS = [
@@ -162,7 +162,8 @@ const from = p => {
   const isManual = isPOWaiting || (meta ? Boolean(meta.isManual) : false);
   const manualBy = meta?.by || (isManual ? (p.pm || p.manager || "수동지정 담당자") : "");
   const manualAt = meta?.at || "";
-  const effectiveStatus = isManual ? (p.status || "검토중") : computeAutoStatus({ startDate: p.start_date, endDate: p.end_date, milestones: cleanMs });
+  let effectiveStatus = isManual ? (p.status || "검토중") : computeAutoStatus({ startDate: p.start_date, endDate: p.end_date, milestones: cleanMs });
+  if (effectiveStatus === "제작 및 운송중") effectiveStatus = "제작중";
 
   return {
     id: p.id,
@@ -221,7 +222,7 @@ const to = p => {
     vision: (p.vision || "").trim(),
     start_date: p.startDate,
     end_date: p.endDate,
-    status: p.status,
+    status: p.status === "제작 및 운송중" ? "제작중" : p.status,
     progress: +p.progress || 0,
     auto_progress: p.autoProgress ?? true,
     milestones: finalMilestones
@@ -1168,7 +1169,8 @@ export default function App() {
 
       const isPOWaiting = (p.status === "PO대기중");
       const effectiveManual = isPOWaiting || Boolean(p.isManualStatus);
-      const currentStatus = effectiveManual ? p.status : computeAutoStatus({ ...p, milestones: cleanMs });
+      const rawCurrentStatus = effectiveManual ? p.status : computeAutoStatus({ ...p, milestones: cleanMs });
+      const currentStatus = rawCurrentStatus === "제작 및 운송중" ? "제작중" : rawCurrentStatus;
       return {
         ...p,
         milestones: cleanMs,

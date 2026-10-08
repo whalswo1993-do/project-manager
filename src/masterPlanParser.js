@@ -1379,10 +1379,10 @@ export function computeAutoStatus(p, today = new Date().toISOString().slice(0, 1
 
   if (orderStart) {
     if (deliveryStart) {
-      if (today >= orderStart && today < deliveryStart) return "제작 및 운송중";
+      if (today >= orderStart && today < deliveryStart) return "제작중";
       if (today < orderStart) return "검토중";
     } else {
-      if (today >= orderStart && (!end || today <= end)) return "제작 및 운송중";
+      if (today >= orderStart && (!end || today <= end)) return "제작중";
       if (today < orderStart) return "검토중";
     }
   }

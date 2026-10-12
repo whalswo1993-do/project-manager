@@ -2298,14 +2298,14 @@ JSON 출력 예시:
           PINTEL / PREVAX FLOATING YEAR SELECTOR TOOLBAR
           ======================================================== */}
       <div className="prevax-year-toolbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)', marginRight: '2px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'nowrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)', marginRight: '2px', whiteSpace: 'nowrap' }}>
             <span style={{ color: 'var(--neon-cyan)' }}>📅</span>
             <span>조회 연도:</span>
           </div>
 
           {/* 1. 빠른 프리셋 캡슐 버튼 */}
-          <div className="prevax-year-pill-group">
+          <div className="prevax-year-pill-group" style={{ flexShrink: 0 }}>
             <button
               type="button"
               onClick={() => handlePresetYears('current')}
@@ -2343,7 +2343,7 @@ JSON 출력 예시:
           <span style={{ color: 'var(--border-medium)', margin: '0 2px' }}>|</span>
 
           {/* 2. 개별 연도 복수 토글 알약 태그 */}
-          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '5px', flexWrap: 'nowrap', alignItems: 'center', flexShrink: 0 }}>
             {availableYears.map(yr => {
               const isSelected = !isAllYears && selectedYears.includes(yr);
               const isCurrent = (yr === currentYearStr);

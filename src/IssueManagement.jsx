@@ -2644,23 +2644,21 @@ ${compiledText.substring(0, 30000)}
                                             onSelectProject={(id) => setSelectedProject(id)} 
                                             compact={true}
                                         />
-                                        {activeIssueSection === 'list' && (
-                                            <button
-                                                type="button"
-                                                onClick={() => setActiveIssueSection('register')}
-                                                style={{
-                                                    padding: '6px 12px',
-                                                    fontSize: '0.85rem',
-                                                    background: 'var(--accent)',
-                                                    color: '#fff',
-                                                    border: 'none',
-                                                    borderRadius: '6px',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                ✏️ 일보 등록하기
-                                            </button>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            style={{
+                                                padding: '6px 12px',
+                                                fontSize: '0.85rem',
+                                                background: 'var(--accent)',
+                                                color: '#fff',
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            📂 엑셀 일보 업로드
+                                        </button>
                                     </div>
                                 </div>
                             </div>

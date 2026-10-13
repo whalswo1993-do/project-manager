@@ -215,22 +215,20 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
         return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
     }, [projects]);
 
-    // 프로젝트의 공정 판별 헬퍼
+    // 프로젝트의 공정 판별 헬퍼 (스태킹, 노칭 전용)
     const detectProjectProcess = (p) => {
-        if (!p) return 'etc';
+        if (!p) return '';
         const str = `${p.name || ''} ${p.line || ''} ${p.process || ''}`.toLowerCase();
         if (/스태킹|스택|stack/i.test(str)) return 'stacking';
         if (/노칭|notch/i.test(str)) return 'notching';
-        if (/탭웰딩|웰딩|welding/i.test(str)) return 'tabwelding';
-        return 'etc';
+        return '';
     };
 
     const getProcessLabel = (type) => {
         switch (type) {
             case 'stacking': return '스태킹 (Stacking)';
             case 'notching': return '노칭 (Notching)';
-            case 'tabwelding': return '탭웰딩 (Tab Welding)';
-            default: return '기타/셋업';
+            default: return '';
         }
     };
 
@@ -316,7 +314,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                         </select>
                     </div>
 
-                    {/* 공정 필터 */}
+                    {/* 공정 필터 (스태킹, 노칭 2가지만 제공) */}
                     <div className="proj-filter-group">
                         <span className="proj-filter-label">⚙️ 공정:</span>
                         <select
@@ -327,8 +325,6 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                             <option value="ALL">전체 공정</option>
                             <option value="stacking">스태킹 (Stacking)</option>
                             <option value="notching">노칭 (Notching)</option>
-                            <option value="tabwelding">탭웰딩 (Tab Welding)</option>
-                            <option value="etc">기타/셋업</option>
                         </select>
                     </div>
 
@@ -385,7 +381,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                             const site = normalizeSite(p.site) || '미지정';
                             return (
                                 <option key={p.id} value={p.id}>
-                                    [{site}] {p.name} ({proc} · {y}년)
+                                    [{site}] {p.name} {proc ? `(${proc} · ${y}년)` : `(${y}년)`}
                                 </option>
                             );
                         })}
@@ -393,32 +389,37 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                 </div>
 
                 {/* 3단: 현재 선택된 프로젝트 요약 배지 */}
-                {curProj && (
-                    <div className="proj-selected-summary-card">
-                        <div>
-                            <span style={{ color: 'var(--text-secondary)', marginRight: '6px' }}>선택 프로젝트:</span>
-                            <b style={{ color: 'var(--text-primary)', fontSize: '13.5px' }}>{curProj.name}</b>
-                        </div>
-                        <div className="proj-summary-badges">
-                            <span className="proj-pill-tag site">
-                                🏢 {normalizeSite(curProj.site) || '사이트 미지정'}
-                            </span>
-                            <span className="proj-pill-tag process">
-                                ⚙️ {getProcessLabel(detectProjectProcess(curProj))}
-                            </span>
-                            {(curProj.startDate || curProj.endDate) && (
-                                <span className="proj-pill-tag date">
-                                    📅 {curProj.startDate || '-'} ~ {curProj.endDate || '-'}
+                {curProj && (() => {
+                    const proc = getProcessLabel(detectProjectProcess(curProj));
+                    return (
+                        <div className="proj-selected-summary-card">
+                            <div>
+                                <span style={{ color: 'var(--text-secondary)', marginRight: '6px' }}>선택 프로젝트:</span>
+                                <b style={{ color: 'var(--text-primary)', fontSize: '13.5px' }}>{curProj.name}</b>
+                            </div>
+                            <div className="proj-summary-badges">
+                                <span className="proj-pill-tag site">
+                                    🏢 {normalizeSite(curProj.site) || '사이트 미지정'}
                                 </span>
-                            )}
-                            {curProj.customer && (
-                                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                                    ({curProj.customer})
-                                </span>
-                            )}
+                                {proc && (
+                                    <span className="proj-pill-tag process">
+                                        ⚙️ {proc}
+                                    </span>
+                                )}
+                                {(curProj.startDate || curProj.endDate) && (
+                                    <span className="proj-pill-tag date">
+                                        📅 {curProj.startDate || '-'} ~ {curProj.endDate || '-'}
+                                    </span>
+                                )}
+                                {curProj.customer && (
+                                    <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                                        ({curProj.customer})
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
             </div>
         );
     };

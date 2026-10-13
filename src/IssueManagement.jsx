@@ -1055,6 +1055,26 @@ ${allText.substring(0, 100000)}
         });
     };
 
+    // 명일/익일/차일 작업 계획 텍스트를 철저하게 감지하여 일보에서 완전 제거하는 헬퍼 함수
+    const stripTomorrowPlan = (text) => {
+        if (!text || typeof text !== 'string') return '';
+        const lines = text.split(/\r?\n/);
+        const cleaned = [];
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) {
+                cleaned.push(line);
+                continue;
+            }
+            // 명일/익일/차일/내일/Tomorrow/Next Day 계획 섹션 헤더 감지 시 이후 텍스트 전부 절단
+            if (/^([■●▶◆【\[\*\-\#\d\.\s]*\s*)?(명일|익일|차일|내일|Tomorrow|Next\s*Day)\s*([■●▶◆】\]\:\-\s]*(작업|업무|진행|계획|사항|일정|내역|Plan|Work)?)/i.test(trimmed)) {
+                break;
+            }
+            cleaned.push(line);
+        }
+        return cleaned.join('\n').trim();
+    };
+
     // 엑셀 표(목록형 + 일일 보고서 양식 블록형 모두 지원) 종합 파서
     const parseWorkSheetGrid = (grid) => {
         const result = {};
@@ -1065,6 +1085,7 @@ ${allText.substring(0, 100000)}
         let sDateCol = -1;
         let sWorkCol = -1;
         let sProcCol = -1; // 공정 열 (ST, NC, Stacking 등)
+        let sPlanCol = -1; // 명일/익일 계획 열 (일보 등록 시 영구 제외)
         let sNoteCol = -1;
         let sDeptCol = -1;
 
@@ -1077,6 +1098,7 @@ ${allText.substring(0, 100000)}
             let secondaryWorkCol = -1;
             let generalContentCol = -1;
             let procCol = -1;
+            let planCol = -1;
             let nCol = -1;
             let dpCol = -1;
 
@@ -1084,20 +1106,29 @@ ${allText.substring(0, 100000)}
                 const clean = String(cell || '').replace(/\s+/g, '');
                 if (!clean) return;
 
+                // 명일 / 익일 / 예정 / 차일 / Tomorrow 계획 열 사전 감지 (작업내용으로 절대 들어가지 않도록 차단)
+                if (/^(명일|익일|차일|내일|예정|Tomorrow|Plan|계획|명일작업|익일작업|명일계획|익일계획|차일작업|명일진행|익일진행)$/i.test(clean) || 
+                    (/명일|익일|차일|Tomorrow/i.test(clean) && /작업|업무|계획|진행/i.test(clean))) {
+                    if (planCol === -1) planCol = cIdx;
+                    return; // 계획 열은 작업내용 후보에서 즉시 제외
+                }
+
                 // 날짜 열
                 if (/^(일자|날짜|일시|작업일자|보고일자|공사일자|Date)$/i.test(clean) && dCol === -1) {
                     dCol = cIdx;
                 }
-                // 1순위: 명확한 상세 작업내용 열
-                if (/^(작업내용|업무내용|주요작업|작업상세|상세작업내용|세부작업내용|작업내역|업무내역|금일작업|금일업무|금일진행|금일진행사항|당일작업|작업현황|진행사항|진행내용|업무실적|실적|Activity|WorkDetail|WorkDetails|Task)$/i.test(clean) && primaryWorkCol === -1) {
+                // 1순위: 명확한 상세 작업내용 열 (명일/익일 키워드가 없는 순수 당일 실적)
+                if (!/명일|익일|차일|Tomorrow/i.test(clean) && 
+                    /^(작업내용|업무내용|주요작업|작업상세|상세작업내용|세부작업내용|작업내역|업무내역|금일작업|금일업무|금일진행|금일진행사항|당일작업|작업현황|진행사항|진행내용|업무실적|실적|Activity|WorkDetail|WorkDetails|Task)$/i.test(clean) && 
+                    primaryWorkCol === -1) {
                     primaryWorkCol = cIdx;
                 }
                 // 2순위: 단독 '작업', '업무'
-                else if (/^(작업|업무)$/i.test(clean) && secondaryWorkCol === -1) {
+                else if (!/명일|익일|차일|Tomorrow/i.test(clean) && /^(작업|업무)$/i.test(clean) && secondaryWorkCol === -1) {
                     secondaryWorkCol = cIdx;
                 }
                 // 3순위: 일반 내용 열
-                else if (/^(내용|공정내용)$/i.test(clean) && generalContentCol === -1) {
+                else if (!/명일|익일|차일|Tomorrow/i.test(clean) && /^(내용|공정내용)$/i.test(clean) && generalContentCol === -1) {
                     generalContentCol = cIdx;
                 }
                 // 공정 열 (ST, NC 등 공정 약어/구분 열) - 절대 작업내용 단독 열로 오인되지 않도록 별도 분리!
@@ -1124,6 +1155,7 @@ ${allText.substring(0, 100000)}
                 sDateCol = dCol;
                 sWorkCol = chosenWorkCol;
                 sProcCol = (procCol !== -1 && procCol !== chosenWorkCol) ? procCol : -1;
+                sPlanCol = planCol;
                 sNoteCol = nCol;
                 sDeptCol = dpCol;
                 break;
@@ -1136,6 +1168,13 @@ ${allText.substring(0, 100000)}
             for (let r = standardHeaderIdx + 1; r < grid.length; r++) {
                 const row = grid[r];
                 if (!row || row.length === 0) continue;
+
+                const firstCol = String(row[0] || '').replace(/\s+/g, '');
+                // 행 자체가 명일/익일 예정 행인 경우 전체 스킵 (일보에 절대 미포함)
+                if (/^(명일|익일|차일|내일|Tomorrow)(\s*(작업|업무|진행|계획|사항|일정|내역))?$/i.test(firstCol) && 
+                    !/특이사항|이슈|비고/i.test(firstCol)) {
+                    continue;
+                }
 
                 let rowDate = null;
                 if (sDateCol !== -1 && row[sDateCol]) {
@@ -1159,19 +1198,30 @@ ${allText.substring(0, 100000)}
                 let noteText = (sNoteCol !== -1 && row[sNoteCol]) ? String(row[sNoteCol]).trim() : '';
                 let deptText = (sDeptCol !== -1 && row[sDeptCol]) ? String(row[sDeptCol]).trim() : '';
 
+                // workText 자체가 명일/익일 계획으로 시작하는 행인 경우 스킵
+                if (/^(명일|익일|차일|내일|Tomorrow)\s*(작업|계획|진행|업무|일정)/i.test(workText)) {
+                    continue;
+                }
+
                 // [스마트 보정]: workText가 'ST', 'NC'처럼 3글자 이하 공정 약어이거나 비어있는데,
                 // 같은 행의 다른 열에 실제 상세 작업내용(긴 문장)이 있다면 자동 감지 및 치환!
+                // (단, 명일 계획 열 sPlanCol은 절대 대상에 포함하지 않음)
                 if (!workText || /^(ST|NC|NOTCH|STACK|PKG|ASSEMBLY|공정|기구|제어|전장|비전)$/i.test(workText.trim())) {
                     for (let c = 0; c < row.length; c++) {
-                        if (c === sDateCol || c === sDeptCol || c === sNoteCol || c === sProcCol) continue;
+                        if (c === sDateCol || c === sDeptCol || c === sNoteCol || c === sProcCol || c === sPlanCol) continue;
                         const candidate = String(row[c] || '').trim();
                         if (candidate.length >= 4 && !normalizeReportDate(candidate) && !/^\d+$/.test(candidate) && !/^(ST|NC|공정)$/i.test(candidate)) {
+                            // 후보 텍스트가 순수 명일 계획인 경우 제외
+                            if (/^(명일|익일|차일|내일|Tomorrow)\s*(작업|계획|진행)/i.test(candidate)) continue;
                             if (!procText && workText) procText = workText;
                             workText = candidate;
                             break;
                         }
                     }
                 }
+
+                // 텍스트 내부에 포함된 명일/익일 작업 계획 섹션 완벽 절단 제거
+                workText = stripTomorrowPlan(workText);
 
                 // 공정(ST 등)과 부서 태그 조합
                 let prefix = '';
@@ -1298,20 +1348,26 @@ ${allText.substring(0, 100000)}
                     // 특이사항 또는 작업내용으로 분류하여 누적
                     const isNoteCell = isSpecialNoteRow || isRemarkCol || /^(특이사항|이슈):/i.test(cellVal);
                     if (isNoteCell) {
-                        const noteToAdd = deptPrefix ? `${deptPrefix}${cellVal}` : cellVal;
-                        if (!result[currentDate].special_notes.includes(noteToAdd)) {
-                            result[currentDate].special_notes.push(noteToAdd);
-                        }
-                    } else if (cellVal.length >= 4 || /\[.*\]|<.*>|\d\./.test(cellVal)) {
-                        let textToAdd = deptPrefix ? `${deptPrefix}${cellVal}` : cellVal;
-                        if (grid[0] && grid[0][c] && /라인|line|cs|일보/i.test(grid[0][c]) && !/비고|비전/i.test(grid[0][c])) {
-                            const colHdr = String(grid[0][c]).trim().replace(/\s+/g, ' ');
-                            if (!textToAdd.includes(colHdr)) {
-                                textToAdd = `[${colHdr}]\n${textToAdd}`;
+                        const cleanedNote = stripTomorrowPlan(cellVal);
+                        if (cleanedNote) {
+                            const noteToAdd = deptPrefix ? `${deptPrefix}${cleanedNote}` : cleanedNote;
+                            if (!result[currentDate].special_notes.includes(noteToAdd)) {
+                                result[currentDate].special_notes.push(noteToAdd);
                             }
                         }
-                        if (!result[currentDate].work_details.includes(textToAdd)) {
-                            result[currentDate].work_details.push(textToAdd);
+                    } else if (cellVal.length >= 4 || /\[.*\]|<.*>|\d\./.test(cellVal)) {
+                        const cleanedVal = stripTomorrowPlan(cellVal);
+                        if (cleanedVal) {
+                            let textToAdd = deptPrefix ? `${deptPrefix}${cleanedVal}` : cleanedVal;
+                            if (grid[0] && grid[0][c] && /라인|line|cs|일보/i.test(grid[0][c]) && !/비고|비전/i.test(grid[0][c])) {
+                                const colHdr = String(grid[0][c]).trim().replace(/\s+/g, ' ');
+                                if (!textToAdd.includes(colHdr)) {
+                                    textToAdd = `[${colHdr}]\n${textToAdd}`;
+                                }
+                            }
+                            if (!result[currentDate].work_details.includes(textToAdd)) {
+                                result[currentDate].work_details.push(textToAdd);
+                            }
                         }
                     }
                 }
@@ -1321,8 +1377,8 @@ ${allText.substring(0, 100000)}
         const finalMap = {};
         Object.keys(result).forEach(d => {
             const item = result[d];
-            const workJoined = item.work_details.join('\n');
-            const noteJoined = item.special_notes.join('\n');
+            const workJoined = stripTomorrowPlan(item.work_details.join('\n'));
+            const noteJoined = stripTomorrowPlan(item.special_notes.join('\n'));
             if (workJoined || noteJoined) {
                 finalMap[d] = {
                     date: d,

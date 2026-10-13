@@ -160,17 +160,108 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
     const [analyzeMsg, setAnalyzeMsg] = useState('');
     const registeredSiteNames = useMemo(() => getRegisteredSiteNames(sites, projects), [sites, projects]);
 
-    // 전체 양산 사이트 목록
+    // 사이트 이름 정규화 (SK_DAEJEON -> SKO 대전 통일)
+    const normalizeSite = (raw) => {
+        let s = String(raw || '').trim();
+        if (!s || s === '선택 안됨' || s === '미지정') return '';
+        if (s === 'SK_DAEJEON' || s === 'SKO_DAEJEON' || s.toLowerCase() === 'sk_daejeon') return 'SKO 대전';
+        if (s === 'SKOT(TN1)') return 'SKOT (TN1)';
+        return s;
+    };
+
+    // 미등록/제외 사이트 판별 (SDI, 현대차 아산 등 삭제 요청 반영)
+    const isExcludedSite = (raw) => {
+        const k = String(raw || '').toLowerCase().trim();
+        return k.includes('sdi') || k.includes('현대') || k.includes('hyundai') || k.includes('lge');
+    };
+
+    // 전체 양산 사이트 목록 (SDI, 현대차 아산 제외, SK_DAEJEON은 SKO 대전으로 통일)
     const availableSites = useMemo(() => {
         const siteSet = new Set();
-        ['HSBMA', 'SKBA', 'SKOH2', 'SKOJ', 'SKOY', 'SKBM', 'SK_DAEJEON', 'SDI', '현대차 아산'].forEach(s => siteSet.add(s));
-        (registeredSiteNames || []).forEach(s => siteSet.add(s));
+        // 1. 기본 등록 양산 사이트
+        ['HSBMA', 'SKBA', 'SKOH2', 'SKOJ', 'SKOY', 'SKBM', 'SKO 대전', 'SKO 서산', 'SKOH', 'SKOT (TN1)'].forEach(s => {
+            const clean = normalizeSite(s);
+            if (clean && !isExcludedSite(clean)) siteSet.add(clean);
+        });
+        // 2. 등록된 사이트명
+        (registeredSiteNames || []).forEach(s => {
+            const clean = normalizeSite(s);
+            if (clean && !isExcludedSite(clean)) siteSet.add(clean);
+        });
+        // 3. 프로젝트에 존재하는 사이트
         (projects || []).forEach(p => {
-            const s = (p.site || '').trim();
-            if (s && s !== '선택 안됨' && s !== '미지정') siteSet.add(s);
+            const clean = normalizeSite(p.site);
+            if (clean && !isExcludedSite(clean)) siteSet.add(clean);
         });
         return Array.from(siteSet);
     }, [registeredSiteNames, projects]);
+
+    // 개별 프로젝트 다단계 필터링 상태 (사이트, 공정, 연도)
+    const [projFilterSite, setProjFilterSite] = useState('ALL');
+    const [projFilterProcess, setProjFilterProcess] = useState('ALL');
+    const [projFilterYear, setProjFilterYear] = useState('ALL');
+
+    // 프로젝트에서 사용 가능한 연도 목록 추출
+    const projectAvailableYears = useMemo(() => {
+        const yearsSet = new Set();
+        const curY = new Date().getFullYear();
+        yearsSet.add(String(curY));
+        (projects || []).forEach(p => {
+            const s = (p.startDate || p.start_date || '').slice(0, 4);
+            const e = (p.endDate || p.end_date || '').slice(0, 4);
+            if (s && !isNaN(Number(s))) yearsSet.add(s);
+            if (e && !isNaN(Number(e))) yearsSet.add(e);
+        });
+        return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
+    }, [projects]);
+
+    // 프로젝트의 공정 판별 헬퍼
+    const detectProjectProcess = (p) => {
+        if (!p) return 'etc';
+        const str = `${p.name || ''} ${p.line || ''} ${p.process || ''}`.toLowerCase();
+        if (/스태킹|스택|stack/i.test(str)) return 'stacking';
+        if (/노칭|notch/i.test(str)) return 'notching';
+        if (/탭웰딩|웰딩|welding/i.test(str)) return 'tabwelding';
+        return 'etc';
+    };
+
+    const getProcessLabel = (type) => {
+        switch (type) {
+            case 'stacking': return '스태킹 (Stacking)';
+            case 'notching': return '노칭 (Notching)';
+            case 'tabwelding': return '탭웰딩 (Tab Welding)';
+            default: return '기타/셋업';
+        }
+    };
+
+    // 사이트, 공정, 연도로 필터링된 프로젝트 목록
+    const filteredProjectOptions = useMemo(() => {
+        return (projects || []).filter(p => {
+            // 1. 사이트 필터
+            if (projFilterSite !== 'ALL') {
+                const pSite = normalizeSite(p.site);
+                if (pSite !== projFilterSite) return false;
+            }
+            // 2. 공정 필터
+            if (projFilterProcess !== 'ALL') {
+                const detected = detectProjectProcess(p);
+                if (detected !== projFilterProcess) return false;
+            }
+            // 3. 연도 필터
+            if (projFilterYear !== 'ALL') {
+                const pStart = (p.startDate || p.start_date || '').slice(0, 4);
+                const pEnd = (p.endDate || p.end_date || '').slice(0, 4);
+                if (pStart && pEnd) {
+                    if (projFilterYear < pStart || projFilterYear > pEnd) return false;
+                } else if (pStart) {
+                    if (pStart !== projFilterYear) return false;
+                } else if (pEnd) {
+                    if (pEnd !== projFilterYear) return false;
+                }
+            }
+            return true;
+        }).sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0));
+    }, [projects, projFilterSite, projFilterProcess, projFilterYear]);
 
     const fileInputRef = useRef(null);
 
@@ -199,6 +290,138 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
         }
         return (projects || []).find(p => String(p.id) === String(selectedProject));
     }, [targetType, selectedSite, projects, selectedProject, currentCustomer]);
+
+    // 사이트, 공정, 연도 다단계 필터링 프로젝트 선택기 UI 렌더링 함수
+    const renderProjectFilterSection = (labelTitle = '대상 프로젝트 선택') => {
+        const curProj = currentSelectedProject && !currentSelectedProject.isSite ? currentSelectedProject : null;
+        return (
+            <div className="proj-multilevel-filter-box">
+                {/* 1단: 사이트, 공정, 연도 필터 툴바 */}
+                <div className="proj-filter-toolbar">
+                    {/* 사이트 필터 */}
+                    <div className="proj-filter-group">
+                        <span className="proj-filter-label">🏢 사이트:</span>
+                        <select
+                            className="proj-filter-select"
+                            value={projFilterSite}
+                            onChange={(e) => setProjFilterSite(e.target.value)}
+                        >
+                            <option value="ALL">🌐 전체 사이트 ({projects?.length || 0})</option>
+                            {availableSites.map(s => {
+                                const count = (projects || []).filter(p => normalizeSite(p.site) === s).length;
+                                return (
+                                    <option key={s} value={s}>{s} ({count})</option>
+                                );
+                            })}
+                        </select>
+                    </div>
+
+                    {/* 공정 필터 */}
+                    <div className="proj-filter-group">
+                        <span className="proj-filter-label">⚙️ 공정:</span>
+                        <select
+                            className="proj-filter-select"
+                            value={projFilterProcess}
+                            onChange={(e) => setProjFilterProcess(e.target.value)}
+                        >
+                            <option value="ALL">전체 공정</option>
+                            <option value="stacking">스태킹 (Stacking)</option>
+                            <option value="notching">노칭 (Notching)</option>
+                            <option value="tabwelding">탭웰딩 (Tab Welding)</option>
+                            <option value="etc">기타/셋업</option>
+                        </select>
+                    </div>
+
+                    {/* 프로젝트 기간 년도 필터 */}
+                    <div className="proj-filter-group">
+                        <span className="proj-filter-label">📅 년도:</span>
+                        <select
+                            className="proj-filter-select"
+                            value={projFilterYear}
+                            onChange={(e) => setProjFilterYear(e.target.value)}
+                        >
+                            <option value="ALL">전체 연도</option>
+                            {projectAvailableYears.map(y => (
+                                <option key={y} value={y}>{y}년</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* 필터 초기화 버튼 */}
+                    {(projFilterSite !== 'ALL' || projFilterProcess !== 'ALL' || projFilterYear !== 'ALL') && (
+                        <button
+                            type="button"
+                            className="proj-filter-reset-btn"
+                            onClick={() => {
+                                setProjFilterSite('ALL');
+                                setProjFilterProcess('ALL');
+                                setProjFilterYear('ALL');
+                            }}
+                            title="모든 필터를 기본값으로 초기화합니다"
+                        >
+                            ✕ 필터 초기화
+                        </button>
+                    )}
+                </div>
+
+                {/* 2단: 필터링된 프로젝트 드롭다운 */}
+                <div className="proj-select-main-row">
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                        📁 {labelTitle}:
+                    </span>
+                    <select
+                        className="proj-main-select"
+                        value={selectedProject}
+                        onChange={(e) => setSelectedProject(e.target.value)}
+                    >
+                        <option value="">
+                            {filteredProjectOptions.length === 0
+                                ? '-- 조건에 맞는 프로젝트가 없습니다 --'
+                                : `-- 프로젝트를 선택하세요 (${filteredProjectOptions.length}건 검색됨) --`}
+                        </option>
+                        {filteredProjectOptions.map(p => {
+                            const proc = getProcessLabel(detectProjectProcess(p));
+                            const y = (p.startDate || p.start_date || '').slice(0, 4) || '연도미상';
+                            const site = normalizeSite(p.site) || '미지정';
+                            return (
+                                <option key={p.id} value={p.id}>
+                                    [{site}] {p.name} ({proc} · {y}년)
+                                </option>
+                            );
+                        })}
+                    </select>
+                </div>
+
+                {/* 3단: 현재 선택된 프로젝트 요약 배지 */}
+                {curProj && (
+                    <div className="proj-selected-summary-card">
+                        <div>
+                            <span style={{ color: 'var(--text-secondary)', marginRight: '6px' }}>선택 프로젝트:</span>
+                            <b style={{ color: 'var(--text-primary)', fontSize: '13.5px' }}>{curProj.name}</b>
+                        </div>
+                        <div className="proj-summary-badges">
+                            <span className="proj-pill-tag site">
+                                🏢 {normalizeSite(curProj.site) || '사이트 미지정'}
+                            </span>
+                            <span className="proj-pill-tag process">
+                                ⚙️ {getProcessLabel(detectProjectProcess(curProj))}
+                            </span>
+                            {(curProj.startDate || curProj.endDate) && (
+                                <span className="proj-pill-tag date">
+                                    📅 {curProj.startDate || '-'} ~ {curProj.endDate || '-'}
+                                </span>
+                            )}
+                            {curProj.customer && (
+                                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                                    ({curProj.customer})
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     // 현재 선택된 대상의 총 누적 투입 공수
     const totalCumulativeMD = useMemo(() => {
@@ -2632,23 +2855,8 @@ ${compiledText.substring(0, 30000)}
                                 </div>
                             </div>
                         ) : (
-                            /* 프로젝트별 선택일 때: 프로젝트 선택 드롭다운 */
-                            <div style={{ marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-secondary)' }}>📁 대상 프로젝트 선택:</span>
-                                <select
-                                    className="project-select"
-                                    value={selectedProject}
-                                    onChange={(e) => setSelectedProject(e.target.value)}
-                                    style={{ minWidth: '320px', maxWidth: '100%', padding: '8px 12px', fontSize: '13.5px', borderRadius: '8px', border: '1px solid var(--border-medium)', background: 'var(--input-bg)', color: 'var(--input-text)' }}
-                                >
-                                    <option value="">-- 프로젝트를 선택하세요 --</option>
-                                    {projectOptions.map(p => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.name} ({p.customer || '미지정'} / {p.site || '미지정'})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            /* 프로젝트별 선택일 때: 사이트, 공정, 연도 다단계 필터링 프로젝트 선택기 */
+                            renderProjectFilterSection('조회할 대상 프로젝트 선택')
                         )}
                     </div>
 
@@ -2981,23 +3189,8 @@ ${compiledText.substring(0, 30000)}
                                 </div>
                             </div>
                         ) : (
-                            /* 프로젝트별 등록일 때: 프로젝트 선택 드롭다운 */
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-secondary)' }}>📁 등록할 프로젝트 선택:</span>
-                                <select
-                                    className="project-select"
-                                    value={selectedProject}
-                                    onChange={(e) => setSelectedProject(e.target.value)}
-                                    style={{ minWidth: '320px', maxWidth: '100%', padding: '8px 12px', fontSize: '13.5px', borderRadius: '8px', border: '1px solid var(--border-medium)', background: 'var(--input-bg)', color: 'var(--input-text)' }}
-                                >
-                                    <option value="">-- 프로젝트를 선택하세요 --</option>
-                                    {projectOptions.map(p => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.name} ({p.customer || '미지정'} / {p.site || '미지정'})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            /* 프로젝트별 등록일 때: 사이트, 공정, 연도 다단계 필터링 프로젝트 선택기 */
+                            renderProjectFilterSection('등록할 프로젝트 선택')
                         )}
                     </div>
 

@@ -1775,6 +1775,156 @@ body.theme-dark .report-paste-textarea {
   font-size: 14px;
 }
 
+/* =========================================================================
+   개별 프로젝트 다단계 필터 바 전용 스타일 (사이트, 공정, 연도)
+   ========================================================================= */
+
+.proj-multilevel-filter-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-medium);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.proj-filter-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.proj-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 170px;
+}
+
+.proj-filter-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.proj-filter-select {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-medium);
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.proj-filter-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.proj-filter-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.proj-filter-reset-btn:hover {
+  background: var(--bg-hover);
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.proj-select-main-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.proj-main-select {
+  flex: 1;
+  min-width: 280px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border-medium);
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-size: 13.5px;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.proj-main-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+
+.proj-selected-summary-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+.proj-summary-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.proj-pill-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.proj-pill-tag.site {
+  background: rgba(14, 165, 233, 0.15);
+  color: #0284c7;
+}
+
+.proj-pill-tag.process {
+  background: rgba(139, 92, 246, 0.15);
+  color: #7c3aed;
+}
+
+.proj-pill-tag.date {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
 
 
 

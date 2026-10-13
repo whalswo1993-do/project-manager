@@ -987,47 +987,74 @@ body.theme-dark .report-paste-textarea {
   box-shadow: 0 6px 20px rgba(99, 102, 241, 0.12);
 }
 
-.project-hero-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 220px;
+.project-target-type-selector {
+  display: inline-flex;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
-.project-hero-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
-  flex-shrink: 0;
-}
-
-.project-hero-title h3 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--text-primary);
-  display: flex;
+.target-type-btn {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
-.project-hero-title p {
-  margin: 2px 0 0 0;
-  font-size: 11.5px;
-  color: var(--text-secondary);
+.target-type-btn:hover {
+  color: var(--text-primary);
+}
+
+.target-type-btn.active {
+  background: var(--bg-card);
+  color: var(--accent);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border-color: var(--border-medium);
+}
+
+.site-select-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.site-select-dropdown {
+  flex: 1;
+  height: 38px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border: 1.5px solid var(--border-medium);
+  background: var(--input-bg);
+  color: var(--input-text);
+  outline: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.site-select-dropdown:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
 .project-hero-center {
   flex: 1;
   min-width: 280px;
-  max-width: 580px;
+  max-width: 620px;
 }
 
 .project-hero-right {

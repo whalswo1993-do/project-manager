@@ -60,12 +60,12 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
     const [projectReports, setProjectReports] = useState([]);
     const [expandedReports, setExpandedReports] = useState({});
     
-    // 서브 소항목 탭: 'view' (공사일보 조회 및 검색) | 'register' (신규 공사일보 등록)
+    // 서브 소항목 탭: 'register' (1. 신규 공사일보 등록) | 'view' (2. 일보 조회 및 검색)
     const [activeReportSubTab, setActiveReportSubTab] = useState(() => {
         try {
-            return localStorage.getItem('pm_daily_report_sub_tab') || 'view';
+            return localStorage.getItem('pm_daily_report_sub_tab') || 'register';
         } catch (e) {
-            return 'view';
+            return 'register';
         }
     });
 
@@ -74,6 +74,36 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
             localStorage.setItem('pm_daily_report_sub_tab', activeReportSubTab);
         } catch (e) {}
     }, [activeReportSubTab]);
+
+    // 등록 대상 구분: 'project' (개별 프로젝트) | 'site' (양산 사이트 일보)
+    const [targetType, setTargetType] = useState(() => {
+        try {
+            return localStorage.getItem('pm_report_target_type') || 'project';
+        } catch (e) {
+            return 'project';
+        }
+    });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('pm_report_target_type', targetType);
+        } catch (e) {}
+    }, [targetType]);
+
+    // 선택된 양산 사이트 (기본값 HSBMA)
+    const [selectedSite, setSelectedSite] = useState(() => {
+        try {
+            return localStorage.getItem('pm_report_selected_site') || 'HSBMA';
+        } catch (e) {
+            return 'HSBMA';
+        }
+    });
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('pm_report_selected_site', selectedSite);
+        } catch (e) {}
+    }, [selectedSite]);
 
     // 일보 조회 탭 검색어
     const [reportSearchQuery, setReportSearchQuery] = useState('');
@@ -99,18 +129,47 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
     const [analyzeMsg, setAnalyzeMsg] = useState('');
     const registeredSiteNames = useMemo(() => getRegisteredSiteNames(sites, projects), [sites, projects]);
 
+    // 전체 양산 사이트 목록
+    const availableSites = useMemo(() => {
+        const siteSet = new Set();
+        ['HSBMA', 'SKBA', 'SKOH2', 'SKOJ', 'SKOY', 'SKBM', 'SK_DAEJEON', 'SDI', '현대차 아산'].forEach(s => siteSet.add(s));
+        (registeredSiteNames || []).forEach(s => siteSet.add(s));
+        (projects || []).forEach(p => {
+            const s = (p.site || '').trim();
+            if (s && s !== '선택 안됨' && s !== '미지정') siteSet.add(s);
+        });
+        return Array.from(siteSet);
+    }, [registeredSiteNames, projects]);
+
     const fileInputRef = useRef(null);
 
     const projectOptions = useMemo(() => {
         return (projects || []).sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
     }, [projects]);
 
-    // 현재 선택된 프로젝트 객체
-    const currentSelectedProject = useMemo(() => {
-        return (projects || []).find(p => String(p.id) === String(selectedProject));
-    }, [projects, selectedProject]);
+    // 현재 대상 식별자 (프로젝트 ID 또는 'site_사이트명')
+    const currentTargetId = useMemo(() => {
+        if (targetType === 'site') {
+            return `site_${selectedSite}`;
+        }
+        return selectedProject;
+    }, [targetType, selectedSite, selectedProject]);
 
-    // 현재 선택된 프로젝트의 총 누적 투입 공수
+    // 현재 선택된 대상 객체 (프로젝트 또는 양산 사이트)
+    const currentSelectedProject = useMemo(() => {
+        if (targetType === 'site') {
+            return {
+                id: `site_${selectedSite}`,
+                name: `${selectedSite} (양산 사이트 일보)`,
+                site: selectedSite,
+                customer: currentCustomer || (selectedSite === 'SDI' ? 'Samsung SDI' : selectedSite.includes('현대') ? 'Hyundai' : 'SK on'),
+                isSite: true
+            };
+        }
+        return (projects || []).find(p => String(p.id) === String(selectedProject));
+    }, [targetType, selectedSite, projects, selectedProject, currentCustomer]);
+
+    // 현재 선택된 대상의 총 누적 투입 공수
     const totalCumulativeMD = useMemo(() => {
         return (projectReports || []).reduce((acc, r) => {
             const md = (r.pm_count || 0) + (r.design_count || 0) + (r.facility_count || 0) +
@@ -148,10 +207,12 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
     }, [projects]);
 
     useEffect(() => {
-        if (selectedProject) {
-            loadReports(selectedProject);
+        if (currentTargetId) {
+            loadReports(currentTargetId);
+        } else {
+            setProjectReports([]);
         }
-    }, [selectedProject]);
+    }, [currentTargetId]);
 
     async function loadReports(projectId) {
         setMsg('');
@@ -541,7 +602,8 @@ ${allText.substring(0, 100000)}
 
     const saveReport = async () => {
         if (!canEditReport) return notifyPermission('공사일보 저장');
-        if (!selectedProject) return setMsg('프로젝트를 먼저 선택해주세요.');
+        const targetId = currentTargetId;
+        if (!targetId) return setMsg(targetType === 'site' ? '양산 사이트를 먼저 선택해주세요.' : '프로젝트를 먼저 선택해주세요.');
 
         // 유효한 일보 항목 필터링 (날짜가 있고, 작업내용/특이사항/공수 중 하나라도 입력된 경우 저장 가능)
         const validReports = extractedReports.filter(r => {
@@ -565,7 +627,7 @@ ${allText.substring(0, 100000)}
         const { data: existingRows, error: fetchErr } = await supabase
             .from('daily_reports')
             .select('*')
-            .eq('project_id', selectedProject)
+            .eq('project_id', targetId)
             .in('report_date', dates);
 
         if (fetchErr) {
@@ -652,7 +714,7 @@ ${allText.substring(0, 100000)}
             };
 
             return {
-                project_id: selectedProject,
+                project_id: targetId,
                 report_date: r.date,
                 work_details: finalWork,
                 special_notes: finalNotes,
@@ -670,7 +732,7 @@ ${allText.substring(0, 100000)}
         // 3. 해당 일자의 기존 데이터 삭제 후 병합된 최신 데이터 저장 (Overwrite/Merge)
         await supabase.from('daily_reports')
             .delete()
-            .eq('project_id', selectedProject)
+            .eq('project_id', targetId)
             .in('report_date', dates);
 
         const { error } = await supabase.from('daily_reports').insert(insertData);
@@ -680,7 +742,7 @@ ${allText.substring(0, 100000)}
         } else {
             setMsg(`✅ ${insertData.length}일치의 공사일보가 성공적으로 저장(최신 반영/병합)되었습니다.`);
             setExtractedReports([createEmptyReport()]);
-            loadReports(selectedProject);
+            loadReports(targetId);
             setActiveReportSubTab('view');
         }
     };
@@ -689,7 +751,7 @@ ${allText.substring(0, 100000)}
         if (!canEditReport) return notifyPermission('일보 삭제');
         if (confirm('이 일보를 삭제하시겠습니까?')) {
             await supabase.from('daily_reports').delete().eq('id', id);
-            loadReports(selectedProject);
+            loadReports(currentTargetId);
         }
     };
 
@@ -2018,13 +2080,19 @@ ${allText.substring(0, 100000)}
             });
             const uniqueProjects = Object.keys(projectDays);
 
-            // 2개 이상의 복수 프로젝트가 감지된 경우 -> 사용자 선택 모달 오픈!
-            if (uniqueProjects.length >= 2) {
-                const curProjectObj = (projects || []).find(p => p.id === selectedProject);
+            // 2개 이상의 복수 프로젝트가 감지되었거나,
+            // 또는 양산 사이트 모드인데 프로젝트(예: HSBMA 5~8Line Set-up 등) 내용이 감지된 경우 -> 사용자 선택 모달 오픈!
+            const hasProjectInSiteMode = targetType === 'site' && uniqueProjects.length >= 1;
+            if (uniqueProjects.length >= 2 || hasProjectInSiteMode) {
+                const curProjectObj = targetType === 'site'
+                    ? { name: `${selectedSite} 사이트 일보`, site: selectedSite }
+                    : (projects || []).find(p => p.id === selectedProject);
                 let defaultChoice = uniqueProjects[0];
-                const curProjDisp = curProjectObj ? (curProjectObj.manufacturingNo ? `[${curProjectObj.manufacturingNo}] ${curProjectObj.name}` : curProjectObj.name) : '선택된 프로젝트 없음';
+                const curProjDisp = targetType === 'site'
+                    ? `🏭 ${selectedSite} 사이트 일보`
+                    : (curProjectObj ? (curProjectObj.manufacturingNo ? `[${curProjectObj.manufacturingNo}] ${curProjectObj.name}` : curProjectObj.name) : '선택된 프로젝트 없음');
 
-                if (curProjectObj) {
+                if (curProjectObj && targetType !== 'site') {
                     const curName = (curProjectObj.name || '').toLowerCase();
                     const curClean = (curProjectObj.name || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
                     const curLine = extractLineSignature(curClean);
@@ -2087,6 +2155,10 @@ ${allText.substring(0, 100000)}
                             defaultChoice = cand;
                         }
                     });
+                } else if (targetType === 'site') {
+                    // 사이트 모드인 경우 셋업 프로젝트(Set-up, 셋업 등)가 있으면 우선 추천
+                    const setupCand = uniqueProjects.find(p => /set-?up|셋업|설치/i.test(p));
+                    if (setupCand) defaultChoice = setupCand;
                 }
 
                 setSplitProjectModal({
@@ -2393,30 +2465,60 @@ ${compiledText.substring(0, 30000)}
 
             <input type="file" ref={fileInputRef} onChange={(e) => handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, .csv" style={{display: 'none'}} />
 
-            {/* 1. 최상단 대형 프로젝트 선택 배너 (Hero Card) - 모퉁이 탈피, 시인성 극대화 */}
+            {/* 1. 상단 작업 대상 선택기: 등록 프로젝트 vs 양산 사이트 일보 (모퉁이 탈피, 시인성 극대화) */}
             <div className="project-hero-card">
-                <div className="project-hero-left">
-                    <div className="project-hero-icon">🏢</div>
-                    <div className="project-hero-title">
-                        <h3>작업 대상 프로젝트 선택 <span style={{fontSize: '11px', color: '#6366f1', background: 'rgba(99, 102, 241, 0.12)', padding: '2px 7px', borderRadius: '6px', fontWeight: 700}}>필수 선택</span></h3>
-                        <p>공사일보를 조회하거나 신규 등록할 프로젝트를 지정하세요</p>
+                <div className="project-hero-left" style={{minWidth: 'auto'}}>
+                    <div className="project-target-type-selector">
+                        <button
+                            type="button"
+                            className={`target-type-btn ${targetType === 'project' ? 'active' : ''}`}
+                            onClick={() => setTargetType('project')}
+                            title="등록된 프로젝트 단위로 공사일보를 관리합니다"
+                        >
+                            📁 등록 프로젝트
+                        </button>
+                        <button
+                            type="button"
+                            className={`target-type-btn ${targetType === 'site' ? 'active' : ''}`}
+                            onClick={() => setTargetType('site')}
+                            title="공장 양산 사이트 단위로 사이트 일보를 관리합니다"
+                        >
+                            🏭 양산 사이트 일보
+                        </button>
                     </div>
                 </div>
                 <div className="project-hero-center">
-                    <SmartProjectSelector
-                        projects={projects}
-                        selectedProjectId={selectedProject}
-                        onSelectProject={(id) => setSelectedProject(id)}
-                        placeholder="조회 또는 등록할 프로젝트를 검색하여 선택하세요..."
-                    />
+                    {targetType === 'project' ? (
+                        <SmartProjectSelector
+                            projects={projects}
+                            selectedProjectId={selectedProject}
+                            onSelectProject={(id) => setSelectedProject(id)}
+                            placeholder="조회 또는 등록할 프로젝트를 검색하여 선택하세요..."
+                        />
+                    ) : (
+                        <div className="site-select-box">
+                            <label className="site-select-label">양산 사이트 선택:</label>
+                            <select
+                                className="site-select-dropdown"
+                                value={selectedSite}
+                                onChange={(e) => setSelectedSite(e.target.value)}
+                            >
+                                {availableSites.map(siteName => (
+                                    <option key={siteName} value={siteName}>
+                                        🏭 {siteName} 사이트 일보
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                 </div>
                 <div className="project-hero-right">
                     {currentSelectedProject ? (
                         <>
-                            <div className="hero-stat-badge" title="선택된 프로젝트의 고객사 및 사이트">
-                                🏷️ <span>{currentSelectedProject.customer || '-'} / {currentSelectedProject.site || '-'}</span>
+                            <div className="hero-stat-badge" title="선택된 대상의 고객사 및 사이트">
+                                🏷️ <span>{targetType === 'site' ? '양산 사이트' : (currentSelectedProject.customer || '-')} / {currentSelectedProject.site || selectedSite}</span>
                             </div>
-                            <div className="hero-stat-badge" title="해당 프로젝트에 등록된 공사일보 개수">
+                            <div className="hero-stat-badge" title="해당 대상에 등록된 공사일보 개수">
                                 📋 등록 일보 <b>{projectReports.length}건</b>
                             </div>
                             <div className="hero-stat-badge" title="등록된 일보의 총 누적 투입 공수 (M/D)">
@@ -2425,49 +2527,37 @@ ${compiledText.substring(0, 30000)}
                         </>
                     ) : (
                         <div style={{fontSize: '12px', color: '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px'}}>
-                            ⚠️ 프로젝트를 먼저 선택해주세요
+                            ⚠️ 대상을 먼저 선택해주세요
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* 2. 소항목 탭 네비게이션 (1. 등록된 일보 조회 및 검색 / 2. 신규 공사일보 등록) */}
+            {/* 2. 소항목 탭 네비게이션 (1. 신규 공사일보 등록 / 2. 일보 조회 및 검색) */}
             <div className="report-sub-navbar">
                 <div className="report-sub-tabs-group">
-                    <button
-                        type="button"
-                        className={`report-sub-tab-btn ${activeReportSubTab === 'view' ? 'active' : ''}`}
-                        onClick={() => setActiveReportSubTab('view')}
-                    >
-                        <span>📋 1. 등록된 일보 조회 및 검색</span>
-                        <span className="report-tab-badge">{projectReports.length}건</span>
-                    </button>
                     <button
                         type="button"
                         className={`report-sub-tab-btn ${activeReportSubTab === 'register' ? 'active' : ''}`}
                         onClick={() => setActiveReportSubTab('register')}
                     >
-                        <span>✏️ 2. 신규 공사일보 등록</span>
+                        <span>✏️ 1. 신규 공사일보 등록</span>
                         <span className="report-tab-badge">
                             {extractedReports.some(r => r.work_details || r.special_notes) ? `${extractedReports.length}일치 작성중` : '+ 새 일보'}
                         </span>
                     </button>
+                    <button
+                        type="button"
+                        className={`report-sub-tab-btn ${activeReportSubTab === 'view' ? 'active' : ''}`}
+                        onClick={() => setActiveReportSubTab('view')}
+                    >
+                        <span>📋 2. 일보 조회 및 검색</span>
+                        <span className="report-tab-badge">{projectReports.length}건</span>
+                    </button>
                 </div>
 
                 <div className="report-sub-nav-actions">
-                    {activeReportSubTab === 'view' ? (
-                        <button
-                            type="button"
-                            className="quick-register-btn"
-                            onClick={() => {
-                                if (!canEditReport) return notifyPermission('일보 등록');
-                                setActiveReportSubTab('register');
-                            }}
-                            title="새 공사일보 등록 화면으로 바로 전환합니다"
-                        >
-                            ✏️ + 새 일보 등록하기 {!canEditReport && "🔒"}
-                        </button>
-                    ) : (
+                    {activeReportSubTab === 'register' ? (
                         <button
                             type="button"
                             onClick={() => setActiveReportSubTab('view')}
@@ -2480,21 +2570,35 @@ ${compiledText.substring(0, 30000)}
                         >
                             📋 등록된 일보 목록 보기
                         </button>
+                    ) : (
+                        <button
+                            type="button"
+                            className="quick-register-btn"
+                            onClick={() => {
+                                if (!canEditReport) return notifyPermission('일보 등록');
+                                setActiveReportSubTab('register');
+                            }}
+                            title="새 공사일보 등록 화면으로 바로 전환합니다"
+                        >
+                            ✏️ + 새 일보 등록하기 {!canEditReport && "🔒"}
+                        </button>
                     )}
                 </div>
             </div>
 
             {/* 3. 소항목별 본문 영역 */}
             {activeReportSubTab === 'view' ? (
-                /* --- 소항목 1: 등록된 일보 조회 및 검색 --- */
+                /* --- 소항목 2: 등록된 일보 조회 및 검색 --- */
                 <div className="report-view-container">
-                    {!selectedProject ? (
+                    {!currentTargetId ? (
                         <div className="empty-state" style={{padding: '60px 20px', background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-subtle)'}}>
                             <div style={{ maxWidth: '480px', margin: '0 auto', textAlign: 'center' }}>
                                 <span style={{ fontSize: '3rem', display: 'block', marginBottom: '12px' }}>🏢</span>
-                                <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)', fontSize: '18px' }}>프로젝트를 먼저 선택해주세요</h3>
+                                <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)', fontSize: '18px' }}>
+                                    {targetType === 'site' ? '양산 사이트를 먼저 선택해주세요' : '프로젝트를 먼저 선택해주세요'}
+                                </h3>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
-                                    상단의 프로젝트 선택 상자에서 일보를 조회할 프로젝트를 선택하시면 등록된 일보 목록과 투입 공수 내역이 즉시 표시됩니다.
+                                    상단의 선택 상자에서 일보를 조회할 대상을 선택하시면 등록된 일보 목록과 투입 공수 내역이 즉시 표시됩니다.
                                 </p>
                             </div>
                         </div>
@@ -2503,10 +2607,10 @@ ${compiledText.substring(0, 30000)}
                             <div style={{ maxWidth: '520px', margin: '0 auto', textAlign: 'center' }}>
                                 <span style={{ fontSize: '3.2rem', display: 'block', marginBottom: '12px' }}>📄</span>
                                 <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)', fontSize: '19px' }}>
-                                    선택한 프로젝트에 등록된 일보가 없습니다
+                                    선택한 {targetType === 'site' ? `${selectedSite} 사이트에` : '프로젝트에'} 등록된 일보가 없습니다
                                 </h3>
                                 <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '22px', lineHeight: '1.5' }}>
-                                    <b>{currentSelectedProject?.name}</b> 프로젝트의 첫 번째 공사일보를 등록해보세요.<br/>
+                                    <b>{currentSelectedProject?.name}</b>의 첫 번째 공사일보를 등록해보세요.<br/>
                                     엑셀 파일 첨부 또는 표 복사 붙여넣기로 손쉽게 등록할 수 있습니다.
                                 </p>
                                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2519,7 +2623,7 @@ ${compiledText.substring(0, 30000)}
                                         className="quick-register-btn"
                                         style={{padding: '10px 20px', fontSize: '14px'}}
                                     >
-                                        ✏️ 이 프로젝트에 새 일보 등록하기 {!canEditReport && "🔒"}
+                                        ✏️ 이 {targetType === 'site' ? '사이트에' : '프로젝트에'} 새 일보 등록하기 {!canEditReport && "🔒"}
                                     </button>
                                     <button
                                         type="button"
@@ -2755,39 +2859,55 @@ ${compiledText.substring(0, 30000)}
                         </div>
                     )}
 
-                    {/* Step 1: 대상 프로젝트 확인 */}
+                    {/* Step 1: 대상 프로젝트 / 양산 사이트 확인 */}
                     <div className="wizard-step-card">
                         <div className="wizard-step-header">
                             <div className="wizard-step-title">
                                 <span className="step-num-badge">1</span>
                                 <div>
-                                    <h4>작업 대상 프로젝트 확인</h4>
-                                    <p>현재 등록할 공사일보가 배정될 프로젝트입니다</p>
+                                    <h4>{targetType === 'site' ? '작업 대상 양산 사이트 확인' : '작업 대상 프로젝트 확인'}</h4>
+                                    <p>
+                                        {targetType === 'site'
+                                            ? '현재 등록할 사이트 일보가 배정될 공장 양산 사이트입니다'
+                                            : '현재 등록할 공사일보가 배정될 프로젝트입니다'}
+                                    </p>
                                 </div>
                             </div>
-                            {selectedProject ? (
+                            {currentTargetId ? (
                                 <span style={{fontSize: '12px', color: '#10b981', fontWeight: 700, background: 'rgba(16, 185, 129, 0.1)', padding: '4px 10px', borderRadius: '6px'}}>
-                                    ✓ 프로젝트 지정됨
+                                    ✓ {targetType === 'site' ? '양산 사이트 지정됨' : '프로젝트 지정됨'}
                                 </span>
                             ) : (
                                 <span style={{fontSize: '12px', color: '#ef4444', fontWeight: 700, background: 'rgba(239, 68, 68, 0.1)', padding: '4px 10px', borderRadius: '6px'}}>
-                                    ⚠️ 상단에서 프로젝트를 먼저 선택하세요
+                                    ⚠️ 상단에서 {targetType === 'site' ? '양산 사이트를' : '프로젝트를'} 먼저 선택하세요
                                 </span>
                             )}
                         </div>
                         <div style={{padding: '12px 16px', background: 'var(--bg-card-subtle)', borderRadius: '10px', border: '1px solid var(--border-medium)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px'}}>
                             <div>
-                                <span style={{fontSize: '12px', color: 'var(--text-secondary)'}}>선택된 프로젝트: </span>
+                                <span style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
+                                    {targetType === 'site' ? '선택된 사이트: ' : '선택된 프로젝트: '}
+                                </span>
                                 <b style={{fontSize: '15px', color: 'var(--text-primary)'}}>
-                                    {currentSelectedProject ? currentSelectedProject.name : '미선택 (상단 배너에서 프로젝트를 선택하세요)'}
+                                    {currentSelectedProject ? currentSelectedProject.name : '미선택 (상단에서 선택하세요)'}
                                 </b>
                             </div>
                             {currentSelectedProject && (
                                 <div style={{fontSize: '12px', color: 'var(--text-secondary)'}}>
-                                    고객사: <b>{currentSelectedProject.customer || '-'}</b> · 사이트: <b>{currentSelectedProject.site || '-'}</b>
+                                    {targetType === 'site' ? (
+                                        <span>🏭 양산 사이트: <b>{selectedSite}</b></span>
+                                    ) : (
+                                        <span>고객사: <b>{currentSelectedProject.customer || '-'}</b> · 사이트: <b>{currentSelectedProject.site || '-'}</b></span>
+                                    )}
                                 </div>
                             )}
                         </div>
+                        {targetType === 'site' && (
+                            <div style={{marginTop: '10px', padding: '10px 14px', background: 'rgba(99, 102, 241, 0.08)', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.2)', fontSize: '12.5px', color: 'var(--text-primary)', lineHeight: '1.5'}}>
+                                💡 <b>스마트 셋업 프로젝트 분리 지원 안내:</b><br/>
+                                사이트 일보 데이터 내에 <b>HSBMA 5~8Line Set-up</b> 등 특정 셋업 프로젝트 내용이 포함되어 있는 경우, 표 붙여넣기 시 셋업 프로젝트 내용만 쏙 발췌하여 해당 프로젝트 일보로 바로 자동 전환·등록할 수 있는 선택창이 제공됩니다.
+                            </div>
+                        )}
                     </div>
 
                     {/* Step 2: 일보 입력 방법 선택 (3가지) */}
@@ -3417,10 +3537,29 @@ ${compiledText.substring(0, 30000)}
                                 type="button"
                                 className="spm-btn-apply"
                                 onClick={() => {
-                                    applyFilteredWorkMap(splitProjectModal.selectedChoice, splitProjectModal.workMap);
+                                    const chosen = splitProjectModal.selectedChoice;
+                                    applyFilteredWorkMap(chosen, splitProjectModal.workMap);
                                     if (splitProjectModal.manpowerMap) {
                                         mergeManpowerIntoExtracted(splitProjectModal.manpowerMap);
                                     }
+
+                                    // 사용자가 특정 프로젝트(예: 'HSBMA 5~8Line Set-up')를 선택한 경우:
+                                    // 등록 대상(targetType 및 selectedProject)을 해당 프로젝트로 자동 동기화/전환
+                                    if (chosen && chosen !== '__ALL__') {
+                                        const normChosen = normalizeProjectName(chosen);
+                                        const matchedProj = (projects || []).find(p => {
+                                            const pNorm = normalizeProjectName(p.name || '');
+                                            return pNorm.includes(normChosen) || normChosen.includes(pNorm) ||
+                                                   (p.manufacturingNo && chosen.toUpperCase().includes(p.manufacturingNo.toUpperCase()));
+                                        });
+
+                                        if (matchedProj) {
+                                            setTargetType('project');
+                                            setSelectedProject(matchedProj.id);
+                                            setMsg(`🎯 [${matchedProj.name}] 프로젝트로 등록 대상이 자동 전환되었으며, 해당 프로젝트 작업내용만 발췌하여 폼에 반영했습니다.`);
+                                        }
+                                    }
+
                                     setSplitProjectModal(prev => ({ ...prev, isOpen: false }));
                                 }}
                             >

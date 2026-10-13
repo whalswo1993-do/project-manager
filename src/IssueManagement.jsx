@@ -2633,11 +2633,11 @@ ${compiledText.substring(0, 30000)}
                             </div>
                         ) : projectReports.length === 0 ? (
                             <div className="empty-state">
-                                <div style={{ maxWidth: '420px', margin: '0 auto', textAlign: 'center' }}>
+                                <div style={{ maxWidth: '480px', margin: '0 auto', textAlign: 'center' }}>
                                     <span style={{ fontSize: '2.8rem', display: 'block', marginBottom: '10px' }}>📄</span>
                                     <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>등록된 일보가 없습니다</h3>
                                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '16px' }}>공사일보를 업로드하고 저장해보세요.</p>
-                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', flexWrap: 'nowrap' }}>
                                         <SmartProjectSelector 
                                             projects={projects}
                                             selectedProjectId={selectedProject} 
@@ -2648,8 +2648,14 @@ ${compiledText.substring(0, 30000)}
                                             type="button"
                                             onClick={() => fileInputRef.current?.click()}
                                             style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
                                                 padding: '6px 12px',
                                                 fontSize: '0.85rem',
+                                                fontWeight: 600,
+                                                whiteSpace: 'nowrap',
+                                                flexShrink: 0,
                                                 background: 'var(--accent)',
                                                 color: '#fff',
                                                 border: 'none',

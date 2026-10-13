@@ -1642,7 +1642,8 @@ ${allText.substring(0, 100000)}
                                 if (rawCell.length <= 20 && !(/[가-힣]{2,}/.test(rawCell) && !/(\d+(\.\d+)?\s*(명|MD|인|시간|h))/i.test(rawCell))) {
                                     const n = parseFloat(rawCell.replace(/[^0-9.]/g, ''));
                                     if (!isNaN(n) && n > 0 && n <= 100) {
-                                        md = n >= 6 ? calculateWorkedHoursToMD(n, false) : n;
+                                        const hasHourUnit = /(?:시간|\bhr?s?\b)/i.test(rawCell) && !/(?:명|인|MD|공수)/i.test(rawCell);
+                                        md = hasHourUnit ? calculateWorkedHoursToMD(n, false) : n;
                                     }
                                 }
                             }
@@ -1710,7 +1711,8 @@ ${allText.substring(0, 100000)}
                         } else {
                             const n = parseFloat(s.replace(/[^0-9.]/g, ''));
                             if (!isNaN(n) && n > 0 && n <= 100 && !(n > 30000 && n < 70000)) {
-                                if (n >= 6 && n <= 24 && !isTotalRow) {
+                                const hasHourUnit = /(?:시간|\bhr?s?\b)/i.test(s) && !/(?:명|인|MD|공수)/i.test(s);
+                                if (hasHourUnit && !isTotalRow) {
                                     md = calculateWorkedHoursToMD(n, isNight);
                                 } else {
                                     md = n;
@@ -1766,7 +1768,8 @@ ${allText.substring(0, 100000)}
                         let md = 0;
                         const n = parseFloat(s.replace(/[^0-9.]/g, ''));
                         if (!isNaN(n) && n > 0 && n <= 100 && !(n > 30000 && n < 70000)) {
-                            if (n >= 6 && n <= 24 && dk.key !== '__TOTAL__') {
+                            const hasHourUnit = /(?:시간|\bhr?s?\b)/i.test(s) && !/(?:명|인|MD|공수)/i.test(s);
+                            if (hasHourUnit && dk.key !== '__TOTAL__') {
                                 md = calculateWorkedHoursToMD(n, false);
                             } else {
                                 md = n;
@@ -1790,11 +1793,12 @@ ${allText.substring(0, 100000)}
             const totalVal = item._totalFromSheet || 0;
 
             if (deptSum > 0) {
-                if (totalVal > deptSum && (!item.personnel_count || item.personnel_count === 0)) {
-                    item.personnel_count = totalVal - deptSum;
+                if (totalVal > deptSum) {
+                    const diff = totalVal - deptSum;
+                    item.custom_depts['기타'] = (item.custom_depts['기타'] || 0) + diff;
                 }
-            } else if (totalVal > 0 && (!item.personnel_count || item.personnel_count === 0)) {
-                item.personnel_count = totalVal;
+            } else if (totalVal > 0) {
+                item.custom_depts['기타'] = totalVal;
             }
             delete item._totalFromSheet;
         });

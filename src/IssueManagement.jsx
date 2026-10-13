@@ -1014,7 +1014,7 @@ ${allText.substring(0, 100000)}
         const rawBlocks = [];
         let curHeader = null;
         let curLines = [];
-        const excludeTitles = /^(참고|비고|특이사항|이슈|이슈사항|주의|알림|공지|진행중|완료|대기|예정|취소|긴급|설비|설비기술|제어|비전|설계|소장|pm)$/i;
+        const excludeTitles = /^(참고|비고|특이사항|이슈|이슈사항|주의|알림|공지|진행중|완료|대기|예정|취소|긴급|설비|설비기술|제어|비전|설계|소장|pm|공정|st|nc|notch|stack|stk)$/i;
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -1064,24 +1064,66 @@ ${allText.substring(0, 100000)}
         let standardHeaderIdx = -1;
         let sDateCol = -1;
         let sWorkCol = -1;
+        let sProcCol = -1; // 공정 열 (ST, NC, Stacking 등)
         let sNoteCol = -1;
         let sDeptCol = -1;
 
-        for (let r = 0; r < Math.min(12, grid.length); r++) {
+        for (let r = 0; r < Math.min(15, grid.length); r++) {
             const row = grid[r];
-            let dCol = -1, wCol = -1, nCol = -1, dpCol = -1;
+            if (!row || row.length === 0) continue;
+
+            let dCol = -1;
+            let primaryWorkCol = -1;
+            let secondaryWorkCol = -1;
+            let generalContentCol = -1;
+            let procCol = -1;
+            let nCol = -1;
+            let dpCol = -1;
+
             row.forEach((cell, cIdx) => {
-                const clean = cell.replace(/\s+/g, '');
-                if (/^(일자|날짜|일시|작업일자|보고일자|공사일자|Date)$/i.test(clean) && dCol === -1) dCol = cIdx;
-                if (/^(작업내용|업무내용|공정|진행사항|작업현황|주요작업|작업상세|작업|업무|내용|금일작업|금일업무|업무실적|실적|진행내용|공정내용)$/i.test(clean) && wCol === -1) wCol = cIdx;
-                if (/특이사항|이슈|비고|건의사항|문제점|특기사항|비고란|참고|전달사항|협의사항/i.test(clean) && nCol === -1) nCol = cIdx;
-                if (/부서|팀|담당|구분|직종|소속/i.test(clean) && dpCol === -1) dpCol = cIdx;
+                const clean = String(cell || '').replace(/\s+/g, '');
+                if (!clean) return;
+
+                // 날짜 열
+                if (/^(일자|날짜|일시|작업일자|보고일자|공사일자|Date)$/i.test(clean) && dCol === -1) {
+                    dCol = cIdx;
+                }
+                // 1순위: 명확한 상세 작업내용 열
+                if (/^(작업내용|업무내용|주요작업|작업상세|상세작업내용|세부작업내용|작업내역|업무내역|금일작업|금일업무|금일진행|금일진행사항|당일작업|작업현황|진행사항|진행내용|업무실적|실적|Activity|WorkDetail|WorkDetails|Task)$/i.test(clean) && primaryWorkCol === -1) {
+                    primaryWorkCol = cIdx;
+                }
+                // 2순위: 단독 '작업', '업무'
+                else if (/^(작업|업무)$/i.test(clean) && secondaryWorkCol === -1) {
+                    secondaryWorkCol = cIdx;
+                }
+                // 3순위: 일반 내용 열
+                else if (/^(내용|공정내용)$/i.test(clean) && generalContentCol === -1) {
+                    generalContentCol = cIdx;
+                }
+                // 공정 열 (ST, NC 등 공정 약어/구분 열) - 절대 작업내용 단독 열로 오인되지 않도록 별도 분리!
+                if (/^(공정|공정명|공정구분|Process|세부공정)$/i.test(clean) && procCol === -1) {
+                    procCol = cIdx;
+                }
+                // 특이사항 / 비고
+                if (/특이사항|이슈|비고|건의사항|문제점|특기사항|비고란|참고|전달사항|협의사항|Remark/i.test(clean) && nCol === -1) {
+                    nCol = cIdx;
+                }
+                // 부서 / 팀 / 담당 / 구분 / Line
+                if (/부서|팀|담당|구분|직종|소속|Line|라인/i.test(clean) && dpCol === -1) {
+                    dpCol = cIdx;
+                }
             });
 
-            if (dCol !== -1 && wCol !== -1) {
+            const chosenWorkCol = primaryWorkCol !== -1 ? primaryWorkCol
+                : secondaryWorkCol !== -1 ? secondaryWorkCol
+                : generalContentCol !== -1 ? generalContentCol
+                : (procCol !== -1 ? procCol : -1);
+
+            if (dCol !== -1 && chosenWorkCol !== -1) {
                 standardHeaderIdx = r;
                 sDateCol = dCol;
-                sWorkCol = wCol;
+                sWorkCol = chosenWorkCol;
+                sProcCol = (procCol !== -1 && procCol !== chosenWorkCol) ? procCol : -1;
                 sNoteCol = nCol;
                 sDeptCol = dpCol;
                 break;
@@ -1112,10 +1154,34 @@ ${allText.substring(0, 100000)}
                 if (!currentDate) continue;
                 if (rowDate) lastDate = rowDate;
 
-                let workText = (sWorkCol !== -1 && row[sWorkCol]) ? row[sWorkCol].trim() : '';
-                let noteText = (sNoteCol !== -1 && row[sNoteCol]) ? row[sNoteCol].trim() : '';
-                const deptText = (sDeptCol !== -1 && row[sDeptCol]) ? row[sDeptCol].trim() : '';
-                const prefix = deptText ? `[${deptText}] ` : '';
+                let workText = (sWorkCol !== -1 && row[sWorkCol]) ? String(row[sWorkCol]).trim() : '';
+                let procText = (sProcCol !== -1 && row[sProcCol]) ? String(row[sProcCol]).trim() : '';
+                let noteText = (sNoteCol !== -1 && row[sNoteCol]) ? String(row[sNoteCol]).trim() : '';
+                let deptText = (sDeptCol !== -1 && row[sDeptCol]) ? String(row[sDeptCol]).trim() : '';
+
+                // [스마트 보정]: workText가 'ST', 'NC'처럼 3글자 이하 공정 약어이거나 비어있는데,
+                // 같은 행의 다른 열에 실제 상세 작업내용(긴 문장)이 있다면 자동 감지 및 치환!
+                if (!workText || /^(ST|NC|NOTCH|STACK|PKG|ASSEMBLY|공정|기구|제어|전장|비전)$/i.test(workText.trim())) {
+                    for (let c = 0; c < row.length; c++) {
+                        if (c === sDateCol || c === sDeptCol || c === sNoteCol || c === sProcCol) continue;
+                        const candidate = String(row[c] || '').trim();
+                        if (candidate.length >= 4 && !normalizeReportDate(candidate) && !/^\d+$/.test(candidate) && !/^(ST|NC|공정)$/i.test(candidate)) {
+                            if (!procText && workText) procText = workText;
+                            workText = candidate;
+                            break;
+                        }
+                    }
+                }
+
+                // 공정(ST 등)과 부서 태그 조합
+                let prefix = '';
+                if (deptText && procText) {
+                    prefix = `[${deptText}/${procText}] `;
+                } else if (deptText) {
+                    prefix = `[${deptText}] `;
+                } else if (procText && !new RegExp(`\\[?${procText}\\]?`, 'i').test(workText)) {
+                    prefix = `[${procText}] `;
+                }
 
                 if (!result[currentDate]) {
                     result[currentDate] = { date: currentDate, work_details: [], special_notes: [] };
@@ -1212,7 +1278,7 @@ ${allText.substring(0, 100000)}
                 for (let c = 0; c < row.length; c++) {
                     const cellVal = String(row[c] || '').trim();
                     if (!cellVal) continue;
-                    if (/^(구분|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|주요\s*진행\s*예정|명일\s*진행\s*예정|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고|주요\s*업무|일자|날짜|Activity|Remark|Today|Tomorrow|기구|제어|비전|설비|Time|Weather|Temperature|Cut off)$/i.test(cellVal.replace(/[\s\(\),:]/g, ''))) continue;
+                    if (/^(구분|공정|공정구분|세부공정|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|주요\s*진행\s*예정|명일\s*진행\s*예정|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고|주요\s*업무|일자|날짜|Activity|Remark|Today|Tomorrow|기구|제어|비전|설비|Time|Weather|Temperature|Cut off)$/i.test(cellVal.replace(/[\s\(\),:]/g, ''))) continue;
                     if (/지연항목|안해도\s*됨|불러와야\s*함|Progress Behind|Progress\s*Guide/i.test(cellVal)) continue;
                     if (/^(Time|Weather|Temperature|Sunny|Cloudy|Rainy|26℃|\d{1,2}℃|\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})$/i.test(cellVal)) continue;
                     if (/^(Project|Work Scope|Main Contractor|Daily Progress Report|Cut off)\s*:/i.test(cellVal) || /Daily Progress Report/i.test(cellVal)) continue;

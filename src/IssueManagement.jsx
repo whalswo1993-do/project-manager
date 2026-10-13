@@ -9,23 +9,7 @@ import IntegratedIssueCenter from './IntegratedIssueCenter';
 import { exportIssuesPpt } from './exportIssuePpt';
 import { fetchRemoteIssues, getRegisteredSiteNames } from './issueService';
 
-export default function IssueManagement({ projects, sites = [], role, onPermissionDenied, selectedYears, currentCustomer }) {
-    const [externalNewIssueData, setExternalNewIssueData] = useState(null);
-    const [activeIssueSection, setActiveIssueSection] = useState(() => {
-        try {
-            const saved = localStorage.getItem('pm_issue_active_section');
-            if (saved === 'daily-report') return saved;
-            if (saved && ['all', 'register', 'list'].includes(saved)) return 'daily-report';
-        } catch (e) {}
-        return 'integrated-issues';
-    });
-
-    useEffect(() => {
-        try {
-            localStorage.setItem('pm_issue_active_section', activeIssueSection);
-        } catch (e) {}
-    }, [activeIssueSection]);
-    
+export default function IssueManagement({ projects, sites = [], role, onPermissionDenied, selectedYears, currentCustomer, onNavigateToIssueCenter }) {
     const isGrade1 = role === 'grade1';
     const canEditReport = ['admin', 'grade3'].includes(role);
     const canRunAIAnalysis = ['admin', 'grade3', 'grade2'].includes(role);
@@ -117,10 +101,10 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
     }, [projects]);
 
     useEffect(() => {
-        if (activeIssueSection === 'daily-report' && selectedProject) {
+        if (selectedProject) {
             loadReports(selectedProject);
         }
-    }, [selectedProject, activeIssueSection]);
+    }, [selectedProject]);
 
     async function loadReports(projectId) {
         setMsg('');
@@ -504,7 +488,6 @@ ${allText.substring(0, 100000)}
             custom_depts: report.custom_depts || extra.custom_depts || {}
         }]);
         setCollapsedSections(prev => ({ ...prev, inputForm: false }));
-        setActiveIssueSection('all');
         setMsg(`✏️ ${report.report_date} 일보를 직접입력 폼에 불러왔습니다. 내용 수정 후 [Save All]을 눌러 저장해주세요.`);
     };
 
@@ -2185,19 +2168,19 @@ ${compiledText.substring(0, 30000)}
 
     return (
         <div className="issue-management-container">
-            {/* 프로젝트 이슈 및 일보관리 시스템 메인 헤더 카드 (틀고정) */}
+            {/* 공사일보 통합 관리 시스템 메인 헤더 카드 (틀고정) */}
             <div className="system-sticky-header">
                 <div className="system-header-row">
                     <div className="system-title-group">
-                        <div className="system-logo-icon theme-issues">
-                            📋
+                        <div className="system-logo-icon theme-reports">
+                            📝
                         </div>
                         <div className="system-title-text">
                             <h2>
-                                이슈 통합 관리 시스템 (Integrated Issue & Daily Log System)
+                                공사일보 통합 관리 시스템 (Daily Construction Report System)
                             </h2>
                             <p>
-                                스태킹/노칭 2대 공정 통합 이슈 트래킹 · 사이트(양산) 및 프로젝트 대응 이력 관리 · 공사일보 관리
+                                프로젝트별 일일 공사일보 등록 및 관리 · 투입 인원(공수) 실적 집계 · 일보 캘린더 및 부서별 공수 매트릭스
                             </p>
                         </div>
                     </div>
@@ -2206,7 +2189,7 @@ ${compiledText.substring(0, 30000)}
                         <button
                             type="button"
                             onClick={openAnalysisModal}
-                            title={!canRunAIAnalysis ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : "기간을 설정하여 이슈/공사일보 분석 PPT를 다운로드합니다"}
+                            title={!canRunAIAnalysis ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : "기간을 설정하여 공사일보 AI 종합분석 PPT를 다운로드합니다"}
                             style={{
                                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                                 padding: '7px 16px', borderRadius: '10px', border: 'none', cursor: 'pointer',
@@ -2215,13 +2198,13 @@ ${compiledText.substring(0, 30000)}
                                 boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)', whiteSpace: 'nowrap'
                             }}
                         >
-                            📊 이슈 통합분석 PPT {!canRunAIAnalysis && "🔒"}
+                            📊 공사일보 분석 PPT {!canRunAIAnalysis && "🔒"}
                         </button>
                         <button
                             type="button"
                             onClick={() => setAllSections(true)}
                             className="system-toggle-all-btn"
-                            title="이슈 및 일보관리의 모든 소항목 펼치기"
+                            title="공사일보 관리의 모든 소항목 펼치기"
                         >
                             ▾ 전체 펼치기
                         </button>
@@ -2229,53 +2212,18 @@ ${compiledText.substring(0, 30000)}
                             type="button"
                             onClick={() => setAllSections(false)}
                             className="system-toggle-all-btn"
-                            title="이슈 및 일보관리의 모든 소항목 접기"
+                            title="공사일보 관리의 모든 소항목 접기"
                         >
                             ▴ 전체 접기
                         </button>
                     </div>
                 </div>
-
-                {/* 소항목 필터 네비게이션 버튼 바 */}
-                <div className="system-sub-nav">
-                    <button
-                        type="button"
-                        className={`system-sub-btn ${activeIssueSection === 'integrated-issues' ? 'active' : ''}`}
-                        onClick={() => setActiveIssueSection('integrated-issues')}
-                        style={{ fontWeight: activeIssueSection === 'integrated-issues' ? 800 : 700 }}
-                    >
-                        🚨 이슈 목록 / 현황
-                    </button>
-                    <button
-                        type="button"
-                        className={`system-sub-btn ${activeIssueSection === 'daily-report' ? 'active' : ''}`}
-                        onClick={() => {
-                            setActiveIssueSection('daily-report');
-                            setCollapsedSections(prev => ({ ...prev, inputForm: false, upload: false }));
-                        }}
-                        style={{ fontWeight: activeIssueSection === 'daily-report' ? 800 : 700 }}
-                    >
-                        📝 공사일보 관리
-                    </button>
-                </div>
             </div>
 
             <input type="file" ref={fileInputRef} onChange={(e) => handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, .csv" style={{display: 'none'}} />
 
-            {activeIssueSection === 'integrated-issues' ? (
-                <IntegratedIssueCenter
-                    projects={projects}
-                    sites={sites}
-                    role={role}
-                    currentCustomer={currentCustomer}
-                    onPermissionDenied={onPermissionDenied}
-                    externalNewIssueData={externalNewIssueData}
-                    onClearExternalData={() => setExternalNewIssueData(null)}
-                />
-            ) : (
-                <div className="main-container">
-                    {(activeIssueSection === 'daily-report' || activeIssueSection === 'all' || activeIssueSection === 'register') && (
-                        <aside className="sidebar">
+            <div className="main-container">
+                <aside className="sidebar">
                         {!canEditReport && (
                             <div style={{background: 'var(--warning-bg)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '10px', padding: '10px 14px', marginBottom: '14px', fontSize: '12px', color: 'var(--warning)', lineHeight: '1.5'}}>
                                 🔒 <b>{isGrade1 ? 'Grade 1 (조회 전용)' : 'Grade 2 (부서 담당자)'} 안내</b><br/>
@@ -2665,9 +2613,7 @@ ${compiledText.substring(0, 30000)}
                             )}
                         </div>
                     </aside>
-                    )}
 
-                    {(activeIssueSection === 'daily-report' || activeIssueSection === 'all' || activeIssueSection === 'list') && (
                     <div className="content-area">
                         {!selectedProject ? (
                             <div className="empty-state">
@@ -2841,7 +2787,7 @@ ${compiledText.substring(0, 30000)}
                                                                                 e.stopPropagation();
                                                                                 const note = report.special_notes || report.issues;
                                                                                 const currentProj = (projects || []).find(p => String(p.id) === String(selectedProject));
-                                                                                setExternalNewIssueData({
+                                                                                const payload = {
                                                                                     issueType: 'project',
                                                                                     projectId: selectedProject,
                                                                                     projectName: currentProj?.name || '',
@@ -2851,8 +2797,10 @@ ${compiledText.substring(0, 30000)}
                                                                                     title: note.split('\n')[0].replace(/^[-*•\d\.\s]+/, '').slice(0, 45) || '일보 특이사항 이슈',
                                                                                     symptom: note,
                                                                                     processType: /스태킹|스택|stack/i.test(note) ? 'stacking' : /노칭|notch/i.test(note) ? 'notching' : 'stacking'
-                                                                                });
-                                                                                setActiveIssueSection('integrated-issues');
+                                                                                };
+                                                                                if (onNavigateToIssueCenter) {
+                                                                                    onNavigateToIssueCenter(payload);
+                                                                                }
                                                                             }}
                                                                             style={{
                                                                                 background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
@@ -2905,9 +2853,7 @@ ${compiledText.substring(0, 30000)}
                             </div>
                         )}
                     </div>
-                    )}
                 </div>
-            )}
 
             {/* 이슈 통합분석 PPT 팝업 모달 */}
             {isAnalysisModalOpen && (

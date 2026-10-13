@@ -6,6 +6,7 @@ import { exportGanttReport, exportCalendarReport, exportComprehensiveReport } fr
 import IntegratedExportModal from "./IntegratedExportModal";
 import VisionSPC from "./VisionSPC";
 import IssueManagement from "./IssueManagement";
+import IntegratedIssueCenter from "./IntegratedIssueCenter";
 import Quotations from "./Quotations";
 import ManpowerManagement, { ProjectManpowerModal } from "./ManpowerManagement";
 import PasswordChangeModal from "./PasswordChangeModal";
@@ -522,7 +523,8 @@ export default function App() {
   const [newSite, setNewSite] = useState("");
   const [newPerson, setNewPerson] = useState("");
   const [newDept, setNewDept] = useState("소장");
-  const VALID_VIEWS = ["projects", "manpower", "issues", "quotations", "vision-spc"];
+  const VALID_VIEWS = ["projects", "manpower", "issues", "daily-reports", "quotations", "vision-spc"];
+  const [externalNewIssueData, setExternalNewIssueData] = useState(null);
 
   const [currentView, setCurrentView] = useState(() => {
     try {
@@ -2195,6 +2197,14 @@ JSON 출력 예시:
             </button>
             <button
               type="button"
+              className={`nav-tab-btn tab-daily-reports ${currentView === "daily-reports" ? "active" : ""}`}
+              onClick={() => switchView("daily-reports")}
+            >
+              <span className="nav-tab-icon">📝</span>
+              <span className="nav-tab-label">공사일보 통합 관리</span>
+            </button>
+            <button
+              type="button"
               className={`nav-tab-btn tab-quotations ${currentView === "quotations" ? "active" : ""} ${!canAccessQuotations ? "restricted" : ""}`}
               onClick={() => {
                 if (!canAccessQuotations) return showPermissionModal("견적 조회");
@@ -2389,7 +2399,32 @@ JSON 출력 예시:
       {currentView === "vision-spc" ? (
         <ErrorBoundary><VisionSPC currentCustomer={currentCustomer} /></ErrorBoundary>
       ) : currentView === "issues" ? (
-        <IssueManagement projects={currentCustomerProjects} sites={sites} role={role} onPermissionDenied={showPermissionModal} selectedYears={selectedYears} currentCustomer={currentCustomer} />
+        <ErrorBoundary>
+          <IntegratedIssueCenter
+            projects={currentCustomerProjects}
+            sites={sites}
+            role={role}
+            currentCustomer={currentCustomer}
+            onPermissionDenied={showPermissionModal}
+            externalNewIssueData={externalNewIssueData}
+            onClearExternalData={() => setExternalNewIssueData(null)}
+          />
+        </ErrorBoundary>
+      ) : currentView === "daily-reports" ? (
+        <ErrorBoundary>
+          <IssueManagement
+            projects={currentCustomerProjects}
+            sites={sites}
+            role={role}
+            onPermissionDenied={showPermissionModal}
+            selectedYears={selectedYears}
+            currentCustomer={currentCustomer}
+            onNavigateToIssueCenter={(issueData) => {
+              setExternalNewIssueData(issueData);
+              switchView("issues");
+            }}
+          />
+        </ErrorBoundary>
       ) : currentView === "quotations" ? (
         <Quotations projects={currentCustomerProjects} session={session} role={role} onPermissionDenied={showPermissionModal} currentCustomer={currentCustomer} />
       ) : currentView === "manpower" ? (

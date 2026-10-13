@@ -270,7 +270,54 @@ export default function IntegratedIssueCenter({
 
   return (
     <div className="integrated-issue-center">
-      {/* 1. KPI 카드 그리드 (중복 헤더 박스를 제거하고 바로 배치하여 화면 개방감 극대화) */}
+      {/* 이슈 통합 관리 시스템 메인 헤더 카드 (틀고정) */}
+      <div className="system-sticky-header">
+        <div className="system-header-row">
+          <div className="system-title-group">
+            <div className="system-logo-icon theme-issues">
+              🚨
+            </div>
+            <div className="system-title-text">
+              <h2>
+                이슈 통합 관리 시스템 (Integrated Issue Management System)
+              </h2>
+              <p>
+                스태킹/노칭 2대 공정 통합 이슈 트래킹 · 사이트(양산/법인) 및 프로젝트별 현황 분석 · 재발 방지 지식베이스
+              </p>
+            </div>
+          </div>
+
+          <div className="system-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              className="iic-btn iic-btn-excel-prominent"
+              onClick={handleExportExcel}
+              style={{ padding: '7px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: 800, whiteSpace: 'nowrap' }}
+              title="현재 필터링된 이슈 목록 및 상세 조치 이력을 고품질 서식 엑셀 보고서로 다운로드합니다"
+            >
+              📊 엑셀 보고서 다운로드
+            </button>
+            <button
+              type="button"
+              className="iic-btn iic-btn-new-prominent"
+              onClick={() => {
+                if (!canEdit) {
+                  if (onPermissionDenied) onPermissionDenied('이슈 등록');
+                  else alert('등록 권한이 없습니다.');
+                  return;
+                }
+                openCreateModal();
+              }}
+              style={{ padding: '7px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: 800, whiteSpace: 'nowrap' }}
+              title={canEdit ? "신규 이슈를 등록합니다" : "Grade 2 이상 권한이 필요합니다"}
+            >
+              ➕ 새 이슈 등록 {!canEdit && "🔒"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 1. KPI 카드 그리드 */}
       <div className="iic-kpi-grid">
         <div className="iic-kpi-card">
           <div className="iic-kpi-label">전체 등록 이슈</div>

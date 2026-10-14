@@ -1,8 +1,22 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import './Quotations.css';
 import { supabase } from './supabase';
-import { generateAIText } from './ai';
 import * as XLSX from 'xlsx';
+import { analyzeWorkbook, analyzePastedText, buildQuotations } from './quotationParser';
+
+// 품목 구분 (견적 라인 대분류 + 상세 리스트 품목 구분). 화면 필터 순서이기도 하다.
+const CATEGORY_ORDER = ['가공품', '시장품', '잡자재', '기구 SET', '인건비', '경비', '프로그램', '차감', '기타'];
+const CATEGORY_ICON = { '가공품': '🛠️', '시장품': '🛒', '잡자재': '🔩', '기구 SET': '📦', '인건비': '👷', '경비': '✈️', '프로그램': '💻', '차감': '➖', '기타': '⚙️' };
+function normalizeCategory(raw) {
+    const c = String(raw || '').trim();
+    if (/가공/.test(c)) return '가공품';
+    if (/구매|시장|상용/.test(c)) return '시장품';
+    if (CATEGORY_ORDER.includes(c)) return c;
+    return '기타';
+}
+const categoryBadgeClass = (cat) => (cat === '가공품' ? 'process' : cat === '시장품' ? 'purchase' : 'other');
+const fmtKRW = (n) => (n === null || n === undefined || n === '' ? '-' : Number(n).toLocaleString('ko-KR', { maximumFractionDigits: 2 }));
+const revisionNumber = (rev) => { const m = String(rev || '').match(/(\d+)/); return m ? Number(m[1]) : -1; };
 
 export default function Quotations(props) {
     const canManage = ['admin', 'grade3'].includes(props.role);
@@ -33,6 +47,128 @@ function QuotationsAccessDenied() {
     );
 }
 
+// 저장 전 미리보기: 분석된 품목·단가와 정합성 검증 결과를 보여주고, 제목을 고친 뒤 저장한다
+function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, previewOpen, setPreviewOpen, onSave, onReset, busy, canManage }) {
+    const chip = (text, tone = 'neutral') => {
+        const tones = {
+            neutral: { background: 'var(--bg-card-subtle)', color: 'var(--text-secondary)' },
+            ok: { background: '#dcfce7', color: '#166534' },
+            error: { background: '#fee2e2', color: '#991b1b' },
+            warn: { background: '#fef3c7', color: '#92400e' },
+        };
+        return <span style={{ ...tones[tone], borderRadius: '999px', padding: '2px 10px', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap' }}>{text}</span>;
+    };
+    const sources = draft.analyses.map(a => `${a.sheetName} (${a.kind === 'quotation' ? '견적서' : '상세 리스트'})`);
+
+    return (
+        <div style={{ marginTop: '14px', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '14px 16px', background: 'var(--bg-card, #fff)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                <div>
+                    <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text-primary)' }}>📋 저장 전 미리보기</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                        {draft.fileName ? `파일: ${draft.fileName}` : '표 붙여넣기'} · 인식한 시트: {sources.join(', ')} · 원본 파일은 서버에 저장하지 않습니다
+                    </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button type="button" onClick={onReset} disabled={busy} style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-card-subtle)', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                        ✖ 취소
+                    </button>
+                    <button type="button" onClick={onSave} disabled={busy || !canManage} style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', background: busy ? '#94a3b8' : 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                        {busy ? '저장 중...' : `💾 ${preview.quotations.length}건 저장`}
+                    </button>
+                </div>
+            </div>
+
+            {preview.warnings.map((w, i) => <div key={i} style={{ fontSize: '12px', color: '#92400e', marginBottom: '6px' }}>⚠ {w}</div>)}
+
+            {preview.quotations.map((q, qi) => {
+                const s = q.summary;
+                const open = !!previewOpen[qi];
+                const catCounts = {};
+                q.items.forEach(it => { const c = normalizeCategory(it.item_category); catCounts[c] = (catCounts[c] || 0) + 1; });
+                return (
+                    <div key={qi} style={{ borderTop: qi ? '1px dashed var(--border-subtle)' : 'none', paddingTop: qi ? '12px' : 0, marginTop: qi ? '12px' : 0 }}>
+                        <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                            견적조회 제목 (견적서 내용의 프로젝트명 — 필요하면 수정)
+                        </label>
+                        <input
+                            type="text"
+                            value={titleOverrides[qi] ?? q.title}
+                            onChange={e => setTitleOverrides(prev => ({ ...prev, [qi]: e.target.value }))}
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '14px', fontWeight: 700 }}
+                        />
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                            {q.quote_no && chip(`견적번호 ${q.quote_no}`)}
+                            {q.revision && chip(`리비전 ${q.revision}`)}
+                            {q.quote_date && chip(`견적일 ${q.quote_date}`)}
+                            {chip(`견적 라인 ${s.lines}`)}
+                            {chip(`상세 품목 ${s.details}`)}
+                            {s.blocks > 0 && chip(`상세↔견적 단가 연결 ${s.linkedBlocks}/${s.blocks}`, s.linkedBlocks === s.blocks ? 'ok' : 'warn')}
+                            {s.errors ? chip(`✗ 검증 오류 ${s.errors}`, 'error') : chip('✓ 수량×단가=금액 검증 통과', 'ok')}
+                            {s.warnings > 0 && chip(`△ 경고 ${s.warnings}`, 'warn')}
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                            {CATEGORY_ORDER.filter(c => catCounts[c]).map(c => <span key={c} style={{ fontSize: '11.5px', color: 'var(--text-tertiary)' }}>{CATEGORY_ICON[c]} {c} {catCounts[c]}</span>)}
+                        </div>
+                        {q.checks.length > 0 && (
+                            <ul style={{ margin: '8px 0 0', paddingLeft: '18px', fontSize: '12px' }}>
+                                {q.checks.slice(0, 12).map((c, i) => (
+                                    <li key={i} style={{ color: c.level === 'error' ? '#b91c1c' : '#92400e' }}>{c.message}{c.row ? ` (행 ${c.row})` : ''}</li>
+                                ))}
+                            </ul>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => setPreviewOpen(prev => ({ ...prev, [qi]: !prev[qi] }))}
+                            style={{ marginTop: '8px', background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: 0, fontSize: '12.5px', fontWeight: 600 }}
+                        >
+                            {open ? '▴ 품목 접기' : `▾ 품목 ${q.items.length}개 보기`}
+                        </button>
+                        {open && (
+                            <div style={{ overflowX: 'auto', marginTop: '6px', maxHeight: '420px', overflowY: 'auto' }}>
+                                <table className="data-table nested">
+                                    <thead>
+                                        <tr>
+                                            <th>구분</th>
+                                            <th>대분류 / 유닛</th>
+                                            <th>품목명</th>
+                                            <th>메이커/재질 · 규격</th>
+                                            <th>수량</th>
+                                            <th className="money-cell">단가 (₩)</th>
+                                            <th className="money-cell">금액 (₩)</th>
+                                            <th>검증</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {q.items.map((it, i) => {
+                                            const cat = normalizeCategory(it.item_category);
+                                            return (
+                                                <tr key={i} style={it.source === 'detail' ? { background: 'var(--bg-card-subtle)' } : undefined}>
+                                                    <td><span className={`badge-category cat-${categoryBadgeClass(cat)}`}>{cat}</span></td>
+                                                    <td style={{ fontSize: '12px' }}>{it.unit_name || it.section || '-'}</td>
+                                                    <td>
+                                                        {it.source === 'detail' ? '· ' : ''}{it.item_name}
+                                                        {it.parent_item && <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>⤷ {it.parent_item}</div>}
+                                                    </td>
+                                                    <td style={{ fontSize: '12px' }}>{[it.maker, it.spec].filter(Boolean).join(' · ') || '-'}</td>
+                                                    <td>{it.quantity}{it.uom ? ` ${it.uom}` : ''}</td>
+                                                    <td className="money-cell">{fmtKRW(it.unit_price)}</td>
+                                                    <td className="money-cell">{fmtKRW(it.total_price)}</td>
+                                                    <td style={{ textAlign: 'center' }}>{it.check_status === 'ok' ? '✓' : it.check_status === 'mismatch' ? <span style={{ color: '#dc2626' }}>✗</span> : '–'}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer = "SK on" }) {
     const canManage = ['admin', 'grade3'].includes(role);
     const notifyPermission = (feature) => {
@@ -45,6 +181,10 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
 
     const [isExtracting, setIsExtracting] = useState(false);
     const [selectedProjectInput, setSelectedProjectInput] = useState('');
+    // 저장 전 미리보기: 파일 1개의 시트들 또는 시트별 붙여넣기 결과를 모은다 (원본 파일은 보관하지 않는다)
+    const [draft, setDraft] = useState(null); // { fileName, analyses: [...] }
+    const [titleOverrides, setTitleOverrides] = useState({});
+    const [previewOpen, setPreviewOpen] = useState({});
     const [quotations, setQuotations] = useState([]);
     const [quotationItems, setQuotationItems] = useState([]);
     
@@ -152,219 +292,174 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
         };
     }, []);
 
-    const determineCategory = (text) => {
-        const lower = String(text).toLowerCase();
-        if (/개조|개발|이설|비용|용역/i.test(lower)) return '용역/기타';
-        if (/스틸|al|알루미늄|acetal|아세탈|peak|피크|도면/i.test(lower)) return '가공품';
-        return '구매품';
+    const preview = useMemo(() => {
+        if (!draft || !draft.analyses.length) return null;
+        return buildQuotations(draft.analyses, { fileName: draft.fileName });
+    }, [draft]);
+
+    const resetDraft = () => {
+        setDraft(null);
+        setTitleOverrides({});
+        setPreviewOpen({});
+        if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
-    const handleFileUpload = async (fileOrText) => {
-        if (!fileOrText) return;
-        if (!selectedProjectInput.trim()) {
-            setMsg("업로드하기 전에 견적서를 연결할 프로젝트명을 입력하거나 선택해주세요.");
+    // 엑셀 파일 첨부: 브라우저 안에서만 읽고 분석한다. 원본 파일은 서버에 올리거나 보관하지 않는다.
+    const handleFileSelect = async (file) => {
+        if (!file) return;
+        if (!/\.(xlsx|xlsm|xls)$/i.test(file.name)) {
+            setMsg(<span style={{ color: '#ef4444' }}>엑셀 견적서(.xlsx / .xls)만 분석할 수 있습니다. PDF·이미지는 표를 엑셀에서 복사해 붙여넣어 주세요.</span>);
+            if (fileInputRef.current) fileInputRef.current.value = "";
             return;
         }
+        setIsExtracting(true);
+        try {
+            const wb = XLSX.read(await file.arrayBuffer(), { cellDates: false });
+            const analyses = analyzeWorkbook(XLSX, wb);
+            if (!analyses.length) throw new Error("견적서 시트(Item / Details / Unit Price) 또는 상세 리스트 시트(Item / Q'ty / Unit Price)를 찾지 못했습니다.");
+            setDraft({ fileName: file.name, analyses });
+            setTitleOverrides({});
+            setPreviewOpen({});
+            setMsg(`'${file.name}' 분석 완료 — 아래 미리보기에서 품목과 검증 결과를 확인한 뒤 저장하세요.`);
+        } catch (error) {
+            console.error("Quotation parse error:", error);
+            setMsg(<span style={{ color: '#ef4444' }}>분석 실패: {error.message}</span>);
+        } finally {
+            setIsExtracting(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+
+    // 표 붙여넣기: 시트 하나씩 붙여넣으면 미리보기에 차례로 쌓인다 (견적 시트 + 상세 리스트 시트)
+    const handlePastedText = (text) => {
+        const n = (draft?.analyses.length || 0) + 1;
+        const analysis = analyzePastedText(text, `붙여넣기 ${n}`);
+        if (analysis.kind === 'unknown') {
+            setMsg(<span style={{ color: '#ef4444' }}>붙여넣은 표에서 수량·단가·금액 열을 찾지 못했습니다. 품목 행이 포함되도록 드래그해 주세요.</span>);
+            return;
+        }
+        setDraft(prev => ({ fileName: prev?.fileName || '', analyses: [...(prev?.analyses || []), analysis] }));
+        const kindLabel = analysis.kind === 'quotation' ? '견적서 시트' : '상세 리스트 시트';
+        const count = analysis.kind === 'quotation' ? analysis.lines.length : analysis.items.length;
+        setMsg(`붙여넣기 ${n}: ${kindLabel}로 인식 (${count}개 품목). 다른 시트도 이어서 붙여넣을 수 있습니다.`);
+    };
+
+    const saveOneQuotation = async (q, title, projectId, projectName) => {
+        const header = {
+            project_id: projectId,
+            project_name: projectName,
+            title,
+            total_amount: q.total_amount || 0,
+            quote_no: q.quote_no || null,
+            revision: q.revision || null,
+            quote_date: q.quote_date || null,
+            rfq_no: q.rfq_no || null,
+            client: q.client || null,
+            source_name: draft?.fileName || '표 붙여넣기',
+            sheet_names: q.sheet_names,
+            parse_summary: { ...q.summary, checks: q.checks.slice(0, 50) },
+        };
+
+        // 같은 견적번호+제목(없으면 같은 프로젝트+제목)이면 새 리비전으로 교체한다
+        let query = supabase.from('quotations').select('id, revision');
+        if (q.quote_no) query = query.eq('quote_no', q.quote_no).eq('title', title);
+        else if (projectId) query = query.eq('project_id', projectId).eq('title', title);
+        else query = query.eq('project_name', projectName).eq('title', title);
+        const { data: existing, error: findErr } = await query;
+        if (findErr) throw findErr;
+
+        let quotationId;
+        if (existing && existing.length) {
+            const newer = existing.find(e => revisionNumber(e.revision) > revisionNumber(q.revision));
+            if (newer && !window.confirm(`'${title}'은(는) 이미 더 최신 리비전(${newer.revision})으로 등록되어 있습니다.\n${q.revision || '현재 데이터'}로 덮어쓸까요?`)) {
+                return { skipped: true };
+            }
+            quotationId = existing[0].id;
+            const extraIds = existing.slice(1).map(e => e.id);
+            if (extraIds.length) {
+                await supabase.from('quotation_items').delete().in('quotation_id', extraIds);
+                await supabase.from('quotations').delete().in('id', extraIds);
+            }
+            const { error: upErr } = await supabase.from('quotations').update({ ...header, created_at: new Date().toISOString() }).eq('id', quotationId);
+            if (upErr) throw upErr;
+            const { error: delErr } = await supabase.from('quotation_items').delete().eq('quotation_id', quotationId);
+            if (delErr) throw delErr;
+        } else {
+            let payload = { customer: currentCustomer, ...header };
+            let { data: created, error: insErr } = await supabase.from('quotations').insert(payload).select().single();
+            if (insErr && String(insErr.message || '').toLowerCase().includes('customer')) {
+                delete payload.customer;
+                const retry = await supabase.from('quotations').insert(payload).select().single();
+                created = retry.data;
+                insErr = retry.error;
+            }
+            if (insErr) throw insErr;
+            quotationId = created.id;
+        }
+
+        const rows = q.items.map(it => ({
+            quotation_id: quotationId,
+            item_name: it.item_name,
+            unit_name: it.unit_name || '',
+            item_category: it.item_category,
+            quantity: it.quantity,
+            unit_price: it.unit_price,
+            total_price: it.total_price,
+            section: it.section || null,
+            parent_item: it.parent_item || null,
+            maker: it.maker || null,
+            spec: it.spec || null,
+            uom: it.uom || null,
+            remark: it.remark || null,
+            source: it.source,
+            line_no: it.line_no,
+            check_status: it.check_status,
+        }));
+        for (let i = 0; i < rows.length; i += 500) {
+            const { error: iErr } = await supabase.from('quotation_items').insert(rows.slice(i, i + 500));
+            if (iErr) throw iErr;
+        }
+        return { count: rows.length, replaced: !!(existing && existing.length) };
+    };
+
+    const handleSaveDraft = async () => {
+        if (!canManage) return notifyPermission('견적서 등록');
+        if (!preview || !preview.quotations.length) return;
+        if (!selectedProjectInput.trim()) {
+            setMsg(<span style={{ color: '#ef4444' }}>저장하기 전에 견적서를 연결할 프로젝트명을 입력하거나 선택해주세요.</span>);
+            return;
+        }
+        const errorCount = preview.quotations.reduce((s, q) => s + q.summary.errors, 0);
+        if (errorCount && !window.confirm(`검증 오류가 ${errorCount}건 있습니다 (수량×단가≠금액 등).\n원본 견적서를 확인하지 않고 그대로 저장할까요?`)) return;
+
+        const matchedProject = projects.find(p => p.name === selectedProjectInput.trim() || p.manufacturing_no === selectedProjectInput.trim());
+        const projectId = matchedProject ? matchedProject.id : null;
+        const projectName = matchedProject ? null : selectedProjectInput.trim();
 
         setIsExtracting(true);
-        setMsg("견적서를 분석 중입니다...");
-
         try {
-            let extractedData = { title: typeof fileOrText === 'string' ? '클립보드 붙여넣기' : fileOrText.name, items: [] };
-
-            if (typeof fileOrText === 'string') {
-                const prompt = `당신은 견적서(Quotation) 데이터를 분석하는 전문가입니다. 첨부된 엑셀 복사 데이터를 분석하여 아래 JSON 구조로만 데이터를 추출하세요.
-요구사항:
-1. title: 문서의 제목(알 수 없으면 "클립보드 견적 데이터"로 입력)
-2. items: 배열 형태. 품목명(item_name), 유닛명(unit_name), 품목구분(item_category), 수량(quantity), 단가(unit_price), 총액(total_price)
-유닛명(unit_name) 규칙:
- - 어떤 유닛/파트에 들어가는 부품인지 명시되어 있다면 해당 유닛명을 추출, 없으면 빈 문자열("")
-품목구분(item_category) 규칙:
- - Maker가 명시되어 있는 상용품은 "구매품"
- - 스틸계열, AL계열, Acetal, Peak재질, 도면참조 등 제작/가공품은 "가공품"
- - 개발, 이설 관련 비용은 "용역/기타"
- 
-주의: JSON 이외의 어떠한 설명이나 마크다운을 포함하지 말고 순수 JSON만 응답하세요. 숫자는 콤마 없이 입력하세요.
-출력 예시:
-{
-  "title": "클립보드 견적 데이터",
-  "items": [
-    { "item_name": "도면참조 Base Plate", "unit_name": "Stacking부", "item_category": "가공품", "quantity": 2, "unit_price": 5000000, "total_price": 10000000 }
-  ]
-}`;
-                
-                let responseText = (await generateAIText([
-                    { text: fileOrText },
-                    prompt
-                ], { notConfiguredMessage: "AI 분석용 API 키(Gemini 또는 Claude)가 설정되지 않았습니다." })).trim();
-                responseText = responseText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-                const json = JSON.parse(responseText);
-
-                extractedData.title = json.title || '클립보드 데이터';
-                extractedData.items = json.items || [];
-            } else if (fileOrText.name.match(/\.(xlsx|xls)$/i)) {
-                const data = await fileOrText.arrayBuffer();
-                const wb = XLSX.read(data, { cellDates: false });
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-                
-                rows.forEach(row => {
-                    if (row.length >= 4) {
-                        const strRow = row.join(' ').toLowerCase();
-                        if (!strRow.includes('합계') && !strRow.includes('품명')) {
-                            const nums = row.map(v => parseFloat(v)).filter(n => !isNaN(n));
-                            const nameIdx = row.findIndex(v => typeof v === 'string' && v.trim().length > 1);
-                            
-                            if (nameIdx !== -1 && nums.length >= 2) {
-                                extractedData.items.push({
-                                    item_name: row[nameIdx],
-                                    item_category: determineCategory(strRow),
-                                    quantity: nums[0],
-                                    unit_price: nums[1],
-                                    total_price: nums.length > 2 ? nums[2] : nums[0] * nums[1]
-                                });
-                            }
-                        }
-                    }
-                });
-            } else if (fileOrText.type.startsWith("image/") || fileOrText.name.match(/\.(pdf)$/i)) {
-                const reader = new FileReader();
-                const b64 = await new Promise(res => {
-                    reader.onload = () => res(reader.result);
-                    reader.readAsDataURL(fileOrText);
-                });
-                const b64d = b64.split(",")[1];
-                
-                const prompt = `당신은 견적서(Quotation) 데이터를 분석하는 전문가입니다. 첨부된 이미지나 문서를 분석하여 아래 JSON 구조로만 데이터를 추출하세요.
-요구사항:
-1. title: 견적서의 제목이나 발행처 이름
-2. items: 배열 형태. 품목명(item_name), 유닛명(unit_name), 품목구분(item_category), 수량(quantity), 단가(unit_price), 총액(total_price)
-유닛명(unit_name) 규칙:
- - 어떤 유닛/파트에 들어가는 부품인지 명시되어 있다면 해당 유닛명을 추출, 없으면 빈 문자열("")
-품목구분(item_category) 규칙:
- - Maker가 명시되어 있는 상용품은 "구매품"
- - 스틸계열, AL계열, Acetal, Peak재질, 도면참조 등 제작/가공품은 "가공품"
- - 개발, 이설 관련 비용은 "용역/기타"
- 
-주의: JSON 이외의 어떠한 설명이나 마크다운을 포함하지 말고 순수 JSON만 응답하세요. 숫자는 콤마 없이 입력하세요.
-출력 예시:
-{
-  "title": "부품 견적서",
-  "items": [
-    { "item_name": "도면참조 Base Plate", "unit_name": "Stacking부", "item_category": "가공품", "quantity": 2, "unit_price": 5000000, "total_price": 10000000 },
-    { "item_name": "SMC 실린더", "unit_name": "Lifter", "item_category": "구매품", "quantity": 4, "unit_price": 300000, "total_price": 1200000 }
-  ]
-}`;
-                
-                let responseText = (await generateAIText([
-                    { inlineData: { data: b64d, mimeType: fileOrText.type } },
-                    prompt
-                ], { notConfiguredMessage: "AI 분석용 API 키(Gemini 또는 Claude)가 설정되지 않았습니다." })).trim();
-                responseText = responseText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
-                const json = JSON.parse(responseText);
-
-                extractedData.title = json.title || fileOrText.name;
-                extractedData.items = json.items || [];
-            } else {
-                throw new Error("지원하지 않는 파일 형식입니다. (Excel, PDF, 이미지, 클립보드 텍스트)");
+            const results = [];
+            for (let i = 0; i < preview.quotations.length; i++) {
+                const q = preview.quotations[i];
+                const title = (titleOverrides[i] ?? q.title).trim() || q.title;
+                results.push({ title, ...(await saveOneQuotation(q, title, projectId, projectName)) });
             }
-
-            if (extractedData.items.length === 0) {
-                throw new Error("파일에서 품목 데이터를 추출하지 못했습니다.");
-            }
-
-            const matchedProject = projects.find(p => p.name === selectedProjectInput.trim() || p.manufacturing_no === selectedProjectInput.trim());
-            const projectId = matchedProject ? matchedProject.id : null;
-            const projectName = matchedProject ? null : selectedProjectInput.trim();
-
-            const totalAmount = extractedData.items.reduce((sum, item) => sum + (parseFloat(item.total_price) || 0), 0);
-            
-            let targetQuotId;
-            let existingQuots = [];
-
-            if (projectId) {
-                const { data } = await supabase.from('quotations').select('id').eq('project_id', projectId).eq('title', extractedData.title);
-                existingQuots = data || [];
-            } else if (projectName) {
-                const { data } = await supabase.from('quotations').select('id').eq('project_name', projectName).eq('title', extractedData.title);
-                existingQuots = data || [];
-            }
-
-            if (existingQuots.length > 0) {
-                targetQuotId = existingQuots[0].id;
-                
-                if (existingQuots.length > 1) {
-                    const extraIds = existingQuots.slice(1).map(q => q.id);
-                    await supabase.from('quotation_items').delete().in('quotation_id', extraIds);
-                    await supabase.from('quotations').delete().in('id', extraIds);
-                }
-
-                const { error: upErr } = await supabase.from('quotations').update({
-                    title: extractedData.title,
-                    total_amount: totalAmount,
-                    created_at: new Date().toISOString()
-                }).eq('id', targetQuotId);
-                if (upErr) throw upErr;
-                
-                const { error: delErr } = await supabase.from('quotation_items').delete().eq('quotation_id', targetQuotId);
-                if (delErr) throw delErr;
-            } else {
-                let quotPayload = {
-                    customer: currentCustomer,
-                    project_id: projectId,
-                    project_name: projectName,
-                    title: extractedData.title,
-                    total_amount: totalAmount
-                };
-                let { data: newQuot, error: qErr } = await supabase.from('quotations').insert(quotPayload).select().single();
-                if (qErr && String(qErr.message || '').toLowerCase().includes('customer')) {
-                    delete quotPayload.customer;
-                    const retry = await supabase.from('quotations').insert(quotPayload).select().single();
-                    newQuot = retry.data;
-                    qErr = retry.error;
-                }
-                if (qErr) throw qErr;
-                targetQuotId = newQuot.id;
-            }
-
-            const itemsToInsert = extractedData.items.map(item => ({
-                quotation_id: targetQuotId,
-                item_name: item.item_name,
-                unit_name: item.unit_name || '',
-                item_category: item.item_category || '구매품',
-                quantity: parseFloat(item.quantity) || 1,
-                unit_price: parseFloat(item.unit_price) || 0,
-                total_price: parseFloat(item.total_price) || 0
-            }));
-
-            const { error: iErr } = await supabase.from('quotation_items').insert(itemsToInsert);
-            if (iErr) throw iErr;
-
-            setMsg(`견적서 저장 완료! 총 ${itemsToInsert.length}개의 품목이 추출되었습니다.`);
+            const saved = results.filter(r => !r.skipped);
+            setMsg(`견적서 ${saved.length}건 저장 완료 (품목 ${saved.reduce((s, r) => s + r.count, 0)}개${saved.some(r => r.replaced) ? ', 기존 견적 교체 포함' : ''}). 원본 파일은 보관하지 않습니다.`);
+            resetDraft();
             loadQuotationsData();
-            
         } catch (error) {
-            console.error("Upload Error:", error);
-            let userFriendlyMsg = "견적서를 분석하거나 저장하는 도중 알 수 없는 오류가 발생했습니다. 지속되면 담당자에게 문의해주세요.";
-            if (error.message.includes("429")) {
-                userFriendlyMsg = "AI 분석 요청량이 폭주하여 일시적으로 제한되었습니다. 약 1~2분 뒤에 다시 시도해주시고, 계속 안 될 경우 담당자에게 문의해주세요.";
-            } else if (error.message.includes("503")) {
-                userFriendlyMsg = "AI 분석 서버에 일시적인 과부하가 발생했습니다. 잠시 후 다시 시도해주시고, 계속 안 될 경우 담당자에게 문의해주세요.";
-            } else if (error.message.includes("지원하지 않는 파일") || error.message.includes("추출하지 못했습니다") || error.message.includes("API 키가")) {
-                userFriendlyMsg = error.message;
-            }
-            
+            console.error("Quotation save error:", error);
             setMsg(
                 <span style={{ color: '#ef4444' }}>
-                    분석/저장 실패: {userFriendlyMsg}
+                    저장 실패: {error.message}
                     <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal', marginTop: '4px' }}>
-                        원인파악용 기술 정보: {error.message}
+                        DB에 견적 상세 컬럼(quote_no, maker, spec 등)이 아직 없으면 이 오류가 납니다. 담당자에게 문의해주세요.
                     </div>
                 </span>
             );
         } finally {
             setIsExtracting(false);
-            if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
 
@@ -460,11 +555,8 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                 else if (isSTK && !isNC) processType = "Stacking";
                 else if (isNC && isSTK) processType = "Both";
 
-                // 구분 정규화: 가공품 / 시장품(구매품) / 기타
-                const rawCat = String(item.item_category || '').trim();
-                let normCategory = "기타";
-                if (/가공/i.test(rawCat)) normCategory = "가공품";
-                else if (/구매|시장|상용/i.test(rawCat)) normCategory = "시장품";
+                // 구분 정규화: 가공품 / 시장품(구매품) / 잡자재 / 기구 SET / 인건비 / 경비 / 프로그램 / 차감 / 기타
+                const normCategory = normalizeCategory(item.item_category);
 
                 return {
                     ...item,
@@ -500,7 +592,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
 
     // 3. [공정 + 프로젝트]에 따른 구분(가공품/시장품/기타) 건수
     const availableCategories = useMemo(() => {
-        const counts = { '가공품': 0, '시장품': 0, '기타': 0 };
+        const counts = Object.fromEntries(CATEGORY_ORDER.map(c => [c, 0]));
         enrichedItems.forEach(item => {
             if (filterProcess !== '전체') {
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
@@ -582,9 +674,9 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
 
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase().trim();
-                const matchName = item.item_name.toLowerCase().includes(q);
-                const matchUnit = item.unit_name && item.unit_name.toLowerCase().includes(q);
-                if (!matchName && !matchUnit) return false;
+                // 품목명·유닛명뿐 아니라 메이커/재질(SMC, A6061)·규격(KQ2L06)·상위 견적 항목으로도 찾는다
+                const haystack = [item.item_name, item.unit_name, item.maker, item.spec, item.parent_item].filter(Boolean).join(' ').toLowerCase();
+                if (!haystack.includes(q)) return false;
             }
 
             return true;
@@ -741,9 +833,10 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                     </div>
                     {!collapsedSections.newQuote && (
                         <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
-                            <input type="file" ref={fileInputRef} onChange={e=>handleFileUpload(e.target.files[0])} accept=".xlsx, .xls, .pdf" style={{display:'none'}}/>
-                            <textarea 
-                                placeholder={canManage ? "엑셀 표 붙여넣기 (Ctrl+V)" : "등록 권한 없음 (클릭 시 안내)"}
+                            <input type="file" ref={fileInputRef} onChange={e=>handleFileSelect(e.target.files[0])} accept=".xlsx,.xlsm,.xls" style={{display:'none'}}/>
+                            <textarea
+                                placeholder={canManage ? "시트별 표 붙여넣기 (Ctrl+V)" : "등록 권한 없음 (클릭 시 안내)"}
+                                title="견적서 시트와 상세 리스트 시트를 각각 드래그해 복사한 뒤 하나씩 붙여넣으세요. 드래그 범위는 달라도 됩니다."
                                 disabled={isExtracting}
                                 onClick={() => {
                                     if (!canManage) notifyPermission('견적서 등록');
@@ -770,22 +863,13 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                         notifyPermission('견적서 등록');
                                         return;
                                     }
-                                    const items = e.clipboardData?.items;
-                                    if (items) {
-                                        for (let i = 0; i < items.length; i++) {
-                                            const item = items[i];
-                                            if (item.type.indexOf("image") !== -1) {
-                                                e.preventDefault();
-                                                const file = item.getAsFile();
-                                                if (file) { handleFileUpload(file); return; }
-                                            }
-                                        }
-                                    }
                                     const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text");
+                                    e.preventDefault();
+                                    e.target.value = ""; // 입력창 비우기
                                     if (text && text.trim().length > 5) {
-                                        e.preventDefault();
-                                        e.target.value = ""; // 입력창 비우기
-                                        handleFileUpload(text);
+                                        handlePastedText(text);
+                                    } else {
+                                        setMsg(<span style={{ color: '#ef4444' }}>붙여넣은 내용에 표 데이터가 없습니다. 엑셀에서 표 범위를 드래그해 복사(Ctrl+C)한 뒤 붙여넣어 주세요.</span>);
                                     }
                                 }}
                             />
@@ -809,7 +893,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                 }}
                                 title={!canManage ? "등록 권한이 없습니다 (클릭 시 권한 안내)" : ""}
                             >
-                                {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel)"} {!canManage && "🔒"}
+                                {isExtracting ? "⏳ 처리 중..." : "📎 파일 첨부 (Excel)"} {!canManage && "🔒"}
                             </button>
                         </div>
                     )}
@@ -835,6 +919,26 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                         </div>
 
                         {msg && <p className="notice" style={{marginTop:'10px',fontWeight:'bold',color:'#059669'}}>{msg}</p>}
+                        {!draft && (
+                            <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
+                                📎 엑셀 견적서를 첨부하거나, 견적서 시트 → 상세 리스트(Detail List) 시트 순서로 각각 드래그·복사해 붙여넣으세요.
+                                AI 없이 정해진 규칙으로 품목별 KRW 단가를 읽고, 수량×단가=금액 · 상세 합계 ↔ 견적 단가를 검증한 뒤 저장합니다. 원본 파일은 보관하지 않습니다.
+                            </p>
+                        )}
+                        {draft && preview && (
+                            <QuotationPreview
+                                draft={draft}
+                                preview={preview}
+                                titleOverrides={titleOverrides}
+                                setTitleOverrides={setTitleOverrides}
+                                previewOpen={previewOpen}
+                                setPreviewOpen={setPreviewOpen}
+                                onSave={handleSaveDraft}
+                                onReset={() => { resetDraft(); setMsg(''); }}
+                                busy={isExtracting}
+                                canManage={canManage}
+                            />
+                        )}
                     </>
                 ) : (
                     <div 
@@ -883,7 +987,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                             </button>
                         </div>
                         <span style={{ fontSize: '12px', color: '#64748b' }}>
-                            공정(NC/STK), 프로젝트, 구분(가공품/시장품/기타), 품목을 선택하면 조건에 맞는 품목들만 드롭다운에 실시간 연동되어 표출됩니다.
+                            공정(NC/STK), 프로젝트, 구분(가공품/시장품/인건비 등), 품목을 선택하면 조건에 맞는 품목들만 실시간 연동됩니다. 직접 검색은 메이커·재질·규격으로도 됩니다.
                         </span>
                     </div>
                     {!collapsedSections.itemSearch && (
@@ -968,27 +1072,16 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                 >
                                     전체
                                 </button>
-                                <button 
-                                    type="button"
-                                    className={`quote-pill-btn ${filterCategory === '가공품' ? 'active' : ''}`}
-                                    onClick={() => setFilterCategory('가공품')}
-                                >
-                                    🛠️ 가공품 ({availableCategories['가공품'] || 0})
-                                </button>
-                                <button 
-                                    type="button"
-                                    className={`quote-pill-btn ${filterCategory === '시장품' ? 'active' : ''}`}
-                                    onClick={() => setFilterCategory('시장품')}
-                                >
-                                    🛒 시장품 ({availableCategories['시장품'] || 0})
-                                </button>
-                                <button 
-                                    type="button"
-                                    className={`quote-pill-btn ${filterCategory === '기타' ? 'active' : ''}`}
-                                    onClick={() => setFilterCategory('기타')}
-                                >
-                                    ⚙️ 기타 ({availableCategories['기타'] || 0})
-                                </button>
+                                {CATEGORY_ORDER.filter(cat => availableCategories[cat] > 0 || cat === '가공품' || cat === '시장품' || cat === filterCategory).map(cat => (
+                                    <button
+                                        key={cat}
+                                        type="button"
+                                        className={`quote-pill-btn ${filterCategory === cat ? 'active' : ''}`}
+                                        onClick={() => setFilterCategory(cat)}
+                                    >
+                                        {CATEGORY_ICON[cat]} {cat} ({availableCategories[cat] || 0})
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -1162,7 +1255,8 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                         <th>프로젝트명</th>
                                         <th>유닛명</th>
                                         <th>품목명</th>
-                                        <th style={{ width: '70px', textAlign: 'center' }}>수량</th>
+                                        <th>메이커/재질 · 규격</th>
+                                        <th style={{ width: '80px', textAlign: 'center' }}>수량</th>
                                         <th className="money-cell">단가 (₩)</th>
                                         <th className="money-cell">총액 (₩)</th>
                                         <th style={{ width: '95px', textAlign: 'center' }}>등록일</th>
@@ -1195,15 +1289,23 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                                     </td>
                                                     <td style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>
                                                         {item.item_name}
+                                                        {(item.parent_item || item.section) && (
+                                                            <div style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-tertiary)' }}>
+                                                                {item.parent_item ? `⤷ ${item.parent_item}` : item.section}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                                        {[item.maker, item.spec].filter(Boolean).join(' · ') || '-'}
                                                     </td>
                                                     <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                                        {item.quantity}
+                                                        {item.quantity}{item.uom ? ` ${item.uom}` : ''}
                                                     </td>
                                                     <td className="money-cell" style={{ fontWeight: 700, color: 'var(--accent)' }}>
-                                                        {item.unit_price.toLocaleString()}
+                                                        {fmtKRW(item.unit_price)}
                                                     </td>
                                                     <td className="money-cell" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                                                        {item.total_price.toLocaleString()}
+                                                        {fmtKRW(item.total_price)}
                                                     </td>
                                                     <td style={{ color: 'var(--text-tertiary)', fontSize: '12px', textAlign: 'center' }}>
                                                         {new Date(item.created_at).toLocaleDateString()}
@@ -1213,7 +1315,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan="9" style={{ textAlign: 'center', color: '#64748b', padding: '36px 20px' }}>
+                                            <td colSpan="10" style={{ textAlign: 'center', color: '#64748b', padding: '36px 20px' }}>
                                                 <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔍</div>
                                                 <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>선택하신 조건에 해당하는 견적 품목이 없습니다.</div>
                                                 <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>공정, 프로젝트 또는 구분 조건을 변경하거나 초기화해 보세요.</div>
@@ -1366,11 +1468,21 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                 {expandedProjects[group.name] && (
                                     <div className="pa-body">
                                         {group.quotations.map((quotation) => {
-                                            const itemsInQuotation = quotationItems.filter(item => item.quotation_id === quotation.id);
+                                            const itemsInQuotation = quotationItems
+                                                .filter(item => item.quotation_id === quotation.id)
+                                                .sort((a, b) => (a.line_no ?? 0) - (b.line_no ?? 0));
                                             return (
                                                 <div key={quotation.id} className="pa-quotation">
                                                     <h4 className="pa-quotation-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                        <span>📄 {quotation.title} <small>({new Date(quotation.created_at).toLocaleDateString()})</small></span>
+                                                        <span>
+                                                            📄 {quotation.title}{' '}
+                                                            <small>
+                                                                ({[quotation.quote_no, quotation.revision, quotation.quote_date ? `견적일 ${quotation.quote_date}` : null].filter(Boolean).join(' · ') || '견적번호 없음'} / 등록 {new Date(quotation.created_at).toLocaleDateString()})
+                                                            </small>
+                                                            {quotation.parse_summary && quotation.parse_summary.errors > 0 && (
+                                                                <span style={{ marginLeft: '6px', fontSize: '11px', color: '#dc2626' }}>⚠ 검증 오류 {quotation.parse_summary.errors}건</span>
+                                                            )}
+                                                        </span>
                                                         <button 
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
@@ -1398,23 +1510,31 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                                                     <th>구분</th>
                                                                     <th>유닛명</th>
                                                                     <th>품목명</th>
+                                                                    <th>메이커/재질 · 규격</th>
                                                                     <th>수량</th>
                                                                     <th className="money-cell">단가 (₩)</th>
                                                                     <th className="money-cell">총액 (₩)</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                {itemsInQuotation.map(item => (
-                                                                    <tr key={item.id}>
-                                                                        <td><span className={`badge-category cat-${item.item_category === '가공품' ? 'process' : item.item_category === '구매품' ? 'purchase' : 'other'}`}>{item.item_category}</span></td>
-                                                                        <td>{item.unit_name || '-'}</td>
-                                                                        <td>{item.item_name}</td>
-                                                                        <td>{item.quantity}</td>
-                                                                        <td className="money-cell">{Number(item.unit_price).toLocaleString()}</td>
-                                                                        <td className="money-cell">{Number(item.total_price).toLocaleString()}</td>
-                                                                    </tr>
-                                                                ))}
-                                                                {itemsInQuotation.length === 0 && <tr><td colSpan="6">품목이 없습니다.</td></tr>}
+                                                                {itemsInQuotation.map(item => {
+                                                                    const cat = normalizeCategory(item.item_category);
+                                                                    return (
+                                                                        <tr key={item.id} style={item.source === 'detail' ? { background: 'var(--bg-card-subtle)' } : undefined}>
+                                                                            <td><span className={`badge-category cat-${categoryBadgeClass(cat)}`}>{cat}</span></td>
+                                                                            <td>{item.unit_name || '-'}</td>
+                                                                            <td>
+                                                                                {item.source === 'detail' ? '· ' : ''}{item.item_name}
+                                                                                {item.check_status === 'mismatch' && <span style={{ color: '#dc2626', fontSize: '11px' }}> ⚠ 수량×단가≠금액</span>}
+                                                                            </td>
+                                                                            <td style={{ fontSize: '12px' }}>{[item.maker, item.spec].filter(Boolean).join(' · ') || '-'}</td>
+                                                                            <td>{item.quantity}{item.uom ? ` ${item.uom}` : ''}</td>
+                                                                            <td className="money-cell">{fmtKRW(item.unit_price)}</td>
+                                                                            <td className="money-cell">{fmtKRW(item.total_price)}</td>
+                                                                        </tr>
+                                                                    );
+                                                                })}
+                                                                {itemsInQuotation.length === 0 && <tr><td colSpan="7">품목이 없습니다.</td></tr>}
                                                             </tbody>
                                                         </table>
                                                     </div>

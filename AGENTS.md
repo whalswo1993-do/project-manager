@@ -40,7 +40,7 @@ npm run build     # 프로덕션 빌드 → dist/
 `VITE_` 접두사 변수는 번들에 그대로 포함되어 브라우저에 노출된다. 비밀 키(service_role, Anthropic 키 등)는 절대 `VITE_`로 넣지 않는다. `.env.local`에는 Vercel 프로덕션 환경변수가 들어 있으니 커밋하지 않는다.
 
 ## AI 호출 구조 (Gemini + Claude)
-- 앱의 모든 AI 분석(마스터플랜 판독, 일보 구조화, 견적서 추출, 이슈 통합분석 PPT)은 `src/ai.js`의 `generateAIText()` 하나를 거친다. **새 AI 기능도 반드시 이걸 쓰고**, `@google/generative-ai`나 Anthropic SDK를 컴포넌트에서 직접 부르지 않는다.
+- 앱의 모든 AI 분석(마스터플랜 판독, 일보 구조화, 이슈 통합분석 PPT)은 `src/ai.js`의 `generateAIText()` 하나를 거친다. (견적서는 AI를 쓰지 않는다 — 아래 "견적서 파서" 참고) **새 AI 기능도 반드시 이걸 쓰고**, `@google/generative-ai`나 Anthropic SDK를 컴포넌트에서 직접 부르지 않는다.
 - Gemini 경로: ① `/api/gemini`(서버, 키가 브라우저에 없음) → ② 서버를 쓸 수 없을 때만(키 미설정·서버 로그인 없음·개발 서버·413) 브라우저 키(`VITE_GEMINI_API_KEY`)로 직접 호출. 서버가 429 등 실제 Gemini 오류를 주면 같은 키/한도이므로 직접 재시도하지 않는다.
 - `auto`: Gemini 성공 시 그대로 사용. Gemini 실패 시 `/api/claude`(Vercel 서버 함수)로 재시도. Claude가 미설정/비로그인/개발서버이면 Gemini의 원래 오류를 그대로 보여준다(호출부의 429·403 안내 문구 유지).
 - `api/gemini.js`·`api/claude.js`(엔드포인트, 골격은 `api/_lib/handler.js`) → `api/_lib/auth.js`(Supabase 로그인 검증: `current_app_role()`이 null이 아니어야 통과) → `api/_lib/gemini.js` / `api/_lib/claude.js`(각 SDK). 기본 모델 `claude-sonnet-5-5`(`ANTHROPIC_MODEL`로 변경), 스트리밍, refusal 서버 fallback(Haiku 제외).
@@ -48,6 +48,13 @@ npm run build     # 프로덕션 빌드 → dist/
 - Gemini 서버 모듈 점검: `node --env-file=.env.local scripts/gemini-smoke.js` (로컬 `.env.local`의 키 사용, 값은 출력하지 않음)
 - Claude 연결 점검: `$env:ANTHROPIC_API_KEY = '...'; node scripts/claude-smoke.js` (실제 API를 한 번 호출해 키/모델/요청 형태를 확인. 끝나면 `Remove-Item Env:ANTHROPIC_API_KEY`). Vercel 환경변수는 `vercel env add ANTHROPIC_API_KEY production`으로 등록하고 **재배포해야 반영된다.**
 - 요청 본문 한도 약 4.5MB(Vercel). Claude 경로에서 큰 PDF/이미지(base64 약 3MB 초과)는 413이 날 수 있다.
+
+## 견적서 파서 (`src/quotationParser.js`)
+- 견적조회 등록은 AI 없이 규칙으로 분석한다. 엑셀 파일 첨부 또는 **시트별 표 붙여넣기**(견적서 시트, 상세 리스트 시트를 각각)를 받아 저장 전 미리보기 → 저장. 원본 파일은 브라우저에서만 읽고 서버에 올리지 않는다.
+- **특정 셀 주소에 의존하지 않는다.** 머리글(Item / Q'ty / Unit Price [KRW] …)이 있으면 그걸로, 없으면 `수량×단가=금액`이 성립하는 숫자 열 3개를 앵커로 잡고 글자 열은 상대 위치로 찾는다. 금액은 KRW 열만 쓴다.
+- 회사 양식의 수량은 서식 `\(General\)` 때문에 "(4)"로 보인다 → 수량은 괄호를 음수로 보지 않는다(`toQty`).
+- 검증: 행별 수량×단가=금액, 상세 블록 품목 합=총계, 견적 소계, 상세 블록 총계 ↔ 견적 라인 단가(여러 블록 합 포함). 제목은 파일명이 아니라 내용의 "프로젝트 명".
+- 실제 견적서로 점검: `node scripts/quotation-check.js "<견적서 폴더>" [--items]` — 파일 첨부와 4가지 드래그 범위 붙여넣기 결과가 같은지까지 확인한다. **실제 견적서/금액은 공개 저장소에 넣지 않는다**(테스트는 가짜 데이터).
 
 ## 구조
 - `src/App.jsx`(약 200KB) — 메인 앱 셸/프로젝트·일정 관리. 매우 크니 필요한 구간만 읽을 것

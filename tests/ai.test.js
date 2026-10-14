@@ -16,16 +16,26 @@ vi.mock('../src/authService', () => ({ ensureSupabaseAuth: vi.fn(async () => tru
 
 const { generateAIText, isAIConfigured, getAIProvider } = await import('../src/ai.js')
 
-const geminiOk = (text) => geminiGenerate.mockResolvedValue({ response: { text: () => text } })
-const geminiFail = (message) => geminiGenerate.mockRejectedValue(new Error(message))
-const claudeResponds = (status, body) =>
-  vi.stubGlobal('fetch', vi.fn(async () => ({ ok: status >= 200 && status < 300, status, json: async () => body })))
+const NOT_CONFIGURED = [503, { error: { code: 'not_configured', message: 'no key' } }]
+
+const directOk = (text) => geminiGenerate.mockResolvedValue({ response: { text: () => text } })
+const directFail = (message) => geminiGenerate.mockRejectedValue(new Error(message))
+
+/** /api/gemini, /api/claude 를 각각 [status, body] 로 응답하는 가짜 서버. 기본값은 둘 다 "키 미설정". */
+function stubServers({ gemini = NOT_CONFIGURED, claude = NOT_CONFIGURED } = {}) {
+  vi.stubGlobal('fetch', vi.fn(async (url) => {
+    const [status, body] = url === '/api/gemini' ? gemini : claude
+    return { ok: status >= 200 && status < 300, status, json: async () => body }
+  }))
+}
+const urlsCalled = () => fetch.mock.calls.map(([url]) => url)
 
 beforeEach(() => {
   geminiGenerate.mockReset()
   getSession.mockResolvedValue({ data: { session: { access_token: 'jwt-123' } } })
   vi.stubEnv('VITE_GEMINI_API_KEY', 'gem-key')
   vi.stubEnv('VITE_AI_PROVIDER', '')
+  stubServers()
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   vi.spyOn(console, 'info').mockImplementation(() => {})
 })
@@ -44,110 +54,151 @@ describe('provider 선택', () => {
     expect(getAIProvider()).toBe('claude')
   })
 
-  it('isAIConfigured: gemini 전용이면 키가 있어야 true, 그 외에는 낙관적으로 true', () => {
+  it('isAIConfigured: 서버 키 여부를 브라우저가 알 수 없으므로 항상 true (키 없음은 호출 시 안내)', () => {
     vi.stubEnv('VITE_AI_PROVIDER', 'gemini')
-    expect(isAIConfigured()).toBe(true)
     vi.stubEnv('VITE_GEMINI_API_KEY', '')
-    expect(isAIConfigured()).toBe(false)
-    vi.stubEnv('VITE_AI_PROVIDER', 'auto')
     expect(isAIConfigured()).toBe(true)
   })
 })
 
-describe('auto (기본)', () => {
-  it('Gemini 가 성공하면 Claude 서버는 호출하지 않는다 — 기존 동작과 동일', async () => {
-    geminiOk('{"ok":1}')
-    const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-    await expect(generateAIText('prompt')).resolves.toBe('{"ok":1}')
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(geminiGenerate).toHaveBeenCalledWith(['prompt'])
-  })
-
-  it('문자열/배열 입력 모두 Gemini 에는 배열로 전달 (parts 보존)', async () => {
-    geminiOk('x')
-    const parts = [{ inlineData: { data: 'AAA', mimeType: 'image/png' } }, 'prompt']
-    await generateAIText(parts)
-    expect(geminiGenerate).toHaveBeenCalledWith(parts)
-  })
-
-  it('Gemini 실패 + Claude 성공 → Claude 응답', async () => {
-    geminiFail('[429 Too Many Requests] quota exceeded')
-    claudeResponds(200, { text: 'from claude', model: 'claude-opus-5-5' })
-    await expect(generateAIText('prompt')).resolves.toBe('from claude')
-    const [url, init] = fetch.mock.calls[0]
-    expect(url).toBe('/api/claude')
+describe('Gemini 호출 경로: 서버 우선, 브라우저 키는 안전망', () => {
+  it('서버(/api/gemini)가 성공하면 브라우저 키로 직접 호출하지 않는다 (키가 브라우저에서 쓰이지 않음)', async () => {
+    stubServers({ gemini: [200, { text: 'from server', model: 'gemini-3.8-flash' }] })
+    await expect(generateAIText('prompt')).resolves.toBe('from server')
+    expect(geminiGenerate).not.toHaveBeenCalled()
+    expect(urlsCalled()).toEqual(['/api/gemini'])
+    const [, init] = fetch.mock.calls[0]
     expect(init.headers.Authorization).toBe('Bearer jwt-123')
     expect(JSON.parse(init.body)).toEqual({ parts: ['prompt'] })
   })
 
+  it('서버에 Gemini 키가 없으면(503) 기존처럼 브라우저 키로 직접 호출', async () => {
+    directOk('{"ok":1}')
+    await expect(generateAIText('prompt')).resolves.toBe('{"ok":1}')
+    expect(urlsCalled()).toEqual(['/api/gemini'])
+    expect(geminiGenerate).toHaveBeenCalledWith(['prompt'])
+  })
+
+  it('서버 로그인 세션이 없으면(테스트 계정 등) 서버 호출 없이 브라우저 키로 직접 호출', async () => {
+    getSession.mockResolvedValue({ data: { session: null } })
+    directOk('direct')
+    await expect(generateAIText('prompt')).resolves.toBe('direct')
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('개발 서버(/api 없음, HTML 응답)이면 브라우저 키로 직접 호출', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => { throw new Error('not json') } })))
+    directOk('direct')
+    await expect(generateAIText('prompt')).resolves.toBe('direct')
+  })
+
+  it('파일이 너무 커서 서버가 413 이면 브라우저 키로 직접 호출', async () => {
+    stubServers({ gemini: [413, null] })
+    directOk('direct big file')
+    await expect(generateAIText('prompt')).resolves.toBe('direct big file')
+  })
+
+  it('parts(이미지 등)는 변형 없이 그대로 전달', async () => {
+    const parts = [{ inlineData: { data: 'AAA', mimeType: 'image/png' } }, 'prompt']
+    stubServers({ gemini: [200, { text: 'ok' }] })
+    await generateAIText(parts)
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ parts })
+    stubServers()
+    directOk('x')
+    await generateAIText(parts)
+    expect(geminiGenerate).toHaveBeenCalledWith(parts)
+  })
+
+  it('서버가 429 를 주면 같은 키/한도이므로 직접 재시도하지 않는다', async () => {
+    stubServers({ gemini: [429, { error: { code: 'rate_limited', message: 'Gemini 요청 한도 (429 quota)' } }], claude: [503, NOT_CONFIGURED[1]] })
+    vi.stubEnv('VITE_AI_PROVIDER', 'gemini')
+    await expect(generateAIText('p')).rejects.toThrow(/429 quota/)
+    expect(geminiGenerate).not.toHaveBeenCalled()
+  })
+
+  it('서버도 브라우저 키도 없으면 안내 문구', async () => {
+    vi.stubEnv('VITE_GEMINI_API_KEY', '')
+    vi.stubEnv('VITE_AI_PROVIDER', 'gemini')
+    await expect(generateAIText('p', { notConfiguredMessage: '키 없음 안내' })).rejects.toThrow('키 없음 안내')
+  })
+})
+
+describe('auto: Gemini → Claude', () => {
+  it('Gemini 가 성공하면 Claude 서버는 호출하지 않는다 — 기존 동작과 동일', async () => {
+    directOk('{"ok":1}')
+    await expect(generateAIText('prompt')).resolves.toBe('{"ok":1}')
+    expect(urlsCalled()).not.toContain('/api/claude')
+  })
+
+  it('Gemini 실패 + Claude 성공 → Claude 응답', async () => {
+    directFail('[429 Too Many Requests] quota exceeded')
+    stubServers({ claude: [200, { text: 'from claude', model: 'claude-sonnet-5-5' }] })
+    await expect(generateAIText('prompt')).resolves.toBe('from claude')
+    const claudeCall = fetch.mock.calls.find(([url]) => url === '/api/claude')
+    expect(claudeCall[1].headers.Authorization).toBe('Bearer jwt-123')
+    expect(JSON.parse(claudeCall[1].body)).toEqual({ parts: ['prompt'] })
+  })
+
+  it('Gemini 서버가 429 → Claude 로 전환 (브라우저 키 재시도 없음)', async () => {
+    stubServers({
+      gemini: [429, { error: { code: 'rate_limited', message: 'Gemini 요청 한도 (429 quota)' } }],
+      claude: [200, { text: 'claude saved it' }],
+    })
+    await expect(generateAIText('prompt')).resolves.toBe('claude saved it')
+    expect(geminiGenerate).not.toHaveBeenCalled()
+  })
+
   it('Gemini 실패 + Claude 미설정(503) → 예전처럼 Gemini 오류를 그대로 전달 (호출부의 429/quota 안내 유지)', async () => {
-    geminiFail('[429 Too Many Requests] quota exceeded')
-    claudeResponds(503, { error: { code: 'not_configured', message: 'no key' } })
+    directFail('[429 Too Many Requests] quota exceeded')
     await expect(generateAIText('prompt')).rejects.toThrow(/429.*quota/)
   })
 
   it('Gemini 실패 + 서버 로그인 없음 → Gemini 오류 전달', async () => {
-    geminiFail('[403] API_KEY_INVALID')
     getSession.mockResolvedValue({ data: { session: null } })
-    vi.stubGlobal('fetch', vi.fn())
+    directFail('[403] API_KEY_INVALID')
     await expect(generateAIText('prompt')).rejects.toThrow(/API_KEY_INVALID/)
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('Gemini 실패 + 개발 서버(/api 없음, HTML 응답) → Gemini 오류 전달', async () => {
-    geminiFail('network down')
-    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => { throw new Error('not json') } })))
-    await expect(generateAIText('prompt')).rejects.toThrow(/network down/)
-  })
-
   it('둘 다 실제로 실패하면 두 원인을 모두 보여준다', async () => {
-    geminiFail('gemini boom')
-    claudeResponds(429, { error: { code: 'rate_limited', message: 'Claude API 요청 한도에 도달했습니다. (429 quota)' } })
+    directFail('gemini boom')
+    stubServers({ claude: [429, { error: { code: 'rate_limited', message: 'Claude API 요청 한도에 도달했습니다. (429 quota)' } }] })
     const err = await generateAIText('prompt').catch((e) => e)
     expect(err.message).toMatch(/429 quota/)
     expect(err.message).toMatch(/gemini boom/)
   })
 
-  it('Gemini 키가 없으면 곧바로 Claude', async () => {
+  it('Gemini 를 쓸 수 없으면(서버·브라우저 키 모두 없음) 곧바로 Claude', async () => {
     vi.stubEnv('VITE_GEMINI_API_KEY', '')
-    claudeResponds(200, { text: 'claude only' })
+    stubServers({ claude: [200, { text: 'claude only' }] })
     await expect(generateAIText('prompt')).resolves.toBe('claude only')
     expect(geminiGenerate).not.toHaveBeenCalled()
   })
 
   it('키가 하나도 없으면 호출부가 준 안내 문구', async () => {
     vi.stubEnv('VITE_GEMINI_API_KEY', '')
-    claudeResponds(503, { error: { code: 'not_configured', message: 'no key' } })
     await expect(generateAIText('p', { notConfiguredMessage: '키 없음 안내' })).rejects.toThrow('키 없음 안내')
   })
 })
 
 describe('gemini / claude 고정', () => {
-  it('gemini: 실패해도 Claude 로 가지 않는다', async () => {
+  it('gemini 고정: 실패해도 Claude 로 가지 않는다', async () => {
     vi.stubEnv('VITE_AI_PROVIDER', 'gemini')
-    geminiFail('quota')
-    vi.stubGlobal('fetch', vi.fn())
+    directFail('quota')
     await expect(generateAIText('p')).rejects.toThrow('quota')
-    expect(fetch).not.toHaveBeenCalled()
+    expect(urlsCalled()).not.toContain('/api/claude')
   })
 
-  it('gemini: 키가 없으면 안내 문구', async () => {
-    vi.stubEnv('VITE_AI_PROVIDER', 'gemini')
-    vi.stubEnv('VITE_GEMINI_API_KEY', '')
-    await expect(generateAIText('p', { notConfiguredMessage: '키 없음' })).rejects.toThrow('키 없음')
-  })
-
-  it('claude: Gemini 를 쓰지 않는다', async () => {
+  it('claude 고정: Gemini 를 쓰지 않는다', async () => {
     vi.stubEnv('VITE_AI_PROVIDER', 'claude')
-    claudeResponds(200, { text: 'ok' })
+    stubServers({ claude: [200, { text: 'ok' }] })
     await expect(generateAIText('p')).resolves.toBe('ok')
     expect(geminiGenerate).not.toHaveBeenCalled()
+    expect(urlsCalled()).toEqual(['/api/claude'])
   })
 
-  it('claude: 서버 키 미설정이면 안내 문구', async () => {
+  it('claude 고정: 서버 키 미설정이면 안내 문구', async () => {
     vi.stubEnv('VITE_AI_PROVIDER', 'claude')
-    claudeResponds(503, { error: { code: 'not_configured', message: 'no key' } })
     await expect(generateAIText('p', { notConfiguredMessage: '키 없음' })).rejects.toThrow('키 없음')
   })
 })

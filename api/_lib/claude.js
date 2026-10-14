@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { ApiError } from './errors.js'
 
 // 기본 모델. Vercel 환경변수 ANTHROPIC_MODEL 로 바꿀 수 있다(예: 더 정밀한 claude-opus-5-5, 더 저렴한 claude-haiku-5-5).
 // 일보/견적/마스터플랜 같은 구조화 추출 용도라 비용 대비 효율이 좋은 Sonnet 을 기본으로 쓴다.
@@ -15,13 +16,8 @@ const SYSTEM_PROMPT =
   '당신은 제조/설비 프로젝트 관리 시스템의 데이터 추출·분석 도우미입니다. ' +
   '사용자가 요구한 출력 형식을 정확히 지키세요. JSON을 요구하면 설명이나 마크다운 코드펜스 없이 순수 JSON만 응답하세요.'
 
-export class ClaudeError extends Error {
-  constructor(status, code, message) {
-    super(message)
-    this.status = status
-    this.code = code
-  }
-}
+// 기존 이름 유지(테스트/다른 모듈에서 사용). 실체는 공통 ApiError 와 같은 클래스다.
+export const ClaudeError = ApiError
 
 export function isClaudeConfigured(env = process.env) {
   return Boolean(env.ANTHROPIC_API_KEY)

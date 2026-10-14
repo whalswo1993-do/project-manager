@@ -1,4 +1,4 @@
-import { ClaudeError } from './claude.js'
+import { ApiError } from './errors.js'
 
 // src/supabase.js 와 같은 공개 값(URL, publishable key). 환경변수가 있으면 우선한다.
 const FALLBACK_URL = 'https://tebtuzxafkymlplmlhzu.supabase.co'
@@ -11,7 +11,7 @@ const FALLBACK_KEY = 'sb_publishable_grHTjPexU7_f9M8w4IrEYQ_o7_gx160'
  */
 export async function verifyAppUser(authorization, env = process.env, fetchImpl = fetch) {
   const match = /^Bearer\s+(.+)$/i.exec(authorization || '')
-  if (!match) throw new ClaudeError(401, 'unauthenticated', '로그인이 필요합니다.')
+  if (!match) throw new ApiError(401, 'unauthenticated', '로그인이 필요합니다.')
 
   const url = env.VITE_SUPABASE_URL || env.SUPABASE_URL || FALLBACK_URL
   const key = env.VITE_SUPABASE_KEY || env.SUPABASE_KEY || FALLBACK_KEY
@@ -24,15 +24,15 @@ export async function verifyAppUser(authorization, env = process.env, fetchImpl 
       body: '{}',
     })
   } catch {
-    throw new ClaudeError(502, 'auth_unreachable', '로그인 상태를 확인하지 못했습니다. 잠시 후 다시 시도해주세요.')
+    throw new ApiError(502, 'auth_unreachable', '로그인 상태를 확인하지 못했습니다. 잠시 후 다시 시도해주세요.')
   }
 
   if (res.status === 401 || res.status === 403) {
-    throw new ClaudeError(401, 'unauthenticated', '로그인 세션이 유효하지 않습니다. 다시 로그인해주세요.')
+    throw new ApiError(401, 'unauthenticated', '로그인 세션이 유효하지 않습니다. 다시 로그인해주세요.')
   }
-  if (!res.ok) throw new ClaudeError(502, 'auth_error', `로그인 상태 확인 오류 (${res.status})`)
+  if (!res.ok) throw new ApiError(502, 'auth_error', `로그인 상태 확인 오류 (${res.status})`)
 
   const role = await res.json()
-  if (!role) throw new ClaudeError(403, 'forbidden', '사용 권한이 없는 계정입니다.')
+  if (!role) throw new ApiError(403, 'forbidden', '사용 권한이 없는 계정입니다.')
   return role
 }

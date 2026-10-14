@@ -8,13 +8,21 @@ on:
     - cron: "0 0 */2 * *"
   workflow_dispatch:
 
-permissions: {}
+permissions:
+  actions: write
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
+      # GitHub는 저장소 활동이 60일간 없으면 예약 실행을 멈춘다.
+      # 이 워크플로를 스스로 다시 활성화해(커밋 없이) 그 타이머를 되돌린다.
+      - name: Keep this schedule enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/supabase-keepalive.yml/enable"
+
       - name: Query Supabase (read-only)
         run: |
           # publishable key는 브라우저 번들에 들어가는 공개 키다(RLS가 접근을 막는다).

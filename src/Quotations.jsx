@@ -1410,7 +1410,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                                     <td className="money-cell" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                                                         {fmtKRW(item.total_price)}
                                                     </td>
-                                                    <td style={{ color: 'var(--text-tertiary)', fontSize: '12px', textAlign: 'center' }}>
+                                                    <td style={{ color: 'var(--text-tertiary)', fontSize: '12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                                                         {new Date(item.created_at).toLocaleDateString()}
                                                     </td>
                                                 </tr>

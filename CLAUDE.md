@@ -56,4 +56,4 @@ npm run preview   # 빌드 결과 미리보기
 - 작업이 끝나고 빌드가 통과하면 커밋 후 `main`에 push한다(사용자가 "로컬로만"이라고 하지 않는 한). Vercel이 push를 감지해 자동 배포하므로 별도 `npm run deploy`(gh-pages)는 하지 않는다 — `vercel.json`에서 gh-pages 배포는 꺼져 있고 `vite.config.js`의 `base`가 `/`라 서브경로 Pages 배포와 맞지 않는다.
 - push 전에 `git status`로 의도하지 않은 파일(.env, 대용량 pptx/xlsx 등)이 섞이지 않았는지 확인한다.
 - 배포 후에는 Vercel 배포 URL/상태를 확인해 함께 보고한다.
-- DB 스키마/RLS 변경은 적용 전에 SQL을 먼저 보여주고 확인받는다. 스키마(테이블/RLS 정의)는 아직 저장소에 없다. `supabase/`에는 연결 설정(`config.toml`)만 있고 migrations는 비어 있다.
+- DB 스키마/RLS 변경은 적용 전에 SQL을 먼저 보여주고 확인받는다. Supabase 커넥터(MCP)로 스키마 조회(`list_tables`, `execute_sql`)와 적용(`apply_migration`)이 가능하다. DB를 바꾸면 적용한 버전 번호와 같은 이름으로 `supabase/migrations/<version>_<name>.sql` 파일을 저장소에 남겨 서버와 맞춘다(`list_migrations`로 버전 확인). 변경 후에는 `get_advisors`(security)로 RLS 경고를 점검한다.

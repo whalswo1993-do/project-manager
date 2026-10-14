@@ -70,7 +70,7 @@ async function callServer(endpoint, parts, label) {
   // 413 은 Vercel 이 본문 크기 초과(약 4.5MB)로 거절할 때 JSON 없이 돌아올 수 있다.
   const body = await res.json().catch(() => null);
   if (res.status === 413) {
-    throw new AIError("파일이 너무 커서 서버로 보낼 수 없습니다.", { status: 413, code: "too_large" });
+    throw new AIError("파일이 너무 커서(약 3MB 초과) AI 서버로 보낼 수 없습니다. 파일을 줄이거나 나눠서 다시 시도해주세요.", { status: 413, code: "too_large" });
   }
   if (!res.ok) {
     throw new AIError(body?.error?.message || `${label} 요청 실패 (${res.status})`, { status: res.status, code: body?.error?.code });
@@ -95,8 +95,12 @@ async function callGemini(parts) {
     return await callServer("/api/gemini", parts, "Gemini");
   } catch (e) {
     if (!GEMINI_SERVER_UNAVAILABLE_CODES.has(e.code)) throw e;
-    // 서버 경로를 쓸 수 없다 → 브라우저 키가 있으면 직접 호출, 없으면 "키 없음"
-    if (!hasBrowserGeminiKey()) throw new AIError("Gemini API 키가 설정되지 않았습니다.", { code: "not_configured" });
+    // 서버 경로를 쓸 수 없다 → 브라우저 키가 있으면 직접 호출
+    if (!hasBrowserGeminiKey()) {
+      // 브라우저 키가 없는데 파일이 커서 거절된 경우: "키 없음"이 아니라 실제 원인(파일 크기)을 알려준다
+      if (e.code === "too_large") throw e;
+      throw new AIError("Gemini API 키가 설정되지 않았습니다.", { code: "not_configured" });
+    }
     return callGeminiDirect(parts);
   }
 }

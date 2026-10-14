@@ -98,6 +98,16 @@ describe('Gemini 호출 경로: 서버 우선, 브라우저 키는 안전망', (
     await expect(generateAIText('prompt')).resolves.toBe('direct big file')
   })
 
+  it('브라우저 키가 없는데 파일이 커서 413 이면 "키 없음"이 아니라 파일 크기 안내', async () => {
+    vi.stubEnv('VITE_GEMINI_API_KEY', '')
+    vi.stubEnv('VITE_AI_PROVIDER', 'gemini')
+    stubServers({ gemini: [413, null] })
+    const err = await generateAIText('p', { notConfiguredMessage: '키 없음 안내' }).catch((e) => e)
+    expect(err.code).toBe('too_large')
+    expect(err.message).toMatch(/3MB/)
+    expect(err.message).not.toMatch(/키 없음/)
+  })
+
   it('parts(이미지 등)는 변형 없이 그대로 전달', async () => {
     const parts = [{ inlineData: { data: 'AAA', mimeType: 'image/png' } }, 'prompt']
     stubServers({ gemini: [200, { text: 'ok' }] })

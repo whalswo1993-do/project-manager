@@ -255,6 +255,8 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
+  const [bootFailed, setBootFailed] = useState(false); // 내 프로필을 끝내 못 읽었을 때 "다시 시도"를 보여 준다
+  const bootingRef = useRef(null); // 같은 로그인 세션으로 boot 가 겹쳐 실행되는 것을 막는다
   const isSuperAdminEmail = (session?.user?.email?.toLowerCase() === "cmj1012@twgroup.co.kr") || (profile?.email?.toLowerCase() === "cmj1012@twgroup.co.kr");
   const role = isSuperAdminEmail ? "admin" : (profile?.role || "grade1");
   const create = ["admin", "grade3"].includes(role);
@@ -925,45 +927,75 @@ export default function App() {
     if (t === "personnel") setPeople(data || []);
   }
 
+  // 내 프로필 읽기. 로그인 직후 서버 시계 차이로 생기는 401 같은 일시적인 오류는 몇 번 더 시도한다.
+  // (supabase.js 의 fetch 가 PGRST303 은 이미 다시 보내므로 여기서는 네트워크 끊김 등 그 밖의 일시 오류를 맡는다)
+  async function fetchMyProfile(userId) {
+    const delays = [600, 1200, 2400];
+    let lastError = null;
+    for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+      try {
+        const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+        if (error) throw error;
+        return { data };
+      } catch (e) {
+        lastError = e;
+        console.warn(`Failed to fetch profile row (attempt ${attempt + 1}):`, e);
+        if (attempt < delays.length) {
+          setMsg(`계정 정보를 확인하는 중입니다… (재시도 ${attempt + 1}/${delays.length})`);
+          await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+        }
+      }
+    }
+    return { error: lastError };
+  }
+
   async function boot(activeSession) {
     const sess = activeSession || session;
     if (!sess?.user?.email) return;
 
-    // 서버(profiles)에서 내 프로필(권한·이름·팀·활성 여부)을 읽는다. 프로필은 가입 시 DB 트리거가 만든다.
-    let p;
+    // 시작할 때 getSession 과 onAuthStateChange 가 둘 다 boot 를 부른다 → 같은 세션이면 한 번만 실행
+    const bootKey = sess.access_token || sess.user.id;
+    if (bootingRef.current === bootKey) return;
+    bootingRef.current = bootKey;
+
     try {
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", sess.user.id).maybeSingle();
-      if (error) throw error;
-      p = data;
-    } catch (e) {
-      // 네트워크 오류 등 일시적인 문제는 로그아웃시키지 않고 안내만 한다.
-      console.warn("Failed to fetch profile row:", e);
-      setMsg("계정 정보를 불러오지 못했습니다. 새로고침해 주세요.");
-      return;
+      // 서버(profiles)에서 내 프로필(권한·이름·팀·활성 여부)을 읽는다. 프로필은 가입 시 DB 트리거가 만든다.
+      const { data: p, error: profileError } = await fetchMyProfile(sess.user.id);
+      if (profileError) {
+        // 네트워크 오류 등은 로그아웃시키지 않고 원인을 보여 준 뒤 다시 시도할 수 있게 한다.
+        const detail = [profileError.code || profileError.status, profileError.message].filter(Boolean).join(" · ");
+        setMsg(`계정 정보를 불러오지 못했습니다.${detail ? ` (${detail})` : ""}`);
+        setBootFailed(true);
+        return;
+      }
+      setBootFailed(false);
+      setMsg((m) => (m && m.startsWith("계정 정보") ? "" : m));
+
+      if (!p) {
+        // 관리자가 계정을 삭제했거나 프로필이 없는 경우
+        await supabase.auth.signOut();
+        setSession(null);
+        setProfile(null);
+        return alert("계정 정보를 찾을 수 없습니다. 관리자에게 문의하세요.");
+      }
+
+      if (p.active === false) {
+        await supabase.auth.signOut();
+        setSession(null);
+        setProfile(null);
+        return alert("비활성화된 계정입니다. 관리자에게 문의하세요.");
+      }
+
+      // 접속 기록은 서버에 남긴다 (관리자가 어느 컴퓨터에서든 확인 가능)
+      recordUserAccess(false);
+
+      setProfile(p);
+      const isAdmin = p.role === "admin" || sess.user.email.toLowerCase() === "cmj1012@twgroup.co.kr";
+      await Promise.all([load("projects"), load("sites"), load("personnel")]);
+      if (isAdmin) load("profiles", { isAdmin: true });
+    } finally {
+      if (bootingRef.current === bootKey) bootingRef.current = null;
     }
-
-    if (!p) {
-      // 관리자가 계정을 삭제했거나 프로필이 없는 경우
-      await supabase.auth.signOut();
-      setSession(null);
-      setProfile(null);
-      return alert("계정 정보를 찾을 수 없습니다. 관리자에게 문의하세요.");
-    }
-
-    if (p.active === false) {
-      await supabase.auth.signOut();
-      setSession(null);
-      setProfile(null);
-      return alert("비활성화된 계정입니다. 관리자에게 문의하세요.");
-    }
-
-    // 접속 기록은 서버에 남긴다 (관리자가 어느 컴퓨터에서든 확인 가능)
-    recordUserAccess(false);
-
-    setProfile(p);
-    const isAdmin = p.role === "admin" || sess.user.email.toLowerCase() === "cmj1012@twgroup.co.kr";
-    await Promise.all([load("projects"), load("sites"), load("personnel")]);
-    if (isAdmin) load("profiles", { isAdmin: true });
   }
 
   useEffect(() => {
@@ -1829,7 +1861,31 @@ JSON 출력 예시:
 
   if (loading) return <div className="center">확인 중...</div>;
   if (!session) return <Login />;
-  if (!profile) return <div className="center">권한 확인 중... {msg}</div>;
+  if (!profile) {
+    return (
+      <div className="center" style={{ flexDirection: "column", gap: 16, padding: 24, textAlign: "center" }}>
+        <div>권한 확인 중... {msg}</div>
+        {bootFailed && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              className="primary"
+              onClick={() => {
+                setBootFailed(false);
+                setMsg("");
+                boot();
+              }}
+            >
+              다시 시도
+            </button>
+            <button type="button" className="system-toggle-all-btn" onClick={handleSignOut}>
+              로그아웃
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
 
   return (

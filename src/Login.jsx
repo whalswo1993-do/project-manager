@@ -1,22 +1,18 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabase";
 import {
-  isAccountDeleted,
-  authenticateTestAccount,
   requestPasswordReset,
-  updateTestAccountPassword,
-  saveCustomUserProfile,
   recordUserAccess,
+  validateSignupProfile,
 } from "./authService";
 import "./Login.css";
 
 export default function Login() {
-  const [mode, setMode] = useState("login"); // "login" | "signup" | "reset" | "test-reset"
+  const [mode, setMode] = useState("login"); // "login" | "signup" | "reset"
   const [emailInput, setEmailInput] = useState("");
   const [nameInput, setNameInput] = useState("");
   const [teamInput, setTeamInput] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(() => {
@@ -48,25 +44,10 @@ export default function Login() {
       return;
     }
 
-    // 1. 삭제 여부 확인
-    if (isAccountDeleted(email)) {
-      setMessage("삭제된 계정입니다. 해당 계정으로는 다시 로그인할 수 없습니다.");
-      return;
-    }
-
     setSubmitting(true);
 
     try {
-      // 2. 테스트 계정 로그인 시도
-      const testResult = await authenticateTestAccount(email, targetPassword);
-      if (!testResult.isNotTestAccount) {
-        if (!testResult.success) {
-          setMessage(testResult.error || "테스트 계정 로그인에 실패했습니다.");
-        }
-        return;
-      }
-
-      // 3. 일반 Supabase Auth 로그인 (최대 10초 타임아웃 보호)
+      // Supabase Auth 로그인 (최대 10초 타임아웃 보호)
       const authPromise = supabase.auth.signInWithPassword({
         email,
         password: targetPassword,
@@ -82,26 +63,16 @@ export default function Login() {
         const lowerMessage = error.message.toLowerCase();
         if (lowerMessage.includes("email not confirmed")) {
           setMessage("회사 이메일 인증을 완료한 후 로그인해 주세요.");
+        } else if (lowerMessage.includes("invalid login credentials")) {
+          setMessage("이메일 또는 비밀번호가 올바르지 않습니다.");
         } else {
           setMessage(error.message);
         }
         return;
       }
 
-      // 로그인 성공 후 삭제 여부 재검사
-      if (data?.user?.email && isAccountDeleted(data.user.email)) {
-        await supabase.auth.signOut();
-        setMessage("삭제된 계정입니다. 해당 계정으로는 다시 로그인할 수 없습니다.");
-        return;
-      }
-
-      if (data?.user?.email) {
-        await recordUserAccess(data.user.email, {
-          name: data.user.user_metadata?.name,
-          team: data.user.user_metadata?.team,
-          department: data.user.user_metadata?.department,
-          last_sign_in_at: data.user.last_sign_in_at || new Date().toISOString()
-        });
+      if (data?.user) {
+        await recordUserAccess(true);
       }
     } catch (err) {
       setMessage(err.message || "로그인 중 오류가 발생했습니다.");
@@ -121,32 +92,16 @@ export default function Login() {
       return;
     }
 
-    // 삭제된 계정 차단
-    if (isAccountDeleted(email)) {
-      setMessage("삭제된 계정입니다. 해당 계정으로는 이용할 수 없습니다.");
-      return;
-    }
-
     setSubmitting(true);
 
     try {
-      // 1. 회원가입 모드
+      // 1. 회원가입 모드 — 이름과 소속팀은 필수 (DB 가입 트리거가 같은 규칙을 한 번 더 강제한다)
       if (mode === "signup") {
-        if (!nameInput.trim()) {
-          setMessage("이름을 입력해 주세요 (예: 홍길동).");
+        const problem = validateSignupProfile(nameInput, teamInput);
+        if (problem) {
+          setMessage(problem);
           return;
         }
-        if (!teamInput.trim()) {
-          setMessage("소속팀을 입력해 주세요 (예: PM팀, 설계팀, 제어팀 등).");
-          return;
-        }
-
-        // 로컬 커스텀 프로필 캐시에 즉시 저장
-        saveCustomUserProfile(email, {
-          name: nameInput.trim(),
-          team: teamInput.trim(),
-          department: teamInput.trim()
-        });
 
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -163,24 +118,12 @@ export default function Login() {
         });
 
         if (error) {
-          setMessage(error.message);
-          return;
-        }
-
-        try {
-          if (data?.user?.id) {
-            await supabase.from("profiles").upsert({
-              id: data.user.id,
-              email: email.toLowerCase(),
-              name: nameInput.trim(),
-              team: teamInput.trim(),
-              department: teamInput.trim(),
-              role: "grade1",
-              active: true
-            });
+          if (/database error saving new user/i.test(error.message)) {
+            setMessage("가입 정보를 저장하지 못했습니다. 이름과 소속팀을 정확히 입력했는지, 회사 이메일(@twgroup.co.kr)이 맞는지 확인해 주세요.");
+          } else {
+            setMessage(error.message);
           }
-        } catch (pe) {
-          console.warn("Profiles upsert fallback:", pe);
+          return;
         }
 
         if (data.session) {
@@ -209,43 +152,11 @@ export default function Login() {
           return;
         }
 
-        if (result.isTestAccount) {
-          // 테스트 계정은 바로 재설정 폼으로 이동
-          setMessage("사내 테스트 계정입니다. 새 비밀번호를 바로 설정할 수 있습니다.");
-          setMode("test-reset");
-          setPassword("");
-          setConfirmPassword("");
-          return;
-        }
-
         setMessage("비밀번호 재설정 링크가 발송되었습니다. 회사 메일함을 확인하여 링크를 클릭해 주세요.");
         return;
       }
 
-      // 3. 테스트 계정 직접 재설정 모드
-      if (mode === "test-reset") {
-        if (password.length < 6) {
-          setMessage("비밀번호는 최소 6자 이상이어야 합니다.");
-          return;
-        }
-        if (password !== confirmPassword) {
-          setMessage("새 비밀번호와 비밀번호 확인이 일치하지 않습니다.");
-          return;
-        }
-
-        const res = updateTestAccountPassword(email, password);
-        if (!res.success) {
-          setMessage(res.error || "비밀번호 재설정에 실패했습니다.");
-          return;
-        }
-
-        setMessage("비밀번호가 성공적으로 재설정되었습니다! 새 비밀번호로 로그인해 주세요.");
-        setMode("login");
-        setConfirmPassword("");
-        return;
-      }
-
-      // 4. 일반 로그인 모드
+      // 3. 일반 로그인 모드
       await performLogin(emailInput, password);
     } finally {
       setSubmitting(false);
@@ -253,7 +164,6 @@ export default function Login() {
   }
 
   const isResetMode = mode === "reset";
-  const isTestResetMode = mode === "test-reset";
   const isSignupMode = mode === "signup";
 
   return (
@@ -287,17 +197,13 @@ export default function Login() {
               ? "신규 임직원 회원가입"
               : isResetMode
               ? "비밀번호 찾기 / 재설정"
-              : isTestResetMode
-              ? "새 비밀번호 설정"
               : "프로젝트 관리 시스템"}
           </h1>
           <p className="login-subtext">
             {isResetMode
               ? "비밀번호를 재설정할 사내 이메일을 입력해 주세요."
-              : isTestResetMode
-              ? `사내 테스트 계정 (${emailInput}) 새 비밀번호를 설정합니다.`
               : isSignupMode
-              ? "TW Group 임직원 계정을 생성합니다."
+              ? "TW Group 임직원 계정을 생성합니다. 이름과 소속팀은 반드시 입력해야 합니다."
               : "회사 이메일 계정(@twgroup.co.kr)으로 로그인하세요."}
           </p>
         </div>
@@ -308,7 +214,6 @@ export default function Login() {
           onChange={(event) => setEmailInput(event.target.value)}
           placeholder="회사 이메일 (@twgroup.co.kr)"
           autoComplete="email"
-          disabled={isTestResetMode}
           required
         />
 
@@ -318,16 +223,18 @@ export default function Login() {
               type="text"
               value={nameInput}
               onChange={(event) => setNameInput(event.target.value)}
-              placeholder="이름 (예: 홍길동)"
+              placeholder="이름 * (필수, 예: 홍길동)"
               autoComplete="name"
+              minLength={2}
               required
             />
             <input
               type="text"
               value={teamInput}
               onChange={(event) => setTeamInput(event.target.value)}
-              placeholder="소속팀 (예: PM팀, 설계팀, 제어팀 등)"
+              placeholder="소속팀 * (필수, 예: PM팀, 설계팀, 제어팀)"
               autoComplete="organization"
+              minLength={2}
               required
             />
           </>
@@ -338,20 +245,8 @@ export default function Login() {
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder={isTestResetMode ? "새 비밀번호 (6자리 이상)" : "비밀번호 입력"}
-            autoComplete={isSignupMode || isTestResetMode ? "new-password" : "current-password"}
-            minLength={6}
-            required
-          />
-        )}
-
-        {isTestResetMode && (
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-            placeholder="새 비밀번호 확인"
-            autoComplete="new-password"
+            placeholder="비밀번호 입력"
+            autoComplete={isSignupMode ? "new-password" : "current-password"}
             minLength={6}
             required
           />
@@ -362,8 +257,6 @@ export default function Login() {
             ? "처리 중..."
             : isResetMode
             ? "재설정 링크 메일 발송"
-            : isTestResetMode
-            ? "비밀번호 재설정 완료"
             : isSignupMode
             ? "회원가입 신청"
             : "로그인"}
@@ -412,7 +305,7 @@ export default function Login() {
             </button>
           )}
 
-          {(isResetMode || isTestResetMode) && (
+          {isResetMode && (
             <button
               type="button"
               className="link"
@@ -430,7 +323,7 @@ export default function Login() {
         {isSignupMode && (
           <p className="login-guide-box">
             TW Group 임직원만 가입 가능합니다.<br />
-            회원가입 후 회사 이메일 인증을 완료해야 서비스를 이용할 수 있습니다.
+            이름과 소속팀은 필수 입력이며, 회원가입 후 회사 이메일 인증을 완료해야 서비스를 이용할 수 있습니다.
           </p>
         )}
 
@@ -459,4 +352,3 @@ export default function Login() {
     </main>
   );
 }
-

@@ -80,4 +80,7 @@ npm run build     # 프로덕션 빌드 → dist/
 - `supabase/snapshots/`는 특정 시점의 스키마 기록(수정 전 상태 포함)일 뿐이고, **현재 스키마의 정본은 `supabase/migrations/`다.** 공개 저장소이므로 **아직 고치지 않은 취약점 정보는 커밋하지 않는다**(적용 전 SQL은 로컬 `supabase/pending/` 같은 곳에 두고 `.git/info/exclude`로 제외).
 - 현재 권한 모델(DB RLS 기준): 조회=활성 사용자 전원 / `projects` 등록·삭제=admin·grade3 / 수정=admin·grade3·grade2(grade2는 트리거로 status·progress 등만) / `project_history`는 admin만 열람. `daily_reports`·`project_issues`는 로그인한 활성 사용자만.
 - 남은 알려진 경고(Supabase advisor): `current_app_role()`을 로그인 사용자가 호출 가능(RLS·서버 로그인 검증이 쓰므로 의도적), 유출 비밀번호 보호 꺼짐(요금제 설정).
-- 앱의 "테스트 계정"(test1~3)은 서버 인증이 아니라 브라우저에서만 검사하는 로컬 세션이다(서버 세션 없음 → DB는 익명 취급). 데이터 보호는 화면이 아니라 DB의 RLS 정책이 담당한다.
+- **모든 로그인은 Supabase Auth뿐이다.** 예전의 "가짜 테스트 계정" 코드(비밀번호 하드코딩, 브라우저 로컬 세션)는 제거했다. 테스트 계정은 `test3@twgroup.co.kr` 하나만 실제 서버 계정으로 운영하며(역할 grade3), 비밀번호는 저장소·채팅에 적지 않고 관리자가 SQL Editor로 직접 설정한다. 데이터 보호는 화면이 아니라 DB의 RLS 정책이 담당한다.
+- 사용자 정보의 정본은 DB `profiles`다: `name`, `team`, `role`, `active`, `last_sign_in_at`, `last_active_at`. 브라우저 로컬 저장소에 이름/팀/삭제 목록/접속 기록을 두지 않는다(컴퓨터마다 달라지는 원인이었다).
+- 회원가입의 이름·소속팀은 **필수**이며 두 겹으로 강제한다: 화면(`validateSignupProfile`)과 DB 트리거(`handle_new_user`, 최고 관리자 생성만 예외). 접속 기록은 `record_my_access` RPC, 계정 영구 삭제는 `admin_delete_user` RPC(최고 관리자만)로 한다.
+- 적용 대기 중인 DB 변경은 `supabase/pending/010_*.sql`, `011_*.sql`이다. 적용하면 서버에 기록된 버전 이름으로 `supabase/migrations/`로 옮겨 커밋한다. **010이 적용되기 전에는 이 코드를 배포하지 않는다**(새 컬럼·RPC가 없으면 이름/팀 저장과 접속 기록이 실패한다).

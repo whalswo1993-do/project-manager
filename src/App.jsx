@@ -16,21 +16,12 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { normalizeJVName, getConstructionPeriod, getMonthDailyDeptMatrix, getDailyDepartmentManpower } from "./utils";
 import { SkOnLogo, SamsungSdiLogo, HyundaiLogo } from "./CustomerLogos";
 import {
-  isAccountDeleted,
-  registerAccountDeletion,
-  getActiveTestSession,
-  clearTestSession,
-  getTestProfiles,
-  updateTestProfile,
-  findTestAccount,
-  ensureSupabaseAuth,
+  purgeLegacyLocalAuthData,
+  importLegacyLocalProfiles,
+  deleteUserAccount,
   getUserDisplayName,
   getUserTeam,
-  saveCustomUserProfile,
-  getCustomUserProfiles,
-  getAllUserLastAccess,
   recordUserAccess,
-  fetchRemoteUserAccessLogs,
   formatLastAccessTime,
 } from "./authService";
 import {
@@ -261,8 +252,6 @@ const monthCells = d => {
 
 export default function App() {
   const [session, setSession] = useState(null);
-  const sessionRef = useRef(session);
-  sessionRef.current = session;
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const isSuperAdminEmail = (session?.user?.email?.toLowerCase() === "cmj1012@twgroup.co.kr") || (profile?.email?.toLowerCase() === "cmj1012@twgroup.co.kr");
@@ -891,84 +880,29 @@ export default function App() {
     }
   }
 
-  async function load(t) {
+  async function load(t, { isAdmin = role === "admin" } = {}) {
     if (t === "profiles") {
+      // 사용자 목록·이름·팀·권한·접속 기록은 모두 서버(profiles)가 정본이다 → 어느 컴퓨터에서 접속해도 같다.
       try {
-        const { data: supaProfiles } = await supabase.from("profiles").select("*").order("email");
-        const testProfs = getTestProfiles();
-        const customProfs = getCustomUserProfiles();
-        const accessLogs = await fetchRemoteUserAccessLogs();
-        const combined = [];
-        const seenEmails = new Set();
+        let { data: list, error } = await supabase.from("profiles").select("*").order("email");
+        if (error) throw error;
+        list = list || [];
 
-        // 1. Supabase profiles (삭제된 계정 제외)
-        (supaProfiles || []).forEach(p => {
-          const lower = p.email?.toLowerCase();
-          if (lower && !isAccountDeleted(lower) && !seenEmails.has(lower)) {
-            seenEmails.add(lower);
-            const testOverride = testProfs.find(tp => tp.email?.toLowerCase() === lower);
-            const customOverride = customProfs[lower];
-            const accessOverride = accessLogs[lower];
-            combined.push({
-              ...p,
-              ...(customOverride || {}),
-              ...(testOverride || {}),
-              last_sign_in_at: accessOverride?.last_sign_in_at || customOverride?.last_sign_in_at || testOverride?.last_sign_in_at || p.last_sign_in_at,
-              last_active_at: accessOverride?.last_active_at || customOverride?.last_active_at || testOverride?.last_active_at || p.last_active_at,
-            });
+        if (isAdmin) {
+          // 예전에 이 브라우저에만 저장해 둔 이름/팀을 서버로 한 번 이관 (서버에 이미 있는 값은 덮어쓰지 않음)
+          const imported = await importLegacyLocalProfiles(list);
+          if (imported > 0) {
+            const refreshed = await supabase.from("profiles").select("*").order("email");
+            if (!refreshed.error && refreshed.data) list = refreshed.data;
+            setMsg(`이 컴퓨터에 저장돼 있던 ${imported}명의 이름·팀을 서버로 이관했습니다. 이제 어느 컴퓨터에서든 확인할 수 있습니다.`);
           }
-        });
-
-        // 2. Test accounts (Supabase에 없는 경우 추가)
-        testProfs.forEach(tp => {
-          const lower = tp.email?.toLowerCase();
-          if (lower && !isAccountDeleted(lower) && !tp.deleted && !seenEmails.has(lower)) {
-            seenEmails.add(lower);
-            const customOverride = customProfs[lower];
-            const accessOverride = accessLogs[lower];
-            combined.push({
-              ...tp,
-              ...(customOverride || {}),
-              last_sign_in_at: accessOverride?.last_sign_in_at || customOverride?.last_sign_in_at || tp.last_sign_in_at,
-              last_active_at: accessOverride?.last_active_at || customOverride?.last_active_at || tp.last_active_at,
-            });
-          }
-        });
-
-        // 3. Custom registered accounts that might not yet be in profiles or testProfs
-        Object.keys(customProfs).forEach(email => {
-          const lower = email.toLowerCase();
-          if (!seenEmails.has(lower) && !isAccountDeleted(lower)) {
-            seenEmails.add(lower);
-            const accessOverride = accessLogs[lower];
-            combined.push({
-              id: `custom-${lower}`,
-              email: lower,
-              role: "grade1",
-              active: true,
-              ...customProfs[lower],
-              last_sign_in_at: accessOverride?.last_sign_in_at || customProfs[lower]?.last_sign_in_at,
-              last_active_at: accessOverride?.last_active_at || customProfs[lower]?.last_active_at,
-            });
-          }
-        });
-
-        setUsers(combined);
-        if (role === "admin") {
-          checkNewRegisteredUsers(combined);
         }
+
+        setUsers(list);
+        if (isAdmin) checkNewRegisteredUsers(list);
       } catch (err) {
         console.error("profiles load error:", err);
-        const accessLogs = getAllUserLastAccess();
-        const fallback = getTestProfiles().filter(tp => !isAccountDeleted(tp.email) && !tp.deleted).map(tp => ({
-          ...tp,
-          last_sign_in_at: accessLogs[tp.email?.toLowerCase()]?.last_sign_in_at || tp.last_sign_in_at,
-          last_active_at: accessLogs[tp.email?.toLowerCase()]?.last_active_at || tp.last_active_at
-        }));
-        setUsers(fallback);
-        if (role === "admin") {
-          checkNewRegisteredUsers(fallback);
-        }
+        setMsg("사용자 목록을 불러오지 못했습니다: " + (err.message || err));
       }
       return;
     }
@@ -991,103 +925,44 @@ export default function App() {
   }
 
   async function boot(activeSession) {
-    const sess = activeSession || session || getActiveTestSession();
+    const sess = activeSession || session;
     if (!sess?.user?.email) return;
 
-    const email = sess.user.email.toLowerCase();
-
-    // 1. 삭제 여부 검사 -> 삭제 시 강제 로그아웃
-    if (isAccountDeleted(email)) {
-      await supabase.auth.signOut();
-      clearTestSession();
-      setSession(null);
-      setProfile(null);
-      return alert("삭제된 계정입니다. 해당 계정으로는 다시 로그인할 수 없습니다.");
-    }
-
-    // 사용자 접속 기록 등록
-    recordUserAccess(email, {
-      name: sess.user.user_metadata?.name || sess.user.name,
-      team: sess.user.user_metadata?.team || sess.user.team,
-      department: sess.user.user_metadata?.department || sess.user.department,
-      last_sign_in_at: sess.user.last_sign_in_at
-    });
-
-    // 2. 테스트 계정인지 확인
-    const testAcc = findTestAccount(email);
-    if (sess.isTestAccount || testAcc) {
-      if (testAcc?.deleted) {
-        await supabase.auth.signOut();
-        clearTestSession();
-        setSession(null);
-        setProfile(null);
-        return alert("삭제된 계정입니다. 해당 계정으로는 다시 로그인할 수 없습니다.");
-      }
-      if (testAcc?.active === false) {
-        await supabase.auth.signOut();
-        clearTestSession();
-        setSession(null);
-        setProfile(null);
-        return alert("비활성화된 계정입니다. 관리자에게 문의하세요.");
-      }
-
-      const testProfile = testAcc || {
-        id: sess.user.id,
-        email: sess.user.email,
-        role: "admin",
-        active: true,
-      };
-
-      setProfile(testProfile);
-      await ensureSupabaseAuth();
-      await Promise.all([load("projects"), load("sites"), load("personnel")]);
-      if (testProfile.role === "admin") load("profiles");
+    // 서버(profiles)에서 내 프로필(권한·이름·팀·활성 여부)을 읽는다. 프로필은 가입 시 DB 트리거가 만든다.
+    let p;
+    try {
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", sess.user.id).maybeSingle();
+      if (error) throw error;
+      p = data;
+    } catch (e) {
+      // 네트워크 오류 등 일시적인 문제는 로그아웃시키지 않고 안내만 한다.
+      console.warn("Failed to fetch profile row:", e);
+      setMsg("계정 정보를 불러오지 못했습니다. 새로고침해 주세요.");
       return;
     }
 
-    // 3. 일반 Supabase 계정 확인 (테이블 레코드 누락 시 자동 복구 및 자가 치유)
-    let p = null;
-    try {
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", sess.user.id).maybeSingle();
-      if (!error && data) {
-        p = data;
-      }
-    } catch (e) {
-      console.warn("Failed to fetch profile row:", e);
-    }
-
     if (!p) {
-      // profiles 테이블에 아직 레코드가 생성되지 않은 경우 자동 생성 및 자가 복구
-      const customProfs = getCustomUserProfiles();
-      const custom = customProfs[email] || {};
-      const newProf = {
-        id: sess.user.id,
-        email: email,
-        name: custom.name || sess.user.user_metadata?.name || sess.user.user_metadata?.full_name || email.split("@")[0],
-        team: custom.team || sess.user.user_metadata?.team || "미지정",
-        role: email === "cmj1012@twgroup.co.kr" ? "admin" : (custom.role || "grade1"),
-        active: true,
-      };
-
-      try {
-        await supabase.from("profiles").upsert(newProf);
-      } catch (upsertErr) {
-        console.warn("Failed to upsert profile, using local fallback:", upsertErr);
-      }
-      p = newProf;
+      // 관리자가 계정을 삭제했거나 프로필이 없는 경우
+      await supabase.auth.signOut();
+      setSession(null);
+      setProfile(null);
+      return alert("계정 정보를 찾을 수 없습니다. 관리자에게 문의하세요.");
     }
 
     if (p.active === false) {
       await supabase.auth.signOut();
-      clearTestSession();
       setSession(null);
       setProfile(null);
       return alert("비활성화된 계정입니다. 관리자에게 문의하세요.");
     }
 
+    // 접속 기록은 서버에 남긴다 (관리자가 어느 컴퓨터에서든 확인 가능)
+    recordUserAccess(false);
+
     setProfile(p);
+    const isAdmin = p.role === "admin" || sess.user.email.toLowerCase() === "cmj1012@twgroup.co.kr";
     await Promise.all([load("projects"), load("sites"), load("personnel")]);
-    if (p.role === "admin") load("profiles");
+    if (isAdmin) load("profiles", { isAdmin: true });
   }
 
   useEffect(() => {
@@ -1099,19 +974,14 @@ export default function App() {
       }
     }
 
-    // 1. 테스트 세션 우선 확인
-    const testSess = getActiveTestSession();
-    if (testSess) {
-      setSession(testSess);
+    // 예전 방식(가짜 테스트 세션, 별도 저장된 리프레시 토큰 등)이 브라우저에 남긴 값 정리
+    purgeLegacyLocalAuthData();
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
       setLoading(false);
-      boot(testSess);
-    } else {
-      supabase.auth.getSession().then(({ data }) => {
-        setSession(data.session);
-        setLoading(false);
-        if (data.session) boot(data.session);
-      });
-    }
+      if (data.session) boot(data.session);
+    });
 
     const { data: authSub } = supabase.auth.onAuthStateChange((event, s) => {
       if (event === "PASSWORD_RECOVERY") {
@@ -1119,55 +989,13 @@ export default function App() {
         setSession(s);
         return;
       }
-      const currentTest = getActiveTestSession();
-      if (currentTest) {
-        setSession(currentTest);
-        boot(currentTest);
-      } else {
-        setSession(s);
-        if (s) boot(s);
-        else setProfile(null);
-      }
+      setSession(s);
+      if (s) boot(s);
+      else setProfile(null);
     });
-
-    const handleAuthChange = () => {
-      const activeTest = getActiveTestSession();
-      if (activeTest) {
-        setSession(activeTest);
-        setLoading(false);
-        boot(activeTest);
-      } else {
-        supabase.auth.getSession().then(({ data }) => {
-          setSession(data.session);
-          setLoading(false);
-          if (data.session) boot(data.session);
-          else {
-            setSession(null);
-            setProfile(null);
-          }
-        });
-      }
-    };
-
-    const handleAccountDeleted = (e) => {
-      const deletedEmail = e.detail?.email;
-      const myEmail = sessionRef.current?.user?.email?.toLowerCase();
-      if (deletedEmail && myEmail === deletedEmail) {
-        supabase.auth.signOut();
-        clearTestSession();
-        setSession(null);
-        setProfile(null);
-        alert("현재 계정이 관리자에 의해 영구 삭제되었습니다. 로그아웃됩니다.");
-      }
-    };
-
-    window.addEventListener("auth-changed", handleAuthChange);
-    window.addEventListener("user-account-deleted", handleAccountDeleted);
 
     return () => {
       authSub?.subscription?.unsubscribe();
-      window.removeEventListener("auth-changed", handleAuthChange);
-      window.removeEventListener("user-account-deleted", handleAccountDeleted);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1463,30 +1291,26 @@ export default function App() {
   }
 
   async function updateUser(id, v) {
-    const userObj = users.find(u => u.id === id);
-    const email = userObj?.email;
-    const testAcc = findTestAccount(email) || (id.startsWith("test-user-") ? { id } : null);
+    // 서버(profiles)에 저장되는 항목만 보낸다. (예전에는 없는 컬럼까지 보내 저장이 조용히 실패했다)
+    const patch = {};
+    if (v.name !== undefined) patch.name = String(v.name).trim();
+    if (v.team !== undefined) patch.team = String(v.team).trim();
+    if (v.role !== undefined) patch.role = v.role;
+    if (v.active !== undefined) patch.active = v.active;
 
-    if (testAcc) {
-      updateTestProfile(id, v);
-      if (email) updateTestProfile(email, v);
+    if ((patch.name !== undefined && !patch.name) || (patch.team !== undefined && !patch.team)) {
+      return setMsg("이름과 소속팀은 비워둘 수 없습니다.");
     }
 
-    if (email) {
-      saveCustomUserProfile(email, v);
+    const { data, error } = await supabase.from("profiles").update(patch).eq("id", id).select("id");
+    if (error) {
+      return setMsg("저장에 실패했습니다: " + error.message);
+    }
+    if (!data || data.length === 0) {
+      return setMsg("저장되지 않았습니다. 최고 관리자 권한이 필요합니다.");
     }
 
-    try {
-      if (!id.startsWith("test-user-") && !id.startsWith("custom-")) {
-        await supabase.from("profiles").update(v).eq("id", id);
-      } else if (email) {
-        await supabase.from("profiles").update(v).eq("email", email.trim().toLowerCase());
-      }
-    } catch (e) {
-      console.warn("Supabase update skipped/failed:", e);
-    }
-
-    setMsg("사용자 정보 및 권한이 성공적으로 저장되었습니다.");
+    setMsg("사용자 정보 및 권한이 성공적으로 저장되었습니다. (서버에 저장되어 모든 컴퓨터에서 동일하게 보입니다)");
     await load("profiles");
   }
 
@@ -1508,17 +1332,15 @@ export default function App() {
       return;
     }
 
-    try {
-      await registerAccountDeletion(normalized, id);
-      setMsg(`'${email}' 사용자가 영구 삭제되었습니다.`);
-      load("profiles");
-    } catch (err) {
-      alert("사용자 삭제 중 오류가 발생했습니다: " + err.message);
+    const result = await deleteUserAccount(id);
+    if (!result.success) {
+      return alert("사용자 삭제 중 오류가 발생했습니다: " + result.error);
     }
+    setMsg(`'${email}' 사용자가 영구 삭제되었습니다.`);
+    load("profiles");
   }
 
   async function handleSignOut() {
-    clearTestSession();
     await supabase.auth.signOut();
     setSession(null);
     setProfile(null);
@@ -1997,7 +1819,6 @@ JSON 출력 예시:
             setIsPasswordRecovery(false);
             window.history.replaceState(null, "", window.location.pathname);
             supabase.auth.signOut();
-            clearTestSession();
             setSession(null);
           }}
         />
@@ -2035,7 +1856,7 @@ JSON 출력 예시:
               <div className="user-avatar-indicator" />
               <div className="user-info-text">
                 <span className="user-display-name">
-                  {getUserDisplayName(session?.user?.email, session?.user?.user_metadata)}
+                  {getUserDisplayName(session?.user?.email, profile || session?.user?.user_metadata)}
                 </span>
                 <span className="user-role-tag">
                   {role === "admin" ? "최고 관리자" : (role || 'GRADE 1').toUpperCase()}
@@ -3933,8 +3754,7 @@ JSON 출력 예시:
                                 onClick={() => {
                                   updateUser(u.id, {
                                     name: editName.trim(),
-                                    team: editTeam.trim(),
-                                    department: editTeam.trim()
+                                    team: editTeam.trim()
                                   });
                                   setEditingUserId(null);
                                 }}

@@ -29,7 +29,7 @@ export default defineConfig([
   },
   {
     // 서버 함수(Vercel)와 테스트는 Node 환경
-    files: ['api/**/*.js', 'tests/**/*.js', 'vitest.config.js'],
+    files: ['api/**/*.js', 'tests/**/*.js', 'scripts/**/*.js', 'vitest.config.js'],
     languageOptions: {
       globals: { ...globals.node, ...globals.browser },
     },

@@ -43,6 +43,7 @@ npm run build     # 프로덕션 빌드 → dist/
 - `auto`: Gemini 성공 시 그대로 사용. Gemini 실패 시 `/api/claude`(Vercel 서버 함수)로 재시도. Claude가 미설정/비로그인/개발서버이면 Gemini의 원래 오류를 그대로 보여준다(호출부의 429·403 안내 문구 유지).
 - `api/claude.js`(엔드포인트) → `api/_lib/auth.js`(Supabase 로그인 검증: `current_app_role()`이 null이 아니어야 통과) → `api/_lib/claude.js`(Anthropic SDK). 기본 모델 `claude-opus-5-5`, 스트리밍, refusal 서버 fallback(Haiku 제외).
 - Gemini 구독이 끝나면 `VITE_AI_PROVIDER=claude`로 바꾼다.
+- Claude 연결 점검: `$env:ANTHROPIC_API_KEY = '...'; node scripts/claude-smoke.js` (실제 API를 한 번 호출해 키/모델/요청 형태를 확인. 끝나면 `Remove-Item Env:ANTHROPIC_API_KEY`). Vercel 환경변수는 `vercel env add ANTHROPIC_API_KEY production`으로 등록하고 **재배포해야 반영된다.**
 - 요청 본문 한도 약 4.5MB(Vercel). Claude 경로에서 큰 PDF/이미지(base64 약 3MB 초과)는 413이 날 수 있다.
 
 ## 구조

@@ -3,6 +3,7 @@ import './Quotations.css';
 import { supabase } from './supabase';
 import * as XLSX from 'xlsx';
 import { analyzeWorkbook, analyzePastedText, buildQuotations } from './quotationParser';
+import { PasteZone, PasteEntry } from './PasteZone';
 
 // 품목 구분 (견적 라인 대분류 + 상세 리스트 품목 구분). 화면 필터 순서이기도 하다.
 const CATEGORY_ORDER = ['가공품', '시장품', '잡자재', '기구 SET', '인건비', '경비', '프로그램', '차감', '기타'];
@@ -935,32 +936,36 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                             {collapsedSections.newQuote ? '▸ 펼치기' : '▾ 접기'}
                         </button>
                     </div>
-                    {!collapsedSections.newQuote && (
-                        <div style={{display:'flex', gap:'8px', alignItems:'center'}}>
-                            <input type="file" ref={fileInputRef} onChange={e=>handleFileSelect(e.target.files[0])} accept=".xlsx,.xlsm,.xls" style={{display:'none'}}/>
-                            <textarea
-                                placeholder={canManage ? "시트별 표 붙여넣기 (Ctrl+V)" : "등록 권한 없음 (클릭 시 안내)"}
+                </div>
+                {!collapsedSections.newQuote ? (
+                    <>
+                        {/* 등록 방법: 표 붙여넣기(주) + 파일 첨부(보조)를 제목 바로 아래 가운데에 크게 보여준다 */}
+                        <input type="file" ref={fileInputRef} onChange={e=>handleFileSelect(e.target.files[0])} accept=".xlsx,.xlsm,.xls" style={{display:'none'}}/>
+                        <PasteEntry
+                            block
+                            align="center"
+                            drmNote
+                            file={{
+                                label: `파일 첨부 (Excel)${!canManage ? ' 🔒' : ''}`,
+                                busy: isExtracting,
+                                busyLabel: '처리 중...',
+                                disabled: isExtracting,
+                                title: !canManage ? '등록 권한이 없습니다 (클릭 시 권한 안내)' : '엑셀 견적서(.xlsx/.xls)를 첨부합니다',
+                                onClick: () => {
+                                    if (!canManage) return notifyPermission('견적서 파일 업로드');
+                                    fileInputRef.current.click();
+                                },
+                            }}
+                        >
+                            <PasteZone
+                                size={draft ? 'md' : 'lg'}
+                                label={draft ? '다른 시트도 이어서 붙여넣기' : '견적서 표 붙여넣기'}
+                                hint={draft ? '다른 시트의 표 복사 → 클릭 → Ctrl+V' : '엑셀에서 표를 복사(Ctrl+C) → 이 칸을 클릭 → 붙여넣기(Ctrl+V)'}
                                 title="견적서 시트와 상세 리스트 시트를 각각 드래그해 복사한 뒤 하나씩 붙여넣으세요. 드래그 범위는 달라도 됩니다."
-                                disabled={isExtracting}
-                                onClick={() => {
-                                    if (!canManage) notifyPermission('견적서 등록');
-                                }}
-                                style={{
-                                    height: '35px',
-                                    width: '180px',
-                                    padding: '8px 14px',
-                                    borderRadius: '8px',
-                                    border: canManage ? '1px solid #10b981' : '1px solid #d1d5da',
-                                    outline: 'none',
-                                    resize: 'none',
-                                    overflow: 'hidden',
-                                    whiteSpace: 'nowrap',
-                                    boxSizing: 'border-box',
-                                    fontSize: '13px',
-                                    fontFamily: 'inherit',
-                                    background: canManage ? '#fff' : '#f3f4f6',
-                                    cursor: canManage ? 'text' : 'pointer'
-                                }}
+                                disabled={!canManage}
+                                disabledReason="견적서 등록 권한이 없습니다"
+                                busy={isExtracting}
+                                busyLabel="처리 중..."
                                 onPaste={(e) => {
                                     if (!canManage) {
                                         e.preventDefault();
@@ -977,40 +982,23 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                     }
                                 }}
                             />
-                            <button 
-                                onClick={() => {
-                                    if (!canManage) return notifyPermission('견적서 파일 업로드');
-                                    fileInputRef.current.click();
-                                }} 
-                                disabled={isExtracting} 
-                                style={{
-                                    background: !canManage ? '#9ca3af' : isExtracting ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #059669)',
-                                    color: '#fff',
-                                    padding: '8px 14px',
-                                    borderRadius: '8px',
-                                    fontWeight: 'bold',
-                                    border: 'none',
-                                    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-                                    height: '35px',
-                                    whiteSpace: 'nowrap',
-                                    cursor: 'pointer'
-                                }}
-                                title={!canManage ? "등록 권한이 없습니다 (클릭 시 권한 안내)" : ""}
-                            >
-                                {isExtracting ? "⏳ 처리 중..." : "📎 파일 첨부 (Excel)"} {!canManage && "🔒"}
-                            </button>
-                        </div>
-                    )}
-                </div>
-                {!collapsedSections.newQuote ? (
-                    <>
-                        {msg &&<p className="notice" style={{marginTop:'10px',fontWeight:'bold',color:'#059669'}}>{msg}</p>}
+                        </PasteEntry>
+
+                        {msg &&<p className="notice" style={{marginTop:'12px',fontWeight:'bold',color:'#059669',textAlign:'center'}}>{msg}</p>}
                         {!draft && (
-                            <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
-                                📎 엑셀 견적서를 첨부하거나, 견적서 시트 → 상세 리스트(Detail List) 시트 순서로 각각 드래그·복사해 붙여넣으세요.
-                                프로젝트는 견적서 안의 "프로젝트 명"으로 자동 등록됩니다(같은 이름의 등록 프로젝트가 있으면 연결).
-                                AI 없이 정해진 규칙으로 품목별 KRW 단가를 읽고, 수량×단가=금액 · 상세 합계 ↔ 견적 단가를 검증한 뒤 저장합니다. 원본 파일은 보관하지 않습니다.
-                            </p>
+                            <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '6px 8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                    {['① 견적서 시트 표 복사 → 붙여넣기', '② 상세 리스트(Detail List) 시트 표 복사 → 이어서 붙여넣기', '③ 미리보기에서 단가 검증 확인 → 저장'].map((step, i) => (
+                                        <Fragment key={step}>
+                                            {i > 0 && <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>▸</span>}
+                                            <span style={{ padding: '3px 10px', borderRadius: '999px', border: '1px solid var(--border-subtle)', background: 'var(--bg-card-subtle)' }}>{step}</span>
+                                        </Fragment>
+                                    ))}
+                                </div>
+                                <p style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
+                                    프로젝트는 견적서 안의 "프로젝트 명"으로 자동 등록되고(같은 이름의 등록 프로젝트가 있으면 연결), AI 없이 정해진 규칙으로 품목별 KRW 단가를 읽습니다. 원본 파일은 보관하지 않습니다.
+                                </p>
+                            </div>
                         )}
                         {draft && preview && (
                             <QuotationPreview

@@ -8,6 +8,7 @@ import VisionSPC from "./VisionSPC";
 import IssueManagement from "./IssueManagement";
 import IntegratedIssueCenter from "./IntegratedIssueCenter";
 import Quotations from "./Quotations";
+import { PasteZone, PasteEntry } from "./PasteZone";
 import ManpowerManagement, { ProjectManpowerModal } from "./ManpowerManagement";
 import PasswordChangeModal from "./PasswordChangeModal";
 import { generateAIText } from "./ai";
@@ -2462,27 +2463,23 @@ JSON 출력 예시:
                         {editing ? "※마스터 스케줄 첨부 시 일정 및 공수 데이터가 최신 버전으로 즉시 갱신됩니다" : "※공수 포함 등록시 공수 통합 관리 자동 반영"}
                       </span>
                     </div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <input type="file" ref={masterPlanInput} onChange={e => handleMasterPlanUpload(e.target.files[0])} accept=".xlsx, .xls" style={{ display: 'none' }} />
-                      <textarea
-                        placeholder="엑셀 표 붙여넣기 (Ctrl+V)"
-                        disabled={isExtracting}
-                        style={{
-                          height: '35px',
-                          width: '180px',
-                          padding: '8px 14px',
-                          borderRadius: '8px',
-                          border: '1.5px solid #10b981',
-                          outline: 'none',
-                          resize: 'none',
-                          overflow: 'hidden',
-                          whiteSpace: 'nowrap',
-                          boxSizing: 'border-box',
-                          fontSize: '13px',
-                          fontFamily: 'inherit',
-                          background: 'var(--input-bg)',
-                          color: 'var(--input-text)'
-                        }}
+                    <input type="file" ref={masterPlanInput} onChange={e => handleMasterPlanUpload(e.target.files[0])} accept=".xlsx, .xls" style={{ display: 'none' }} />
+                    {/* 표 붙여넣기(주)를 색이 있는 칸으로, 파일 첨부(보조)는 옆 버튼으로 — DRM 문서는 붙여넣기만 가능하다 */}
+                    <PasteEntry
+                      wrap={false}
+                      file={{
+                        label: '파일 첨부 (Excel)',
+                        busy: isExtracting,
+                        busyLabel: 'AI 분석 중...',
+                        disabled: isExtracting,
+                        onClick: () => masterPlanInput.current.click(),
+                      }}
+                    >
+                      <PasteZone
+                        label="엑셀 표 붙여넣기"
+                        hint="표 복사(Ctrl+C) → 클릭 → Ctrl+V"
+                        busy={isExtracting}
+                        busyLabel="AI 분석 중..."
                         onPaste={(e) => {
                           const html = e.clipboardData?.getData("text/html") || "";
                           const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text") || "";
@@ -2519,25 +2516,7 @@ JSON 출력 예시:
                           }
                         }}
                       />
-                      <button
-                        onClick={() => masterPlanInput.current.click()}
-                        disabled={isExtracting}
-                        style={{
-                          background: isExtracting ? '#94a3b8' : 'linear-gradient(135deg, #10b981, #059669)',
-                          color: '#fff',
-                          padding: '8px 16px',
-                          borderRadius: '8px',
-                          fontWeight: 'bold',
-                          border: 'none',
-                          boxShadow: '0 2px 5px rgba(16, 185, 129, 0.25)',
-                          height: '35px',
-                          whiteSpace: 'nowrap',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {isExtracting ? "✨ AI 분석 중..." : "✨ 파일 첨부 (Excel)"}
-                      </button>
-                    </div>
+                    </PasteEntry>
                   </div>
                 </div>
               </div>

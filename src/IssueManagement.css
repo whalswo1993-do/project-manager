@@ -528,43 +528,7 @@
   transform: translateY(-1px);
 }
 
-/* ── High Contrast Report Paste Textareas ── */
-.report-paste-textarea {
-  font-weight: 600 !important;
-  transition: all var(--dur-fast) var(--ease-in-out) !important;
-}
-
-.report-paste-textarea::placeholder {
-  opacity: 1 !important;
-  font-weight: 600 !important;
-}
-
-/* Light mode placeholders */
-[data-theme="light"] .report-paste-textarea.work-paste::placeholder,
-body.theme-light .report-paste-textarea.work-paste::placeholder {
-  color: #059669 !important;
-}
-[data-theme="light"] .report-paste-textarea.mp-paste::placeholder,
-body.theme-light .report-paste-textarea.mp-paste::placeholder {
-  color: #0284c7 !important;
-}
-
-/* Dark mode placeholders - Bright, crisp & ultra-readable */
-[data-theme="dark"] .report-paste-textarea.work-paste::placeholder,
-body.theme-dark .report-paste-textarea.work-paste::placeholder {
-  color: #34d399 !important; /* Vivid Emerald */
-}
-[data-theme="dark"] .report-paste-textarea.mp-paste::placeholder,
-body.theme-dark .report-paste-textarea.mp-paste::placeholder {
-  color: #38bdf8 !important; /* Vivid Sky Blue */
-}
-
-/* Dark mode text color when typing or filled */
-[data-theme="dark"] .report-paste-textarea,
-body.theme-dark .report-paste-textarea {
-  color: #ffffff !important;
-  background-color: #0d1117 !important;
-}
+/* 작업표/공수표 붙여넣기 칸은 공통 컴포넌트(PasteZone.jsx / PasteZone.css)를 쓴다 */
 
 /* ── Section Fold Buttons (Prevent Vertical Wrapping) ── */
 .report-fold-btn {
@@ -1556,6 +1520,8 @@ body.theme-dark .report-paste-textarea {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  flex: 1 1 560px; /* 오른쪽 버튼을 뺀 나머지 폭을 쓴다 (표 붙여넣기 칸이 커져서) */
+  min-width: 0;
 }
 
 .reg-tool-btn {

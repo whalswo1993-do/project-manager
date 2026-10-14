@@ -5,6 +5,7 @@ import { Chart } from 'react-chartjs-2';
 import './VisionSPC.css';
 import { calculateStats, exportResultsToExcelWithExcelJS } from './exportSPC';
 import { supabase } from './supabase';
+import { PasteZone, PasteEntry } from './PasteZone';
 
 ChartJS.register(CategoryScale, LinearScale, BarController, LineController, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -533,64 +534,21 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                 <aside className="sidebar">
                     <div>
                         <div className="panel-title panel-section-title" style={{ marginBottom: '10px' }}>데이터 입력</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginBottom: '1.25rem' }}>
-                            {/* 1. 파일 첨부 버튼 (표 붙여넣기 칸 크기만큼 width: 100%로 확장) */}
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current.click()}
-                                style={{
-                                    width: '100%',
-                                    background: 'linear-gradient(135deg, #10b981, #059669)',
-                                    color: '#fff',
-                                    padding: '9px 16px',
-                                    borderRadius: '8px',
-                                    fontWeight: 'bold',
-                                    border: 'none',
-                                    boxShadow: '0 2px 5px rgba(16, 185, 129, 0.25)',
-                                    height: '38px',
-                                    whiteSpace: 'nowrap',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '6px',
-                                    fontSize: '13px',
-                                    boxSizing: 'border-box',
-                                    transition: 'all 0.15s ease'
-                                }}
+                        <div style={{ width: '100%', marginBottom: '1.25rem' }}>
+                            {/* 표 붙여넣기(주)를 맨 위 큰 칸으로, 파일 첨부(보조)는 그 아래 — DRM 문서는 붙여넣기만 가능하다.
+                                붙여넣은 글자는 onInput(handlePaste)이 textarea 값에서 읽는다 (PasteZone 이 붙여넣기 전에 값을 비워 준다) */}
+                            <PasteEntry
+                                direction="column"
+                                drmNote
+                                file={{ label: '파일 첨부 (Excel)', onClick: () => fileInputRef.current.click() }}
                             >
-                                ✨ 파일 첨부 (Excel)
-                            </button>
-
-                            {/* 2. 엑셀 표 붙여넣기 (Ctrl+V) (파일첨부 버튼 아래쪽 배치) */}
-                            <textarea 
-                                placeholder="엑셀 표 붙여넣기 (Ctrl+V)"
-                                onInput={handlePaste}
-                                onPaste={(e) => {
-                                    const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text") || "";
-                                    if (text && text.trim().length > 0) {
-                                        // onInput이 트리거되므로 자연스럽게 파싱됨
-                                    }
-                                }}
-                                style={{
-                                    width: '100%',
-                                    height: '38px',
-                                    padding: '9px 14px',
-                                    borderRadius: '8px',
-                                    border: '1.5px solid #10b981',
-                                    outline: 'none',
-                                    resize: 'none',
-                                    overflow: 'hidden',
-                                    whiteSpace: 'nowrap',
-                                    boxSizing: 'border-box',
-                                    fontSize: '13px',
-                                    fontFamily: 'inherit',
-                                    background: 'var(--bg-card)',
-                                    color: 'var(--text-primary)',
-                                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-                                    textAlign: 'left'
-                                }}
-                            ></textarea>
+                                <PasteZone
+                                    size="lg"
+                                    label="엑셀 표 붙여넣기"
+                                    hint="표 복사 → 이 칸 클릭 → Ctrl+V"
+                                    onInput={handlePaste}
+                                />
+                            </PasteEntry>
                         </div>
                     </div>
 

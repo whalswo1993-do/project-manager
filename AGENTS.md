@@ -56,8 +56,16 @@ npm run build     # 프로덕션 빌드 → dist/
 - 검증: 행별 수량×단가=금액, 상세 블록 품목 합=총계, 견적 소계, 상세 블록 총계 ↔ 견적 라인 단가(여러 블록 합 포함). 제목은 파일명이 아니라 내용의 "프로젝트 명".
 - 실제 견적서로 점검: `node scripts/quotation-check.js "<견적서 폴더>" [--items]` — 파일 첨부와 4가지 드래그 범위 붙여넣기 결과가 같은지까지 확인한다. **실제 견적서/금액은 공개 저장소에 넣지 않는다**(테스트는 가짜 데이터).
 
+## 표 붙여넣기 / 파일 첨부 입력 (`src/PasteZone.jsx`)
+- DRM 보안 때문에 파일 첨부가 안 되는 문서가 많아서 **표 붙여넣기가 주된 입력 방법**이다. 그래서 작은 입력칸이 아니라 색이 있는 큰 칸(`PasteZone`)으로 눈에 띄게 하고, 파일 첨부는 옆의 보조 버튼으로 둔다(`PasteEntry`로 한 줄/세로 배치).
+- 마스터 스케줄·공사일보(작업표/공수표)·견적·Vision SPC가 모두 이걸 쓴다. **새 업로드/붙여넣기 화면도 일반 `<textarea>`를 직접 만들지 말고 `PasteEntry` + `PasteZone`을 쓴다.** 붙여넣기 처리는 화면마다 달라서 기존 핸들러를 `onPaste`/`onInput`으로 그대로 넘긴다.
+- 구현 주의: 눈에 보이는 영역 위에 **투명한 textarea**를 덮어서 클릭 → Ctrl+V, 마우스 오른쪽 → 붙여넣기가 되게 했다. `index.css`가 모든 textarea의 배경·테두리·포커스 링을 `!important`로 덮으므로 투명 처리는 `PasteZone.css`의 더 구체적인 선택자로 한다. 붙여넣기 직전에 textarea 값을 비우고(Vision SPC는 값을 읽는다), 타이핑은 무시한다.
+- 비활성(프로젝트 미선택·권한 없음)일 때는 `disabledReason`으로 이유를 칸 안에 보여준다. 줄바꿈이 문제되는 좁은 헤더 안에서는 `PasteEntry wrap={false}`.
+- 화면을 로그인 없이 점검하려면 `Quotations`/`VisionSPC`/`IssueManagement`를 임시 데모 페이지(루트의 `paste-demo.html`, 커밋 금지)에 마운트하고 fetch를 빈 응답으로 가리면 된다. 헤드리스 Edge(`msedge --headless=new --screenshot=...`)로 라이트/다크 캡처가 가능하다.
+
 ## 구조
 - `src/App.jsx`(약 200KB) — 메인 앱 셸/프로젝트·일정 관리. 매우 크니 필요한 구간만 읽을 것
+- `src/PasteZone.jsx`(+`.css`) — 표 붙여넣기 칸/파일 첨부 배치 공통 컴포넌트
 - `src/IssueManagement.jsx`(공사일보), `IntegratedIssueCenter.jsx`(이슈 센터), `ManpowerManagement.jsx`(공수), `Quotations.jsx`, `VisionSPC.jsx`, `SmartProjectSelector.jsx`
 - `src/authService.js`, `Login.jsx` — 인증/권한. `issueService.js`, `masterPlanParser.js`, `reportExports.js`, `export*.js` — 서비스/파서/내보내기
 - `src/ai.js` — AI 단일 진입점. `api/` — Vercel 서버 함수. `tests/` — 회귀 테스트. `supabase/` — 연결 설정과 마이그레이션

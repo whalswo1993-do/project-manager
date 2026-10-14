@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import pptxgen from 'pptxgenjs';
 import { exportIssuesPpt } from './exportIssuePpt';
 import { fetchRemoteIssues, getRegisteredSiteNames } from './issueService';
+import { PasteZone, PasteEntry } from './PasteZone';
 
 export default function IssueManagement({ projects, sites = [], role, onPermissionDenied, currentCustomer, onNavigateToIssueCenter }) {
     const isGrade1 = role === 'grade1';
@@ -3134,49 +3135,42 @@ ${compiledText.substring(0, 30000)}
                     {/* 2. 직관적인 일보 액션 툴바 (매뉴얼 설명 없이 즉시 실행 가능한 도구 버튼) */}
                     <div className="reg-action-toolbar">
                         <div className="reg-action-left">
-                            <button
-                                type="button"
-                                className="reg-tool-btn primary-tool"
-                                onClick={() => {
-                                    if (!canEditReport) return notifyPermission('공사일보 파일 업로드');
-                                    fileInputRef.current?.click();
+                            {/* 표 붙여넣기(주)를 색이 있는 큰 칸으로, 파일 첨부(보조)는 옆 버튼으로 — DRM 문서는 붙여넣기만 가능하다 */}
+                            <PasteEntry
+                                file={{
+                                    label: `엑셀 파일 첨부하기${!canEditReport ? ' 🔒' : ''}`,
+                                    busy: isExtracting,
+                                    busyLabel: 'AI 분석 중...',
+                                    disabled: isExtracting || !selectedProject,
+                                    title: '공사일보 엑셀 파일(.xlsx, .xls)을 첨부하여 자동 추출합니다',
+                                    icon: '📂',
+                                    onClick: () => {
+                                        if (!canEditReport) return notifyPermission('공사일보 파일 업로드');
+                                        fileInputRef.current?.click();
+                                    },
                                 }}
-                                disabled={isExtracting || !selectedProject}
-                                title="공사일보 엑셀 파일(.xlsx, .xls)을 첨부하여 자동 추출합니다"
                             >
-                                <span>{isExtracting ? '⏳ AI 분석 중...' : '📂 엑셀 파일 첨부하기'}</span>
-                                {!canEditReport && ' 🔒'}
-                            </button>
-
-                            <textarea
-                                className="report-paste-textarea work-paste"
-                                placeholder="📋 작업표 붙여넣기 (Ctrl+V)"
-                                onPaste={(e) => handlePasteReportSheet(e, 'work')}
-                                disabled={!canEditReport || !selectedProject}
-                                style={{
-                                    width: '180px', height: '34px', padding: '7px 10px',
-                                    borderRadius: '8px', border: '1.5px solid #10b981',
-                                    outline: 'none', resize: 'none', overflow: 'hidden', whiteSpace: 'nowrap',
-                                    fontSize: '11.5px', background: !canEditReport ? 'var(--bg-hover)' : 'var(--input-bg)',
-                                    color: 'var(--input-text)', boxSizing: 'border-box'
-                                }}
-                                title="엑셀 작업내용 표를 복사(Ctrl+C)한 뒤 여기에 붙여넣기(Ctrl+V)하세요"
-                            />
-
-                            <textarea
-                                className="report-paste-textarea mp-paste"
-                                placeholder="👥 공수표 붙여넣기 (Ctrl+V)"
-                                onPaste={(e) => handlePasteReportSheet(e, 'manpower')}
-                                disabled={!canEditReport || !selectedProject}
-                                style={{
-                                    width: '180px', height: '34px', padding: '7px 10px',
-                                    borderRadius: '8px', border: '1.5px solid #0ea5e9',
-                                    outline: 'none', resize: 'none', overflow: 'hidden', whiteSpace: 'nowrap',
-                                    fontSize: '11.5px', background: !canEditReport ? 'var(--bg-hover)' : 'var(--input-bg)',
-                                    color: 'var(--input-text)', boxSizing: 'border-box'
-                                }}
-                                title="엑셀 투입공수 표를 복사(Ctrl+C)한 뒤 여기에 붙여넣기(Ctrl+V)하세요"
-                            />
+                                <PasteZone
+                                    label="작업표 붙여넣기"
+                                    hint="작업내용 표 복사 → 클릭 → Ctrl+V"
+                                    icon="📋"
+                                    accent="green"
+                                    title="엑셀 작업내용 표를 복사(Ctrl+C)한 뒤 여기에 붙여넣기(Ctrl+V)하세요"
+                                    disabled={!canEditReport || !selectedProject}
+                                    disabledReason={!canEditReport ? '등록 권한이 없습니다' : targetType === 'site' ? '먼저 위에서 양산 사이트를 선택하세요' : '먼저 위에서 프로젝트를 선택하세요'}
+                                    onPaste={(e) => handlePasteReportSheet(e, 'work')}
+                                />
+                                <PasteZone
+                                    label="공수표 붙여넣기"
+                                    hint="투입공수 표 복사 → 클릭 → Ctrl+V"
+                                    icon="👥"
+                                    accent="sky"
+                                    title="엑셀 투입공수 표를 복사(Ctrl+C)한 뒤 여기에 붙여넣기(Ctrl+V)하세요"
+                                    disabled={!canEditReport || !selectedProject}
+                                    disabledReason={!canEditReport ? '등록 권한이 없습니다' : targetType === 'site' ? '먼저 위에서 양산 사이트를 선택하세요' : '먼저 위에서 프로젝트를 선택하세요'}
+                                    onPaste={(e) => handlePasteReportSheet(e, 'manpower')}
+                                />
+                            </PasteEntry>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

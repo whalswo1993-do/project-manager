@@ -1,0 +1,292 @@
+/* 엑셀 표 붙여넣기 / 파일 첨부 공통 입력 영역 (PasteZone.jsx) */
+
+/* ── 배치 ───────────────────────────────────────────── */
+/* 부모 폭을 꽉 채운다 (flex 부모 안에서도). 줄바꿈 여부는 폭이 정하게 해서
+   부모의 내용 기준 폭 계산(max-content)에 따라 버튼이 아래로 밀리는 일을 막는다. */
+.paste-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.paste-entry.pe-block { width: 100%; }
+
+.paste-entry-row {
+  display: flex;
+  align-items: stretch; /* 붙여넣기 칸과 파일 첨부 버튼의 높이를 맞춘다 */
+  flex-wrap: wrap;
+  gap: 12px;
+  max-width: 100%;
+}
+.paste-entry.pe-nowrap .paste-entry-row { flex-wrap: nowrap; }
+.paste-entry.pe-center .paste-entry-row { justify-content: center; }
+.paste-entry.pe-center .paste-entry-note { text-align: center; }
+
+.paste-entry-or {
+  align-self: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.paste-entry-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+/* 세로 배치 (Vision SPC 사이드바) — 가로용 flex-basis 가 높이로 적용되지 않게 되돌린다 */
+.paste-entry.pe-column .paste-entry-row {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+.paste-entry.pe-column .paste-zone,
+.paste-entry.pe-column .paste-zone.pz-lg {
+  flex: 0 0 auto;
+  max-width: none;
+  min-width: 0;
+  width: 100%;
+}
+.paste-entry.pe-column .paste-entry-file { width: 100%; }
+.paste-entry.pe-column .paste-entry-or {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+}
+.paste-entry.pe-column .paste-entry-or::before,
+.paste-entry.pe-column .paste-entry-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+/* ── 파일 첨부 (보조 버튼) ─────────────────────────── */
+.paste-entry-file {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border-medium);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.paste-entry-file:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+.paste-entry-file:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── 붙여넣기 칸 ────────────────────────────────────── */
+.paste-zone {
+  --pz-main: #10b981;
+  --pz-strong: #059669;
+  --pz-tint: rgba(16, 185, 129, 0.09);
+  --pz-tint-hover: rgba(16, 185, 129, 0.18);
+  --pz-text: #047857;
+  --pz-ring: rgba(16, 185, 129, 0.30);
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 0 1 290px;
+  min-width: 220px;
+  min-height: 64px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  border: 2px dashed var(--pz-main);
+  border-radius: 14px;
+  background: var(--pz-tint);
+  color: var(--pz-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.paste-zone.pz-sky {
+  --pz-main: #0ea5e9;
+  --pz-strong: #0284c7;
+  --pz-tint: rgba(14, 165, 233, 0.09);
+  --pz-tint-hover: rgba(14, 165, 233, 0.18);
+  --pz-text: #0369a1;
+  --pz-ring: rgba(14, 165, 233, 0.30);
+}
+
+/* 다크 테마: 글자색을 밝게, 배경 틴트를 조금 진하게 */
+[data-theme="dark"] .paste-zone,
+body.theme-dark .paste-zone {
+  --pz-text: #6ee7b7;
+  --pz-tint: rgba(16, 185, 129, 0.15);
+  --pz-tint-hover: rgba(16, 185, 129, 0.25);
+}
+[data-theme="dark"] .paste-zone.pz-sky,
+body.theme-dark .paste-zone.pz-sky {
+  --pz-text: #7dd3fc;
+  --pz-tint: rgba(14, 165, 233, 0.16);
+  --pz-tint-hover: rgba(14, 165, 233, 0.26);
+}
+
+/* 크게 (견적 등록, Vision SPC 처럼 붙여넣기가 화면의 주인공일 때) */
+.paste-zone.pz-lg {
+  flex: 1 1 380px;
+  max-width: 560px;
+  min-height: 92px;
+  padding: 14px 24px;
+  gap: 18px;
+}
+
+.paste-zone:hover:not(.pz-disabled):not(.pz-busy) {
+  border-style: solid;
+  background: var(--pz-tint-hover);
+  transform: translateY(-1px);
+}
+
+/* 클릭해서 포커스가 간 상태 = 지금 Ctrl+V 하면 된다 */
+.paste-zone:focus-within:not(.pz-disabled):not(.pz-busy) {
+  border-style: solid;
+  background: var(--pz-tint-hover);
+  box-shadow: 0 0 0 4px var(--pz-ring), 0 8px 20px var(--pz-ring);
+}
+
+.paste-zone.pz-received {
+  border-style: solid;
+  background: var(--pz-tint-hover);
+}
+
+.pz-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--pz-main), var(--pz-strong));
+  color: #ffffff;
+  font-size: 19px;
+  box-shadow: 0 2px 6px var(--pz-ring);
+}
+.paste-zone.pz-lg .pz-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  font-size: 27px;
+}
+
+.pz-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.pz-label {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--pz-text);
+}
+.paste-zone.pz-lg .pz-label { font-size: 17px; }
+.pz-hint {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+.paste-zone.pz-lg .pz-hint { font-size: 12.5px; }
+
+/* 안내문: 평소 / 포커스(붙여넣기 준비됨) 두 가지를 CSS 로 전환 */
+.pz-hint-ready { display: none; font-weight: 700; color: var(--pz-text); }
+.paste-zone:focus-within .pz-hint-idle { display: none; }
+.paste-zone:focus-within .pz-hint-ready { display: inline; }
+
+/* 비활성 (프로젝트 미선택, 권한 없음 등) — 이유를 문구로 보여준다 */
+.paste-zone.pz-disabled {
+  --pz-main: #94a3b8;
+  --pz-strong: #64748b;
+  --pz-tint: rgba(148, 163, 184, 0.10);
+  --pz-text: #64748b;
+  --pz-ring: transparent;
+  cursor: not-allowed;
+}
+[data-theme="dark"] .paste-zone.pz-disabled,
+body.theme-dark .paste-zone.pz-disabled {
+  --pz-text: #94a3b8;
+  --pz-tint: rgba(148, 163, 184, 0.10);
+}
+
+/* 분석 중 */
+.paste-zone.pz-busy {
+  border-style: solid;
+  cursor: progress;
+}
+.pz-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: pz-spin 0.8s linear infinite;
+}
+.paste-zone.pz-lg .pz-spinner { width: 26px; height: 26px; }
+@keyframes pz-spin { to { transform: rotate(360deg); } }
+
+/* ── 투명 textarea ──────────────────────────────────────
+   index.css 가 모든 textarea 의 배경·테두리·글자색·포커스 링을 !important 로 덮는다.
+   (0,2,0) 선택자 + !important 로 그보다 우선하게 만든다. */
+.paste-zone .paste-zone-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0 !important;
+  border-radius: inherit;
+  background: transparent !important;
+  color: transparent !important;
+  caret-color: transparent;
+  box-shadow: none !important;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  cursor: inherit;
+}
+.paste-zone .paste-zone-input:focus {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 640px) {
+  /* 한 줄 고정(헤더 안)이어도 폰에서는 옆으로 넘치지 않게 줄바꿈 */
+  .paste-entry.pe-nowrap .paste-entry-row { flex-wrap: wrap; }
+  .paste-zone,
+  .paste-zone.pz-lg { flex: 1 1 100%; max-width: 100%; }
+  .paste-entry-file { flex: 1 1 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paste-zone { transition: none; }
+  .paste-zone:hover:not(.pz-disabled):not(.pz-busy) { transform: none; }
+  .pz-spinner { animation-duration: 2.4s; }
+}

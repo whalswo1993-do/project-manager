@@ -48,3 +48,6 @@ scratch/
 .vercel
 .env*
 !.env.example
+# Claude Code 개인 권한 설정(사용자 컴퓨터 전용) — 커밋하지 않는다
+.claude/settings.local.json
+.claude/settings.local.json.suggested

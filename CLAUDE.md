@@ -13,7 +13,7 @@ TW 프로젝트 관리 웹앱. 이전에 Antigravity(Gemini)로 개발했고 이
 ```
 npm run dev       # 개발 서버 (vite)
 npm run build     # 프로덕션 빌드 → dist/  (코드 수정 후 반드시 실행해 확인)
-npm run lint      # eslint — 기존 오류가 많이 쌓여 있음(약 240건). 새로 건드린 파일에서 오류를 늘리지 않는 것을 기준으로 한다
+npm run lint      # eslint — 현재 오류 0건, 경고 44건(미사용 변수, React 훅 권고). 오류가 생기면 고치고, 경고는 건드린 코드에서만 줄인다
 npm run preview   # 빌드 결과 미리보기
 ```
 빌드 시 PowerShell에서 `NativeCommandError`가 보여도 Vite 경고(stderr)일 뿐이다. 마지막에 `✓ built` 가 나오면 성공.
@@ -36,6 +36,7 @@ npm run preview   # 빌드 결과 미리보기
 
 ## 연결된 서비스 (로그인/연결 완료)
 - GitHub: `https://github.com/whalswo1993-do/project-manager` (public, 브랜치 `main`). `gh` CLI 로그인됨(계정 `whalswo1993-do`)
+- `gh-pages` 브랜치: 예전 `npm run deploy` 결과물로 `https://whalswo1993-do.github.io/project-manager/`에 아직 서비스 중이다. 그 브랜치에 `vercel.json`(`git.deploymentEnabled: false`)을 넣어 Vercel이 빌드하지 않게 해 두었다. 이 브랜치는 더 이상 갱신하지 않는다(건드릴 일이 없으면 그대로 둔다)
 - Vercel: 팀 `whalswo1993-5770`, 프로젝트 `project-manager`, 프로덕션 `https://project-manager-rho-nine.vercel.app`. GitHub `main` push 시 자동 배포. 폴더는 `vercel link`로 연결됨(`.vercel/`, git 제외)
 - Supabase: 프로젝트 `Project-manager`, ref `tebtuzxafkymlplmlhzu`, 리전 ap-northeast-2. `supabase/`는 `supabase link`로 연결됨
 

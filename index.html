@@ -30,17 +30,20 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <script>
-    // 브라우저의 구버전 Service Worker 캐시로 인한 화면 미갱신 강제 해제
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        for (var r of regs) { r.unregister(); }
-      });
-    }
-    if ('caches' in window) {
-      caches.keys().then(function(keys) {
-        for (var k of keys) { caches.delete(k); }
-      });
-    }
+    // 이 앱은 서비스워커를 쓰지 않는다. 예전 버전이 남긴 서비스워커와 캐시를 지운다. (화면 미갱신 방지)
+    // 주의: main.jsx 에서 서비스워커를 다시 등록하면 이 정리와 부딪혀 iPad 에서 무한 새로고침이 난다.
+    try {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          for (var r of regs) { r.unregister(); }
+        }).catch(function() {});
+      }
+      if ('caches' in window) {
+        caches.keys().then(function(keys) {
+          for (var k of keys) { caches.delete(k); }
+        }).catch(function() {});
+      }
+    } catch (e) {}
   </script>
 
   <title>Project 관리</title>

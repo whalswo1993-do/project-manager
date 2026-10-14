@@ -89,6 +89,12 @@ npm run build     # 프로덕션 빌드 → dist/
 - **`npm run deploy`(gh-pages)는 쓰지 않는다.** `vite.config.js`의 `base`가 `/`라 GitHub Pages 하위 경로(`/project-manager/`)에서는 JS가 404로 깨진다. `gh-pages` 브랜치에는 Vercel 빌드를 끄는 `vercel.json`이 들어 있다. 건드리지 않는다.
 - 프로덕션: `https://project-manager-rho-nine.vercel.app` (Vercel 팀 `whalswo1993-5770`, 프로젝트 `project-manager`)
 
+## 서비스워커(PWA 캐시)는 쓰지 않는다
+- **2026-10-15 iPad(Safari)에서 첫 접속부터 무한 새로고침이 났다.** 원인: `index.html`의 정리 스크립트가 매 로드마다 서비스워커를 해제하는데 `main.jsx`가 `registerSW`(autoUpdate)로 다시 등록했고, autoUpdate 서비스워커는 새로 켜질 때마다 페이지를 새로고침한다 → 로드마다 해제·재등록·새로고침이 반복. 데스크톱 Chrome/Edge에서는 재현되지 않아서 오래 못 잡았다.
+- 그래서 지금은 `vite.config.js`에서 `selfDestroying: true`(남아 있는 서비스워커는 스스로 해제·캐시 삭제) + `injectRegister: false`(어디서도 등록하지 않음)이고, `main.jsx`에는 등록 코드가 없다. 매니페스트는 그대로라 "홈 화면에 추가"는 된다. 새 버전 알림은 `version.json` 확인(`App.jsx`)이 맡는다.
+- **서비스워커를 다시 쓰려면** `index.html`의 정리 스크립트를 먼저 없애고, `autoUpdate`처럼 자동 새로고침하는 방식은 피한다(iOS에서 반복될 수 있다). `tests/serviceWorkerPolicy.test.js`가 이 조합이 돌아오는 것을 막는다.
+- 확인: 배포된 `/sw.js`가 해제용(`self.registration.unregister`)인지, `index.html`에 `registerSW.js`가 없는지 본다. 이 문제는 데스크톱 Chrome/Edge에서 재현되지 않고 iPad(WebKit) 실기기에서만 나타났으니, 서비스워커를 건드리면 iPad로도 확인한다.
+
 ## 연결된 서비스
 - GitHub: `https://github.com/whalswo1993-do/project-manager` (public). `gh` CLI 로그인됨(`whalswo1993-do`)
 - Vercel: 폴더는 `vercel link`로 연결됨(`.vercel/`, git 제외)

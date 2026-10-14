@@ -2,20 +2,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
-import { registerSW } from 'virtual:pwa-register'
 
 import { ErrorBoundary } from './ErrorBoundary.jsx'
 
-try {
-  registerSW({
-    immediate: true,
-    onNeedRefresh() {
-      window.dispatchEvent(new CustomEvent('app-update-available'))
-    }
-  })
-} catch (e) {
-  console.error('SW Error:', e)
-}
+// 서비스워커는 등록하지 않는다 (vite.config.js 의 selfDestroying 설명 참고).
+// 예전에 설치된 서비스워커는 index.html 의 정리 스크립트와 해제용 sw.js 가 지운다.
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

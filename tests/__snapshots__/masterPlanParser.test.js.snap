@@ -1,0 +1,428 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`adjustProjectDates / computeAutoStatus > adjustProjectDates 1`] = `
+{
+  "endDate": "2026-08-30",
+  "manpower": undefined,
+  "milestones": [
+    {
+      "endDate": "2026-07-19",
+      "name": "기구 셋팅",
+      "startDate": "2026-07-06",
+    },
+    {
+      "endDate": "2026-08-20",
+      "name": "시운전",
+      "startDate": "2026-08-01",
+    },
+  ],
+  "projectName": "SKOH 10Line - Stacker 1호기",
+  "startDate": "2026-02-10",
+}
+`;
+
+exports[`adjustProjectDates / computeAutoStatus > computeAutoStatus (오늘 고정) 1`] = `
+{
+  "마일스톤": "진행중",
+  "시작전": "검토중",
+  "종료후": "완료",
+  "진행중": "진행중",
+}
+`;
+
+exports[`parseExcelMasterPlan (합성 시트) > 달력 열 없이 합계만 있는 부분 표 → 마일스톤 기간에 공수 자동 배분 1`] = `
+[
+  {
+    "endDate": "2026-07-25",
+    "equipment": "Stacker 1호기",
+    "line": "10Line",
+    "manpower": {
+      "byDepartment": {
+        "기구": 12,
+      },
+      "dailyPeak": 3,
+      "dailyTotal": {
+        "2026-07-20": 2,
+        "2026-07-21": 2,
+        "2026-07-22": 2,
+        "2026-07-23": 2,
+        "2026-07-24": 2,
+        "2026-07-25": 2,
+      },
+      "departments": {
+        "기구": {
+          "daily": {
+            "2026-07-20": 2,
+            "2026-07-21": 2,
+            "2026-07-22": 2,
+            "2026-07-23": 2,
+            "2026-07-24": 2,
+            "2026-07-25": 2,
+          },
+          "peak": 2,
+          "total": 12,
+        },
+      },
+      "totalManday": 12,
+    },
+    "manufacturingNo": "",
+    "milestones": [
+      {
+        "endDate": "2026-07-25",
+        "name": "기구 셋팅",
+        "startDate": "2026-07-20",
+      },
+    ],
+    "projectName": "SKOH - 10Line - Stacker 1호기",
+    "sheetName": "Master Schedule",
+    "site": "SKOH",
+    "startDate": "2026-07-20",
+  },
+]
+`;
+
+exports[`parseExcelMasterPlan (합성 시트) > 빈 시트는 null 또는 빈 결과 (예외 없음) 1`] = `null`;
+
+exports[`parseExcelMasterPlan (합성 시트) > 일정표 + 공수표 1`] = `
+[
+  {
+    "endDate": "2026-07-25",
+    "equipment": "Stacker 1호기",
+    "line": "10Line",
+    "manpower": {
+      "byDepartment": {
+        "기구": 16,
+        "비전": 7,
+        "전장": 10,
+      },
+      "dailyPeak": 9,
+      "dailyTotal": {
+        "2026-07-20": 3,
+        "2026-07-21": 4,
+        "2026-07-22": 7,
+        "2026-07-23": 8,
+        "2026-07-24": 7,
+        "2026-07-25": 4,
+      },
+      "departments": {
+        "기구": {
+          "daily": {
+            "2026-07-20": 3,
+            "2026-07-21": 3,
+            "2026-07-22": 4,
+            "2026-07-23": 4,
+            "2026-07-24": 2,
+          },
+          "peak": 4,
+          "total": 16,
+        },
+        "비전": {
+          "daily": {
+            "2026-07-21": 1,
+            "2026-07-22": 1,
+            "2026-07-23": 2,
+            "2026-07-24": 2,
+            "2026-07-25": 1,
+          },
+          "peak": 2,
+          "total": 7,
+        },
+        "전장": {
+          "daily": {
+            "2026-07-22": 2,
+            "2026-07-23": 2,
+            "2026-07-24": 3,
+            "2026-07-25": 3,
+          },
+          "peak": 3,
+          "total": 10,
+        },
+      },
+      "totalManday": 33,
+    },
+    "manufacturingNo": "",
+    "milestones": [
+      {
+        "endDate": "2026-07-24",
+        "name": "기구 셋팅",
+        "startDate": "2026-07-20",
+      },
+      {
+        "endDate": "2026-07-25",
+        "name": "전장 배선",
+        "startDate": "2026-07-22",
+      },
+    ],
+    "projectName": "SKOH - 10Line - Stacker 1호기",
+    "sheetName": "Master Schedule",
+    "site": "SKOH",
+    "startDate": "2026-07-20",
+  },
+]
+`;
+
+exports[`parseExcelMasterPlan (합성 시트) > 장비 2대가 한 시트에 있으면 프로젝트 2개로 분할 1`] = `
+[
+  {
+    "endDate": "2026-07-22",
+    "equipment": "Stacker 1호기",
+    "line": "10Line",
+    "manpower": {
+      "byDepartment": {
+        "기구": 6,
+      },
+      "dailyPeak": 3,
+      "dailyTotal": {
+        "2026-07-20": 3,
+        "2026-07-21": 3,
+      },
+      "departments": {
+        "기구": {
+          "daily": {
+            "2026-07-20": 3,
+            "2026-07-21": 3,
+          },
+          "peak": 3,
+          "total": 6,
+        },
+      },
+      "totalManday": 6,
+    },
+    "manufacturingNo": "",
+    "milestones": [
+      {
+        "endDate": "2026-07-22",
+        "name": "기구 셋팅",
+        "startDate": "2026-07-20",
+      },
+    ],
+    "projectName": "SKOH - 10Line - Stacker 1호기",
+    "sheetName": "Master Schedule",
+    "site": "SKOH",
+    "startDate": "2026-07-20",
+  },
+  {
+    "endDate": "2026-07-25",
+    "equipment": "Stacker 2호기",
+    "line": "MechanicaLine",
+    "manpower": {
+      "byDepartment": {
+        "제어": 6,
+      },
+      "dailyPeak": 2,
+      "dailyTotal": {
+        "2026-07-23": 2,
+        "2026-07-24": 2,
+        "2026-07-25": 2,
+      },
+      "departments": {
+        "제어": {
+          "daily": {
+            "2026-07-23": 2,
+            "2026-07-24": 2,
+            "2026-07-25": 2,
+          },
+          "peak": 2,
+          "total": 6,
+        },
+      },
+      "totalManday": 6,
+    },
+    "manufacturingNo": "",
+    "milestones": [
+      {
+        "endDate": "2026-07-25",
+        "name": "기구 셋팅",
+        "startDate": "2026-07-23",
+      },
+    ],
+    "projectName": "SKOH - MechanicaLine - Stacker 2호기",
+    "sheetName": "Master Schedule",
+    "site": "SKOH",
+    "startDate": "2026-07-20",
+  },
+]
+`;
+
+exports[`parseNum / normalizeDeptName > normalizeDeptName 1`] = `
+[
+  [
+    "Mechanical",
+    "기구",
+  ],
+  [
+    "mechanical",
+    "기구",
+  ],
+  [
+    "기구",
+    "기구",
+  ],
+  [
+    "Vision",
+    "비전",
+  ],
+  [
+    "비전 외주",
+    "비전 외주",
+  ],
+  [
+    "Vision Sub",
+    "비전 외주",
+  ],
+  [
+    "Control",
+    "제어",
+  ],
+  [
+    "제어",
+    "제어",
+  ],
+  [
+    "Electrical",
+    "전장",
+  ],
+  [
+    "전장",
+    "전장",
+  ],
+  [
+    "Electrical Sub",
+    "전장 외주",
+  ],
+  [
+    "전장외주",
+    "전장 외주",
+  ],
+  [
+    "Supervisor",
+    "Supervisor",
+  ],
+  [
+    "슈퍼바이저",
+    "Supervisor",
+  ],
+  [
+    "Safety",
+    "안전",
+  ],
+  [
+    "안전",
+    "안전",
+  ],
+  [
+    "소장",
+    "소장",
+  ],
+  [
+    "PM",
+    "소장",
+  ],
+  [
+    "Manager",
+    "소장",
+  ],
+  [
+    "통역",
+    "통역",
+  ],
+  [
+    "",
+    "",
+  ],
+]
+`;
+
+exports[`parseNum / normalizeDeptName > parseNum 1`] = `
+[
+  5,
+  5,
+  1234,
+  12.5,
+  0,
+  0,
+  0,
+  0,
+  7,
+]
+`;
+
+exports[`parseTSVWithQuotes > 탭 구분, 따옴표 안의 줄바꿈/탭 보존 1`] = `
+[
+  [
+    "a",
+    "b",
+    "c",
+  ],
+  [
+    "1",
+    "x	y",
+    "3",
+  ],
+  [
+    "multi
+line",
+    "5",
+    "6",
+  ],
+]
+`;
+
+exports[`resolveMilestoneDates (연도 전환) > 연말→연초로 넘어가는 공정은 연도 +1 1`] = `
+[
+  {
+    "endDate": "2027-01-13",
+    "startDate": "2026-10-24",
+  },
+  {
+    "endDate": "2026-08-10",
+    "startDate": "2026-07-28",
+  },
+]
+`;
+
+exports[`프로젝트 식별 > extractProjectTags 1`] = `
+[
+  {
+    "codes": Set {
+      "91144",
+    },
+    "eq": "",
+    "isJC": false,
+    "isSetup": false,
+    "line": "",
+    "name": "skoh 10line - stacker 1호기",
+    "round": null,
+    "site": "skoh",
+  },
+  {
+    "codes": Set {
+      "E1234",
+    },
+    "eq": "",
+    "isJC": false,
+    "isSetup": false,
+    "line": "",
+    "name": "hsbma 3l notcher",
+    "round": null,
+    "site": "hsbma",
+  },
+  {
+    "codes": Set {},
+    "eq": "",
+    "isJC": false,
+    "isSetup": false,
+    "line": "",
+    "name": "북미jv 라인 ess",
+    "round": null,
+    "site": "북미",
+  },
+]
+`;
+
+exports[`프로젝트 식별 > isSameProjectIdentity 1`] = `
+[
+  true,
+  false,
+]
+`;

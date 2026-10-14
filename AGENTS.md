@@ -83,4 +83,5 @@ npm run build     # 프로덕션 빌드 → dist/
 - **모든 로그인은 Supabase Auth뿐이다.** 예전의 "가짜 테스트 계정" 코드(비밀번호 하드코딩, 브라우저 로컬 세션)는 제거했다. 테스트 계정은 `test3@twgroup.co.kr` 하나만 실제 서버 계정으로 운영하며(역할 grade3), 비밀번호는 저장소·채팅에 적지 않고 관리자가 SQL Editor로 직접 설정한다. 데이터 보호는 화면이 아니라 DB의 RLS 정책이 담당한다.
 - 사용자 정보의 정본은 DB `profiles`다: `name`, `team`, `role`, `active`, `last_sign_in_at`, `last_active_at`. 브라우저 로컬 저장소에 이름/팀/삭제 목록/접속 기록을 두지 않는다(컴퓨터마다 달라지는 원인이었다).
 - 회원가입의 이름·소속팀은 **필수**이며 두 겹으로 강제한다: 화면(`validateSignupProfile`)과 DB 트리거(`handle_new_user`, 최고 관리자 생성만 예외). 접속 기록은 `record_my_access` RPC, 계정 영구 삭제는 `admin_delete_user` RPC(최고 관리자만)로 한다.
-- 적용 대기 중인 DB 변경은 `supabase/pending/010_*.sql`, `011_*.sql`이다. 적용하면 서버에 기록된 버전 이름으로 `supabase/migrations/`로 옮겨 커밋한다. **010이 적용되기 전에는 이 코드를 배포하지 않는다**(새 컬럼·RPC가 없으면 이름/팀 저장과 접속 기록이 실패한다).
+- 위 구조는 `supabase/migrations/20261014040000_*`, `20261014040100_*`로 적용돼 있다(사용자가 SQL Editor로 실행했기 때문에 서버의 migrations 기록에는 없다). **앱 코드가 새 컬럼·RPC에 의존하므로 DB 변경은 항상 앱 배포보다 먼저 적용한다.**
+- 사용자가 SQL Editor로 직접 적용하는 방식은 자동 권한 검사기가 `apply_migration`을 막을 때의 대안이다. Claude Code의 권한 규칙은 사용자가 직접 설정해야 한다(에이전트는 자신의 권한 설정을 바꾸지 않는다).

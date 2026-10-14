@@ -95,8 +95,7 @@
   font-size: 11px;
   font-weight: 700;
   color: var(--text-tertiary);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .data-table td { color: var(--text-primary); }
@@ -114,16 +113,16 @@
   text-align: right !important;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--text-primary);
 }
 
 /* ── Category Badges ── */
 .badge-category {
   display: inline-block;
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  font-size: 10.5px;
-  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -144,7 +143,7 @@
 /* ── Project Accordion ── */
 .project-accordion {
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   margin-bottom: 8px;
   background: var(--bg-card);
   overflow: hidden;
@@ -153,7 +152,6 @@
 
 .project-accordion:hover {
   border-color: var(--border-medium);
-  box-shadow: var(--shadow-sm);
 }
 
 .pa-header {
@@ -183,10 +181,10 @@
 }
 
 .pa-badge {
-  font-size: 10.5px;
-  padding: 3px 8px;
-  border-radius: var(--radius-pill);
-  font-weight: 700;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  font-weight: 600;
 }
 
 .pa-badge.process {
@@ -204,9 +202,9 @@
 }
 
 .pa-total {
-  font-weight: 800;
-  color: var(--accent);
-  font-size: 16px;
+  font-weight: 650;
+  color: var(--text-primary);
+  font-size: 17px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -225,7 +223,6 @@
   border-radius: var(--radius-md);
   padding: 14px;
   margin-bottom: 10px;
-  box-shadow: var(--shadow-xs);
   transition: border-color var(--dur-fast);
 }
 
@@ -253,11 +250,10 @@
 .quote-filter-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: 16px 20px;
   margin-top: 12px;
   margin-bottom: 14px;
-  box-shadow: var(--shadow-xs);
 }
 
 .quote-filter-row {
@@ -286,57 +282,56 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
 
 /* ── Pill Groups ── */
 .quote-pill-group {
-  display: flex;
-  background: var(--bg-card-subtle);
-  border: 1px solid var(--border-faint);
-  padding: 3px;
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
   border-radius: var(--radius-md);
-  gap: 2px;
+  overflow: hidden;
+  gap: 0;
 }
 
 .quote-pill-btn {
-  border: none;
+  border: 0;
+  border-left: 1px solid var(--line);
   background: transparent;
-  padding: 5px 12px;
-  border-radius: var(--radius-sm);
+  height: 30px;
+  padding: 0 13px;
+  border-radius: 0;
   font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-weight: 550;
+  color: var(--ink-3);
   cursor: pointer;
-  transition: all var(--dur-fast) var(--ease-in-out);
+  transition: color var(--dur-fast) var(--ease-in-out), background var(--dur-fast) var(--ease-in-out);
   white-space: nowrap;
   line-height: 1;
 }
 
-.quote-pill-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+.quote-pill-btn:hover {
+  color: var(--ink);
+  background: var(--bg-hover);
+}
 
 .quote-pill-btn.active {
-  background: var(--bg-card);
-  color: var(--accent);
-  box-shadow: var(--shadow-xs);
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+  font-weight: 650;
+  box-shadow: none;
 }
 
 .quote-pill-btn.active-nc {
-  background: var(--bg-card);
-  color: var(--warning);
+  background: var(--warn-wash);
+  color: var(--warn);
   box-shadow: none;
 }
 
 .quote-pill-btn.active-stk {
-  background: var(--bg-card);
-  color: var(--bad);
-  box-shadow: none;
-}
-
-[data-theme="dark"] .quote-pill-btn.active-stk,
-body.theme-dark .quote-pill-btn.active-stk {
-  color: var(--bad);
+  background: var(--brand-wash);
+  color: var(--brand);
   box-shadow: none;
 }
 
@@ -410,16 +405,9 @@ body.theme-dark .quote-pill-btn.active-stk {
 }
 
 .badge-process.stk {
-  background: color-mix(in srgb, var(--bad) 12%, transparent);
-  color: var(--bad);
-  border: 1px solid color-mix(in srgb, var(--bad) 25%, transparent);
-}
-
-[data-theme="dark"] .badge-process.stk,
-body.theme-dark .badge-process.stk {
-  color: var(--bad);
-  background: color-mix(in srgb, var(--bad) 18%, transparent);
-  border-color: color-mix(in srgb, var(--bad) 30%, transparent);
+  background: var(--brand-wash);
+  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 28%, transparent);
 }
 
 .badge-process.both {
@@ -436,12 +424,13 @@ body.theme-dark .badge-process.stk {
 
 /* ── Collapse Toggle ── */
 .quote-collapse-toggle-btn {
-  padding: 5px 13px;
+  height: 30px;
+  padding: 0 13px;
   background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 550;
   color: var(--text-secondary);
   cursor: pointer;
   display: inline-flex;
@@ -491,9 +480,8 @@ body.theme-dark .badge-process.stk {
   overflow-y: auto;
   max-height: 540px;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: var(--bg-card);
-  box-shadow: var(--shadow-xs);
 }
 
 .data-table.sticky-header thead th {

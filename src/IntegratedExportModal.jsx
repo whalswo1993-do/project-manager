@@ -144,7 +144,7 @@ export default function IntegratedExportModal({
         width: '100vw',
         height: '100vh',
         zIndex: 99999,
-        background: 'color-mix(in srgb, var(--brand) 30%, transparent)',
+        background: 'var(--bg-overlay)',
         backdropFilter: 'none',
         WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
@@ -174,8 +174,9 @@ export default function IntegratedExportModal({
         {/* 모달 헤더 */}
         <div style={{
           padding: '18px 24px',
-          background: 'var(--brand)',
-          color: 'var(--on-brand)',
+          background: 'var(--surface)',
+          color: 'var(--ink)',
+          borderBottom: '1px solid var(--line)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -184,11 +185,11 @@ export default function IntegratedExportModal({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '20px' }}><Icon name="barChart" size="1.1em" /></span>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#ffffff' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--ink)' }}>
                 {customer ? `[${customer}] 종합 일정 보고서 PPT 내보내기` : "종합 일정 보고서 PPT 내보내기"}
               </h2>
             </div>
-            <p style={{ margin: '4px 0 0 28px', fontSize: '12px', color: 'var(--brand)' }}>
+            <p style={{ margin: '4px 0 0 28px', fontSize: '12px', color: 'var(--ink-3)' }}>
               {customer ? `${customer} 프로젝트 전용 맞춤형 보고서` : '프로젝트 종합 보고서'} (Office 네이티브 표/도형 100% 직접 수정 가능)
             </p>
           </div>
@@ -197,9 +198,9 @@ export default function IntegratedExportModal({
             onClick={onClose}
             disabled={isExporting}
             style={{
-              background: 'var(--surface)',
-              border: 'none',
-              color: '#ffffff',
+              background: 'transparent',
+              border: '1px solid var(--line-2)',
+              color: 'var(--ink-2)',
               fontSize: '18px',
               width: '32px',
               height: '32px',
@@ -452,7 +453,7 @@ export default function IntegratedExportModal({
                       height: '18px',
                       cursor: 'pointer',
                       flexShrink: 0,
-                      accentColor: '#2563eb'
+                      accentColor: 'var(--brand)'
                     }}
                   />
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>

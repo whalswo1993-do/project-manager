@@ -299,7 +299,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                             value={projFilterSite}
                             onChange={(e) => setProjFilterSite(e.target.value)}
                         >
-                            <option value="ALL"><Icon name="globe" size="1.1em" /> 전체 사이트 ({projects?.length || 0})</option>
+                            <option value="ALL">전체 사이트 ({projects?.length || 0})</option>
                             {availableSites.map(s => {
                                 const count = (projects || []).filter(p => normalizeSite(p.site) === s).length;
                                 return (
@@ -357,7 +357,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
 
                 {/* 2단: 필터링된 프로젝트 드롭다운 */}
                 <div className="proj-select-main-row">
-                    <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                         <Icon name="folder" size="1.1em" /> {labelTitle}:
                     </span>
                     <select
@@ -773,7 +773,7 @@ ${allText.substring(0, 100000)}
             setMsg(
                 <span style={{ color: 'var(--bad)' }}>
                     파일 분석 실패: {userFriendlyMsg}
-                    <div style={{ fontSize: '11px', color: 'var(--brand)', fontWeight: 'normal', marginTop: '4px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--ink-3)', fontWeight: 'normal', marginTop: '4px' }}>
                         원인파악용 기술 정보: {error.message}
                     </div>
                 </span>
@@ -2643,15 +2643,9 @@ ${compiledText.substring(0, 30000)}
                             type="button"
                             onClick={openAnalysisModal}
                             title={!canRunAIAnalysis ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : "기간을 설정하여 공사일보 AI 종합분석 PPT를 다운로드합니다"}
-                            style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                padding: '7px 16px', borderRadius: 'var(--radius-lg)', border: 'none', cursor: 'pointer',
-                                fontSize: '13px', fontWeight: 800, color: 'var(--on-brand)',
-                                background: 'var(--teal)',
-                                boxShadow: 'none', whiteSpace: 'nowrap'
-                            }}
+                            className="ppt-btn"
                         >
-                            <Icon name="barChart" size="1.1em" /> 공사일보 분석 PPT {!canRunAIAnalysis && ""}
+                            <Icon name="barChart" size="1.1em" /> 공사일보 분석 PPT {!canRunAIAnalysis && <Icon name="lock" size={12} />}
                         </button>
                         <button
                             type="button"
@@ -2705,7 +2699,7 @@ ${compiledText.substring(0, 30000)}
                             onClick={() => setActiveReportSubTab('view')}
                             style={{
                                 display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                padding: '8px 16px', borderRadius: 'var(--radius-lg)',
+                                padding: '8px 16px', borderRadius: 'var(--radius-md)',
                                 background: 'var(--bg-card-subtle)', border: '1px solid var(--border-medium)',
                                 color: 'var(--text-primary)', fontSize: '13px', fontWeight: 700, cursor: 'pointer'
                             }}
@@ -2722,7 +2716,7 @@ ${compiledText.substring(0, 30000)}
                             }}
                             title="새 공사일보 등록 화면으로 바로 전환합니다"
                         >
-                            <Icon name="pencil" size="1.1em" /> + 새 일보 등록하기 {!canEditReport && ""}
+                            <Icon name="pencil" size="1.1em" /> + 새 일보 등록하기 {!canEditReport && <Icon name="lock" size={12} />}
                         </button>
                     )}
                 </div>
@@ -2735,7 +2729,7 @@ ${compiledText.substring(0, 30000)}
                     {/* 1. 조회 대상 선택 및 검색 필터 바 (페이지 내에서 직관적으로 대상 선택 및 검색) */}
                     <div className="view-search-filter-card">
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
-                            <div style={{ display: 'inline-flex', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '3px', gap: '4px' }}>
+                            <div style={{ display: 'inline-flex', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '3px', gap: '4px' }}>
                                 <button
                                     type="button"
                                     className={`view-target-type-chip ${targetType === 'site' ? 'active' : ''}`}
@@ -2828,7 +2822,7 @@ ${compiledText.substring(0, 30000)}
                                     className="quick-register-btn"
                                     style={{padding: '10px 20px', fontSize: '14px'}}
                                 >
-                                    <Icon name="pencil" size="1.1em" /> 이 {targetType === 'site' ? '사이트에' : '프로젝트에'} 새 일보 등록하기 {!canEditReport && ""}
+                                    <Icon name="pencil" size="1.1em" /> 이 {targetType === 'site' ? '사이트에' : '프로젝트에'} 새 일보 등록하기 {!canEditReport && <Icon name="lock" size={12} />}
                                 </button>
                             </div>
                         </div>
@@ -2904,7 +2898,7 @@ ${compiledText.substring(0, 30000)}
                                                         Object.values(report.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
 
                                         return (
-                                            <div key={report.id} className="issue-card" style={{borderLeftColor: 'var(--signal)', borderRadius: 'var(--radius-lg)', padding: '14px 16px'}}>
+                                            <div key={report.id} className="issue-card" style={{borderLeftColor: 'var(--signal)', borderRadius: 'var(--radius-md)', padding: '14px 16px'}}>
                                                 <div className="issue-meta" onClick={() => toggleReport(report.id)} style={{cursor: 'pointer'}}>
                                                     <span style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
                                                         <b style={{color: 'var(--text-primary)', fontSize: '15px', letterSpacing: '0.01em'}}>{report.report_date}</b> 
@@ -2920,7 +2914,7 @@ ${compiledText.substring(0, 30000)}
                                                             </span>
                                                         )}
                                                         {report.issues && (
-                                                            <span style={{fontSize: '0.75rem', background: 'color-mix(in srgb, var(--bad) 15%, transparent)', color: 'var(--bad)', padding: '2px 7px', borderRadius: 'var(--radius-md)', fontWeight: 800}}>
+                                                            <span style={{fontSize: '0.75rem', background: 'color-mix(in srgb, var(--bad) 15%, transparent)', color: 'var(--bad)', padding: '2px 7px', borderRadius: 'var(--radius-md)', fontWeight: 700}}>
                                                                  설비이슈
                                                             </span>
                                                         )}
@@ -2943,7 +2937,7 @@ ${compiledText.substring(0, 30000)}
                                                             }} 
                                                             title={!canEditReport ? "수정 권한이 없습니다 (Grade 3 이상 가능)" : "이 일보를 수정 폼으로 불러와 편집합니다"}
                                                         >
-                                                            <Icon name="pencil" size="1.1em" /> 수정 {!canEditReport && ""}
+                                                            <Icon name="pencil" size="1.1em" /> 수정 {!canEditReport && <Icon name="lock" size={12} />}
                                                         </button>
                                                         <button 
                                                             onClick={(e) => { 
@@ -2954,12 +2948,12 @@ ${compiledText.substring(0, 30000)}
                                                             style={{background:'transparent', border:'none', color:!canEditReport ? 'var(--text-muted)' : 'var(--danger)', cursor:'pointer', fontSize:'0.85rem', fontWeight: 600}} 
                                                             title={!canEditReport ? "삭제 권한이 없습니다 (Grade 3 이상 가능)" : ""}
                                                         >
-                                                            삭제 {!canEditReport && ""}
+                                                            삭제 {!canEditReport && <Icon name="lock" size={12} />}
                                                         </button>
                                                     </div>
                                                 </div>
                                                 {expandedReports[report.id] && (
-                                                    <div className="issue-content" style={{background: 'var(--bg-color)', border: '1px solid var(--border-color)', padding: '1rem', borderRadius: 'var(--radius-lg)', fontSize: '0.88rem', marginTop: '10px'}}>
+                                                    <div className="issue-content" style={{background: 'var(--bg-color)', border: '1px solid var(--border-color)', padding: '1rem', borderRadius: 'var(--radius-md)', fontSize: '0.88rem', marginTop: '10px'}}>
                                                         <div style={{display: 'flex', flexDirection: 'column', gap: '0.8rem'}}>
                                                             <div>
                                                                 <div style={{fontWeight: 700, color: 'var(--primary)', marginBottom: '0.3rem'}}>작업(업무) 내용</div>
@@ -2985,7 +2979,7 @@ ${compiledText.substring(0, 30000)}
                                                                     {report.issues && (
                                                                         <div style={{background: 'color-mix(in srgb, var(--bad) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--bad) 25%, transparent)', borderRadius: 'var(--radius-md)', padding: '10px 12px'}}>
                                                                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', flexWrap: 'wrap', gap: '6px'}}>
-                                                                                <div style={{fontWeight: 800, color: 'var(--bad)', fontSize: '12.5px'}}>
+                                                                                <div style={{fontWeight: 700, color: 'var(--bad)', fontSize: '12.5px'}}>
                                                                                      설비 이슈사항 (설비 고장/파손/품질 등)
                                                                                 </div>
                                                                                 <button
@@ -3009,13 +3003,13 @@ ${compiledText.substring(0, 30000)}
                                                                                         }
                                                                                     }}
                                                                                     style={{
-                                                                                        background: 'var(--bad)',
-                                                                                        color: 'var(--on-brand)',
-                                                                                        border: 'none',
+                                                                                        background: 'var(--bad-wash)',
+color: 'var(--bad)',
+border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                                                                                         borderRadius: 'var(--radius-md)',
                                                                                         padding: '3px 9px',
                                                                                         fontSize: '11px',
-                                                                                        fontWeight: 800,
+                                                                                        fontWeight: 700,
                                                                                         cursor: 'pointer',
                                                                                         boxShadow: 'none'
                                                                                     }}
@@ -3066,7 +3060,7 @@ ${compiledText.substring(0, 30000)}
                 /* --- 소항목 2: 신규 공사일보 등록 (초보자용 3-Step 가이드) --- */
                 <div className="report-register-wizard">
                     {!canEditReport && (
-                        <div style={{background: 'var(--warning-bg)', border: '1px solid color-mix(in srgb, var(--signal) 30%, transparent)', borderRadius: 'var(--radius-lg)', padding: '12px 16px', fontSize: '13px', color: 'var(--warning)', lineHeight: '1.5'}}>
+                        <div style={{background: 'var(--warning-bg)', border: '1px solid color-mix(in srgb, var(--signal) 30%, transparent)', borderRadius: 'var(--radius-md)', padding: '12px 16px', fontSize: '13px', color: 'var(--warning)', lineHeight: '1.5'}}>
                             <Icon name="lock" size="1.1em" /> <b>{isGrade1 ? 'Grade 1 (조회 전용)' : 'Grade 2 (부서 담당자)'} 안내</b><br/>
                             {isGrade1 
                                 ? '일보 조회만 가능하며 신규 등록 및 수정 권한이 제한됩니다.'
@@ -3209,14 +3203,14 @@ ${compiledText.substring(0, 30000)}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '18px' }}><Icon name="pencil" size="1.1em" /></span>
                                 <div>
-                                    <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>일보 작성 및 검토</h4>
+                                    <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>일보 작성 및 검토</h4>
                                     <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
                                         입력된 내용을 검토하고 하단의 [공사일보 저장 완료]를 클릭하세요
                                     </p>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--accent)', background: 'color-mix(in srgb, var(--brand) 10%, transparent)', padding: '4px 10px', borderRadius: 'var(--radius-md)' }}>
+                                <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--accent)', background: 'color-mix(in srgb, var(--brand) 10%, transparent)', padding: '4px 10px', borderRadius: 'var(--radius-md)' }}>
                                     총 {extractedReports.length}일치 작성 중
                                 </span>
                             </div>
@@ -3225,7 +3219,7 @@ ${compiledText.substring(0, 30000)}
                         {/* 입력 폼 리스트 */}
                         <div style={{display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '16px'}}>
                             {extractedReports.map((report, idx) => (
-                                <div key={idx} style={{background:'var(--bg-card-subtle)', padding:'14px', borderRadius:'var(--radius-lg)', border:'1px solid var(--border-color)', position:'relative', color:'var(--text-color)'}}>
+                                <div key={idx} style={{background:'var(--bg-card-subtle)', padding:'14px', borderRadius: 'var(--radius-md)', border:'1px solid var(--border-color)', position:'relative', color:'var(--text-color)'}}>
                                     {extractedReports.length > 1 && (
                                         <button 
                                             onClick={() => setExtractedReports(extractedReports.filter((_, i) => i !== idx))} 
@@ -3359,11 +3353,11 @@ ${compiledText.substring(0, 30000)}
                                                 {/* 기본 및 자사 부서 그리드 */}
                                                 <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(75px, 1fr))', gap:'6px', marginBottom:'6px'}}>
                                                     <div style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px'}}>
-                                                        <span style={{color: 'var(--brand)', minWidth: '26px'}}>소장</span>
+                                                        <span style={{color: 'var(--ink-2)', minWidth: '26px'}}>소장</span>
                                                         <input type="number" step="0.5" value={report.pm_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].pm_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'42px', padding:'3px'}}/>
                                                     </div>
                                                     <div style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px'}}>
-                                                        <span style={{color: 'var(--brand)', minWidth: '26px'}}>설계</span>
+                                                        <span style={{color: 'var(--ink-2)', minWidth: '26px'}}>설계</span>
                                                         <input type="number" step="0.5" value={report.design_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].design_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'42px', padding:'3px'}}/>
                                                     </div>
                                                     <div style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px'}}>
@@ -3539,7 +3533,7 @@ ${compiledText.substring(0, 30000)}
                                             value={analysisSite}
                                             onChange={e => setAnalysisSite(e.target.value)}
                                         >
-                                            <option value="all"><Icon name="globe" size="1.1em" /> 전체 사이트 (모든 등록 SITE 대상)</option>
+                                            <option value="all">전체 사이트 (모든 등록 SITE 대상)</option>
                                             {registeredSiteNames.map(s => (
                                                 <option key={s} value={s}>{s}</option>
                                             ))}
@@ -3725,7 +3719,7 @@ ${compiledText.substring(0, 30000)}
                                             </span>
                                         </div>
                                     </div>
-                                    <div style={{ fontSize: '12px', color: 'var(--brand)', marginLeft: '30px' }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--ink-3)', marginLeft: '30px' }}>
                                         감지된 모든 프로젝트 작업내용을 구분 없이 통째로 일보 폼에 반영합니다.
                                     </div>
                                 </label>

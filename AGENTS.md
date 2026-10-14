@@ -57,14 +57,26 @@ npm run build     # 프로덕션 빌드 → dist/
 - 실제 견적서로 점검: `node scripts/quotation-check.js "<견적서 폴더>" [--items]` — 파일 첨부와 4가지 드래그 범위 붙여넣기 결과가 같은지까지 확인한다. **실제 견적서/금액은 공개 저장소에 넣지 않는다**(테스트는 가짜 데이터).
 
 ## 표 붙여넣기 / 파일 첨부 입력 (`src/PasteZone.jsx`)
-- DRM 보안 때문에 파일 첨부가 안 되는 문서가 많아서 **표 붙여넣기가 주된 입력 방법**이다. 그래서 작은 입력칸이 아니라 색이 있는 큰 칸(`PasteZone`)으로 눈에 띄게 하고, 파일 첨부는 옆의 보조 버튼으로 둔다(`PasteEntry`로 한 줄/세로 배치).
+- DRM 보안 때문에 파일 첨부가 안 되는 문서가 많아서 **표 붙여넣기가 주된 입력 방법**이다. 그래서 작은 입력칸이 아니라 색이 있는 큰 칸(`PasteZone`)으로 눈에 띄게 하고(키캡 `Ctrl` `V`가 보이는 점선 칸), 파일 첨부는 옆의 보조 버튼으로 둔다(`PasteEntry`로 한 줄/세로 배치).
 - 마스터 스케줄·공사일보(작업표/공수표)·견적·Vision SPC가 모두 이걸 쓴다. **새 업로드/붙여넣기 화면도 일반 `<textarea>`를 직접 만들지 말고 `PasteEntry` + `PasteZone`을 쓴다.** 붙여넣기 처리는 화면마다 달라서 기존 핸들러를 `onPaste`/`onInput`으로 그대로 넘긴다.
 - 구현 주의: 눈에 보이는 영역 위에 **투명한 textarea**를 덮어서 클릭 → Ctrl+V, 마우스 오른쪽 → 붙여넣기가 되게 했다. `index.css`가 모든 textarea의 배경·테두리·포커스 링을 `!important`로 덮으므로 투명 처리는 `PasteZone.css`의 더 구체적인 선택자로 한다. 붙여넣기 직전에 textarea 값을 비우고(Vision SPC는 값을 읽는다), 타이핑은 무시한다.
 - 비활성(프로젝트 미선택·권한 없음)일 때는 `disabledReason`으로 이유를 칸 안에 보여준다. 줄바꿈이 문제되는 좁은 헤더 안에서는 `PasteEntry wrap={false}`.
-- 화면을 로그인 없이 점검하려면 `Quotations`/`VisionSPC`/`IssueManagement`를 임시 데모 페이지(루트의 `paste-demo.html`, 커밋 금지)에 마운트하고 fetch를 빈 응답으로 가리면 된다. 헤드리스 Edge(`msedge --headless=new --screenshot=...`)로 라이트/다크 캡처가 가능하다.
+- 화면을 로그인 없이 점검하는 방법은 위 "디자인 시스템"의 마지막 항목 참고(헤드리스 Edge로 라이트/다크 캡처).
+
+## 디자인 시스템 (2026-10 개편: 라이트 = Atelier, 다크 = Obsidian)
+- **색·반경·글꼴은 `src/index.css`의 토큰이 정의한다.** 라이트(종이 톤 `#F6F5F2` · 브랜드 블루 `#0B57A4`)와 다크(그라파이트 `#09090A` · 샴페인 골드 `#CDAE72`)는 같은 토큰 이름을 다른 값으로 가진다. 새 화면은 **색을 직접 쓰지 말고** `var(--ink)`, `var(--surface)`, `var(--line)`, `var(--brand)`, `var(--ok|warn|bad|signal|teal)`와 그 연한 배경(`--brand-wash` 등)을 쓴다. 예전 이름(`--bg-card`, `--text-primary`, `--accent` …)은 별칭으로 남아 있다.
+- **단 하나의 강조색**(라이트 파랑/다크 골드)만 쓴다. 주 버튼은 `var(--btn-bg)`/`var(--btn-ink)`(라이트 잉크, 다크 골드), 색 채운 면 위의 글자는 `var(--on-brand)`. 그라데이션·네온·그림자·hover 때 떠오르는 효과를 쓰지 않는다. 그림자는 모달/팝오버만(`--shadow-lg/xl`).
+- **둥근 사각형을 줄인다.** 반경 토큰: 배지·막대 `--radius-xs`(2px), 칩 `--radius-sm`(3px), 버튼·입력·카드·표 `--radius-md`(4px), 팝오버·붙여넣기 칸 `--radius-lg`(6px), 모달 `--radius-xl`(8px). 진짜 원형(점·아바타·스위치)만 `--radius-pill`. 상자 안에 상자를 겹치지 말고 선(`--line`)과 여백으로 나눈다. 선택 탭은 알약 대신 **밑줄**, 필터 묶음은 **선으로 나눈 한 줄**(활성은 `--btn-bg`).
+- **이모지를 쓰지 않는다.** `src/icons.jsx`의 `<Icon name="calendar" size={16} />`(선 아이콘)을 쓰고, 없으면 거기에 추가한다. 글자 안에 넣을 때는 `size="1.1em"`. `<option>` 안에는 아이콘/요소를 넣을 수 없다(글자만).
+- 글꼴: 본문 Pretendard Variable, 숫자·코드·영문 소제목은 `var(--font-mono)`, 큰 숫자는 `var(--font-display)`(다크는 세리프). 영문 소제목은 `.eyebrow`. 숫자는 기본으로 같은 폭(tabular).
+- 화면 구조: 상단 한 줄(로고·시스템 메뉴·테마·사용자 메뉴) + 고객사 줄 + 조회 연도 줄 + 화면 머리말(`.system-sticky-header`: 영문 소제목·제목·설명·작업 버튼) + 밑줄 하위 메뉴(`.system-sub-nav`). 사용자 메뉴(`HeaderUserMenu`)에 캐시 새로고침·비밀번호 변경·로그아웃·사용자 권한 관리가 모여 있다.
+- 로그인 전 화면(`Login`)에는 내부 프로젝트 이름을 넣지 않는다(왼쪽 장식은 가짜 막대/코드).
+- 인라인 `style={{}}`의 색도 같은 규칙이다. `Chart.js`/canvas처럼 CSS 변수를 못 읽는 곳만 실제 색 값을 쓴다.
+- 화면 점검(로그인 없이): 가짜 Supabase를 끼운 로컬 데모 환경을 쓴다. 저장소에는 올리지 않는 `ui-demo/`(`.git/info/exclude`)에 Vite 설정(`./supabase` 별칭 교체)과 헤드리스 Edge 캡처 도구가 있었다. 필요하면 같은 방식으로 다시 만든다.
 
 ## 구조
 - `src/App.jsx`(약 200KB) — 메인 앱 셸/프로젝트·일정 관리. 매우 크니 필요한 구간만 읽을 것
+- `src/icons.jsx`(선 아이콘), `src/HeaderUserMenu.jsx`(상단 사용자 메뉴) — 공통 UI 부품
 - `src/PasteZone.jsx`(+`.css`) — 표 붙여넣기 칸/파일 첨부 배치 공통 컴포넌트
 - `src/IssueManagement.jsx`(공사일보), `IntegratedIssueCenter.jsx`(이슈 센터), `ManpowerManagement.jsx`(공수), `Quotations.jsx`, `VisionSPC.jsx`, `SmartProjectSelector.jsx`
 - `src/authService.js`, `Login.jsx` — 인증/권한. `issueService.js`, `masterPlanParser.js`, `reportExports.js`, `export*.js` — 서비스/파서/내보내기

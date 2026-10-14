@@ -38,7 +38,7 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-xl, var(--radius-xl));
+  border-radius: var(--radius-md);
   margin: 10px 0;
 }
 
@@ -67,22 +67,23 @@
 .vision-spc-container .logo-icon {
   width: 44px;
   height: 44px;
-  background: var(--ok);
-  border-radius: var(--radius-md, var(--radius-lg));
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--on-brand);
+  color: var(--ink);
   font-weight: 700;
   font-size: 1.35rem;
-  box-shadow: none;
   flex-shrink: 0;
+  border: 1px solid var(--line-2);
+  font-family: var(--font-mono);
 }
 
 .vision-spc-container .logo-text h1,
 .vision-spc-container .logo-text h2 {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-color);
   margin: 0;
   letter-spacing: -0.025em;
@@ -108,7 +109,7 @@
   justify-content: center;
   gap: 6px;
   padding: 7px 14px;
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -130,9 +131,9 @@
 }
 
 .vision-spc-container .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #ffffff;
+  background: var(--btn-bg);
+  border-color: var(--btn-bg);
+  color: var(--btn-ink);
   box-shadow: none;
 }
 
@@ -143,9 +144,9 @@
 }
 
 .vision-spc-container .btn-accent {
-  background: var(--success);
-  border-color: var(--success);
-  color: #ffffff;
+  background: var(--surface);
+  border-color: var(--line-2);
+  color: var(--ink);
   box-shadow: none;
 }
 
@@ -155,9 +156,9 @@
 }
 
 .vision-spc-container .btn-danger {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: #ffffff;
+  background: var(--bad-wash);
+  border-color: color-mix(in srgb, var(--bad) 35%, transparent);
+  color: var(--bad);
   box-shadow: none;
 }
 
@@ -188,8 +189,7 @@
 .vision-spc-container .panel-title {
   font-size: 10px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   color: var(--text-muted);
   margin-bottom: 4px;
   display: flex;
@@ -208,7 +208,7 @@
 /* ── Dropzone ── */
 .vision-spc-container .dropzone {
   border: 2px dashed var(--border-medium);
-  border-radius: var(--radius-lg, var(--radius-xl));
+  border-radius: var(--radius-lg);
   padding: 24px 16px;
   text-align: center;
   cursor: pointer;
@@ -256,7 +256,7 @@
   height: 80px;
   background: var(--input-bg) !important;
   border: 1px solid var(--input-border);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   color: var(--input-text) !important;
   padding: 8px 10px;
   font-family: var(--font-mono, monospace);
@@ -295,7 +295,7 @@
   padding: 10px 12px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease-in-out);
 }
@@ -471,7 +471,7 @@
   max-width: 185px;
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg, var(--radius-xl));
+  border-radius: var(--radius-md);
   padding: 16px;
   font-size: 12.5px;
   display: flex;
@@ -513,7 +513,7 @@
 .vision-spc-container .card {
   background: var(--panel-bg);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg, var(--radius-xl));
+  border-radius: var(--radius-md);
   box-shadow: none;
   padding: 20px;
   display: flex;
@@ -557,7 +557,7 @@
 .vision-spc-container .stat-card {
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   padding: 16px;
   text-align: center;
   position: relative;
@@ -576,13 +576,12 @@
   color: var(--text-secondary);
   font-weight: 700;
   margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
 }
 
 .vision-spc-container .stat-card-value {
   font-size: 2.2rem;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-primary);
   line-height: 1.1;
   letter-spacing: -0.04em;
@@ -614,8 +613,7 @@
   color: var(--text-secondary);
   font-weight: 700;
   font-size: 11.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
   background: var(--bg-card-subtle);
 }
 
@@ -629,7 +627,7 @@
   width: 100%;
   background: var(--input-bg) !important;
   border: 1px solid var(--input-border);
-  border-radius: var(--radius-sm, var(--radius-md));
+  border-radius: var(--radius-sm);
   color: var(--input-text) !important;
   padding: 5px 8px;
   outline: none;
@@ -647,7 +645,7 @@
 .vision-spc-container .batch-grid-wrapper {
   overflow-x: auto;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   background: var(--bg-card);
   max-height: 480px;
   overflow-y: auto;
@@ -673,8 +671,7 @@
   color: var(--text-secondary);
   font-weight: 700;
   font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
   position: sticky;
   top: 0;
   z-index: 10;
@@ -689,7 +686,7 @@
 .vision-spc-container .batch-tool-panel {
   background: var(--accent-muted);
   border: 1px dashed var(--accent-border);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   padding: 14px;
   display: flex;
   flex-wrap: wrap;
@@ -708,8 +705,7 @@
   font-size: 11px;
   color: var(--text-secondary);
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
 
 /* ── Chart Wrapper ── */
@@ -721,7 +717,7 @@
   justify-content: center;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   padding: 14px;
   width: 100%;
   height: 380px;
@@ -733,7 +729,7 @@
 .vision-spc-container .summary-table-wrapper {
   overflow-x: auto;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   background: var(--bg-card);
 }
 
@@ -757,8 +753,7 @@
   color: var(--text-muted);
   font-weight: 700;
   font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
 
 .vision-spc-container .summary-table tr:last-child td {
@@ -789,7 +784,7 @@
   padding: 10px 14px;
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   font-size: 13px;
   align-items: center;
 }
@@ -814,7 +809,7 @@
 .vision-spc-container .config-select {
   background: var(--input-bg) !important;
   border: 1px solid var(--input-border);
-  border-radius: var(--radius-sm, var(--radius-md));
+  border-radius: var(--radius-sm);
   color: var(--input-text) !important;
   padding: 4px 8px;
   outline: none;

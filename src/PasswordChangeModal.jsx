@@ -63,7 +63,7 @@ export default function PasswordChangeModal({
       className="back"
       style={{
         zIndex: 9999,
-        background: "color-mix(in srgb, var(--brand) 30%, transparent)",
+        background: "var(--bg-overlay)",
         backdropFilter: "none",
       }}
       onClick={(e) => {
@@ -91,7 +91,7 @@ export default function PasswordChangeModal({
             style={{
               top: "16px",
               right: "16px",
-              color: "var(--brand)",
+              color: "var(--ink-3)",
               lineHeight: 1,
               cursor: "pointer",
             }}
@@ -114,7 +114,7 @@ export default function PasswordChangeModal({
               fontSize: "24px",
             }}
           >
-            {mode === "recovery" ? "" : ""}
+            <Icon name={mode === "recovery" ? "refresh" : "key"} size={24} />
           </div>
           <h2 style={{ margin: "0 0 6px", fontSize: "20px", color: "var(--text-primary)", fontWeight: 700 }}>
             {mode === "recovery" ? "비밀번호 재설정" : "비밀번호 변경"}
@@ -187,7 +187,7 @@ export default function PasswordChangeModal({
                 borderColor: confirmPassword && !isMatch ? "var(--bad)" : "var(--border-subtle)",
               }}
             />
-            <div style={{ marginTop: "4px", fontSize: "11px", color: isMatch ? "var(--ok)" : confirmPassword ? "var(--bad)" : "var(--brand)" }}>
+            <div style={{ marginTop: "4px", fontSize: "11px", color: isMatch ? "var(--ok)" : confirmPassword ? "var(--bad)" : "var(--ink-3)" }}>
               {isMatch
                 ? "비밀번호가 일치합니다."
                 : confirmPassword

@@ -293,7 +293,7 @@ export default function IntegratedIssueCenter({
               type="button"
               className="iic-btn iic-btn-excel-prominent"
               onClick={handleExportExcel}
-              style={{ padding: '7px 16px', borderRadius: 'var(--radius-lg)', fontSize: '13px', fontWeight: 800, whiteSpace: 'nowrap' }}
+              style={{ padding: '7px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}
               title="현재 필터링된 이슈 목록 및 상세 조치 이력을 고품질 서식 엑셀 보고서로 다운로드합니다"
             >
               <Icon name="barChart" size="1.1em" /> 엑셀 보고서 다운로드
@@ -309,10 +309,10 @@ export default function IntegratedIssueCenter({
                 }
                 openCreateModal();
               }}
-              style={{ padding: '7px 16px', borderRadius: 'var(--radius-lg)', fontSize: '13px', fontWeight: 800, whiteSpace: 'nowrap' }}
+              style={{ padding: '7px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}
               title={canEdit ? "신규 이슈를 등록합니다" : "Grade 2 이상 권한이 필요합니다"}
             >
-              <Icon name="plus" size="1.1em" /> 새 이슈 등록 {!canEdit && ""}
+              <Icon name="plus" size="1.1em" /> 새 이슈 등록 {!canEdit && <Icon name="lock" size={12} />}
             </button>
           </div>
         </div>
@@ -435,7 +435,7 @@ export default function IntegratedIssueCenter({
               onChange={(e) => setSelectedSiteFilter(e.target.value)}
               title="등록된 전체 SITE를 선택하여 해당 사이트의 이슈만 필터링합니다"
             >
-              <option value="all"><Icon name="globe" size="1.1em" /> 전체 사이트 ({availableSites.length}개소)</option>
+              <option value="all">전체 사이트 ({availableSites.length}개소)</option>
               {availableSites.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -488,9 +488,9 @@ export default function IntegratedIssueCenter({
                 onChange={(e) => setSelectedStatus(e.target.value)}
               >
                 <option value="all">전체 상태</option>
-                <option value="open"><span style={{ display: 'inline-block', width: '0.6em', height: '0.6em', borderRadius: '50%', background: 'var(--bad)', marginRight: '0.4em', verticalAlign: 'baseline' }} /> 발생/접수</option>
-                <option value="in_progress"><span style={{ display: 'inline-block', width: '0.6em', height: '0.6em', borderRadius: '50%', background: 'var(--warn)', marginRight: '0.4em', verticalAlign: 'baseline' }} /> 조치 진행중</option>
-                <option value="resolved"><span style={{ display: 'inline-block', width: '0.6em', height: '0.6em', borderRadius: '50%', background: 'var(--ok)', marginRight: '0.4em', verticalAlign: 'baseline' }} /> 조치 완료</option>
+                <option value="open">발생/접수</option>
+                <option value="in_progress">조치 진행중</option>
+                <option value="resolved">조치 완료</option>
               </select>
             </div>
           )}
@@ -902,7 +902,7 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
                 onChange={e => handleChange('severity', e.target.value)}
               >
                 <option value="critical"> 긴급 (라인 정지 / 중대 품질 불량)</option>
-                <option value="high"><Icon name="alert" size="1.1em" /> 높음 (반복 알람 / 수율 저하)</option>
+                <option value="high">높음 (반복 알람 / 수율 저하)</option>
                 <option value="medium">보통 (간헐적 발생 / 점검 요망)</option>
                 <option value="low">낮음 (단순 확인 / 경미)</option>
               </select>

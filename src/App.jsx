@@ -1733,7 +1733,7 @@ JSON 출력 예시:
       setMsg(
         <span style={{ color: 'var(--bad)' }}>
           분석 실패: {userFriendlyMsg}
-          <div style={{ fontSize: '11px', color: 'var(--brand)', fontWeight: 'normal', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--ink-3)', fontWeight: 'normal', marginTop: '4px' }}>
             원인파악용 기술 정보: {err.message}
           </div>
         </span>
@@ -1996,7 +1996,7 @@ JSON 출력 예시:
           style={{
             background: 'var(--bg-card)',
             border: '1.5px solid var(--primary-blue)',
-            borderRadius: 'var(--radius-lg)',
+            borderRadius: 'var(--radius-md)',
             padding: '12px 18px',
             margin: '8px 0',
             display: 'flex',
@@ -2010,9 +2010,9 @@ JSON 출력 예시:
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Icon name="bell" size={22} />
             <div>
-              <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>신규 가입자가 있습니다!</span>
-                <span style={{ background: 'var(--brand)', color: 'var(--on-brand)', fontSize: '11px', padding: '1px 8px', borderRadius: 'var(--radius-lg)', fontWeight: 'bold' }}>
+                <span style={{ background: 'var(--btn-bg)', color: 'var(--btn-ink)', fontSize: '11px', padding: '1px 8px', borderRadius: 'var(--radius-md)', fontWeight: 'bold' }}>
                   {newRegisteredUsers.length}명 대기중
                 </span>
               </div>
@@ -2029,8 +2029,8 @@ JSON 출력 예시:
                 markUsersAsChecked();
               }}
               style={{
-                background: 'var(--brand)',
-                color: 'var(--on-brand)',
+                background: 'var(--btn-bg)',
+                color: 'var(--btn-ink)',
                 border: 'none',
                 padding: '7px 14px',
                 borderRadius: 'var(--radius-md)',
@@ -2144,7 +2144,7 @@ JSON 출력 예시:
             background: 'var(--bg-card-subtle)', 
             border: '1px solid var(--border-medium)', 
             padding: '3px 10px', 
-            borderRadius: 'var(--radius-lg)', 
+            borderRadius: 'var(--radius-md)', 
             fontWeight: 700, 
             color: 'var(--text-primary)',
             fontSize: '11.5px'
@@ -2289,7 +2289,7 @@ JSON 출력 예시:
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span>{editing ? "프로젝트 수정" : "프로젝트 등록"}</span>
-                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: collapsedSections.form ? 'var(--brand)' : 'var(--brand)' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: collapsedSections.form ? 'var(--brand)' : 'var(--ink-3)' }}>
                       <FoldLabel collapsed={collapsedSections.form} />
                     </span>
                   </h2>
@@ -2349,7 +2349,7 @@ JSON 출력 예시:
                       height: '66px',
                       background: 'var(--bg-card)',
                       border: '1px solid var(--line-2)',
-                      borderRadius: 'var(--radius-lg)',
+                      borderRadius: 'var(--radius-md)',
                       color: 'var(--text-primary)',
                       textDecoration: 'none',
                       cursor: 'pointer',
@@ -2393,7 +2393,7 @@ JSON 출력 예시:
                       </span>
                     </div>
                   </a>
-                  <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)', padding: '8px 12px 10px', background: 'var(--surface-2)' }}>
+                  <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-md)', padding: '8px 12px 10px', background: 'var(--surface-2)' }}>
                     <div style={{ textAlign: 'center', marginBottom: '8px', fontSize: '13px' }}>
                       <b style={{ color: 'var(--text-primary)' }}>{editing ? "최신 Master Schedule 등록 (최신화)" : "Master Schedule 등록"}</b>{" "}
                       <span style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '12px' }}>
@@ -2414,7 +2414,7 @@ JSON 출력 예시:
                     >
                       <PasteZone
                         label="엑셀 표 붙여넣기"
-                        hint="표 복사(Ctrl+C) → 클릭 → Ctrl+V"
+                        hint="표 복사 → 클릭 → Ctrl+V"
                         busy={isExtracting}
                         busyLabel="AI 분석 중..."
                         onPaste={(e) => {
@@ -2612,7 +2612,7 @@ JSON 출력 예시:
                       <button
                         type="button"
                         onClick={() => { setEditing(null); setForm(blank()); setMilestones(newMs()); setMsg(""); }}
-                        style={{ background: 'var(--brand)', color: 'var(--on-brand)', padding: '10px 18px', borderRadius: 'var(--radius-md)', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}
+                        style={{ background: 'var(--surface)', color: 'var(--ink-2)', padding: '0 18px', height: '34px', borderRadius: 'var(--radius-md)', fontWeight: 600, border: '1px solid var(--line-2)', cursor: 'pointer' }}
                       >
                         수정 취소
                       </button>
@@ -2638,7 +2638,7 @@ JSON 출력 예시:
             >
               <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>일정 조회 필터</span>
-                <span style={{ fontSize: '13px', fontWeight: 'bold', color: collapsedSections.filter ? 'var(--brand)' : 'var(--brand)' }}>
+                <span style={{ fontSize: '13px', fontWeight: 'bold', color: collapsedSections.filter ? 'var(--brand)' : 'var(--ink-3)' }}>
                   <FoldLabel collapsed={collapsedSections.filter} />
                 </span>
               </h2>
@@ -2876,11 +2876,11 @@ JSON 출력 예시:
                     )}
                   </div>
 
-                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--brand)' }}>
+                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--ink-3)' }}>
                     {ganttStartDate || ganttEndDate ? (
                       <span>
                         기간 내 진행: <b style={{ color: 'var(--brand)' }}>{ganttView.length}</b>건
-                        <span style={{ fontSize: '11px', color: 'var(--brand)', marginLeft: '4px' }}>(전체 {view.length}건 중)</span>
+                        <span style={{ fontSize: '11px', color: 'var(--ink-4)', marginLeft: '4px' }}>(전체 {view.length}건 중)</span>
                       </span>
                     ) : (
                       <span>전체 프로젝트: <b>{view.length}</b>건</span>
@@ -2923,8 +2923,8 @@ JSON 출력 예시:
                           marginTop: '10px',
                           padding: '5px 12px',
                           fontSize: '12px',
-                          background: 'var(--brand)',
-                          color: 'var(--on-brand)',
+                          background: 'var(--btn-bg)',
+                          color: 'var(--btn-ink)',
                           border: 'none',
                           borderRadius: 'var(--radius-md)',
                           cursor: 'pointer',
@@ -3080,9 +3080,9 @@ JSON 출력 예시:
                     type="button"
                     onClick={(e) => { e.stopPropagation(); toggleSection('calendar'); }}
                     style={{
-                      background: collapsedSections.calendar ? 'var(--brand)' : 'var(--brand-wash)',
-                      color: collapsedSections.calendar ? 'var(--on-brand)' : 'var(--brand)',
-                      border: '1px solid color-mix(in srgb, var(--brand) 40%, transparent)',
+                      background: collapsedSections.calendar ? 'var(--btn-bg)' : 'var(--bg-card-subtle)',
+                      color: collapsedSections.calendar ? 'var(--btn-ink)' : 'var(--ink-2)',
+                      border: '1px solid var(--line-2)',
                       borderRadius: 'var(--radius-md)',
                       padding: '2px 8px',
                       fontSize: '11px',
@@ -3202,7 +3202,7 @@ JSON 출력 예시:
                                       color: dayManpower >= 20 ? 'var(--bad)' : dayManpower >= 10 ? 'var(--signal)' : 'var(--teal)',
                                       border: dayManpower >= 20 ? '1px solid color-mix(in srgb, var(--bad) 30%, transparent)' : dayManpower >= 10 ? '1px solid color-mix(in srgb, var(--signal) 30%, transparent)' : '1px solid color-mix(in srgb, var(--teal) 30%, transparent)',
                                       padding: '1px 5px',
-                                      borderRadius: 'var(--radius-lg)',
+                                      borderRadius: 'var(--radius-md)',
                                       fontWeight: '700',
                                       marginTop: '2px',
                                       marginLeft: '3px'
@@ -3337,9 +3337,9 @@ JSON 출력 예시:
                   type="button"
                   onClick={() => toggleSection('list')}
                   style={{
-                    background: collapsedSections.list ? 'var(--brand)' : 'var(--brand-wash)',
-                    color: collapsedSections.list ? 'var(--on-brand)' : 'var(--brand)',
-                    border: '1px solid color-mix(in srgb, var(--brand) 40%, transparent)',
+                    background: collapsedSections.list ? 'var(--btn-bg)' : 'var(--bg-card-subtle)',
+                    color: collapsedSections.list ? 'var(--btn-ink)' : 'var(--ink-2)',
+                    border: '1px solid var(--line-2)',
                     borderRadius: 'var(--radius-md)',
                     padding: '2px 8px',
                     fontSize: '11px',
@@ -3362,7 +3362,7 @@ JSON 출력 예시:
             {!collapsedSections.list ? (
               <>
                 {view.length === 0 ? (
-                  <div style={{ padding: '36px 20px', textAlign: 'center', background: 'var(--bg-card-subtle)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--border-medium)', margin: '10px 14px' }}>
+                  <div style={{ padding: '36px 20px', textAlign: 'center', background: 'var(--bg-card-subtle)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-medium)', margin: '10px 14px' }}>
                     <div style={{ marginBottom: '10px', color: 'var(--ink-4)' }}><Icon name="folder" size={28} stroke={1.4} /></div>
                     <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
                       {isAllYears ? "조회 조건에 일치하는 프로젝트가 없습니다." : `선택하신 ${selectedYearsLabel}에 일치하는 프로젝트가 없습니다.`}
@@ -3390,7 +3390,9 @@ JSON 출력 예시:
                       {selectedProjects.size > 0 && (
                         <button
                           onClick={() => { if (!del) return showPermissionModal("프로젝트 다중 삭제"); removeSelected(); }}
-                          style={{ background: 'var(--bad)', color: 'var(--on-brand)', border: 'none', padding: '4px 10px', borderRadius: 'var(--radius-md)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                          style={{ background: 'var(--bad-wash)',
+color: 'var(--bad)',
+border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4px 10px', borderRadius: 'var(--radius-md)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
                         >
                           선택 항목 삭제 ({selectedProjects.size}) {!del && <Icon name="lock" size={12} />}
                         </button>
@@ -3450,7 +3452,7 @@ JSON 출력 예시:
                           setSelectedManpowerProject(p);
                         }}
                         style={{
-                          background: p.manpower ? 'var(--brand-wash)' : 'var(--brand-wash)',
+                          background: p.manpower ? 'var(--brand-wash)' : 'var(--bg-card-subtle)',
                           color: !canViewManpowerDetail ? 'var(--ink-3)' : (p.manpower ? 'var(--brand)' : 'var(--ink-2)'),
                           border: p.manpower ? '1px solid color-mix(in srgb, var(--brand) 40%, transparent)' : '1px solid var(--line-2)',
                           fontWeight: 'bold',
@@ -3506,12 +3508,12 @@ JSON 출력 예시:
 
                 {/* 당일 부서별 공수 투입 카드 */}
                 {selectedDay.dayDeptStat && selectedDay.dayDeptStat.total > 0 && (
-                  <div style={{ margin: '14px 0 16px', background: 'var(--bg-card-subtle)', padding: '14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ margin: '14px 0 16px', background: 'var(--bg-card-subtle)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                      <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}>
                         <Icon name="users" size={15} /> 당일 부서별 공수 투입 현황
                       </span>
-                      <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--accent)' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--accent)' }}>
                         총합 {selectedDay.dayDeptStat.total}명
                       </span>
                     </div>
@@ -3560,7 +3562,7 @@ JSON 출력 예시:
                     <span style={{
                       fontSize: "11px",
                       padding: "3px 8px",
-                      borderRadius: "var(--radius-lg)",
+                      borderRadius: "var(--radius-md)",
                       background: "color-mix(in srgb, var(--signal) 15%, transparent)",
                       color: "var(--signal)",
                       fontWeight: "bold",
@@ -3642,7 +3644,7 @@ JSON 출력 예시:
                           padding: "12px 14px",
                           background: u.active ? "var(--bg-card-subtle)" : "var(--bg-card)",
                           border: `1px solid ${u.active ? "var(--border-subtle)" : "var(--border-faint)"}`,
-                          borderRadius: "var(--radius-lg)",
+                          borderRadius: "var(--radius-md)",
                           opacity: u.active ? 1 : 0.75,
                           transition: "all 0.2s",
                         }}
@@ -3673,7 +3675,7 @@ JSON 출력 예시:
                                   });
                                   setEditingUserId(null);
                                 }}
-                                style={{ padding: "4px 8px", fontSize: "11px", fontWeight: "bold", background: "var(--accent)", color: "var(--on-brand)", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer" }}
+                                style={{ padding: "4px 8px", fontSize: "11px", fontWeight: "bold", background: "var(--btn-bg)", color: "var(--btn-ink)", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer" }}
                               >
                                 저장
                               </button>
@@ -3911,7 +3913,7 @@ JSON 출력 예시:
               style={{
                 margin: '0 0 14px',
                 fontSize: '22px',
-                fontWeight: 800,
+                fontWeight: 700,
                 color: 'var(--text-primary, var(--brand))',
                 letterSpacing: '-0.02em'
               }}
@@ -3978,12 +3980,12 @@ JSON 출력 예시:
               style={{
                 width: '100%',
                 padding: '13px 0',
-                background: 'var(--brand)',
-                color: 'var(--on-brand)',
+                background: 'var(--btn-bg)',
+                color: 'var(--btn-ink)',
                 fontSize: '15px',
                 fontWeight: 700,
                 border: 'none',
-                borderRadius: 'var(--radius-lg)',
+                borderRadius: 'var(--radius-md)',
                 cursor: 'pointer',
                 boxShadow: 'none',
                 transition: 'all 0.15s ease'

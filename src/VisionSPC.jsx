@@ -14,6 +14,14 @@ ChartJS.register(CategoryScale, LinearScale, BarController, LineController, BarE
 export default function VisionSPC({ currentCustomer = "SK on" }) {
     const [items, setItems] = useState([]); // [{ name, data: [], specs: { target, usl, lsl, subgroup }, stats: {} }]
     const [activeItemIndex, setActiveItemIndex] = useState(null);
+    // 차트(canvas)는 CSS 변수를 못 읽어서, 테마가 바뀌면 현재 테마 색을 다시 읽어 그린다
+    const [themeTick, setThemeTick] = useState(0);
+    useEffect(() => {
+        const mo = new MutationObserver(() => setThemeTick((t) => t + 1));
+        mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        return () => mo.disconnect();
+    }, []);
+    const themeColor = (name, fallback) => (typeof document === 'undefined' ? fallback : getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback);
     const [sigmaMethod, setSigmaMethod] = useState('moving_range');
     const [targetCp, setTargetCp] = useState('1.67');
     
@@ -389,6 +397,7 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
     };
 
     const chartData = useMemo(() => {
+        const brandColor = themeColor('--brand', '#0B57A4');
         if (!activeItem || !activeItem.stats) return null;
         const { data, specs, stats } = activeItem;
         
@@ -428,7 +437,7 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                     type: 'line',
                     label: '정규분포',
                     data: normalCurve,
-                    borderColor: '#58a6ff',
+                    borderColor: brandColor,
                     borderWidth: 2,
                     fill: false,
                     pointRadius: 0,
@@ -438,21 +447,22 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                     type: 'bar',
                     label: '히스토그램',
                     data: bins,
-                    backgroundColor: 'rgba(88,166,255,0.25)',
-                    borderColor: '#58a6ff',
+                    backgroundColor: /^#[0-9a-f]{6}$/i.test(brandColor) ? `${brandColor}40` : brandColor,
+                    borderColor: brandColor,
                     borderWidth: 1,
                 }
             ]
         };
-    }, [activeItem]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeItem, themeTick]);
 
     const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-            x: { grid: { color: 'rgba(48, 54, 61, 0.5)' } },
-            y: { grid: { color: 'rgba(48, 54, 61, 0.5)' }, beginAtZero: true }
+            x: { grid: { color: themeColor('--line-2', 'rgba(128,128,128,0.25)') } },
+            y: { grid: { color: themeColor('--line-2', 'rgba(128,128,128,0.25)') }, beginAtZero: true }
         }
     };
 
@@ -477,8 +487,8 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                             padding: '8px 14px',
                             height: '56px',
                             background: 'var(--bg-card)',
-                            border: '1.5px solid var(--ok)',
-                            borderRadius: 'var(--radius-lg)',
+                            border: '1px solid var(--line-2)',
+                            borderRadius: 'var(--radius-md)',
                             color: 'var(--text-primary)',
                             textDecoration: 'none',
                             cursor: 'pointer',
@@ -489,15 +499,11 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                         }}
                         onMouseOver={e => {
                             e.currentTarget.style.background = 'var(--bg-hover)';
-                            e.currentTarget.style.borderColor = '#059669';
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
+                            e.currentTarget.style.borderColor = 'var(--border-strong)';
                         }}
                         onMouseOut={e => {
                             e.currentTarget.style.background = 'var(--bg-card)';
-                            e.currentTarget.style.borderColor = '#10b981';
-                            e.currentTarget.style.transform = 'none';
-                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.15)';
+                            e.currentTarget.style.borderColor = 'var(--line-2)';
                         }}
                         title="클릭 시 'Vision SPC 양식.xlsx' 파일이 다운로드됩니다."
                     >
@@ -505,8 +511,9 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                             width: '36px',
                             height: '36px',
                             borderRadius: 'var(--radius-md)',
-                            background: 'var(--ok)',
-                            color: 'var(--on-brand)',
+                            background: 'var(--surface-2)',
+                            border: '1px solid var(--line-2)',
+                            color: 'var(--ink-2)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -635,7 +642,7 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                                         <option key={k} value={`custom_${k}`}>{k}</option>
                                     ))}
                                 </select>
-                                {presetSelect && <button onClick={handleDeletePreset} style={{background:'var(--danger)', color:'#fff', border:'none', borderRadius:'var(--radius-md)', padding:'4px 8px', cursor:'pointer', marginLeft:'4px'}}>삭제</button>}
+                                {presetSelect && <button onClick={handleDeletePreset} style={{background:'var(--bad-wash)', color:'var(--bad)', border:'1px solid color-mix(in srgb, var(--bad) 35%, transparent)', borderRadius:'var(--radius-md)', padding:'4px 8px', cursor:'pointer', marginLeft:'4px'}}>삭제</button>}
                             </div>
                         </div>
                         <div style={{display:'flex', gap:'0.5rem'}}>
@@ -643,7 +650,7 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                             <button className="btn" onClick={handleExportPresetsJSON}>내보내기</button>
                             {items.length > 0 && (
                                 <>
-                                    <button className="btn" style={{background: 'var(--ink-2)', color: '#fff', border: 'none'}} onClick={() => window.print()}> 인쇄 / PDF 저장</button>
+                                    <button className="btn" style={{background: 'var(--ink-2)', color: 'var(--surface)', border: 'none'}} onClick={() => window.print()}> 인쇄 / PDF 저장</button>
                                     <button className="excel-export-btn" onClick={() => exportResultsToExcelWithExcelJS(items, parseFloat(targetCp))}><Icon name="barChart" size="1.1em" /> Excel 리포트 출력</button>
                                 </>
                             )}

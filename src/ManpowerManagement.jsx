@@ -49,18 +49,19 @@ const DEPT_SHORT = {
   manager: "소장"
 };
 
+// 부서 색: 테마 토큰으로 지정해 라이트/다크 모두에서 같은 계열이 보이게 한다 (외주는 같은 색의 연한 단계)
 const DEPT_COLORS = {
-  mechanical: "#38bdf8",     // Bright Sky Blue
-  mechanical_sub: "#7dd3fc", // Light Sky
-  vision: "#fbbf24",         // Warm Golden Yellow
-  vision_sub: "#fde047",     // Light Gold
-  control: "#10b981",        // Emerald Green
-  control_sub: "#34d399",    // Mint
-  electrical: "#f97316",     // Vibrant Orange
-  electrical_sub: "#fb923c", // Warm Tangerine
-  supervisor: "#f59e0b",     // Amber
-  safety: "#f43f5e",         // Rose Red
-  manager: "#06b6d4"         // Cyan
+  mechanical: "var(--brand)",
+  mechanical_sub: "color-mix(in srgb, var(--brand) 50%, transparent)",
+  vision: "var(--warn)",
+  vision_sub: "color-mix(in srgb, var(--warn) 50%, transparent)",
+  control: "var(--ok)",
+  control_sub: "color-mix(in srgb, var(--ok) 50%, transparent)",
+  electrical: "var(--signal)",
+  electrical_sub: "color-mix(in srgb, var(--signal) 50%, transparent)",
+  supervisor: "var(--teal)",
+  safety: "var(--bad)",
+  manager: "var(--ink-3)"
 };
 
 function getDeptLabel(key) {
@@ -75,7 +76,7 @@ function getDeptShort(key) {
   return key.slice(0, 2);
 }
 
-const DYNAMIC_PALETTE = ["#ec4899", "#38bdf8", "#14b8a6", "#84cc16", "#f43f5e", "#f97316", "#c084fc", "#06b6d4"];
+const DYNAMIC_PALETTE = ["var(--teal)", "var(--ink-3)", "var(--warn)", "var(--ok)", "var(--brand)", "var(--signal)"];
 function getDeptColor(key) {
   const norm = normalizeDeptKey(key);
   if (DEPT_COLORS[norm]) return DEPT_COLORS[norm];
@@ -1645,14 +1646,14 @@ export default function ManpowerManagement({
       });
 
       if (diff > 0) {
-        deltaBadge = { type: 'inc', text: `+${diff}명 증원`, color: '#dc2626', bg: '#fee2e2' };
+        deltaBadge = { type: 'inc', text: `+${diff}명 증원`, color: 'var(--bad)', bg: 'var(--bad-wash)' };
       } else if (diff < 0) {
-        deltaBadge = { type: 'dec', text: `${Math.abs(diff)}명 감원`, color: '#2563eb', bg: '#dbeafe' };
+        deltaBadge = { type: 'dec', text: `${Math.abs(diff)}명 감원`, color: 'var(--brand)', bg: 'var(--brand-wash)' };
       } else {
-        deltaBadge = { type: 'same', text: `유지 (${currTotal}명)`, color: '#64748b', bg: 'var(--bg-card-subtle)' };
+        deltaBadge = { type: 'same', text: `유지 (${currTotal}명)`, color: 'var(--ink-3)', bg: 'var(--bg-card-subtle)' };
       }
     } else {
-      deltaBadge = { type: 'init', text: `● 현 투입 (${currTotal}명)`, color: '#059669', bg: '#dcfce7' };
+      deltaBadge = { type: 'init', text: `● 현 투입 (${currTotal}명)`, color: 'var(--ok)', bg: 'var(--ok-wash)' };
     }
 
     let activeMilestone = "";
@@ -1804,30 +1805,30 @@ export default function ManpowerManagement({
     // 3. 부서별 개별 목록 (기타 제거, 외주 분리, PM -> 소장, 설계 제외)
     // 기본 부서 (프로젝트 공통 표준 부서 6종)
     const baseDepts = [
-      { key: 'mechanical', name: '기구 (Mechanical)', plan: planMech, actual: actualMech, color: '#3b82f6' },
-      { key: 'control', name: '제어 (Control)', plan: planControl, actual: actualControl, color: '#10b981' },
-      { key: 'electrical', name: '전장 (Electrical)', plan: planElectrical, actual: actualElectrical, color: '#f59e0b' },
-      { key: 'vision', name: '비전 (Vision)', plan: planVision, actual: actualVision, color: '#c084fc' },
-      { key: 'safety', name: '안전 (Safety)', plan: planSafety, actual: actualSafety, color: '#f43f5e' },
-      { key: 'manager', name: '소장 (Manager)', plan: planManager, actual: actualManager, color: '#0284c7' },
+      { key: 'mechanical', name: '기구 (Mechanical)', plan: planMech, actual: actualMech, color: 'var(--brand)' },
+      { key: 'control', name: '제어 (Control)', plan: planControl, actual: actualControl, color: 'var(--ok)' },
+      { key: 'electrical', name: '전장 (Electrical)', plan: planElectrical, actual: actualElectrical, color: 'var(--warn)' },
+      { key: 'vision', name: '비전 (Vision)', plan: planVision, actual: actualVision, color: 'var(--signal)' },
+      { key: 'safety', name: '안전 (Safety)', plan: planSafety, actual: actualSafety, color: 'var(--bad)' },
+      { key: 'manager', name: '소장 (Manager)', plan: planManager, actual: actualManager, color: 'var(--ink-3)' },
     ];
 
     // 외주 및 특수 부서 (외주인력을 사용하는 프로젝트의 경우 계획 또는 실투입이 있으면 개별 카드로 분리 노출)
     const subDepts = [];
     if (planMechSub > 0 || actualMechSub > 0) {
-      subDepts.push({ key: 'mechanical_sub', name: '기구 외주 (Mech Sub)', plan: planMechSub, actual: actualMechSub, color: '#60a5fa' });
+      subDepts.push({ key: 'mechanical_sub', name: '기구 외주 (Mech Sub)', plan: planMechSub, actual: actualMechSub, color: 'color-mix(in srgb, var(--brand) 50%, transparent)' });
     }
     if (planControlSub > 0 || actualControlSub > 0) {
-      subDepts.push({ key: 'control_sub', name: '제어 외주 (Control Sub)', plan: planControlSub, actual: actualControlSub, color: '#34d399' });
+      subDepts.push({ key: 'control_sub', name: '제어 외주 (Control Sub)', plan: planControlSub, actual: actualControlSub, color: 'color-mix(in srgb, var(--ok) 50%, transparent)' });
     }
     if (planElectricalSub > 0 || actualElectricalSub > 0) {
-      subDepts.push({ key: 'electrical_sub', name: '전장 외주 (Elec Sub)', plan: planElectricalSub, actual: actualElectricalSub, color: '#fb923c' });
+      subDepts.push({ key: 'electrical_sub', name: '전장 외주 (Elec Sub)', plan: planElectricalSub, actual: actualElectricalSub, color: 'color-mix(in srgb, var(--signal) 50%, transparent)' });
     }
     if (planVisionSub > 0 || actualVisionSub > 0) {
-      subDepts.push({ key: 'vision_sub', name: '비전 외주 (Vision Sub)', plan: planVisionSub, actual: actualVisionSub, color: '#e879f9' });
+      subDepts.push({ key: 'vision_sub', name: '비전 외주 (Vision Sub)', plan: planVisionSub, actual: actualVisionSub, color: 'color-mix(in srgb, var(--warn) 50%, transparent)' });
     }
     if (planSV > 0) {
-      subDepts.push({ key: 'supervisor', name: 'SV (Supervisor)', plan: planSV, actual: 0, color: '#06b6d4' });
+      subDepts.push({ key: 'supervisor', name: 'SV (Supervisor)', plan: planSV, actual: 0, color: 'var(--teal)' });
     }
 
     // 동적 특수 부서 (도비, 레이저용접 등)
@@ -1837,7 +1838,7 @@ export default function ManpowerManagement({
         name: `${k} (특수부서)`,
         plan: deptPlanMap[k] || 0,
         actual: v,
-        color: '#38bdf8'
+        color: 'var(--teal)'
       });
     });
 
@@ -2197,7 +2198,7 @@ export default function ManpowerManagement({
               onClick={() => toggleSection('controls')}
               style={{
                 background: collapsedSections.controls ? 'var(--accent)' : 'var(--bg-card-subtle)',
-                color: collapsedSections.controls ? '#fff' : 'var(--text-secondary)',
+                color: collapsedSections.controls ? 'var(--on-brand)' : 'var(--text-secondary)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: 'var(--radius-md)',
                 padding: '2px 8px',
@@ -2294,7 +2295,7 @@ export default function ManpowerManagement({
                 title={!canExportPPT ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : "공수 현황 및 프로젝트 상세 분석 보고서 PPT 다운로드"}
                 style={!canExportPPT ? { opacity: 0.85 } : {}}
               >
-                {isExportingPPT ? "PPT 보고서 생성 중..." : `공수 보고서 PPT 다운로드 (${viewMode === "month" ? `${month + 1}월` : "지정기간"})`} {!canExportPPT && ""}
+                {isExportingPPT ? "PPT 보고서 생성 중..." : `공수 보고서 PPT 다운로드 (${viewMode === "month" ? `${month + 1}월` : "지정기간"})`} {!canExportPPT && <Icon name="lock" size={12} />}
               </button>
             </div>
           </div>
@@ -2307,7 +2308,7 @@ export default function ManpowerManagement({
               border: '1px dashed var(--border-subtle)',
               borderRadius: 'var(--radius-md)',
               textAlign: 'center',
-              color: 'var(--brand)',
+              color: 'var(--ink-3)',
               fontSize: '13px',
               cursor: 'pointer'
             }}
@@ -2331,7 +2332,7 @@ export default function ManpowerManagement({
               onClick={() => toggleSection('summary')}
               style={{
                 background: collapsedSections.summary ? 'var(--accent)' : 'var(--bg-card-subtle)',
-                color: collapsedSections.summary ? '#fff' : 'var(--text-secondary)',
+                color: collapsedSections.summary ? 'var(--on-brand)' : 'var(--text-secondary)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: 'var(--radius-md)',
                 padding: '2px 8px',
@@ -2438,7 +2439,7 @@ export default function ManpowerManagement({
                 onClick={(e) => { e.stopPropagation(); toggleSection('calendar'); }}
                 style={{
                   background: collapsedSections.calendar ? 'var(--accent)' : 'var(--bg-card-subtle)',
-                  color: collapsedSections.calendar ? '#fff' : 'var(--text-secondary)',
+                  color: collapsedSections.calendar ? 'var(--on-brand)' : 'var(--text-secondary)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 'var(--radius-md)',
                   padding: '2px 8px',
@@ -2459,7 +2460,7 @@ export default function ManpowerManagement({
                 }}
                 style={{
                   background: showDailyDeptMatrixInMM ? 'var(--accent)' : 'var(--bg-card-subtle)',
-                  color: showDailyDeptMatrixInMM ? '#fff' : 'var(--text-secondary)',
+                  color: showDailyDeptMatrixInMM ? 'var(--on-brand)' : 'var(--text-secondary)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 'var(--radius-md)',
                   padding: '2px 8px',
@@ -2566,7 +2567,7 @@ export default function ManpowerManagement({
                             </th>
                           );
                         })}
-                        <th style={{ background: 'var(--signal)', color: 'var(--on-brand)' }}>월간 합계</th>
+                        <th style={{ background: 'var(--brand-wash)', color: 'var(--brand)' }}>월간 합계</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2598,7 +2599,7 @@ export default function ManpowerManagement({
                             </td>
                           );
                         })}
-                        <td style={{ background: 'var(--signal)', color: 'var(--on-brand)', fontSize: '12px' }}>
+                        <td style={{ background: 'var(--brand-wash)', color: 'var(--brand)', fontSize: '12px', fontWeight: 650 }}>
                           <b>{calMatrixData.totalMonthManday} M/D</b>
                         </td>
                       </tr>
@@ -2617,7 +2618,7 @@ export default function ManpowerManagement({
               border: '1px dashed var(--border-subtle)',
               borderRadius: 'var(--radius-md)',
               textAlign: 'center',
-              color: 'var(--brand)',
+              color: 'var(--ink-3)',
               fontSize: '13px',
               cursor: 'pointer',
               marginTop: '10px'
@@ -2645,7 +2646,7 @@ export default function ManpowerManagement({
                 onClick={(e) => { e.stopPropagation(); toggleSection('table'); }}
                 style={{
                   background: collapsedSections.table ? 'var(--accent)' : 'var(--bg-card-subtle)',
-                  color: collapsedSections.table ? '#fff' : 'var(--text-secondary)',
+                  color: collapsedSections.table ? 'var(--on-brand)' : 'var(--text-secondary)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 'var(--radius-md)',
                   padding: '2px 8px',
@@ -2777,7 +2778,7 @@ export default function ManpowerManagement({
                         <td style={{ textAlign: "center", background: "var(--bg-card-subtle)" }}>
                           {effectiveTotal > 0 ? (
                             <div>
-                              <span style={{ fontWeight: "800", color: "var(--text-primary)", fontSize: "14px" }}>
+                              <span style={{ fontWeight: 700, color: "var(--text-primary)", fontSize: "14px" }}>
                                 {effectiveTotal.toLocaleString()} M/D
                               </span>
                               {pRangeTotal > 0 && (
@@ -2809,7 +2810,7 @@ export default function ManpowerManagement({
                             }}
                             title={!canViewDetail ? "공수 상세 확인은 Grade 2 이상 권한이 필요합니다 (클릭 시 권한 안내)" : "프로젝트 공수 상세 내역을 확인합니다"}
                           >
-                            {mp ? "공수 상세" : "공수 조회"} {!canViewDetail && ""}
+                            {mp ? "공수 상세" : "공수 조회"} {!canViewDetail && <Icon name="lock" size={12} />}
                           </button>
                         </td>
                       </tr>
@@ -2847,7 +2848,7 @@ export default function ManpowerManagement({
               border: '1px dashed var(--border-subtle)',
               borderRadius: 'var(--radius-md)',
               textAlign: 'center',
-              color: 'var(--brand)',
+              color: 'var(--ink-3)',
               fontSize: '13px',
               cursor: 'pointer'
             }}
@@ -2866,7 +2867,7 @@ export default function ManpowerManagement({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <h3 style={{ margin: 0, fontSize: '19px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span></span> 계획공수 vs 실투입공수 비교분석
-                <span style={{ fontSize: '12px', background: 'var(--accent-muted)', color: 'var(--accent)', padding: '3px 10px', borderRadius: 'var(--radius-lg)', fontWeight: 600, border: '1px solid var(--accent-border)' }}>
+                <span style={{ fontSize: '12px', background: 'var(--accent-muted)', color: 'var(--accent)', padding: '3px 10px', borderRadius: 'var(--radius-md)', fontWeight: 600, border: '1px solid var(--accent-border)' }}>
                   일보 연동
                 </span>
               </h3>
@@ -2875,7 +2876,7 @@ export default function ManpowerManagement({
                 onClick={() => toggleSection('comparison')}
                 style={{
                   background: collapsedSections.comparison ? 'var(--accent)' : 'var(--bg-card-subtle)',
-                  color: collapsedSections.comparison ? '#fff' : 'var(--text-secondary)',
+                  color: collapsedSections.comparison ? 'var(--on-brand)' : 'var(--text-secondary)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 'var(--radius-md)',
                   padding: '3px 10px',
@@ -2943,11 +2944,11 @@ export default function ManpowerManagement({
                       onClick={() => setCompYearFilter("ALL")}
                       style={{
                         padding: '2px 8px',
-                        borderRadius: 'var(--radius-lg)',
+                        borderRadius: 'var(--radius-md)',
                         fontSize: '11px',
                         fontWeight: compYearFilter === "ALL" ? 'bold' : 'normal',
                         background: compYearFilter === "ALL" ? 'var(--accent)' : 'transparent',
-                        color: compYearFilter === "ALL" ? '#fff' : 'var(--text-secondary)',
+                        color: compYearFilter === "ALL" ? 'var(--on-brand)' : 'var(--text-secondary)',
                         border: 'none',
                         cursor: 'pointer'
                       }}
@@ -2961,11 +2962,11 @@ export default function ManpowerManagement({
                         onClick={() => setCompYearFilter(yr)}
                         style={{
                           padding: '2px 8px',
-                          borderRadius: 'var(--radius-lg)',
+                          borderRadius: 'var(--radius-md)',
                           fontSize: '11px',
                           fontWeight: compYearFilter === yr ? 'bold' : 'normal',
                           background: compYearFilter === yr ? 'var(--accent)' : 'transparent',
-                          color: compYearFilter === yr ? '#fff' : 'var(--text-secondary)',
+                          color: compYearFilter === yr ? 'var(--on-brand)' : 'var(--text-secondary)',
                           border: 'none',
                           cursor: 'pointer'
                         }}
@@ -2989,8 +2990,8 @@ export default function ManpowerManagement({
                     onChange={e => setCompSort(e.target.value)}
                     style={{ padding: '4px 8px', fontSize: '12px', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', background: 'var(--input-bg)', color: 'var(--input-text)' }}
                   >
-                    <option value="diffDesc">초과 공수 많은 순 (가감 <Icon name="chevUp" size="1.1em" /> )</option>
-                    <option value="diffAsc">잔여 공수 많은 순 (가감 <Icon name="chevDown" size="1.1em" /> )</option>
+                    <option value="diffDesc">초과 공수 많은 순</option>
+                    <option value="diffAsc">잔여 공수 많은 순 </option>
                     <option value="actualDesc">실투입 공수 많은 순</option>
                     <option value="planDesc">계획 공수 많은 순</option>
                     <option value="rateDesc">소진율 높은 순 (%)</option>
@@ -3107,7 +3108,7 @@ export default function ManpowerManagement({
                                   padding: '3px 8px',
                                   fontSize: '11px',
                                   background: isSelected ? 'var(--accent)' : 'var(--bg-card-subtle)',
-                                  color: isSelected ? '#fff' : 'var(--text-secondary)',
+                                  color: isSelected ? 'var(--on-brand)' : 'var(--text-secondary)',
                                   border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border-subtle)',
                                   borderRadius: 'var(--radius-md)',
                                   cursor: 'pointer',
@@ -3128,7 +3129,7 @@ export default function ManpowerManagement({
 
             {/* 2. 선택된 프로젝트 상세 공수 분석 영역 */}
             {selectedProjectComp && (
-              <div style={{ background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '16px', marginTop: '10px' }}>
+              <div style={{ background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '16px', marginTop: '10px' }}>
                 {/* 프로젝트 선택 및 제목 바 */}
                 <div style={{
                   display: 'flex',
@@ -3172,7 +3173,7 @@ export default function ManpowerManagement({
                     <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span><Icon name="info" size="1.1em" /></span> 총 계획 공수
                     </div>
-                    <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>
+                    <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', margin: '4px 0' }}>
                       {selectedProjectComp.planTotal.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 'normal', color: 'var(--text-tertiary)' }}>M/D</span>
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -3185,7 +3186,7 @@ export default function ManpowerManagement({
                     <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span><Icon name="clock" size="1.1em" /></span> 총 실투입 공수
                     </div>
-                    <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--success)', margin: '4px 0' }}>
+                    <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--success)', margin: '4px 0' }}>
                       {selectedProjectComp.actualTotal.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: 'normal', color: 'var(--text-tertiary)' }}>M/D</span>
                     </div>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
@@ -3206,7 +3207,7 @@ export default function ManpowerManagement({
                     </div>
                     <div style={{
                       fontSize: '22px',
-                      fontWeight: 800,
+                      fontWeight: 700,
                       color: selectedProjectComp.totalDiff > 0 ? 'var(--danger)' : selectedProjectComp.totalDiff < 0 ? 'var(--success)' : 'var(--text-primary)',
                       margin: '4px 0'
                     }}>
@@ -3226,7 +3227,7 @@ export default function ManpowerManagement({
                     <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <span><Icon name="barChart" size="1.1em" /></span> 공수 소진율
                     </div>
-                    <div style={{ fontSize: '22px', fontWeight: 800, color: selectedProjectComp.totalRate > 100 ? 'var(--danger)' : 'var(--warning)', margin: '4px 0' }}>
+                    <div style={{ fontSize: '22px', fontWeight: 700, color: selectedProjectComp.totalRate > 100 ? 'var(--danger)' : 'var(--warning)', margin: '4px 0' }}>
                       {selectedProjectComp.planTotal > 0 ? `${selectedProjectComp.totalRate.toFixed(1)}%` : "-"}
                     </div>
                     <div style={{ background: 'var(--border-faint)', borderRadius: 'var(--radius-md)', height: '6px', overflow: 'hidden', margin: '6px 0 2px' }}>
@@ -3322,7 +3323,7 @@ export default function ManpowerManagement({
                   </div>
 
                   {selectedProjectComp.reports.length === 0 ? (
-                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--brand)', background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-subtle)' }}>
+                    <div style={{ padding: '24px', textAlign: 'center', color: 'var(--ink-3)', background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-subtle)' }}>
                       등록된 공사일보가 없습니다. [이슈 통합관리] 메뉴에서 일보를 등록하면 실투입 공수가 자동으로 집계됩니다.
                     </div>
                   ) : (
@@ -3415,7 +3416,7 @@ export default function ManpowerManagement({
                                           fontWeight: 700,
                                           color: deltaBadge.color,
                                           background: deltaBadge.bg,
-                                          border: `1px solid ${deltaBadge.color}33`,
+                                          border: `1px solid color-mix(in srgb, ${deltaBadge.color} 25%, transparent)`,
                                           whiteSpace: 'nowrap'
                                         }}>
                                           {deltaBadge.text}
@@ -3527,7 +3528,7 @@ export default function ManpowerManagement({
               border: '1px dashed var(--border-subtle)',
               borderRadius: 'var(--radius-md)',
               textAlign: 'center',
-              color: 'var(--brand)',
+              color: 'var(--ink-3)',
               fontSize: '13px',
               cursor: 'pointer'
             }}
@@ -3576,7 +3577,7 @@ export default function ManpowerManagement({
                 </thead>
                 <tbody>
                   {selectedDay.projectBreakdown.length === 0 ? (
-                    <tr><td colSpan={4 + activeDeptKeys.length} style={{ textAlign: "center", padding: "20px", color: "var(--brand)" }}>당일 투입된 프로젝트 공수가 없습니다.</td></tr>
+                    <tr><td colSpan={4 + activeDeptKeys.length} style={{ textAlign: "center", padding: "20px", color: "var(--ink-3)" }}>당일 투입된 프로젝트 공수가 없습니다.</td></tr>
                   ) : (
                     selectedDay.projectBreakdown.map((pb, pIdx) => (
                       <tr key={pIdx}>
@@ -3596,7 +3597,7 @@ export default function ManpowerManagement({
 
             <button
               onClick={() => setSelectedDay(null)}
-              style={{ padding: "10px", background: "var(--brand)", color: "var(--on-brand)", border: "none", borderRadius: "var(--radius-md)", fontWeight: "bold", cursor: "pointer", marginTop: "10px" }}
+              style={{ padding: "10px", background: "var(--btn-bg)", color: "var(--btn-ink)", border: "none", borderRadius: "var(--radius-md)", fontWeight: "bold", cursor: "pointer", marginTop: "10px" }}
             >
               닫기
             </button>
@@ -4013,17 +4014,17 @@ export function ProjectManpowerModal({ project, onClose }) {
           <>
             {/* KPI Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
-              <div style={{ background: "var(--bg-card-subtle)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "14px" }}>
+              <div style={{ background: "var(--bg-card-subtle)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", padding: "14px" }}>
                 <div style={{ fontSize: "12px", color: "var(--success)", fontWeight: "bold" }}>총 투입 공수 (Total Manday)</div>
-                <div style={{ fontSize: "24px", fontWeight: "800", color: "var(--text-primary)", marginTop: "4px" }}>{mp.totalManday || 0} M/D</div>
+                <div style={{ fontSize: "24px", fontWeight: 700, color: "var(--text-primary)", marginTop: "4px" }}>{mp.totalManday || 0} M/D</div>
               </div>
-              <div style={{ background: "var(--bg-card-subtle)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "14px" }}>
+              <div style={{ background: "var(--bg-card-subtle)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", padding: "14px" }}>
                 <div style={{ fontSize: "12px", color: "var(--danger)", fontWeight: "bold" }}>일일 피크 인원 (Daily Peak)</div>
-                <div style={{ fontSize: "24px", fontWeight: "800", color: "var(--bad)", marginTop: "4px" }}>{mp.dailyPeak || 0} 명</div>
+                <div style={{ fontSize: "24px", fontWeight: 700, color: "var(--bad)", marginTop: "4px" }}>{mp.dailyPeak || 0} 명</div>
               </div>
-              <div style={{ background: "var(--bg-card-subtle)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-lg)", padding: "14px" }}>
+              <div style={{ background: "var(--bg-card-subtle)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", padding: "14px" }}>
                 <div style={{ fontSize: "12px", color: "var(--signal)", fontWeight: "bold" }}>공수 투입 일수</div>
-                <div style={{ fontSize: "24px", fontWeight: "800", color: "var(--signal)", marginTop: "4px" }}>{activeDaysCount} 일</div>
+                <div style={{ fontSize: "24px", fontWeight: 700, color: "var(--signal)", marginTop: "4px" }}>{activeDaysCount} 일</div>
               </div>
             </div>
 
@@ -4124,8 +4125,8 @@ export function ProjectManpowerModal({ project, onClose }) {
             style={{
               flex: 1,
               padding: "12px",
-              background: "var(--brand)",
-              color: "var(--on-brand)",
+              background: "var(--btn-bg)",
+              color: "var(--btn-ink)",
               border: "none",
               borderRadius: "var(--radius-md)",
               fontWeight: "bold",

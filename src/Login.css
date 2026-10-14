@@ -1,309 +1,340 @@
 /* ========================================================
-   LOGIN PAGE — PREMIUM AESTHETICS & RESPONSIVE DESIGN
+   LOGIN — 왼쪽: 제품을 추상화한 장식 / 오른쪽: 로그인 폼
+   라이트는 Atelier(브랜드 블루), 다크는 Obsidian(샴페인 골드)
    ======================================================== */
 
 .login-page {
-  min-height: 100vh;
-  width: 100vw;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
-  box-sizing: border-box;
   position: relative;
+  display: grid;
+  grid-template-columns: 1.12fr 1fr;
+  min-height: 100vh;
+  width: 100%;
+  padding: 0;
+  box-sizing: border-box;
   overflow: hidden;
-  background-color: var(--bg-canvas, #0a0e17);
-  background-image: 
-    radial-gradient(circle at 50% 18%, rgba(37, 99, 235, 0.14) 0%, transparent 60%),
-    radial-gradient(circle at 85% 80%, rgba(99, 102, 241, 0.08) 0%, transparent 50%);
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  transition: background-color 0.25s ease;
+  background: var(--bg);
 }
 
-[data-theme="light"] .login-page,
-body.theme-light .login-page {
-  background-color: #f1f5f9;
-  background-image: 
-    radial-gradient(circle at 50% 15%, rgba(37, 99, 235, 0.08) 0%, transparent 60%),
-    radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
-}
-
-/* 테마 토글 버튼 (우측 상단) */
+/* 테마 토글 (우측 상단) */
 .login-theme-toggle {
   position: absolute;
-  top: 24px;
+  top: 20px;
   right: 24px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  background: var(--bg-card, rgba(255, 255, 255, 0.08));
-  border: 1px solid var(--border-medium, rgba(255, 255, 255, 0.15));
-  color: var(--text-secondary, #cbd5e1);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 10;
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-in-out), color var(--dur-fast) var(--ease-in-out);
 }
+.login-theme-toggle:hover { background: var(--bg-hover); color: var(--ink); }
 
-.login-theme-toggle:hover {
-  background: var(--bg-hover, rgba(255, 255, 255, 0.12));
-  color: var(--text-primary, #ffffff);
-  border-color: var(--accent, #3b82f6);
-  transform: translateY(-1px);
-}
+/* ── 왼쪽 장식 ───────────────────────────────────────── */
+.login-art {
+  --la-bg: #0C1016;
+  --la-ink: #E9ECF1;
+  --la-bar: #6BAEF5;
+  --la-bar-alt: #5CB8C8;
+  --la-grid: rgba(255, 255, 255, 0.05);
+  --la-axis: rgba(255, 255, 255, 0.09);
+  --la-today: #FF8A5B;
 
-/* 메인 로그인 카드 */
-.login-card {
-  width: 100%;
-  max-width: 420px;
-  margin: 0 auto;
-  box-sizing: border-box;
-  background: var(--bg-card, #10121a);
-  border: 1px solid var(--border-medium, rgba(255, 255, 255, 0.12));
-  border-radius: 24px;
-  padding: 38px 32px 30px;
-  box-shadow: 
-    0 24px 50px -12px rgba(0, 0, 0, 0.5),
-    0 4px 16px rgba(0, 0, 0, 0.1),
-    0 0 0 1px var(--border-faint, rgba(255, 255, 255, 0.04));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  animation: loginCardAppear 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  justify-content: space-between;
+  padding: 46px 58px;
+  background: var(--la-bg);
+  color: var(--la-ink);
+  overflow: hidden;
+}
+[data-theme="dark"] .login-art,
+body.theme-dark .login-art {
+  --la-bg: #070708;
+  --la-bar: #CDAE72;
+  --la-bar-alt: #8FA8BD;
+  --la-grid: rgba(205, 174, 114, 0.07);
 }
 
-@keyframes loginCardAppear {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+/* 바둑판 눈금: 가운데에서 바깥으로 흐려진다 */
+.login-art::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--la-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--la-grid) 1px, transparent 1px);
+  background-size: 60px 60px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 35% 58%, #000 10%, transparent 78%);
+  mask-image: radial-gradient(ellipse 80% 70% at 35% 58%, #000 10%, transparent 78%);
+}
+.login-art > * { position: relative; }
+
+.login-art-logo { height: 30px; width: auto; align-self: flex-start; }
+
+.login-art-chart { position: relative; margin: 0 -10px; }
+.login-art-row { display: grid; grid-template-columns: 96px 1fr; align-items: center; height: 44px; }
+.login-art-label { font: 500 10.5px var(--font-mono); letter-spacing: 0.04em; color: rgba(233, 236, 241, 0.42); }
+.login-art-track { position: relative; height: 100%; border-left: 1px solid var(--la-axis); }
+.login-art-bar {
+  position: absolute;
+  top: 50%;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--la-bar) 22%, transparent);
+  overflow: hidden;
+}
+.login-art-bar.alt { background: color-mix(in srgb, var(--la-bar-alt) 22%, transparent); }
+.login-art-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--la-bar); }
+.login-art-bar.alt i { background: var(--la-bar-alt); }
+.login-art-today {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(96px + (100% - 96px) * 0.56);
+  width: 1px;
+  background: var(--la-today);
+}
+.login-art-today::before {
+  content: 'TODAY';
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  background: var(--la-today);
+  color: #1B0E08;
+  font: 600 9px/14px var(--font-mono);
+  letter-spacing: 0.06em;
 }
 
-/* 브랜드 로고 래퍼 */
-.login-logo-container {
+.login-art-copy { max-width: 520px; }
+.login-art-eyebrow {
   display: flex;
-  justify-content: center;
   align-items: center;
-  margin-bottom: 2px;
-}
-
-.login-logo-img {
-  height: 42px;
-  width: auto;
-  max-width: 200px;
-  object-fit: contain;
-  transition: transform 0.2s ease;
-}
-
-.login-logo-img:hover {
-  transform: scale(1.02);
-}
-
-/* 카드 상단 헤더 */
-.login-card-header {
-  text-align: center;
-  margin-bottom: 4px;
-}
-
-.login-badge-label {
-  display: inline-block;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  gap: 10px;
+  font: 600 10.5px var(--font-mono);
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--accent, #3b82f6);
-  background: var(--accent-muted, rgba(37, 99, 235, 0.12));
-  border: 1px solid var(--accent-border, rgba(37, 99, 235, 0.25));
-  padding: 3px 10px;
-  border-radius: 999px;
-  margin-bottom: 8px;
+  color: rgba(233, 236, 241, 0.55);
 }
+.login-art-eyebrow::before { content: ''; width: 18px; height: 1px; background: var(--la-bar); }
+.login-art-copy h2 {
+  margin: 16px 0 0;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.22;
+  color: var(--la-ink);
+}
+.login-art-copy p { margin: 14px 0 0; font-size: 14.5px; color: rgba(233, 236, 241, 0.6); }
+
+/* ── 오른쪽 폼 ───────────────────────────────────────── */
+.login-panel {
+  display: grid;
+  place-items: center;
+  padding: 56px 40px;
+  background: var(--bg);
+}
+[data-theme="dark"] .login-panel,
+body.theme-dark .login-panel { background: var(--bg-2); }
+
+.login-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  max-width: 392px;
+  margin: 0 auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  box-sizing: border-box;
+}
+
+/* 좁은 화면(왼쪽 장식이 없을 때)에서만 로고 */
+.login-logo-container { display: none; margin-bottom: 28px; }
+.login-logo-img { height: 30px; width: auto; max-width: 200px; object-fit: contain; }
+
+.login-card-header { margin-bottom: 34px; text-align: left; }
+.login-badge-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font: 600 10.5px var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.login-badge-label::before { content: ''; width: 6px; height: 6px; background: var(--brand); border-radius: 1px; }
 
 .login-card h1 {
-  font-size: 22px;
-  font-weight: 800;
-  margin: 0 0 4px 0;
-  letter-spacing: -0.02em;
-  color: var(--text-primary, #ffffff);
-  text-align: center;
-  line-height: 1.3;
+  margin: 0;
+  font-size: 30px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  color: var(--ink);
+  text-align: left;
 }
 
 .login-subtext {
-  font-size: 13px;
-  color: var(--text-tertiary, #94a3b8);
-  margin: 0;
-  line-height: 1.5;
-  text-align: center;
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-3);
+  text-align: left;
 }
 
-/* 폼 인풋 필드 */
-.login-card input {
-  width: 100% !important;
-  box-sizing: border-box !important;
+.login-fields { display: grid; gap: 14px; }
+
+/* 아이콘이 들어간 입력 칸. 전역 input 규칙(!important)보다 구체적인 선택자로 덮는다 */
+.login-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   height: 46px;
-  padding: 0 16px;
+  padding: 0 14px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  color: var(--ink-3);
+  transition: border-color var(--dur-fast) var(--ease-in-out), box-shadow var(--dur-fast) var(--ease-in-out);
+}
+.login-field:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
+}
+main.login-page .login-field input {
+  flex: 1;
+  width: auto !important;
+  min-width: 0;
+  height: 100%;
+  padding: 0 !important;
   font-size: 14px;
-  border-radius: 12px;
-  border: 1.5px solid var(--border-medium, rgba(255, 255, 255, 0.18)) !important;
-  background-color: var(--input-bg, #0c1220) !important;
-  color: var(--text-primary, #ffffff) !important;
-  transition: all 0.2s ease;
+  font-weight: 500;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   outline: none;
+  color: var(--ink) !important;
 }
+main.login-page .login-field input:focus { border: 0 !important; box-shadow: none !important; }
+main.login-page .login-field input::placeholder { color: var(--ink-4) !important; font-weight: 400; }
 
-.login-card input:focus {
-  border-color: var(--accent, #3b82f6) !important;
-  box-shadow: 0 0 0 3px var(--accent-glow, rgba(59, 130, 246, 0.25)) !important;
-}
-
-.login-card input::placeholder {
-  color: var(--text-muted, #64748b) !important;
-  opacity: 0.8;
-}
-
-/* 주요 제출 버튼 */
+/* 주요 제출 버튼: 라이트는 잉크, 다크는 골드 */
 .login-card button.primary {
-  width: 100%;
-  height: 46px;
-  box-sizing: border-box;
-  font-size: 14.5px;
-  font-weight: 700;
-  color: #ffffff !important;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
-  border: none !important;
-  border-radius: 12px !important;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-}
-
-.login-card button.primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-  box-shadow: 0 6px 22px rgba(37, 99, 235, 0.5);
-  transform: translateY(-1px);
-}
-
-.login-card button.primary:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.login-card button.primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
+  width: 100%;
+  height: 46px;
+  margin-top: 6px;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--btn-ink) !important;
+  background: var(--btn-bg) !important;
+  border: 1px solid var(--btn-bg) !important;
+  border-radius: var(--radius-md) !important;
   box-shadow: none;
+  cursor: pointer;
+  transition: opacity var(--dur-fast) var(--ease-in-out);
 }
+.login-card button.primary:hover:not(:disabled) { opacity: 0.88; }
+.login-card button.primary:disabled { opacity: 0.55; cursor: not-allowed; }
 
-/* 하단 링크 버튼 (브라우저 기본 버튼 스타일 완벽 초기화) */
+/* 하단 링크: 왼쪽 설명 + 오른쪽 강조 */
 .login-links-container {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 4px;
+  display: grid;
+  gap: 4px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
 }
-
 .login-card button.link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 0;
   background: transparent !important;
-  border: none !important;
+  border: 0 !important;
   outline: none !important;
   box-shadow: none !important;
-  cursor: pointer;
+  border-radius: 0;
   font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary, #94a3b8);
-  padding: 6px 10px;
-  border-radius: 8px;
-  text-align: center;
-  transition: all 0.15s ease;
+  font-weight: 450;
   line-height: 1.4;
-  width: 100%;
+  color: var(--ink-3);
+  text-align: left;
+  cursor: pointer;
 }
-
-.login-card button.link:hover:not(:disabled) {
-  color: var(--accent, #3b82f6) !important;
-  background: var(--accent-muted, rgba(37, 99, 235, 0.10)) !important;
-}
-
-.login-card button.link.link-subtle {
-  font-size: 12px;
-  color: var(--text-tertiary, #64748b);
-}
-
-.login-card button.link.link-subtle:hover:not(:disabled) {
-  color: var(--accent, #3b82f6);
-}
+.login-card button.link strong { font-weight: 600; color: var(--ink); }
+.login-card button.link:hover:not(:disabled) strong { color: var(--brand); }
+.login-card button.link:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* 가이드 및 안내 문구 */
 .login-guide-box {
-  font-size: 12px;
-  color: var(--text-muted, #94a3b8);
-  margin: 2px 0 0;
-  line-height: 1.5;
-  text-align: center;
+  margin: 16px 0 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-3);
+  text-align: left;
 }
 
-/* 상태 알림 메시지 배너 */
+/* 상태 알림 메시지 */
 .login-message-banner {
-  padding: 12px 16px;
-  border-radius: 10px;
+  margin-top: 16px;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.5;
   font-weight: 500;
-  text-align: center;
+  text-align: left;
   box-sizing: border-box;
-  animation: loginCardAppear 0.2s ease;
 }
-
 .login-message-banner.info {
-  background: var(--info-muted, rgba(2, 132, 199, 0.12));
-  border: 1px solid rgba(2, 132, 199, 0.3);
-  color: var(--info, #38bdf8);
+  background: var(--brand-wash);
+  border: 1px solid var(--brand-line);
+  color: var(--brand);
 }
-
 .login-message-banner.danger {
-  background: var(--danger-muted, rgba(220, 38, 38, 0.12));
-  border: 1px solid rgba(220, 38, 38, 0.3);
-  color: var(--danger, #f87171);
+  background: var(--bad-wash);
+  border: 1px solid color-mix(in srgb, var(--bad) 30%, transparent);
+  color: var(--bad);
 }
 
 /* 하단 카피라이트 */
 .login-footer-copy {
-  margin-top: 20px;
-  font-size: 11.5px;
-  color: var(--text-muted, #64748b);
+  margin-top: 40px;
+  font-size: 12px;
+  color: var(--ink-4);
   text-align: center;
-  letter-spacing: 0.02em;
 }
 
-/* 모바일 대응 */
-@media (max-width: 480px) {
-  .login-card {
-    padding: 30px 20px 24px;
-    border-radius: 20px;
-  }
-  .login-theme-toggle {
-    top: 16px;
-    right: 16px;
-    padding: 6px 12px;
-    font-size: 12px;
-  }
+/* 좁은 화면: 장식을 숨기고 폼만 */
+@media (max-width: 900px) {
+  .login-page { grid-template-columns: 1fr; }
+  .login-art { display: none; }
+  .login-panel { padding: 72px 24px 40px; }
+  .login-logo-container { display: block; }
+  .login-theme-toggle { top: 16px; right: 16px; }
 }

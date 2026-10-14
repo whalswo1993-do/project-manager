@@ -32,7 +32,7 @@
 .issue-management-container .sidebar {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl, var(--radius-xl));
+  border-radius: var(--radius-md);
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -49,8 +49,7 @@
 .issue-management-container .panel-title {
   font-size: 10px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   color: var(--text-muted);
   margin-bottom: 6px;
 }
@@ -60,7 +59,7 @@
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--input-border);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   font-size: 13px;
   color: var(--input-text);
   background-color: var(--input-bg);
@@ -76,7 +75,7 @@
 /* ── Dropzone ── */
 .issue-management-container .dropzone {
   border: 2px dashed var(--border-medium);
-  border-radius: var(--radius-lg, var(--radius-xl));
+  border-radius: var(--radius-lg);
   padding: 24px 16px;
   text-align: center;
   cursor: pointer;
@@ -108,7 +107,7 @@
   background-color: var(--input-bg) !important;
   color: var(--input-text) !important;
   border: 1px solid var(--input-border);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   padding: 10px 12px;
   font-size: 12.5px;
   font-family: var(--font-sans);
@@ -128,16 +127,17 @@
 .issue-management-container .btn-analyze {
   width: 100%;
   padding: 10px 0;
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--btn-bg);
+  color: var(--btn-ink);
   border: none;
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   box-shadow: none;
   transition: all 0.2s ease;
   letter-spacing: 0.01em;
+  border-color: var(--btn-bg);
 }
 
 .issue-management-container .btn-analyze:hover:not(:disabled) {
@@ -156,7 +156,7 @@
 .issue-management-container .content-area {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl, var(--radius-xl));
+  border-radius: var(--radius-md);
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -199,7 +199,7 @@
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-left: 3px solid var(--accent);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   padding: 14px 16px;
   box-shadow: var(--shadow-xs);
   color: var(--text-primary);
@@ -250,7 +250,7 @@
   background: var(--warning-muted);
   border: 1px solid color-mix(in srgb, var(--signal) 25%, transparent);
   padding: 10px 12px;
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   font-size: 12.5px;
   color: var(--text-primary);
 }
@@ -261,8 +261,7 @@
   color: var(--warning);
   font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
 
 /* ── Empty state ── */
@@ -271,7 +270,7 @@
   padding: 40px 20px;
   color: var(--text-muted);
   background: var(--bg-card-subtle);
-  border-radius: var(--radius-lg, var(--radius-xl));
+  border-radius: var(--radius-md);
   border: 1px dashed var(--border-medium);
   font-size: 13px;
   line-height: 1.6;
@@ -302,7 +301,7 @@
 .spm-modal {
   background: var(--bg-card);
   color: var(--text-primary);
-  border-radius: var(--radius-xl, var(--radius-xl));
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   width: 95%;
   max-width: 680px;
@@ -348,7 +347,7 @@
   padding: 0;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-sm, var(--radius-md));
+  border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
   transition: all 0.15s ease;
@@ -374,7 +373,7 @@
   background: var(--success-muted);
   border: 1px solid color-mix(in srgb, var(--ok) 25%, transparent);
   color: var(--text-primary);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   padding: 12px 16px;
   font-size: 12.5px;
   line-height: 1.55;
@@ -389,7 +388,7 @@
 
 .spm-option-card {
   border: 1.5px solid var(--border-subtle);
-  border-radius: var(--radius-md, var(--radius-lg));
+  border-radius: var(--radius-md);
   padding: 12px 14px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -471,7 +470,7 @@
   padding: 8px 12px;
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-faint, var(--border-subtle));
-  border-radius: var(--radius-sm, var(--radius-md));
+  border-radius: var(--radius-sm);
   font-size: 11.5px;
   color: var(--text-muted);
   white-space: pre-wrap;
@@ -494,7 +493,7 @@
 
 .spm-btn-cancel {
   padding: 7px 16px;
-  border-radius: var(--radius-sm, var(--radius-md));
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-medium);
   background: var(--bg-card);
   color: var(--text-secondary);
@@ -511,15 +510,16 @@
 
 .spm-btn-apply {
   padding: 7px 20px;
-  border-radius: var(--radius-sm, var(--radius-md));
+  border-radius: var(--radius-sm);
   border: none;
-  background: var(--success);
-  color: #fff;
+  background: var(--btn-bg);
+  color: var(--btn-ink);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   box-shadow: none;
   transition: all 0.15s ease;
+  border-color: var(--btn-bg);
 }
 
 .spm-btn-apply:hover {
@@ -556,16 +556,16 @@
 }
 
 .report-fold-btn.collapsed {
-  background: var(--accent) !important;
-  color: #ffffff !important;
-  border-color: var(--accent) !important;
+  background: var(--brand-wash);
+  color: var(--brand);
+  border-color: var(--brand-line);
 }
 
 /* ── 이슈 통합분석 PPT 팝업 모달 (AIM) ── */
 .aim-overlay {
   position: fixed;
   inset: 0;
-  background: color-mix(in srgb, var(--brand) 30%, transparent);
+  background: var(--bg-overlay);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   z-index: 9999;
@@ -622,7 +622,7 @@
   justify-content: center;
   width: 42px;
   height: 42px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--teal) 20%, transparent);
   border: 1px solid color-mix(in srgb, var(--teal) 35%, transparent);
 }
@@ -630,7 +630,7 @@
 .aim-title {
   margin: 0;
   font-size: 17px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-color, #ffffff);
 }
 
@@ -690,7 +690,7 @@
 
 .aim-mode-card {
   padding: 14px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   border: 2px solid var(--border-color, var(--line-2));
   background: var(--bg-card-subtle, var(--surface));
   cursor: pointer;
@@ -714,20 +714,20 @@
 
 .aim-mode-badge {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 3px 8px;
   border-radius: var(--radius-md);
   width: fit-content;
 }
 
 .aim-mode-badge.issues {
-  background: var(--bad);
-  color: var(--on-brand);
+  background: var(--bad-wash);
+  color: var(--bad);
 }
 
 .aim-mode-badge.reports {
-  background: var(--teal);
-  color: var(--on-brand);
+  background: var(--brand-wash);
+  color: var(--brand);
 }
 
 .aim-mode-name {
@@ -750,7 +750,7 @@
 
 .aim-select {
   padding: 10px 14px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-color, var(--line-2));
   background: var(--bg-card, var(--brand));
   color: var(--text-color, #ffffff);
@@ -806,7 +806,7 @@
   align-items: center;
   background: var(--bg-card, var(--brand));
   border: 1px solid var(--border-color, var(--line-2));
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -840,7 +840,7 @@
   display: flex;
   gap: 10px;
   padding: 12px 14px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--brand) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--brand) 25%, transparent);
   font-size: 12px;
@@ -850,7 +850,7 @@
 
 .aim-msg-box {
   padding: 12px 16px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 600;
   display: flex;
@@ -887,7 +887,7 @@
 
 .aim-btn-cancel {
   padding: 10px 18px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-color, var(--line-2));
   background: transparent;
   color: var(--text-muted, var(--brand));
@@ -904,15 +904,16 @@
 
 .aim-btn-execute {
   padding: 10px 22px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   border: none;
-  background: var(--teal);
-  color: var(--on-brand);
+  background: var(--btn-bg);
+  color: var(--btn-ink);
   font-size: 13.5px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   box-shadow: none;
   transition: all 0.15s ease;
+  border-color: var(--btn-bg);
 }
 
 .aim-btn-execute:hover:not(:disabled) {
@@ -934,7 +935,7 @@
 .project-hero-card {
   background: var(--bg-card);
   border: 1.5px solid var(--border-medium);
-  border-radius: var(--radius-xl, var(--radius-xl));
+  border-radius: var(--radius-md);
   padding: 16px 20px;
   margin-bottom: 14px;
   box-shadow: none;
@@ -955,7 +956,7 @@
   display: inline-flex;
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: 3px;
   gap: 4px;
   flex-shrink: 0;
@@ -1034,7 +1035,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-subtle);
   font-size: 12px;
@@ -1045,7 +1046,7 @@
 
 .hero-stat-badge b {
   color: var(--accent);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 /* 2. Sub Navigation Bar (View vs Register) */
@@ -1054,19 +1055,20 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
-  padding: 6px 8px;
-  margin-bottom: 16px;
-  box-shadow: var(--shadow-xs);
   flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .report-sub-tabs-group {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-end;
+  gap: 2px;
   flex-wrap: wrap;
 }
 
@@ -1074,42 +1076,45 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 18px;
-  border-radius: var(--radius-lg);
-  border: 1px solid transparent;
+  height: 44px;
+  margin-bottom: -1px;
+  padding: 0 16px;
   background: transparent;
-  color: var(--text-secondary);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--ink-3);
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 550;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: color 0.15s ease;
 }
 
 .report-sub-tab-btn:hover {
-  background: var(--bg-card-subtle);
-  color: var(--text-primary);
+  background: transparent;
+  color: var(--ink);
 }
 
 .report-sub-tab-btn.active {
-  background: var(--brand);
-  color: var(--on-brand);
-  border-color: color-mix(in srgb, var(--brand) 40%, transparent);
+  background: transparent;
+  color: var(--ink);
+  border-bottom-color: var(--brand);
+  font-weight: 650;
   box-shadow: none;
 }
 
 .report-tab-badge {
-  padding: 2px 7px;
-  border-radius: var(--radius-md);
-  font-size: 11px;
-  font-weight: 800;
-  background: var(--surface);
-  color: inherit;
+  padding: 1px 7px;
+  border-radius: var(--radius-xs);
+  font: 500 11px var(--font-mono);
+  background: var(--brand-wash);
+  color: var(--brand);
 }
 
 .report-sub-tab-btn:not(.active) .report-tab-badge {
-  background: var(--bg-card-subtle);
-  border: 1px solid var(--border-subtle);
-  color: var(--text-muted);
+  background: var(--bg-hover);
+  border: 0;
+  color: var(--ink-3);
 }
 
 .report-sub-nav-actions {
@@ -1122,21 +1127,22 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 16px;
-  border-radius: var(--radius-lg);
-  border: none;
-  background: var(--ok);
-  color: var(--on-brand);
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--btn-bg);
+  background: var(--btn-bg);
+  color: var(--btn-ink);
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
   box-shadow: none;
-  transition: all 0.15s ease;
+  transition: opacity 0.15s ease;
 }
 
 .quick-register-btn:hover {
-  filter: brightness(1.08);
-  transform: none;
+  opacity: 0.88;
+  filter: none;
 }
 
 /* 3. Register Wizard Container */
@@ -1149,7 +1155,7 @@
 .wizard-step-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl, var(--radius-xl));
+  border-radius: var(--radius-md);
   padding: 20px;
   box-shadow: var(--shadow-xs);
 }
@@ -1173,19 +1179,19 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--brand-wash);
+  color: var(--brand);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .wizard-step-title h4 {
   margin: 0;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
@@ -1205,7 +1211,7 @@
 .method-card {
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -1228,7 +1234,7 @@
 .method-card-header h5 {
   margin: 0;
   font-size: 13.5px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--text-primary);
 }
 
@@ -1262,7 +1268,7 @@
   gap: 12px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: 10px 14px;
   flex-wrap: wrap;
 }
@@ -1302,12 +1308,12 @@
 .report-save-wide-btn {
   width: 100%;
   padding: 14px 24px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   border: none;
-  background: var(--brand);
-  color: var(--on-brand);
+  background: var(--btn-bg);
+  color: var(--btn-ink);
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1315,6 +1321,7 @@
   gap: 8px;
   box-shadow: none;
   transition: all 0.2s ease;
+  border-color: var(--btn-bg);
 }
 
 .report-save-wide-btn:hover:not(:disabled) {
@@ -1348,60 +1355,66 @@
 
 .report-nav-pill-group {
   display: inline-flex;
-  background: var(--bg-card-subtle);
-  border: 1px solid var(--border-medium);
-  border-radius: var(--radius-xl);
-  padding: 4px;
-  gap: 6px;
+  align-items: flex-end;
+  gap: 2px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
 }
 
 .report-nav-pill-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 22px;
-  border-radius: var(--radius-lg);
-  border: 1px solid transparent;
+  height: 46px;
+  margin-bottom: -1px;
+  padding: 0 20px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   background: transparent;
-  color: var(--text-secondary);
-  font-size: 14.5px;
-  font-weight: 800;
+  color: var(--ink-3);
+  font-size: 14px;
+  font-weight: 550;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: color 0.15s ease;
   white-space: nowrap;
 }
 
 .report-nav-pill-btn:hover {
-  color: var(--text-primary);
-  background: var(--surface);
+  color: var(--ink);
+  background: transparent;
 }
 
 .report-nav-pill-btn.active {
-  background: var(--brand);
-  color: var(--on-brand);
-  border-color: var(--line-2);
+  background: transparent;
+  color: var(--ink);
+  border-bottom-color: var(--brand);
+  font-weight: 650;
   box-shadow: none;
 }
 
 .report-nav-pill-btn .pill-badge {
-  font-size: 11px;
-  padding: 2px 7px;
-  border-radius: var(--radius-lg);
-  font-weight: 700;
-  background: var(--surface);
-  color: #ffffff;
+  font: 500 11px var(--font-mono);
+  padding: 1px 7px;
+  border-radius: var(--radius-xs);
+  background: var(--brand-wash);
+  color: var(--brand);
 }
 
 .report-nav-pill-btn:not(.active) .pill-badge {
   background: var(--bg-hover);
-  color: var(--text-muted);
+  color: var(--ink-3);
 }
 
 /* 2. 등록 화면: 컴팩트한 등록 대상 카드 */
 .reg-target-card {
   background: var(--bg-card);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-md);
   padding: 16px 20px;
   margin-bottom: 16px;
   box-shadow: none;
@@ -1418,32 +1431,34 @@
 
 .reg-target-mode-toggle {
   display: inline-flex;
-  background: var(--bg-card-subtle);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  padding: 3px;
-  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .reg-target-mode-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 16px;
-  border-radius: var(--radius-md);
-  border: none;
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-radius: 0;
   background: transparent;
-  color: var(--text-secondary);
-  font-size: 13.5px;
-  font-weight: 700;
+  color: var(--ink-3);
+  font-size: 13px;
+  font-weight: 550;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease;
   white-space: nowrap;
 }
 
 .reg-target-mode-btn.active {
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+  font-weight: 650;
   box-shadow: none;
 }
 
@@ -1495,9 +1510,9 @@
 }
 
 .site-chip-btn.active {
-  background: var(--teal);
-  color: var(--on-brand);
-  border-color: transparent;
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+  border-color: var(--btn-bg);
   box-shadow: none;
 }
 
@@ -1510,7 +1525,7 @@
   flex-wrap: wrap;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: 12px 18px;
   margin-bottom: 16px;
 }
@@ -1546,14 +1561,15 @@
 }
 
 .reg-tool-btn.primary-tool {
-  background: var(--ok);
-  color: var(--on-brand);
-  border-color: var(--ok);
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+  border-color: var(--btn-bg);
   box-shadow: none;
 }
 
 .reg-tool-btn.primary-tool:hover {
-  background: var(--ok);
+  background: var(--btn-bg);
+  opacity: 0.88;
 }
 
 /* 4. 특이사항과 설비 이슈사항 분리 필드 스타일 */
@@ -1576,7 +1592,7 @@
   gap: 6px;
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: 10px 12px;
 }
 
@@ -1605,21 +1621,21 @@
   align-items: center;
   gap: 4px;
   padding: 3px 8px;
-  border-radius: var(--radius-md);
-  border: none;
-  background: var(--bad);
-  color: var(--on-brand);
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent);
+  background: var(--bad-wash);
+  color: var(--bad);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
   box-shadow: none;
-  transition: all 0.15s ease;
+  transition: background 0.15s ease;
   white-space: nowrap;
 }
 
 .btn-issue-center-link:hover {
-  filter: brightness(1.1);
-  transform: none;
+  background: color-mix(in srgb, var(--bad) 20%, transparent);
+  filter: none;
 }
 
 .field-textarea-dual {
@@ -1646,7 +1662,7 @@
 .view-search-filter-card {
   background: var(--bg-card);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-md);
   padding: 16px 20px;
   margin-bottom: 20px;
   display: flex;
@@ -1667,7 +1683,7 @@
   display: inline-flex;
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: 3px;
   gap: 4px;
 }
@@ -1686,9 +1702,10 @@
 }
 
 .view-target-type-chip.active {
-  background: var(--accent);
-  color: #ffffff;
+  background: var(--btn-bg);
+  color: var(--btn-ink);
   box-shadow: none;
+  border-color: var(--btn-bg);
 }
 
 .view-search-row-bottom {
@@ -1710,7 +1727,7 @@
   width: 100%;
   height: 38px;
   padding: 0 34px 0 38px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   border: 1.5px solid var(--border-medium);
   background: var(--input-bg);
   color: var(--input-text);
@@ -1751,7 +1768,7 @@
   gap: 12px;
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-medium);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   padding: 14px 16px;
   margin-bottom: 14px;
 }
@@ -1830,7 +1847,7 @@
   flex: 1;
   min-width: 280px;
   padding: 10px 14px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   border: 1.5px solid var(--border-medium);
   background: var(--input-bg);
   color: var(--input-text);

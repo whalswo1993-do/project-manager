@@ -5,7 +5,18 @@ import {
   recordUserAccess,
   validateSignupProfile,
 } from "./authService";
+import { Icon } from "./icons";
 import "./Login.css";
+
+// 왼쪽 장식에 쓰는 가짜 막대 (실제 프로젝트 이름이 아니다. 로그인 전 화면이라 내부 정보를 넣지 않는다)
+const ART_ROWS = [
+  ["STK-01", 4, 68, 88],
+  ["STK-02", 10, 70, 74],
+  ["NCH-01", 18, 74, 38],
+  ["VIS-03", 30, 82, 33],
+  ["STK-04", 6, 58, 93],
+  ["NCH-02", 46, 90, 12],
+];
 
 export default function Login() {
   const [mode, setMode] = useState("login"); // "login" | "signup" | "reset"
@@ -166,6 +177,9 @@ export default function Login() {
   const isResetMode = mode === "reset";
   const isSignupMode = mode === "signup";
 
+  const logoBase = import.meta.env.BASE_URL || "/";
+  const logoSrc = (dark) => `${logoBase}/${dark ? "tw-logo-dark.png" : "tw-logo.png"}`.replace("//", "/");
+
   return (
     <main className="login-page">
       <button
@@ -173,182 +187,221 @@ export default function Login() {
         className="login-theme-toggle"
         onClick={toggleTheme}
         title={currentTheme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
+        aria-label={currentTheme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
       >
-        <span>{currentTheme === "dark" ? "라이트 모드" : "다크 모드"}</span>
+        <Icon name={currentTheme === "dark" ? "sun" : "moon"} size={17} />
       </button>
 
-      <form className="login-card" onSubmit={submit}>
-        <div className="login-logo-container">
-          <img
-            src={
-              currentTheme === "dark"
-                ? `${import.meta.env.BASE_URL || "/"}/tw-logo-dark.png`.replace("//", "/")
-                : `${import.meta.env.BASE_URL || "/"}/tw-logo.png`.replace("//", "/")
-            }
-            alt="(주)TW 로고"
-            className="login-logo-img"
-          />
+      {/* 왼쪽: 제품을 추상화한 장식 (간트 막대). 로그인과 무관한 순수 장식이라 보조기기에서는 숨긴다 */}
+      <aside className="login-art" aria-hidden="true">
+        <img src={logoSrc(true)} alt="" className="login-art-logo" />
+        <div className="login-art-chart">
+          {ART_ROWS.map(([label, start, end, done], i) => (
+            <div className="login-art-row" key={label}>
+              <span className="login-art-label">{label}</span>
+              <div className="login-art-track">
+                <div
+                  className={`login-art-bar ${i % 3 === 2 ? "alt" : ""}`}
+                  style={{ left: `${start}%`, width: `${end - start}%` }}
+                >
+                  <i style={{ width: `${done}%` }} />
+                </div>
+              </div>
+            </div>
+          ))}
+          <div className="login-art-today" />
         </div>
-
-        <div className="login-card-header">
-          <span className="login-badge-label">Project Management</span>
-          <h1>
-            {isSignupMode
-              ? "신규 임직원 회원가입"
-              : isResetMode
-              ? "비밀번호 찾기 / 재설정"
-              : "프로젝트 관리 시스템"}
-          </h1>
-          <p className="login-subtext">
-            {isResetMode
-              ? "비밀번호를 재설정할 사내 이메일을 입력해 주세요."
-              : isSignupMode
-              ? "TW Group 임직원 계정을 생성합니다. 이름과 소속팀은 반드시 입력해야 합니다."
-              : "회사 이메일 계정(@twgroup.co.kr)으로 로그인하세요."}
-          </p>
+        <div className="login-art-copy">
+          <span className="login-art-eyebrow">AX Intelligence</span>
+          <h2>일정 · 공수 · 견적을<br />하나의 정밀한 화면에서</h2>
+          <p>프로젝트 일정 · 공수 통합 · 이슈 · 공사일보 · 견적 · Vision SPC</p>
         </div>
+      </aside>
 
-        <input
-          type="email"
-          value={emailInput}
-          onChange={(event) => setEmailInput(event.target.value)}
-          placeholder="회사 이메일 (@twgroup.co.kr)"
-          autoComplete="email"
-          required
-        />
+      <div className="login-panel">
+        <form className="login-card" onSubmit={submit}>
+          {/* 왼쪽 장식이 숨겨지는 좁은 화면에서만 로고를 보여준다 */}
+          <div className="login-logo-container">
+            <img src={logoSrc(currentTheme === "dark")} alt="(주)TW 로고" className="login-logo-img" />
+          </div>
 
-        {isSignupMode && (
-          <>
-            <input
-              type="text"
-              value={nameInput}
-              onChange={(event) => setNameInput(event.target.value)}
-              placeholder="이름 * (필수, 예: 홍길동)"
-              autoComplete="name"
-              minLength={2}
-              required
-            />
-            <input
-              type="text"
-              value={teamInput}
-              onChange={(event) => setTeamInput(event.target.value)}
-              placeholder="소속팀 * (필수, 예: PM팀, 설계팀, 제어팀)"
-              autoComplete="organization"
-              minLength={2}
-              required
-            />
-          </>
-        )}
+          <div className="login-card-header">
+            <span className="login-badge-label">
+              {isSignupMode ? "Sign up" : isResetMode ? "Reset password" : "Sign in"}
+            </span>
+            <h1>
+              {isSignupMode
+                ? "신규 임직원 회원가입"
+                : isResetMode
+                ? "비밀번호 찾기 / 재설정"
+                : "로그인"}
+            </h1>
+            <p className="login-subtext">
+              {isResetMode
+                ? "비밀번호를 재설정할 사내 이메일을 입력해 주세요."
+                : isSignupMode
+                ? "TW Group 임직원 계정을 생성합니다. 이름과 소속팀은 반드시 입력해야 합니다."
+                : "회사 이메일 계정(@twgroup.co.kr)으로 로그인하세요."}
+            </p>
+          </div>
 
-        {!isResetMode && (
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="비밀번호 입력"
-            autoComplete={isSignupMode ? "new-password" : "current-password"}
-            minLength={6}
-            required
-          />
-        )}
+          <div className="login-fields">
+            <label className="login-field">
+              <Icon name="user" size={17} />
+              <input
+                type="email"
+                value={emailInput}
+                onChange={(event) => setEmailInput(event.target.value)}
+                placeholder="회사 이메일 (@twgroup.co.kr)"
+                autoComplete="email"
+                required
+              />
+            </label>
 
-        <button className="primary" disabled={submitting}>
-          {submitting
-            ? "처리 중..."
-            : isResetMode
-            ? "재설정 링크 메일 발송"
-            : isSignupMode
-            ? "회원가입 신청"
-            : "로그인"}
-        </button>
+            {isSignupMode && (
+              <>
+                <label className="login-field">
+                  <Icon name="user" size={17} />
+                  <input
+                    type="text"
+                    value={nameInput}
+                    onChange={(event) => setNameInput(event.target.value)}
+                    placeholder="이름 * (필수, 예: 홍길동)"
+                    autoComplete="name"
+                    minLength={2}
+                    required
+                  />
+                </label>
+                <label className="login-field">
+                  <Icon name="building" size={17} />
+                  <input
+                    type="text"
+                    value={teamInput}
+                    onChange={(event) => setTeamInput(event.target.value)}
+                    placeholder="소속팀 * (필수, 예: PM팀, 설계팀, 제어팀)"
+                    autoComplete="organization"
+                    minLength={2}
+                    required
+                  />
+                </label>
+              </>
+            )}
 
-        {/* 하단 모드 전환 네비게이션 */}
-        <div className="login-links-container">
-          {mode === "login" && (
-            <>
+            {!isResetMode && (
+              <label className="login-field">
+                <Icon name="lock" size={17} />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="비밀번호 입력"
+                  autoComplete={isSignupMode ? "new-password" : "current-password"}
+                  minLength={6}
+                  required
+                />
+              </label>
+            )}
+
+            <button className="primary" disabled={submitting}>
+              {submitting
+                ? "처리 중..."
+                : isResetMode
+                ? "재설정 링크 메일 발송"
+                : isSignupMode
+                ? "회원가입 신청"
+                : "로그인"}
+              {!submitting && <Icon name="arrowRight" size={16} stroke={1.8} />}
+            </button>
+          </div>
+
+          {/* 하단 모드 전환 네비게이션 */}
+          <div className="login-links-container">
+            {mode === "login" && (
+              <>
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => {
+                    setMode("signup");
+                    setMessage("");
+                  }}
+                  disabled={submitting}
+                >
+                  <span>처음이신가요?</span> <strong>회원가입 신청</strong>
+                </button>
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => {
+                    setMode("reset");
+                    setMessage("");
+                  }}
+                  disabled={submitting}
+                >
+                  <span>비밀번호를 잊으셨나요?</span> <strong>비밀번호 재설정</strong>
+                </button>
+              </>
+            )}
+
+            {mode === "signup" && (
               <button
                 type="button"
                 className="link"
                 onClick={() => {
-                  setMode("signup");
+                  setMode("login");
                   setMessage("");
                 }}
                 disabled={submitting}
               >
-                처음이신가요? <strong>회원가입 신청</strong>
+                <span>이미 계정이 있으신가요?</span> <strong>로그인</strong>
               </button>
+            )}
+
+            {isResetMode && (
               <button
                 type="button"
-                className="link link-subtle"
+                className="link"
                 onClick={() => {
-                  setMode("reset");
+                  setMode("login");
                   setMessage("");
                 }}
                 disabled={submitting}
               >
-                비밀번호를 잊으셨나요? 비밀번호 재설정
+                <span>비밀번호가 기억나셨나요?</span> <strong>로그인으로 돌아가기</strong>
               </button>
-            </>
-          )}
+            )}
+          </div>
 
-          {mode === "signup" && (
-            <button
-              type="button"
-              className="link"
-              onClick={() => {
-                setMode("login");
-                setMessage("");
-              }}
-              disabled={submitting}
-            >
-              ← 이미 계정이 있으신가요? 로그인
-            </button>
+          {isSignupMode && (
+            <p className="login-guide-box">
+              TW Group 임직원만 가입 가능합니다.<br />
+              이름과 소속팀은 필수 입력이며, 회원가입 후 회사 이메일 인증을 완료해야 서비스를 이용할 수 있습니다.
+            </p>
           )}
 
           {isResetMode && (
-            <button
-              type="button"
-              className="link"
-              onClick={() => {
-                setMode("login");
-                setMessage("");
-              }}
-              disabled={submitting}
-            >
-              ← 로그인으로 돌아가기
-            </button>
+            <p className="login-guide-box">
+              가입된 사내 이메일 주소로 안전한 비밀번호 재설정 링크가 전송됩니다.
+            </p>
           )}
-        </div>
 
-        {isSignupMode && (
-          <p className="login-guide-box">
-            TW Group 임직원만 가입 가능합니다.<br />
-            이름과 소속팀은 필수 입력이며, 회원가입 후 회사 이메일 인증을 완료해야 서비스를 이용할 수 있습니다.
-          </p>
-        )}
+          {message && (
+            <div
+              className={`login-message-banner ${
+                message.includes("완료") || message.includes("발송") || message.includes("성공")
+                  ? "info"
+                  : "danger"
+              }`}
+            >
+              {message}
+            </div>
+          )}
 
-        {isResetMode && (
-          <p className="login-guide-box">
-            가입된 사내 이메일 주소로 안전한 비밀번호 재설정 링크가 전송됩니다.
-          </p>
-        )}
-
-        {message && (
-          <div
-            className={`login-message-banner ${
-              message.includes("완료") || message.includes("발송") || message.includes("성공")
-                ? "info"
-                : "danger"
-            }`}
-          >
-            {message}
+          <div className="login-footer-copy">
+            © (주)TW · 스마트 프로젝트 관리 시스템
           </div>
-        )}
-
-        <div className="login-footer-copy">
-           (주)TW · 스마트 프로젝트 관리 시스템
-        </div>
-      </form>
+        </form>
+      </div>
     </main>
   );
 }

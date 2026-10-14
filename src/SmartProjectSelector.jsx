@@ -204,7 +204,7 @@ export default function SmartProjectSelector({
           padding: compact ? '6px 12px' : '8px 14px',
           background: 'var(--bg-card)',
           border: isOpen ? '1.5px solid var(--neon-cyan)' : '1px solid var(--border-medium)',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: 'var(--radius-md)',
           cursor: 'pointer',
           boxShadow: isOpen ? 'none' : 'var(--shadow-sm)',
           transition: 'all 0.2s ease',
@@ -363,7 +363,7 @@ export default function SmartProjectSelector({
                   fontSize: '11px',
                   fontWeight: yearFilter === 'ALL' ? 700 : 500,
                   background: yearFilter === 'ALL' ? 'var(--primary-blue)' : 'var(--bg-card)',
-                  color: yearFilter === 'ALL' ? '#ffffff' : 'var(--text-secondary)',
+                  color: yearFilter === 'ALL' ? 'var(--on-brand)' : 'var(--text-secondary)',
                   border: yearFilter === 'ALL' ? '1px solid var(--primary-blue)' : '1px solid var(--border-subtle)',
                   cursor: 'pointer',
                   boxShadow: yearFilter === 'none' ? 'none' : 'none',
@@ -383,7 +383,7 @@ export default function SmartProjectSelector({
                     fontSize: '11px',
                     fontWeight: yearFilter === yr ? 700 : 500,
                     background: yearFilter === yr ? 'var(--primary-blue)' : 'var(--bg-card)',
-                    color: yearFilter === yr ? '#ffffff' : 'var(--text-secondary)',
+                    color: yearFilter === yr ? 'var(--on-brand)' : 'var(--text-secondary)',
                     border: yearFilter === yr ? '1px solid var(--primary-blue)' : '1px solid var(--border-subtle)',
                     cursor: 'pointer',
                     boxShadow: yearFilter === yr ? 'none' : 'none',
@@ -404,7 +404,7 @@ export default function SmartProjectSelector({
                   onClick={() => setSiteFilter('ALL')}
                   style={{
                     padding: '2px 8px',
-                    borderRadius: 'var(--radius-lg)',
+                    borderRadius: 'var(--radius-md)',
                     fontSize: '10.5px',
                     fontWeight: siteFilter === 'ALL' ? 700 : 500,
                     background: siteFilter === 'ALL' ? 'var(--teal)' : 'var(--bg-card)',
@@ -423,7 +423,7 @@ export default function SmartProjectSelector({
                     onClick={() => setSiteFilter(s)}
                     style={{
                       padding: '2px 8px',
-                      borderRadius: 'var(--radius-lg)',
+                      borderRadius: 'var(--radius-md)',
                       fontSize: '10.5px',
                       fontWeight: siteFilter === s ? 700 : 500,
                       background: siteFilter === s ? 'var(--teal)' : 'var(--bg-card)',
@@ -520,7 +520,7 @@ export default function SmartProjectSelector({
                       </div>
 
                       {isSelected && (
-                        <span style={{ color: 'var(--neon-cyan)', fontWeight: 800, fontSize: '12px' }}>
+                        <span style={{ color: 'var(--neon-cyan)', fontWeight: 700, fontSize: '12px' }}>
                           <Icon name="check" size="1.1em" /> 선택됨
                         </span>
                       )}

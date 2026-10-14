@@ -1,0 +1,25 @@
+name: Supabase keepalive
+
+# 무료 플랜은 7일간 요청이 없으면 프로젝트가 일시정지된다.
+# 이틀에 한 번 읽기 전용 쿼리를 보내 활동 상태를 유지한다.
+# 읽기만 하므로 DB에 데이터가 쌓이지 않는다(지울 것이 없다).
+on:
+  schedule:
+    - cron: "0 0 */2 * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Query Supabase (read-only)
+        run: |
+          # publishable key는 브라우저 번들에 들어가는 공개 키다(RLS가 접근을 막는다).
+          code=$(curl -s -o /dev/null -w "%{http_code}" --retry 3 --retry-delay 5 \
+            -H "apikey: sb_publishable_grHTjPexU7_f9M8w4IrEYQ_o7_gx160" \
+            "https://tebtuzxafkymlplmlhzu.supabase.co/rest/v1/projects?select=id&limit=1")
+          echo "HTTP $code"
+          test "$code" = "200"

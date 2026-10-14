@@ -18,6 +18,17 @@ const categoryBadgeClass = (cat) => (cat === '가공품' ? 'process' : cat === '
 const fmtKRW = (n) => (n === null || n === undefined || n === '' ? '-' : Number(n).toLocaleString('ko-KR', { maximumFractionDigits: 2 }));
 const revisionNumber = (rev) => { const m = String(rev || '').match(/(\d+)/); return m ? Number(m[1]) : -1; };
 
+// 견적서 내용의 프로젝트명 → 등록된 프로젝트와 이름(공백·대소문자 무시)이 같거나 제조번호가 들어 있으면 연결,
+// 아니면 그 프로젝트명 그대로 견적 프로젝트로 묶는다. (사용자가 고르거나 입력하지 않는다)
+function resolveQuotationProject(title, projects = []) {
+    const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, '');
+    const t = norm(title);
+    const match = t && projects.find(p => (p.name && norm(p.name) === t) || (p.manufacturing_no && norm(p.manufacturing_no).length >= 4 && t.includes(norm(p.manufacturing_no))));
+    return match
+        ? { projectId: match.id, projectName: null, linkedLabel: match.manufacturing_no ? `${match.manufacturing_no} · ${match.name}` : match.name }
+        : { projectId: null, projectName: String(title || '').trim(), linkedLabel: null };
+}
+
 export default function Quotations(props) {
     const canManage = ['admin', 'grade3'].includes(props.role);
     if (!canManage) return <QuotationsAccessDenied />;
@@ -48,7 +59,7 @@ function QuotationsAccessDenied() {
 }
 
 // 저장 전 미리보기: 분석된 품목·단가와 정합성 검증 결과를 보여주고, 제목을 고친 뒤 저장한다
-function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, previewOpen, setPreviewOpen, onSave, onReset, busy, canManage }) {
+function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, previewOpen, setPreviewOpen, projects, onSave, onReset, busy, canManage }) {
     const chip = (text, tone = 'neutral') => {
         const tones = {
             neutral: { background: 'var(--bg-card-subtle)', color: 'var(--text-secondary)' },
@@ -84,12 +95,14 @@ function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, p
             {preview.quotations.map((q, qi) => {
                 const s = q.summary;
                 const open = !!previewOpen[qi];
+                const effectiveTitle = (titleOverrides[qi] ?? q.title).trim() || q.title;
+                const proj = resolveQuotationProject(effectiveTitle, projects);
                 const catCounts = {};
                 q.items.forEach(it => { const c = normalizeCategory(it.item_category); catCounts[c] = (catCounts[c] || 0) + 1; });
                 return (
                     <div key={qi} style={{ borderTop: qi ? '1px dashed var(--border-subtle)' : 'none', paddingTop: qi ? '12px' : 0, marginTop: qi ? '12px' : 0 }}>
                         <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                            견적조회 제목 (견적서 내용의 프로젝트명 — 필요하면 수정)
+                            프로젝트명 (견적서 내용에서 자동 인식 — 견적조회 제목·프로젝트 묶음으로 쓰입니다. 필요하면 수정)
                         </label>
                         <input
                             type="text"
@@ -98,6 +111,7 @@ function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, p
                             style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '14px', fontWeight: 700 }}
                         />
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                            {proj.linkedLabel ? chip(`🔗 등록 프로젝트 연결: ${proj.linkedLabel}`, 'ok') : chip(`📁 프로젝트: ${effectiveTitle}`)}
                             {q.quote_no && chip(`견적번호 ${q.quote_no}`)}
                             {q.revision && chip(`리비전 ${q.revision}`)}
                             {q.quote_date && chip(`견적일 ${q.quote_date}`)}
@@ -180,7 +194,6 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
     };
 
     const [isExtracting, setIsExtracting] = useState(false);
-    const [selectedProjectInput, setSelectedProjectInput] = useState('');
     // 저장 전 미리보기: 파일 1개의 시트들 또는 시트별 붙여넣기 결과를 모은다 (원본 파일은 보관하지 않는다)
     const [draft, setDraft] = useState(null); // { fileName, analyses: [...] }
     const [titleOverrides, setTitleOverrides] = useState({});
@@ -425,16 +438,8 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
     const handleSaveDraft = async () => {
         if (!canManage) return notifyPermission('견적서 등록');
         if (!preview || !preview.quotations.length) return;
-        if (!selectedProjectInput.trim()) {
-            setMsg(<span style={{ color: '#ef4444' }}>저장하기 전에 견적서를 연결할 프로젝트명을 입력하거나 선택해주세요.</span>);
-            return;
-        }
         const errorCount = preview.quotations.reduce((s, q) => s + q.summary.errors, 0);
         if (errorCount && !window.confirm(`검증 오류가 ${errorCount}건 있습니다 (수량×단가≠금액 등).\n원본 견적서를 확인하지 않고 그대로 저장할까요?`)) return;
-
-        const matchedProject = projects.find(p => p.name === selectedProjectInput.trim() || p.manufacturing_no === selectedProjectInput.trim());
-        const projectId = matchedProject ? matchedProject.id : null;
-        const projectName = matchedProject ? null : selectedProjectInput.trim();
 
         setIsExtracting(true);
         try {
@@ -442,6 +447,8 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
             for (let i = 0; i < preview.quotations.length; i++) {
                 const q = preview.quotations[i];
                 const title = (titleOverrides[i] ?? q.title).trim() || q.title;
+                // 프로젝트는 견적서 내용의 프로젝트명으로 정한다 (같은 이름의 등록 프로젝트가 있으면 그 프로젝트에 연결)
+                const { projectId, projectName } = resolveQuotationProject(title, projects);
                 results.push({ title, ...(await saveOneQuotation(q, title, projectId, projectName)) });
             }
             const saved = results.filter(r => !r.skipped);
@@ -900,28 +907,11 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                 </div>
                 {!collapsedSections.newQuote ? (
                     <>
-                        <div className="grid">
-                            <label className="wide" style={{ gridColumn: 'span 7' }}>
-                                적용할 프로젝트명 (선택 또는 직접 입력)
-                                <input 
-                                    type="text"
-                                    list="project-list"
-                                    placeholder="A사 10라인 라우팅..."
-                                    value={selectedProjectInput}
-                                    onChange={(e) => setSelectedProjectInput(e.target.value)}
-                                />
-                                <datalist id="project-list">
-                                    {projects.map(p => (
-                                        <option key={p.id} value={p.name}>{p.manufacturing_no ? `${p.manufacturing_no} · ` : ''}{p.name}</option>
-                                    ))}
-                                </datalist>
-                            </label>
-                        </div>
-
-                        {msg && <p className="notice" style={{marginTop:'10px',fontWeight:'bold',color:'#059669'}}>{msg}</p>}
+                        {msg &&<p className="notice" style={{marginTop:'10px',fontWeight:'bold',color:'#059669'}}>{msg}</p>}
                         {!draft && (
                             <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-tertiary)', lineHeight: 1.6 }}>
                                 📎 엑셀 견적서를 첨부하거나, 견적서 시트 → 상세 리스트(Detail List) 시트 순서로 각각 드래그·복사해 붙여넣으세요.
+                                프로젝트는 견적서 안의 "프로젝트 명"으로 자동 등록됩니다(같은 이름의 등록 프로젝트가 있으면 연결).
                                 AI 없이 정해진 규칙으로 품목별 KRW 단가를 읽고, 수량×단가=금액 · 상세 합계 ↔ 견적 단가를 검증한 뒤 저장합니다. 원본 파일은 보관하지 않습니다.
                             </p>
                         )}
@@ -933,6 +923,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                 setTitleOverrides={setTitleOverrides}
                                 previewOpen={previewOpen}
                                 setPreviewOpen={setPreviewOpen}
+                                projects={projects}
                                 onSave={handleSaveDraft}
                                 onReset={() => { resetDraft(); setMsg(''); }}
                                 busy={isExtracting}

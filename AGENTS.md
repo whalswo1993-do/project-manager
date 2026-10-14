@@ -77,5 +77,7 @@ npm run build     # 프로덕션 빌드 → dist/
 - **DB 스키마/RLS 변경은 적용 전에 SQL을 사용자에게 보여주고 확인받는다.** 운영 DB이며 되돌리기 어렵다.
 - 적용한 변경은 서버에 기록된 버전 번호와 같은 이름으로 `supabase/migrations/<version>_<name>.sql` 파일을 저장소에 남겨 서버와 맞춘다.
 - 변경 후에는 Supabase advisor(security)로 RLS 경고를 점검한다.
-- 로컬에만 두는 폴더(`.git/info/exclude` 처리됨, 커밋 금지): `supabase/pending/`(적용 대기 SQL), `supabase/snapshots/`(스키마 스냅샷). 공개 저장소이므로 아직 고치지 않은 취약점 정보를 올리지 않는다.
+- `supabase/snapshots/`는 특정 시점의 스키마 기록(수정 전 상태 포함)일 뿐이고, **현재 스키마의 정본은 `supabase/migrations/`다.** 공개 저장소이므로 **아직 고치지 않은 취약점 정보는 커밋하지 않는다**(적용 전 SQL은 로컬 `supabase/pending/` 같은 곳에 두고 `.git/info/exclude`로 제외).
+- 현재 권한 모델(DB RLS 기준): 조회=활성 사용자 전원 / `projects` 등록·삭제=admin·grade3 / 수정=admin·grade3·grade2(grade2는 트리거로 status·progress 등만) / `project_history`는 admin만 열람. `daily_reports`·`project_issues`는 로그인한 활성 사용자만.
+- 남은 알려진 경고(Supabase advisor): `current_app_role()`을 로그인 사용자가 호출 가능(RLS·서버 로그인 검증이 쓰므로 의도적), 유출 비밀번호 보호 꺼짐(요금제 설정).
 - 앱의 "테스트 계정"(test1~3)은 서버 인증이 아니라 브라우저에서만 검사하는 로컬 세션이다(서버 세션 없음 → DB는 익명 취급). 데이터 보호는 화면이 아니라 DB의 RLS 정책이 담당한다.

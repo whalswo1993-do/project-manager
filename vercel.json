@@ -3,5 +3,10 @@
     "deploymentEnabled": {
       "gh-pages": false
     }
+  },
+  "functions": {
+    "api/claude.js": {
+      "maxDuration": 300
+    }
   }
 }

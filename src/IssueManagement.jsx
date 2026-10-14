@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import './IssueManagement.css';
 import { supabase } from './supabase';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateAIText, isAIConfigured } from './ai';
 import * as XLSX from 'xlsx';
 import pptxgen from 'pptxgenjs';
 import { exportIssuesPpt } from './exportIssuePpt';
@@ -745,11 +745,6 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                 allText += `\n[Sheet: ${sheetName}]\n` + text;
             });
 
-            const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-            if (!apiKey) throw new Error('Gemini API 키가 설정되지 않았습니다.');
-            
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
             const prompt = `
 다음은 현장 공사일보(엑셀)의 원본 텍스트입니다. 이 내용에서 일자별로 데이터를 분류하여 3가지 주요 정보(작업내용, 특이사항, 투입인원)를 추출해주세요.
 특히 투입인원은 부서별(소장, 설계, 기구, 기구외주, 제어, 제어외주, 전장, 전장외주, 비전, 비전외주, 안전)로 세분화하여 파악해주세요. 전장(전기/배선)과 제어(PLC/로봇제어)는 반드시 별개 부서로 구분하세요. 순수 안전(Safety/HSE) 관리 인원만 안전(personnel_count)으로 반영하세요. (※ 우리 회사 CS팀은 폐지되었으므로 CS 분류는 일체 사용하지 않습니다.) 통역, 법인, 지원, 본사, 도비, 레이저용접 등 일보에 기재된 다른 모든 부서/직무는 절대로 안전에 합산하지 말고, 반드시 일보에 기재된 원래 부서명 그대로 custom_depts 객체에 담으세요 (예: { "통역": 1, "지원": 1 }).
@@ -780,11 +775,10 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
 원본 텍스트:
 ${allText.substring(0, 100000)}
 `;
-            const result = await model.generateContent(prompt);
-            let responseText = result.response.text();
+            let responseText = await generateAIText(prompt, { notConfiguredMessage: 'AI API 키(Gemini 또는 Claude)가 설정되지 않았습니다.' });
             responseText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
             const parsed = JSON.parse(responseText);
-            
+
             if (Array.isArray(parsed) && parsed.length > 0) {
                 setExtractedReports(parsed.map(r => ({
                     date: r.date || new Date().toISOString().slice(0, 10),
@@ -2545,8 +2539,7 @@ ${allText.substring(0, 100000)}
         if (!canRunAIAnalysis) return notifyPermission('이슈 통합분석 PPT');
         if (startDate > endDate) return setAnalyzeMsg('시작일이 종료일보다 클 수 없습니다.');
         
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-        if (!apiKey) return setAnalyzeMsg('Gemini API 키가 설정되지 않았습니다.');
+        if (!isAIConfigured()) return setAnalyzeMsg('AI API 키(Gemini 또는 Claude)가 설정되지 않았습니다.');
 
         setIsAnalyzing(true);
         setAnalyzeMsg('데이터를 수집하는 중...');
@@ -2584,10 +2577,7 @@ ${allText.substring(0, 100000)}
                 compiledText += `\n\n[프로젝트: ${pName}]\n` + lines.join('\n\n');
             }
 
-            // 2. Call Gemini
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
-
+            // 2. Call AI (Gemini, 실패 시 Claude)
             const prompt = `
 다음은 ${startDate}부터 ${endDate}까지 수집된 각 프로젝트들의 공사일보 내용입니다.
 이 내용들을 분석하여 1페이지 분량의 [전체 종합 요약]과, [각 프로젝트별 주요 이슈/특이사항]을 정리해주세요.
@@ -2610,8 +2600,7 @@ ${allText.substring(0, 100000)}
 ${compiledText.substring(0, 30000)}
 `;
 
-            const result = await model.generateContent(prompt);
-            const responseText = result.response.text();
+            const responseText = await generateAIText(prompt);
             const cleanText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
             const parsed = JSON.parse(cleanText);
 

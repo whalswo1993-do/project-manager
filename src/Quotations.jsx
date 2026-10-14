@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import './Quotations.css';
 import { supabase } from './supabase';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { generateAIText } from './ai';
 import * as XLSX from 'xlsx';
 
 export default function Quotations(props) {
@@ -173,11 +173,6 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
             let extractedData = { title: typeof fileOrText === 'string' ? '클립보드 붙여넣기' : fileOrText.name, items: [] };
 
             if (typeof fileOrText === 'string') {
-                const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-                if (!apiKey) throw new Error("AI 분석용 Gemini API 키가 설정되지 않았습니다.");
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" }); 
-                
                 const prompt = `당신은 견적서(Quotation) 데이터를 분석하는 전문가입니다. 첨부된 엑셀 복사 데이터를 분석하여 아래 JSON 구조로만 데이터를 추출하세요.
 요구사항:
 1. title: 문서의 제목(알 수 없으면 "클립보드 견적 데이터"로 입력)
@@ -198,15 +193,13 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
   ]
 }`;
                 
-                const result = await model.generateContent([
+                let responseText = (await generateAIText([
                     { text: fileOrText },
                     prompt
-                ]);
-                
-                let responseText = result.response.text().trim();
+                ], { notConfiguredMessage: "AI 분석용 API 키(Gemini 또는 Claude)가 설정되지 않았습니다." })).trim();
                 responseText = responseText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
                 const json = JSON.parse(responseText);
-                
+
                 extractedData.title = json.title || '클립보드 데이터';
                 extractedData.items = json.items || [];
             } else if (fileOrText.name.match(/\.(xlsx|xls)$/i)) {
@@ -235,11 +228,6 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                     }
                 });
             } else if (fileOrText.type.startsWith("image/") || fileOrText.name.match(/\.(pdf)$/i)) {
-                const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-                if (!apiKey) throw new Error("AI 분석용 Gemini API 키가 설정되지 않았습니다.");
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" }); 
-                
                 const reader = new FileReader();
                 const b64 = await new Promise(res => {
                     reader.onload = () => res(reader.result);
@@ -268,15 +256,13 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
   ]
 }`;
                 
-                const result = await model.generateContent([
+                let responseText = (await generateAIText([
                     { inlineData: { data: b64d, mimeType: fileOrText.type } },
                     prompt
-                ]);
-                
-                let responseText = result.response.text().trim();
+                ], { notConfiguredMessage: "AI 분석용 API 키(Gemini 또는 Claude)가 설정되지 않았습니다." })).trim();
                 responseText = responseText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
                 const json = JSON.parse(responseText);
-                
+
                 extractedData.title = json.title || fileOrText.name;
                 extractedData.items = json.items || [];
             } else {

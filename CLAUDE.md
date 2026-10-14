@@ -14,6 +14,7 @@ TW 프로젝트 관리 웹앱. 이전에 Antigravity(Gemini)로 개발했고 이
 npm run dev       # 개발 서버 (vite)
 npm run build     # 프로덕션 빌드 → dist/  (코드 수정 후 반드시 실행해 확인)
 npm run lint      # eslint — 현재 오류 0건, 경고 44건(미사용 변수, React 훅 권고). 오류가 생기면 고치고, 경고는 건드린 코드에서만 줄인다
+npm test          # vitest — 분석 함수/마스터플랜 파서/AI 라우팅/서버 API 회귀 테스트(68개). 리팩터링 전후로 반드시 실행
 npm run preview   # 빌드 결과 미리보기
 ```
 빌드 시 PowerShell에서 `NativeCommandError`가 보여도 Vite 경고(stderr)일 뿐이다. 마지막에 `✓ built` 가 나오면 성공.
@@ -21,9 +22,18 @@ npm run preview   # 빌드 결과 미리보기
 ## 환경변수 (`.env.local`, git 제외)
 `.env.example` 참고.
 - `VITE_SUPABASE_URL`, `VITE_SUPABASE_KEY` — 미설정 시 `src/supabase.js`의 하드코딩 기본값(publishable key)으로 동작
-- `VITE_GEMINI_API_KEY` — 미설정 시 AI 기능(일일보고/이슈/견적 분석)만 동작 안 함
+- `VITE_GEMINI_API_KEY` — Gemini 키 (브라우저에서 직접 호출)
+- `VITE_AI_PROVIDER` — `auto`(기본: Gemini 먼저, 실패 시 Claude) | `gemini` | `claude`
+- `ANTHROPIC_API_KEY`(서버 전용), `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT` — Claude 설정. Vercel 환경변수에만 등록한다
 
-`VITE_` 접두사 변수는 번들에 그대로 포함되어 브라우저에 노출된다. 비밀 키(service_role 등)는 절대 `VITE_`로 넣지 않는다.
+`VITE_` 접두사 변수는 번들에 그대로 포함되어 브라우저에 노출된다. 비밀 키(service_role, Anthropic 키 등)는 절대 `VITE_`로 넣지 않는다.
+
+## AI 호출 구조 (Gemini + Claude)
+- 앱의 모든 AI 분석(마스터플랜 판독, 일보 구조화, 견적서 추출, 이슈 통합분석 PPT)은 `src/ai.js`의 `generateAIText()` 하나를 거친다. 새 AI 기능도 반드시 이걸 쓰고, `@google/generative-ai`나 Anthropic을 컴포넌트에서 직접 부르지 않는다.
+- `auto`: Gemini 성공 시 그대로 사용. Gemini 실패 시 `/api/claude`(Vercel 서버 함수)로 재시도. Claude가 미설정/비로그인/개발서버이면 Gemini의 원래 오류를 그대로 보여준다(호출부의 429·403 안내 문구 유지).
+- `api/claude.js`(엔드포인트) → `api/_lib/auth.js`(Supabase 로그인 검증: `current_app_role()`이 null이 아니어야 통과) → `api/_lib/claude.js`(Anthropic SDK 호출). 기본 모델 `claude-opus-5-5`, 스트리밍, refusal 서버 fallback 사용(Haiku 제외).
+- 서버 함수는 `npm run dev`(vite)에서는 동작하지 않는다. 로컬에서 시험하려면 `vercel dev`를 쓴다.
+- 요청 본문 한도 약 4.5MB(Vercel). Claude 경로에서 큰 PDF/이미지(base64 약 3MB 초과)는 413이 날 수 있다.
 
 ## 구조 (src/)
 - `App.jsx`(약 200KB) — 메인 앱 셸/프로젝트·일정 관리. 매우 큼, 수정 시 필요한 구간만 읽을 것

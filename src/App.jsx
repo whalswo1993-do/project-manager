@@ -10,7 +10,7 @@ import IntegratedIssueCenter from "./IntegratedIssueCenter";
 import Quotations from "./Quotations";
 import ManpowerManagement, { ProjectManpowerModal } from "./ManpowerManagement";
 import PasswordChangeModal from "./PasswordChangeModal";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateAIText } from "./ai";
 import * as XLSX from "xlsx";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { normalizeJVName, getConstructionPeriod, getMonthDailyDeptMatrix, getDailyDepartmentManpower } from "./utils";
@@ -1818,10 +1818,6 @@ export default function App() {
         return;
       }
 
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey) throw new Error("엑셀 표 서식을 자동으로 판독하지 못했거나, AI 분석용 Gemini API 키가 설정되지 않았습니다.");
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
       let parts = [];
 
       if (typeof input === "string") {
@@ -1891,8 +1887,9 @@ JSON 출력 예시:
 
 주의: JSON 이외의 어떠한 설명이나 마크다운 백틱(\`\`\`)을 포함하지 말고 순수 JSON만 응답하세요.`;
 
-      const result = await model.generateContent([...parts, prompt]);
-      let responseText = result.response.text().trim();
+      let responseText = (await generateAIText([...parts, prompt], {
+        notConfiguredMessage: "엑셀 표 서식을 자동으로 판독하지 못했거나, AI 분석용 API 키(Gemini 또는 Claude)가 설정되지 않았습니다.",
+      })).trim();
       if (responseText.startsWith("```json")) responseText = responseText.replace(/^```json\s*/, "").replace(/\s*```$/, "");
       else if (responseText.startsWith("```")) responseText = responseText.replace(/^```\s*/, "").replace(/\s*```$/, "");
       const rawJson = JSON.parse(responseText);

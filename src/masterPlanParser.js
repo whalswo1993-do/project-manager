@@ -218,7 +218,6 @@ export function resolveMilestoneDates(sRaw, eRaw, durRaw, state = {}) {
         const nextDiff = Math.round((nextYearDate - d1) / (1000 * 60 * 60 * 24)) + 1;
         if (Math.abs(nextDiff - duration) < 5) {
           endYear = startYear + 1;
-          candEndDate = `${endYear}-${String(eParts.month).padStart(2, '0')}-${String(eParts.day).padStart(2, '0')}`;
         }
       }
     }

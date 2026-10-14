@@ -60,7 +60,7 @@ export function getConstructionPeriod(p) {
   let endDate = p.endDate;
   let hasConstructionData = false;
   let scheduleType = 'full';
-  let reason = '';
+  let reason;
 
   if (firstMpDate && msStartDate) {
     startDate = firstMpDate < msStartDate ? firstMpDate : msStartDate;

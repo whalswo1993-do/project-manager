@@ -81,7 +81,7 @@ export async function syncRemoteIssues(issues) {
 export async function upsertIssue(issueData) {
   const current = getLocalIssues();
   const now = new Date().toISOString();
-  let updatedList = [];
+  let updatedList;
 
   const existingIndex = current.findIndex(i => i.id === issueData.id);
   if (existingIndex >= 0) {

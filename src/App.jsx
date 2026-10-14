@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
 import Login from "./Login";
-import { exportGanttReport, exportCalendarReport, exportComprehensiveReport } from "./reportExports";
+import { exportComprehensiveReport } from "./reportExports";
 import IntegratedExportModal from "./IntegratedExportModal";
 import VisionSPC from "./VisionSPC";
 import IssueManagement from "./IssueManagement";

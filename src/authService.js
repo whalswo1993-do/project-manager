@@ -165,7 +165,7 @@ export function formatLastAccessTime(isoString) {
   // 10분 이내 접속을 온라인/최근 활동으로 간주
   const isOnline = diffMin < 10;
 
-  let relative = "";
+  let relative;
   if (diffSec < 60) {
     relative = "방금 전";
   } else if (diffMin < 60) {
@@ -188,9 +188,6 @@ export function formatLastAccessTime(isoString) {
     raw: isoString
   };
 }
-
-// 초기 시드용 리프레시 토큰 (DB 쿼리 권한 유지용)
-const INITIAL_REFRESH_TOKEN = "c6w7xv7ho63t";
 
 // 사용자 정의 프로필 목록 조회 (이메일 기준 매핑)
 export function getCustomUserProfiles() {

@@ -4,18 +4,14 @@ import { supabase } from './supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as XLSX from 'xlsx';
 
-export default function Quotations({ projects, role, onPermissionDenied, currentCustomer = "SK on" }) {
-    const canManage = ['admin', 'grade3'].includes(role);
-    const notifyPermission = (feature) => {
-        if (onPermissionDenied) {
-            onPermissionDenied(feature);
-        } else {
-            alert(`[${feature}] 권한이 없습니다. 운영자에게 권한을 부여받으시기 바랍니다.`);
-        }
-    };
+export default function Quotations(props) {
+    const canManage = ['admin', 'grade3'].includes(props.role);
+    if (!canManage) return <QuotationsAccessDenied />;
+    return <QuotationsManager {...props} />;
+}
 
-    if (!canManage) {
-        return (
+function QuotationsAccessDenied() {
+    return (
             <div style={{ padding: '48px 24px', textAlign: 'center', background: 'var(--bg-card, #fff)', borderRadius: '24px', border: '1px solid var(--border-subtle, var(--border-faint))', margin: '40px auto', maxWidth: '440px', boxShadow: 'var(--shadow-md, 0 4px 20px rgba(0,0,0,0.06))' }}>
                 <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', fontSize: '28px' }}>🔒</div>
                 <h3 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary, #0f172a)', margin: '0 0 12px' }}>견적 관리 접근 권한 제한</h3>
@@ -34,8 +30,19 @@ export default function Quotations({ projects, role, onPermissionDenied, current
                     </div>
                 </div>
             </div>
-        );
-    }
+    );
+}
+
+function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer = "SK on" }) {
+    const canManage = ['admin', 'grade3'].includes(role);
+    const notifyPermission = (feature) => {
+        if (onPermissionDenied) {
+            onPermissionDenied(feature);
+        } else {
+            alert(`[${feature}] 권한이 없습니다. 운영자에게 권한을 부여받으시기 바랍니다.`);
+        }
+    };
+
     const [isExtracting, setIsExtracting] = useState(false);
     const [selectedProjectInput, setSelectedProjectInput] = useState('');
     const [quotations, setQuotations] = useState([]);

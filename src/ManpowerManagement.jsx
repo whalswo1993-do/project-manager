@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import "./ManpowerManagement.css";
 import ExcelJS from "exceljs";
 import PptxGenJS from "pptxgenjs";
@@ -1601,7 +1601,7 @@ export default function ManpowerManagement({
 
     const currTotal = currMech + currMechSub + currCtrl + currCtrlSub + currElec + currElecSub + currVis + currVisSub + currMgr + currSafety + currCustomSum;
 
-    let deltaBadge = null;
+    let deltaBadge;
     const deptChanges = [];
 
     if (prevReport) {

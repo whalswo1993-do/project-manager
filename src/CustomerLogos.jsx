@@ -1,4 +1,3 @@
-import React from "react";
 
 /**
  * 1. SK on 로고: 상단 행복날개(주황/빨강) + 하단 SK on (빨강/주황)

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { getConstructionPeriod, normalizeJVName } from './utils';
+import { useState, useEffect, useMemo } from 'react';
+import { getConstructionPeriod } from './utils';
 
 /**
  * 간트차트 & 공사 일정 달력 통합 종합 PPT 내보내기 모달

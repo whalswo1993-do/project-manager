@@ -4,8 +4,6 @@ import { supabase } from './supabase';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as XLSX from 'xlsx';
 import pptxgen from 'pptxgenjs';
-import SmartProjectSelector from './SmartProjectSelector';
-import IntegratedIssueCenter from './IntegratedIssueCenter';
 import { exportIssuesPpt } from './exportIssuePpt';
 import { fetchRemoteIssues, getRegisteredSiteNames } from './issueService';
 
@@ -1222,7 +1220,7 @@ ${allText.substring(0, 100000)}
     // 범용 지능형 프로젝트명 정규화 (사이트 격리 및 핵심 라인/공정/제조번호 통일)
     const normalizeProjectName = (rawTitle, bodyPreview = '', projectList = []) => {
         if (!rawTitle) return '';
-        let clean = rawTitle.trim().replace(/^[■●▶◆【\[\s]+/, '').replace(/[】\]\s]+$/, '').trim();
+        let clean = rawTitle.trim().replace(/^[■●▶◆【[\s]+/, '').replace(/[】\]\s]+$/, '').trim();
 
         // 0. 사이트(Site) 시그니처 식별 (현재 앱 선택 프로젝트 및 텍스트 컨텍스트 기반 타 사이트 오연결 원천 차단)
         const curProjObj = (projects || []).find(p => p.id === selectedProject);
@@ -1365,7 +1363,7 @@ ${allText.substring(0, 100000)}
             const trimmed = line.trim();
 
             if (!accumulatingBracket) {
-                if (/^[■●▶◆【\[]/.test(trimmed) && !/[】\]]/.test(trimmed)) {
+                if (/^[■●▶◆【[]/.test(trimmed) && !/[】\]]/.test(trimmed)) {
                     accumulatingBracket = true;
                     bracketBuffer = trimmed;
                 } else {
@@ -1391,7 +1389,7 @@ ${allText.substring(0, 100000)}
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             const trimmed = line.trim();
-            const m = trimmed.match(/^[■●▶◆【\[]\s*([^\]】]+)[】\]][:.\s-]*(.*)$/);
+            const m = trimmed.match(/^[■●▶◆【[]\s*([^\]】]+)[】\]][:.\s-]*(.*)$/);
             const isDate = m ? normalizeReportDate(m[1]) : null;
             const candidate = m ? m[1].trim() : null;
 
@@ -1439,7 +1437,7 @@ ${allText.substring(0, 100000)}
                 continue;
             }
             // 명일/익일/차일/내일/Tomorrow/Next Day 계획 섹션 헤더 감지 시 이후 텍스트 전부 절단
-            if (/^([■●▶◆【\[\*\-\#\d\.\s]*\s*)?(명일|익일|차일|내일|Tomorrow|Next\s*Day)\s*([■●▶◆】\]\:\-\s]*(작업|업무|진행|계획|사항|일정|내역|Plan|Work)?)/i.test(trimmed)) {
+            if (/^([■●▶◆【[*\-#\d.\s]*\s*)?(명일|익일|차일|내일|Tomorrow|Next\s*Day)\s*([■●▶◆】\]:\-\s]*(작업|업무|진행|계획|사항|일정|내역|Plan|Work)?)/i.test(trimmed)) {
                 break;
             }
             cleaned.push(line);
@@ -1700,7 +1698,7 @@ ${allText.substring(0, 100000)}
                 for (let c = 0; c < row.length; c++) {
                     const cellVal = String(row[c] || '').trim();
                     if (!cellVal) continue;
-                    if (/^(구분|공정|공정구분|세부공정|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|주요\s*진행\s*예정|명일\s*진행\s*예정|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고|주요\s*업무|일자|날짜|Activity|Remark|Today|Tomorrow|기구|제어|비전|설비|Time|Weather|Temperature|Cut off)$/i.test(cellVal.replace(/[\s\(\),:]/g, ''))) continue;
+                    if (/^(구분|공정|공정구분|세부공정|주요\s*진행\s*사항|금일\s*진행|명일\s*진행|주요\s*진행\s*예정|명일\s*진행\s*예정|이슈\s*사항|특이사항|비고|일일\s*업무\s*보고|주요\s*업무|일자|날짜|Activity|Remark|Today|Tomorrow|기구|제어|비전|설비|Time|Weather|Temperature|Cut off)$/i.test(cellVal.replace(/[\s(),:]/g, ''))) continue;
                     if (/지연항목|안해도\s*됨|불러와야\s*함|Progress Behind|Progress\s*Guide/i.test(cellVal)) continue;
                     if (/^(Time|Weather|Temperature|Sunny|Cloudy|Rainy|26℃|\d{1,2}℃|\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2})$/i.test(cellVal)) continue;
                     if (/^(Project|Work Scope|Main Contractor|Daily Progress Report|Cut off)\s*:/i.test(cellVal) || /Daily Progress Report/i.test(cellVal)) continue;
@@ -3062,7 +3060,7 @@ ${compiledText.substring(0, 30000)}
                                                                                             siteName: targetType === 'site' ? selectedSite : (currentSelectedProject?.site || ''),
                                                                                             customer: currentSelectedProject?.customer || currentCustomer || '',
                                                                                             occurredDate: report.report_date,
-                                                                                            title: note.split('\n')[0].replace(/^[-*•\d\.\s]+/, '').slice(0, 45) || '설비 이슈사항',
+                                                                                            title: note.split('\n')[0].replace(/^[-*•\d.\s]+/, '').slice(0, 45) || '설비 이슈사항',
                                                                                             symptom: note,
                                                                                             processType: /스태킹|스택|stack/i.test(note) ? 'stacking' : /노칭|notch/i.test(note) ? 'notching' : 'stacking'
                                                                                         };
@@ -3362,7 +3360,7 @@ ${compiledText.substring(0, 30000)}
                                                             siteName: targetType === 'site' ? selectedSite : (currentSelectedProject?.site || ''),
                                                             customer: currentSelectedProject?.customer || currentCustomer || '',
                                                             occurredDate: report.date || new Date().toISOString().slice(0, 10),
-                                                            title: issueContent.split('\n')[0].replace(/^[-*•\d\.\s]+/, '').slice(0, 45) || '설비 이슈사항',
+                                                            title: issueContent.split('\n')[0].replace(/^[-*•\d.\s]+/, '').slice(0, 45) || '설비 이슈사항',
                                                             symptom: issueContent,
                                                             processType: /스태킹|스택|stack/i.test(issueContent) ? 'stacking' : /노칭|notch/i.test(issueContent) ? 'notching' : 'stacking'
                                                         };

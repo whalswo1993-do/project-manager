@@ -90,7 +90,7 @@ describe('runClaude', () => {
     const req = sdk.state.lastRequest
     expect(sdk.state.lastOptions).toEqual({ apiKey: 'sk-test' })
     expect(req).toMatchObject({
-      model: 'claude-opus-5-5',
+      model: 'claude-sonnet-5-5',
       max_tokens: 64000,
       output_config: { effort: 'medium' },
       messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
@@ -109,8 +109,8 @@ describe('runClaude', () => {
     expect(sdk.state.lastRequest).not.toHaveProperty('fallbacks')
     expect(sdk.state.lastRequest).not.toHaveProperty('betas')
 
-    await runClaude({ parts: ['hi'] }, { ...env, ANTHROPIC_MODEL: 'claude-sonnet-5-5' })
-    expect(sdk.state.lastRequest).toMatchObject({ model: 'claude-sonnet-5-5', fallbacks: 'default' })
+    await runClaude({ parts: ['hi'] }, { ...env, ANTHROPIC_MODEL: 'claude-opus-5-5' })
+    expect(sdk.state.lastRequest).toMatchObject({ model: 'claude-opus-5-5', fallbacks: 'default' })
   })
 
   it('max_tokens 는 상한을 넘지 못한다', async () => {

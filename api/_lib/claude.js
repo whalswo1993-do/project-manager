@@ -1,7 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-// 기본 모델. Vercel 환경변수 ANTHROPIC_MODEL 로 바꿀 수 있다(예: claude-sonnet-5-5 — 더 빠르고 저렴).
-export const DEFAULT_MODEL = 'claude-opus-5-5'
+// 기본 모델. Vercel 환경변수 ANTHROPIC_MODEL 로 바꿀 수 있다(예: 더 정밀한 claude-opus-5-5, 더 저렴한 claude-haiku-5-5).
+// 일보/견적/마스터플랜 같은 구조화 추출 용도라 비용 대비 효율이 좋은 Sonnet 을 기본으로 쓴다.
+export const DEFAULT_MODEL = 'claude-sonnet-5-5'
 const DEFAULT_EFFORT = 'medium'
 const MAX_TOKENS = 64000
 

@@ -452,7 +452,7 @@ function parseQuotationRows(grid, map, headerRow) {
 
 // ───────────────────────── 상세 리스트(Detail List) 시트 ─────────────────────────
 
-function parseDetailRows(grid, map, startRow, isHeaderRow) {
+function parseDetailRows(grid, map, startRow, isHeaderRow, listLabel = '') {
   const items = [];
   const blocks = [];
   let unit = '';
@@ -504,7 +504,8 @@ function parseDetailRows(grid, map, startRow, isHeaderRow) {
     const remarkRaw = map.remark >= 0 ? cellText(at(row, map.remark)) : '';
     items.push({
       source: 'detail',
-      section: label || '상세 내역',
+      // 상세 리스트 종류 · 블록 제목 (예: "형교환 상세 · Setting JIG List")
+      section: [listLabel, label].filter(Boolean).join(' · ') || '상세 내역',
       unit_name: unit || '',
       item_name: name,
       maker,
@@ -569,9 +570,28 @@ export function analyzeGrid(grid, { sheetName = '' } = {}) {
     }
   }
   if (title) meta.detailTitle = title;
+
+  // 상세 리스트 종류 (형교환 / 개조 / VISION 개조 / 이설비 …) — 한 견적에 상세 시트가 여러 개일 때 구분용
+  let listTitle = '';
+  for (let r = 0; r < (headerRow >= 0 ? headerRow : 0) && !listTitle; r++) {
+    listTitle = (grid[r] || []).map(cellText).find(t => /detail\s*list|detatil\s*list|상세/i.test(t)) || '';
+  }
+  const listLabel = detailListLabel(listTitle) || detailListLabel(sheetName);
+
   const isHeaderRow = (row) => !!detectDetailHeader(row);
-  const { items, blocks } = parseDetailRows(grid, map, itemsAboveHeader ? 0 : headerRow + 1, isHeaderRow);
-  return { kind: 'detail', sheetName, meta, map, items, blocks, warnings: [] };
+  const { items, blocks } = parseDetailRows(grid, map, itemsAboveHeader ? 0 : headerRow + 1, isHeaderRow, listLabel);
+  return { kind: 'detail', sheetName, meta, map, listLabel, items, blocks, warnings: [] };
+}
+
+// "형교환 상세 JOB CHANGE DETAIL LIST" → "형교환 상세", "IMP Detail List"(시트명) → "IMP 상세"
+export function detailListLabel(text) {
+  const t = cellText(text);
+  if (!t) return '';
+  let m = t.match(/^(.*?)\s*상세/);
+  if (m && m[1].trim()) return `${m[1].trim()} 상세`;
+  m = t.match(/^(.*?)\s*(?:detail|detatil)\s*list/i);
+  if (m && m[1].trim() && !/상세/.test(m[1])) return `${m[1].trim()} 상세`;
+  return '';
 }
 
 // ───────────────────────── 검증 + 상세 ↔ 견적 라인 연결 ─────────────────────────

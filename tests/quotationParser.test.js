@@ -4,6 +4,7 @@ import {
   analyzePastedText,
   buildQuotations,
   classifyDetailItem,
+  detailListLabel,
   parseDateValue,
   parseFileName,
   parseQuotationWorkbook,
@@ -160,6 +161,13 @@ describe('엑셀 파일 분석', () => {
       ['CAMERA UNIT', '잡자재류', '잡자재', '', 20000, '카메라 개조 부품'],
       ['JIG', 'Master Jig', '가공품', 'PC', 30000, '세팅 지그'],
     ])
+  })
+
+  it('상세 리스트 종류(개조 상세 / 형교환 상세 …)가 품목의 대분류로 남는다', () => {
+    const details = q.items.filter(i => i.source === 'detail')
+    expect([...new Set(details.map(d => d.section))]).toEqual(['개조 상세'])
+    expect(['형교환 상세 JOB CHANGE DETAIL LIST', 'VISION 개조 상세 IMPROVEMENT DETAIL LIST (7L)', '이설비 상세 Relocation Detatil list', 'IMP Detail List', '개조Detail List'].map(detailListLabel))
+      .toEqual(['형교환 상세', 'VISION 개조 상세', '이설비 상세', 'IMP 상세', '개조 상세'])
   })
 
   it('검증: 오류 없음', () => {

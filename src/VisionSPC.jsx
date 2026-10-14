@@ -467,16 +467,18 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
     };
 
     return (
-        <div className="vision-spc-container">
-            <header className="vision-spc-header">
-                <div className="logo-area">
-                    <div className="logo-icon theme-vision">SPC</div>
-                    <div className="logo-text">
+        <>
+        {/* 다른 시스템과 같은 머리말 (영문 소제목 · 제목 · 설명 · 오른쪽 작업) */}
+        <div className="system-sticky-header">
+            <div className="system-header-row">
+                <div className="system-title-group">
+                    <div className="system-title-text">
+                        <span className="eyebrow">Vision SPC</span>
                         <h2>Vision SPC 분석기</h2>
                         <p>설비 비전 검사 데이터 기반 공정능력(Cp/Cpk) 통계 및 분석</p>
                     </div>
                 </div>
-                <div className="header-actions">
+                <div className="system-header-actions">
                     <a
                         href={`${import.meta.env.BASE_URL || '/'}vision-spc-template.xlsx`.replace('//', '/')}
                         download="Vision SPC 양식.xlsx"
@@ -527,14 +529,16 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                                 <b style={{ fontSize: '13px', color: 'var(--text-primary)' }}>Vision SPC 양식</b>
                                 <span style={{ fontSize: '10px', fontWeight: 'bold', background: 'color-mix(in srgb, var(--ok) 15%, transparent)', color: 'var(--ok)', padding: '1px 5px', borderRadius: 'var(--radius-md)', border: '1px solid color-mix(in srgb, var(--ok) 30%, transparent)' }}>Excel</span>
                             </div>
-                            <span style={{ fontSize: '11px', color: 'var(--ok)', fontWeight: '600', marginTop: '2px' }}>
-                                양식 다운로드 받기 ⇩
+                            <span style={{ fontSize: '11.5px', color: 'var(--ink-3)', fontWeight: '500', marginTop: '2px' }}>
+                                양식 다운로드 받기
                             </span>
                         </div>
                     </a>
                 </div>
-            </header>
+            </div>
+        </div>
 
+        <div className="vision-spc-container">
             <input type="file" ref={fileInputRef} onChange={(e) => handleFileUpload(e.target.files[0])} accept=".xlsx, .xls" style={{display: 'none'}} />
             <input type="file" ref={presetFileInputRef} onChange={(e) => handleImportPresetsJSON(e.target.files[0])} accept=".json" style={{display: 'none'}} />
 
@@ -742,5 +746,6 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                 </main>
             </div>
         </div>
+        </>
     );
 }

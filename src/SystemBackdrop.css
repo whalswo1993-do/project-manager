@@ -1,0 +1,106 @@
+/* 시스템별 머리말 배경 장식 (SystemBackdrop.jsx). 화면 맨 뒤(z-index -1)에 깔리고, 아래로 갈수록 사라진다 */
+.sys-backdrop {
+  --bd-1: color-mix(in srgb, var(--ink) 5%, transparent);
+  --bd-2: color-mix(in srgb, var(--ink) 11%, transparent);
+  --bd-3: color-mix(in srgb, var(--ink) 22%, transparent);
+  --bd-4: color-mix(in srgb, var(--ink) 40%, transparent);
+
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--app-fixed-top-height, 106px);
+  height: 240px;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 78%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0, #000 78%, transparent 100%);
+}
+[data-theme="dark"] .sys-backdrop,
+body.theme-dark .sys-backdrop {
+  --bd-1: color-mix(in srgb, var(--ink) 4%, transparent);
+  --bd-2: color-mix(in srgb, var(--ink) 8%, transparent);
+  --bd-3: color-mix(in srgb, var(--ink) 17%, transparent);
+  --bd-4: color-mix(in srgb, var(--ink) 34%, transparent);
+}
+
+/* 헤더 아랫선에서 늘어진 눈금자: 모든 시스템 공통 */
+.sys-ruler {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 12px;
+  background-image:
+    linear-gradient(90deg, var(--bd-3) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bd-3) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bd-4) 1px, transparent 1px);
+  background-size: 8px 4px, 40px 7px, 120px 12px;
+  background-repeat: repeat-x;
+  background-position: 32px 0;
+}
+
+/* 시스템별 그림: 오른쪽에 두고 왼쪽(제목 쪽)은 흐리게 */
+.sys-art {
+  position: absolute;
+  right: 450px;
+  top: 12px;
+  width: 820px;
+  height: 170px;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 34%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 34%);
+}
+.sys-art svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+.sys-art .ln   { stroke: var(--bd-2); stroke-width: 1; fill: none; }
+.sys-art .ln-s { stroke: var(--bd-3); stroke-width: 1; fill: none; }
+.sys-art .ln-d { stroke: var(--bd-3); stroke-width: 1; stroke-dasharray: 3 4; fill: none; }
+.sys-art .fl   { fill: var(--bd-1); }
+.sys-art .fl-2 { fill: var(--bd-2); }
+.sys-art .brand { fill: color-mix(in srgb, var(--brand) 20%, transparent); }
+.sys-art .tx {
+  font: 500 10px var(--font-mono);
+  letter-spacing: 0.14em;
+  fill: var(--bd-4);
+}
+
+/* 일정: 오늘선 */
+.sys-art .today { stroke: color-mix(in srgb, var(--signal) 50%, transparent); stroke-width: 1; stroke-dasharray: 3 4; }
+.sys-art .today-fill { fill: color-mix(in srgb, var(--signal) 55%, transparent); }
+
+/* 공수: 매트릭스 칸 */
+.sys-art .heat { fill: var(--brand); }
+
+/* 이슈: 공정 흐름 */
+.sys-art .node-done { fill: color-mix(in srgb, var(--brand) 45%, transparent); }
+.sys-art .node-now  { fill: none; stroke: color-mix(in srgb, var(--brand) 65%, transparent); stroke-width: 1.2; }
+.sys-art .node-todo { fill: none; stroke: var(--bd-3); stroke-width: 1; }
+.sys-art .diamond { stroke-width: 1; }
+.sys-art .diamond.bad  { fill: color-mix(in srgb, var(--bad) 30%, transparent);  stroke: color-mix(in srgb, var(--bad) 60%, transparent); }
+.sys-art .diamond.warn { fill: color-mix(in srgb, var(--warn) 30%, transparent); stroke: color-mix(in srgb, var(--warn) 60%, transparent); }
+.sys-art .diamond.ok   { fill: color-mix(in srgb, var(--ok) 30%, transparent);   stroke: color-mix(in srgb, var(--ok) 60%, transparent); }
+
+/* 공사일보: 일력 */
+.sys-art .paper { fill: var(--bg); stroke: var(--bd-3); stroke-width: 1; }
+.sys-art .ring  { fill: var(--bg); stroke: var(--bd-3); stroke-width: 1.2; }
+.sys-art .day {
+  font-family: var(--font-display);
+  font-weight: var(--display-weight);
+  font-size: 150px;
+  letter-spacing: var(--display-tracking);
+  fill: none;
+  stroke: var(--bd-3);
+  stroke-width: 1;
+}
+
+/* 견적: 표 머리줄 */
+.sys-art .head { fill: color-mix(in srgb, var(--brand) 9%, transparent); }
+
+/* SPC: 분포 곡선과 규격 한계 */
+.sys-art .curve { fill: none; stroke: color-mix(in srgb, var(--brand) 55%, transparent); stroke-width: 1.4; stroke-linejoin: round; }
+.sys-art .limit { stroke: color-mix(in srgb, var(--brand) 50%, transparent); stroke-width: 1.2; }
+
+/* 좁은 화면에서는 그림을 줄인다 */
+@media (max-width: 1500px) {
+  .sys-art { transform: scale(0.8); transform-origin: top right; opacity: 0.85; }
+}

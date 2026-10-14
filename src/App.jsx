@@ -12,6 +12,7 @@ import { PasteZone, PasteEntry } from "./PasteZone";
 import ManpowerManagement, { ProjectManpowerModal } from "./ManpowerManagement";
 import PasswordChangeModal from "./PasswordChangeModal";
 import HeaderUserMenu from "./HeaderUserMenu";
+import SystemBackdrop from "./SystemBackdrop";
 import { Icon } from "./icons";
 import { generateAIText } from "./ai";
 import * as XLSX from "xlsx";
@@ -1989,6 +1990,9 @@ JSON 출력 예시:
           </div>
         </div>
       </div>
+
+      {/* 시스템별 머리말 배경 장식 (화면 맨 뒤에 깔리는 순수 장식) */}
+      <SystemBackdrop kind={currentView} />
 
       {/* 최고 관리자 전용 신규 가입자 알림 배너 */}
       {role === "admin" && newRegisteredUsers.length > 0 && (

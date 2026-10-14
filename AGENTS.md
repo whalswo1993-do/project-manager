@@ -70,13 +70,14 @@ npm run build     # 프로덕션 빌드 → dist/
 - **이모지를 쓰지 않는다.** `src/icons.jsx`의 `<Icon name="calendar" size={16} />`(선 아이콘)을 쓰고, 없으면 거기에 추가한다. 글자 안에 넣을 때는 `size="1.1em"`. `<option>` 안에는 아이콘/요소를 넣을 수 없다(글자만).
 - 글꼴: 본문 Pretendard Variable, 숫자·코드·영문 소제목은 `var(--font-mono)`, 큰 숫자는 `var(--font-display)`(다크는 세리프). 영문 소제목은 `.eyebrow`. 숫자는 기본으로 같은 폭(tabular).
 - 화면 구조: 상단 한 줄(로고·시스템 메뉴·테마·사용자 메뉴) + 고객사 줄 + 조회 연도 줄 + 화면 머리말(`.system-sticky-header`: 영문 소제목·제목·설명·작업 버튼) + 밑줄 하위 메뉴(`.system-sub-nav`). 사용자 메뉴(`HeaderUserMenu`)에 캐시 새로고침·비밀번호 변경·로그아웃·사용자 권한 관리가 모여 있다.
+- **시스템별 머리말 배경**(`src/SystemBackdrop.jsx`+`.css`): 헤더 아래 눈금자 + 시스템마다 어울리는 옅은 그림(일정=타임라인, 공수=투입 매트릭스, 이슈=공정 흐름, 공사일보=일력, 견적=원장 표, SPC=분포 곡선)을 `App.jsx`가 `currentView`로 깐다. 순수 장식(`aria-hidden`, `z-index:-1`)이고 색은 토큰이라 라이트/다크가 자동으로 맞는다. 새 시스템을 추가하면 `ARTS`에 그림을 추가한다. **그림 높이는 170 안쪽**(머리말만 있는 화면에서도 아래 상자에 안 가려지게), 글자·값은 장식이므로 가짜/오늘 날짜만 쓴다. 각 시스템 머리말은 같은 구조(`.system-sticky-header`: 영문 소제목·제목·설명·오른쪽 작업)를 쓴다.
 - 로그인 전 화면(`Login`)에는 내부 프로젝트 이름을 넣지 않는다(왼쪽 장식은 가짜 막대/코드).
 - 인라인 `style={{}}`의 색도 같은 규칙이다. `Chart.js`/canvas처럼 CSS 변수를 못 읽는 곳만 실제 색 값을 쓴다.
 - 화면 점검(로그인 없이): 가짜 Supabase를 끼운 로컬 데모 환경을 쓴다. 저장소에는 올리지 않는 `ui-demo/`(`.git/info/exclude`)에 Vite 설정(`./supabase` 별칭 교체)과 헤드리스 Edge 캡처 도구가 있었다. 필요하면 같은 방식으로 다시 만든다.
 
 ## 구조
 - `src/App.jsx`(약 200KB) — 메인 앱 셸/프로젝트·일정 관리. 매우 크니 필요한 구간만 읽을 것
-- `src/icons.jsx`(선 아이콘), `src/HeaderUserMenu.jsx`(상단 사용자 메뉴) — 공통 UI 부품
+- `src/icons.jsx`(선 아이콘), `src/HeaderUserMenu.jsx`(상단 사용자 메뉴), `src/SystemBackdrop.jsx`(시스템별 머리말 배경) — 공통 UI 부품
 - `src/PasteZone.jsx`(+`.css`) — 표 붙여넣기 칸/파일 첨부 배치 공통 컴포넌트
 - `src/IssueManagement.jsx`(공사일보), `IntegratedIssueCenter.jsx`(이슈 센터), `ManpowerManagement.jsx`(공수), `Quotations.jsx`, `VisionSPC.jsx`, `SmartProjectSelector.jsx`
 - `src/authService.js`, `Login.jsx` — 인증/권한. `issueService.js`, `masterPlanParser.js`, `reportExports.js`, `export*.js` — 서비스/파서/내보내기

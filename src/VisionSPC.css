@@ -32,14 +32,14 @@
   font-family: var(--font-body);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  height: calc(100vh - 220px);
-  min-height: 550px;
+  height: calc(100vh - 340px);
+  min-height: 600px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  margin: 10px 0;
+  margin: 14px 0;
 }
 
 .vision-spc-container * { box-sizing: border-box; }

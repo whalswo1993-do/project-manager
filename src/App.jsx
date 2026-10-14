@@ -11,6 +11,8 @@ import Quotations from "./Quotations";
 import { PasteZone, PasteEntry } from "./PasteZone";
 import ManpowerManagement, { ProjectManpowerModal } from "./ManpowerManagement";
 import PasswordChangeModal from "./PasswordChangeModal";
+import HeaderUserMenu from "./HeaderUserMenu";
+import { Icon } from "./icons";
 import { generateAIText } from "./ai";
 import * as XLSX from "xlsx";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -36,25 +38,12 @@ import {
 const DAY = 86400000;
 const STATUSES = ["검토중", "PO대기중", "제작중", "진행중", "완료"];
 const DEPTS = ["소장", "설계", "설비기술", "기구", "기구 외주", "비전", "비전 외주", "제어", "제어 외주", "전장", "전장 외주", "Supervisor", "안전"];
-// 고대비 & 고시인성 프리미엄 테마 팔레트 (어두운 보라색/남색 배제, 주황·노랑·에메랄드·하늘색 중심)
-const COLORS = [
-  "#38bdf8", // 밝은 스카이 블루
-  "#10b981", // 선명한 에메랄드 그린
-  "#f59e0b", // 따뜻하고 밝은 앰버 옐로우
-  "#fb923c", // 화사한 탠저린 오렌지
-  "#f43f5e", // 선명한 소프트 코랄 로즈
-  "#06b6d4", // 청량한 시안 민트
-  "#3b82f6", // 산뜻한 로열 블루
-  "#84cc16", // 산뜻한 라임 그린
-  "#eab308", // 밝은 골든 옐로우
-  "#ec4899", // 밝은 핑크 로즈
-  "#2dd4bf", // 화사한 아쿠아 틸
-  "#f97316", // 활기찬 비비드 오렌지
-  "#60a5fa", // 소프트 라이트 블루
-  "#a3e635", // 밝은 스프링 그린
-  "#fca5a5", // 화사한 라이트 코랄
-  "#0ea5e9"  // 비비드 스카이
-];
+// 프로젝트 색: 테마마다 따로 고른 절제된 12색. 간트·달력·목록 띠에 같은 색을 쓴다.
+// (라이트는 흰 글자가, 다크는 어두운 글자가 읽히도록 명도를 맞췄다)
+const PROJECT_COLORS = {
+  light: ["#0B57A4", "#2F7F7B", "#A9701A", "#2B7A58", "#B0476F", "#4A6FA5", "#C2583A", "#6B7A2A", "#7A5AA6", "#8A6D3B", "#5B6270", "#21798A"],
+  dark: ["#CDAE72", "#8FA8BD", "#86B596", "#EB7A5D", "#B79BD0", "#6FB7B0", "#D9A441", "#7FA6D9", "#D98BA3", "#A7B86A", "#C9B8A0", "#E0705F"]
+};
 
 // 동시에 진행되는(기간이 겹치는) 프로젝트 간에 유사/중복 색상이 배정되지 않도록 하는 지능형 색상 분산 함수
 function assignDistinctColors(projects, palette) {
@@ -250,6 +239,16 @@ const monthCells = d => {
     return v;
   });
 };
+
+// 접기/펼치기 버튼 글자: 방향 기호 대신 선 아이콘
+function FoldLabel({ collapsed, closed = "펼치기", open = "접기" }) {
+  return (
+    <>
+      <Icon name={collapsed ? "chevDown" : "chevUp"} size={13} />
+      {collapsed ? closed : open}
+    </>
+  );
+}
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -786,7 +785,7 @@ export default function App() {
       setHasUpdate(true);
       setDismissUpdateNotice(false);
       try { sessionStorage.removeItem("pm_update_dismissed"); } catch (e) {}
-      console.log("🔔 [TW Project] 업데이트 알림 테스트가 활성화되었습니다.");
+      console.log("[TW Project] 업데이트 알림 테스트가 활성화되었습니다.");
     };
 
     // 3. 배포된 version.json 확인 (주기적 폴링 및 탭 복귀 시 확인)
@@ -1078,8 +1077,8 @@ export default function App() {
     });
 
     // 동시 진행 프로젝트 간 중복 및 유사 색상을 방지하는 지능형 색상 분산 적용
-    return assignDistinctColors(list, COLORS);
-  }, [currentCustomerProjects, search, filter, siteFilter, personFilter, selectedYears, isAllYears]);
+    return assignDistinctColors(list, PROJECT_COLORS[theme] || PROJECT_COLORS.dark);
+  }, [currentCustomerProjects, search, filter, siteFilter, personFilter, selectedYears, isAllYears, theme]);
 
   // 등록된 프로젝트들의 기간에서 추출한 고유 연도 목록 (최신순)
   const availableYears = useMemo(() => {
@@ -1732,9 +1731,9 @@ JSON 출력 예시:
       }
       
       setMsg(
-        <span style={{ color: '#ef4444' }}>
+        <span style={{ color: 'var(--bad)' }}>
           분석 실패: {userFriendlyMsg}
-          <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal', marginTop: '4px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--brand)', fontWeight: 'normal', marginTop: '4px' }}>
             원인파악용 기술 정보: {err.message}
           </div>
         </span>
@@ -1838,131 +1837,134 @@ JSON 출력 예시:
       <div id="app-fixed-top" className="system-fixed-top-bar">
         <header className="system-main-header">
           <div className="system-brand-left">
-            <img 
-              src={theme === 'dark' ? `${import.meta.env.BASE_URL || '/'}tw-logo-dark.png`.replace('//', '/') : `${import.meta.env.BASE_URL || '/'}tw-logo.png`.replace('//', '/')} 
-              alt="TW Logo" 
-              className="system-brand-logo" 
+            <img
+              src={theme === 'dark' ? `${import.meta.env.BASE_URL || '/'}tw-logo-dark.png`.replace('//', '/') : `${import.meta.env.BASE_URL || '/'}tw-logo.png`.replace('//', '/')}
+              alt="TW Logo"
+              className="system-brand-logo"
             />
-            <div className="system-brand-info">
-              <div className="system-brand-meta">
-                <span className="system-brand-title">TW Project</span>
-                <span className="system-badge-ax">AX INTELLIGENCE</span>
-              </div>
-              <h1 className="system-title-heading">Project Management</h1>
-            </div>
+            <span className="system-brand-sep" aria-hidden="true" />
+            <span className="system-brand-prod">Project Management</span>
           </div>
+
+          <nav className="system-nav-bar-row" aria-label="시스템 메뉴">
+            <button
+              type="button"
+              className={`nav-tab-btn tab-projects ${currentView === "projects" ? "active" : ""}`}
+              onClick={() => switchView("projects")}
+            >
+              <Icon name="calendar" size={16} />
+              <span className="nav-tab-label">프로젝트 일정</span>
+            </button>
+            <button
+              type="button"
+              className={`nav-tab-btn tab-manpower ${currentView === "manpower" ? "active" : ""}`}
+              onClick={() => switchView("manpower")}
+            >
+              <Icon name="users" size={16} />
+              <span className="nav-tab-label">공수 통합 관리</span>
+            </button>
+            <button
+              type="button"
+              className={`nav-tab-btn tab-issues ${currentView === "issues" ? "active" : ""}`}
+              onClick={() => switchView("issues")}
+            >
+              <Icon name="alert" size={16} />
+              <span className="nav-tab-label">이슈 통합 관리</span>
+            </button>
+            <button
+              type="button"
+              className={`nav-tab-btn tab-daily-reports ${currentView === "daily-reports" ? "active" : ""}`}
+              onClick={() => switchView("daily-reports")}
+            >
+              <Icon name="file" size={16} />
+              <span className="nav-tab-label">공사일보 통합 관리</span>
+            </button>
+            <button
+              type="button"
+              className={`nav-tab-btn tab-quotations ${currentView === "quotations" ? "active" : ""} ${!canAccessQuotations ? "restricted" : ""}`}
+              onClick={() => {
+                if (!canAccessQuotations) return showPermissionModal("견적 조회");
+                switchView("quotations");
+              }}
+              title={!canAccessQuotations ? "견적 기능은 Grade 3(PM/소장) 이상만 이용할 수 있습니다 (클릭 시 권한 안내)" : ""}
+            >
+              <Icon name="receipt" size={16} />
+              <span className="nav-tab-label">견적 조회</span>
+              {!canAccessQuotations && <Icon name="lock" size={13} className="nav-tab-lock" />}
+            </button>
+            <button
+              type="button"
+              className={`nav-tab-btn tab-vision-spc ${currentView === "vision-spc" ? "active" : ""}`}
+              onClick={() => switchView("vision-spc")}
+              title="Cp·Cpk 분석"
+            >
+              <Icon name="activity" size={16} />
+              <span className="nav-tab-label">Vision SPC</span>
+            </button>
+          </nav>
 
           <div className="system-user-and-tools">
-            <div className="system-user-profile-card">
-              <div className="user-avatar-indicator" />
-              <div className="user-info-text">
-                <span className="user-display-name">
-                  {getUserDisplayName(session?.user?.email, profile || session?.user?.user_metadata)}
-                </span>
-                <span className="user-role-tag">
-                  {role === "admin" ? "최고 관리자" : (role || 'GRADE 1').toUpperCase()}
-                </span>
-              </div>
-            </div>
-
-            <nav className="system-header-actions-nav">
-              <div className="system-action-buttons-group">
-                {/* 업데이트 감지 안내 배너 */}
-                {hasUpdate && !dismissUpdateNotice && (
-                  <div className="app-update-notice-banner" role="alert">
-                    <div className="app-update-notice-text">
-                      <div className="app-update-title-row">
-                        <span style={{ fontSize: '13px' }}>🔔</span>
-                        <b>새로운 업데이트가 있습니다!</b>
-                      </div>
-                      <span className="app-update-subtext">
-                        (진행 중인 업무를 마무리하신 후 천천히 새로고침하셔도 됩니다)
-                      </span>
-                    </div>
-                    <div style={{ display: 'inline-flex', gap: '4px', alignItems: 'center', marginLeft: 'auto', flexShrink: 0 }}>
-                      <button
-                        type="button"
-                        onClick={handlePerformUpdate}
-                        className="app-update-btn-refresh"
-                        title="최신 코드를 반영하여 페이지를 새로고침합니다"
-                      >
-                        🚀 지금 새로고침
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleDismissUpdate}
-                        className="app-update-btn-later"
-                        title="알림을 닫고 현재 작업을 계속합니다"
-                      >
-                        나중에
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="cache-refresh-btn-wrapper">
-                  <button
-                    onClick={handlePerformUpdate}
-                    className="system-btn-tool system-btn-cache"
-                    title="브라우저 캐시를 완전히 비우고 최신 화면으로 새로고침합니다"
-                  >
-                    ⚡ 캐시 새로고침
-                  </button>
-                  {hasUpdate && <span className="update-badge-dot" title="새로운 시스템 업데이트가 있습니다" />}
-                </div>
-
-                <button
-                  onClick={() => setShowPasswordModal(true)}
-                  className="system-btn-tool system-btn-pwd"
-                  title="현재 로그인된 계정의 비밀번호를 변경합니다"
-                >
-                  🔑 비밀번호 변경
-                </button>
-
-                <button
-                  onClick={handleSignOut}
-                  className="system-btn-tool system-btn-logout"
-                  title="로그아웃합니다"
-                >
-                  로그아웃
-                </button>
-
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="theme-toggle-btn"
-                  title={theme === 'dark' ? '밝은 화면(화이트 모드)으로 전환' : '편안한 화면(다크 모드)으로 전환'}
-                >
-                  {theme === 'dark' ? '☀️ 라이트 모드' : '🌙 다크 모드'}
-                </button>
-
-                {role === "admin" && (
-                  <button
-                    onClick={() => {
-                      setModal("users");
-                      markUsersAsChecked();
-                      load("profiles");
-                    }}
-                    className={`system-btn-tool system-btn-admin ${newRegisteredUsers.length > 0 ? 'has-new' : ''}`}
-                    title={newRegisteredUsers.length > 0 ? `신규 가입자 ${newRegisteredUsers.length}명이 있습니다.` : "사용자 권한 관리"}
-                  >
-                    사용자 권한 관리
-                    {newRegisteredUsers.length > 0 && (
-                      <span className="admin-badge-count">
-                        {newRegisteredUsers.length}
-                      </span>
-                    )}
-                  </button>
-                )}
-              </div>
-            </nav>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="theme-toggle-btn"
+              title={theme === 'dark' ? '밝은 화면(화이트 모드)으로 전환' : '편안한 화면(다크 모드)으로 전환'}
+              aria-label={theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
+            >
+              <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} />
+            </button>
+            <HeaderUserMenu
+              name={getUserDisplayName(session?.user?.email, profile || session?.user?.user_metadata)}
+              roleLabel={role === "admin" ? "최고 관리자" : (role || 'GRADE 1').toUpperCase()}
+              hasUpdate={hasUpdate}
+              isAdmin={role === "admin"}
+              newUserCount={newRegisteredUsers.length}
+              onUpdate={handlePerformUpdate}
+              onPassword={() => setShowPasswordModal(true)}
+              onSignOut={handleSignOut}
+              onUsers={() => {
+                setModal("users");
+                markUsersAsChecked();
+                load("profiles");
+              }}
+            />
           </div>
         </header>
+
+        {/* 업데이트 감지 안내 배너 */}
+        {hasUpdate && !dismissUpdateNotice && (
+          <div className="app-update-notice-banner" role="alert">
+            <Icon name="bell" size={15} />
+            <div className="app-update-notice-text">
+              <b>새로운 업데이트가 있습니다</b>
+              <span className="app-update-subtext">진행 중인 업무를 마무리하신 후 천천히 새로고침하셔도 됩니다</span>
+            </div>
+            <div className="app-update-actions">
+              <button
+                type="button"
+                onClick={handlePerformUpdate}
+                className="app-update-btn-refresh"
+                title="최신 코드를 반영하여 페이지를 새로고침합니다"
+              >
+                지금 새로고침
+              </button>
+              <button
+                type="button"
+                onClick={handleDismissUpdate}
+                className="app-update-btn-later"
+                title="알림을 닫고 현재 작업을 계속합니다"
+              >
+                나중에
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ========================================================
             고객사별 독립 시스템 선택 바 (Customer Selection Bar)
             ======================================================== */}
         <div className="system-customer-bar-row">
+          <span className="system-context-label">고객사</span>
           <div className="system-customer-capsule">
             {CUSTOMERS.map(cust => {
               const isSelected = currentCustomer === cust.id;
@@ -1986,67 +1988,6 @@ JSON 출력 예시:
             })}
           </div>
         </div>
-
-        <div className="system-nav-bar-row">
-          <div className="system-nav-capsule">
-            <button
-              type="button"
-              className={`nav-tab-btn tab-projects ${currentView === "projects" ? "active" : ""}`}
-              onClick={() => switchView("projects")}
-            >
-              <span className="nav-tab-icon">📅</span>
-              <span className="nav-tab-label">프로젝트 일정</span>
-            </button>
-            <button
-              type="button"
-              className={`nav-tab-btn tab-manpower ${currentView === "manpower" ? "active" : ""}`}
-              onClick={() => switchView("manpower")}
-            >
-              <span className="nav-tab-icon">📊</span>
-              <span className="nav-tab-label">공수 통합 관리</span>
-            </button>
-            <button
-              type="button"
-              className={`nav-tab-btn tab-issues ${currentView === "issues" ? "active" : ""}`}
-              onClick={() => switchView("issues")}
-            >
-              <span className="nav-tab-icon">📋</span>
-              <span className="nav-tab-label">이슈 통합 관리</span>
-            </button>
-            <button
-              type="button"
-              className={`nav-tab-btn tab-daily-reports ${currentView === "daily-reports" ? "active" : ""}`}
-              onClick={() => switchView("daily-reports")}
-            >
-              <span className="nav-tab-icon">📝</span>
-              <span className="nav-tab-label">공사일보 통합 관리</span>
-            </button>
-            <button
-              type="button"
-              className={`nav-tab-btn tab-quotations ${currentView === "quotations" ? "active" : ""} ${!canAccessQuotations ? "restricted" : ""}`}
-              onClick={() => {
-                if (!canAccessQuotations) return showPermissionModal("견적 조회");
-                switchView("quotations");
-              }}
-              title={!canAccessQuotations ? "견적 기능은 Grade 3(PM/소장) 이상만 이용할 수 있습니다 (클릭 시 권한 안내)" : ""}
-            >
-              <span className="nav-tab-icon">💰</span>
-              <span className="nav-tab-label">견적 조회</span>
-              {!canAccessQuotations && <span className="nav-tab-lock">🔒</span>}
-            </button>
-            <button
-              type="button"
-              className={`nav-tab-btn tab-vision-spc ${currentView === "vision-spc" ? "active" : ""}`}
-              onClick={() => switchView("vision-spc")}
-            >
-              <span className="nav-tab-icon">📈</span>
-              <div className="nav-tab-text-col">
-                <span className="nav-tab-label">Vision SPC</span>
-                <span className="nav-tab-sub">Cp·Cpk 분석</span>
-              </div>
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* 최고 관리자 전용 신규 가입자 알림 배너 */}
@@ -2055,7 +1996,7 @@ JSON 출력 예시:
           style={{
             background: 'var(--bg-card)',
             border: '1.5px solid var(--primary-blue)',
-            borderRadius: '12px',
+            borderRadius: 'var(--radius-lg)',
             padding: '12px 18px',
             margin: '8px 0',
             display: 'flex',
@@ -2067,11 +2008,11 @@ JSON 출력 예시:
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '24px' }}>🔔</span>
+            <Icon name="bell" size={22} />
             <div>
               <div style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>신규 가입자가 있습니다!</span>
-                <span style={{ background: '#2563eb', color: '#fff', fontSize: '11px', padding: '1px 8px', borderRadius: '12px', fontWeight: 'bold' }}>
+                <span style={{ background: 'var(--brand)', color: 'var(--on-brand)', fontSize: '11px', padding: '1px 8px', borderRadius: 'var(--radius-lg)', fontWeight: 'bold' }}>
                   {newRegisteredUsers.length}명 대기중
                 </span>
               </div>
@@ -2088,18 +2029,18 @@ JSON 출력 예시:
                 markUsersAsChecked();
               }}
               style={{
-                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-                color: '#fff',
+                background: 'var(--brand)',
+                color: 'var(--on-brand)',
                 border: 'none',
                 padding: '7px 14px',
-                borderRadius: '6px',
+                borderRadius: 'var(--radius-md)',
                 fontSize: '12px',
                 fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 2px 4px rgba(37, 99, 235, 0.3)'
+                boxShadow: 'none'
               }}
             >
-              권한 설정 바로가기 ⚙️
+              권한 설정 바로가기
             </button>
             <button
               type="button"
@@ -2109,7 +2050,7 @@ JSON 출력 예시:
                 border: '1px solid var(--border-medium)',
                 color: 'var(--text-secondary)',
                 padding: '7px 12px',
-                borderRadius: '6px',
+                borderRadius: 'var(--radius-md)',
                 fontSize: '12px',
                 fontWeight: 600,
                 cursor: 'pointer'
@@ -2128,7 +2069,7 @@ JSON 출력 예시:
       <div className="prevax-year-toolbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'nowrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)', marginRight: '2px', whiteSpace: 'nowrap' }}>
-            <span style={{ color: 'var(--neon-cyan)' }}>📅</span>
+            <Icon name="calendar" size={15} />
             <span>조회 연도:</span>
           </div>
 
@@ -2184,9 +2125,9 @@ JSON 출력 예시:
                   title={`클릭하여 ${yr}년도를 다중 선택/해제합니다`}
                 >
                   <span>{yr}년</span>
-                  {isSelected && <span style={{ fontSize: '10px' }}>✓</span>}
+                  {isSelected && <Icon name="check" size={12} stroke={2.2} />}
                   {isCurrent && !isSelected && (
-                    <span style={{ fontSize: '9px', background: 'rgba(56, 189, 248, 0.15)', color: 'var(--neon-cyan)', padding: '0 4px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: '9px', background: 'color-mix(in srgb, var(--teal) 15%, transparent)', color: 'var(--neon-cyan)', padding: '0 4px', borderRadius: 'var(--radius-md)' }}>
                       당해
                     </span>
                   )}
@@ -2203,7 +2144,7 @@ JSON 출력 예시:
             background: 'var(--bg-card-subtle)', 
             border: '1px solid var(--border-medium)', 
             padding: '3px 10px', 
-            borderRadius: '12px', 
+            borderRadius: 'var(--radius-lg)', 
             fontWeight: 700, 
             color: 'var(--text-primary)',
             fontSize: '11.5px'
@@ -2268,10 +2209,8 @@ JSON 출력 예시:
           <div className="system-sticky-header">
             <div className="system-header-row">
               <div className="system-title-group">
-                <div className="system-logo-icon theme-projects">
-                  📅
-                </div>
                 <div className="system-title-text">
+                  <span className="eyebrow">Project Schedule</span>
                   <h2>
                     {currentCustomer} · 프로젝트 일정 관리 시스템
                   </h2>
@@ -2288,7 +2227,7 @@ JSON 출력 예시:
                   onClick={() => openIntegratedExportModal('system')}
                   title="간트차트, 공사일정 달력, 부서별 공수표가 통합된 종합 PPT 보고서를 내보냅니다 (Office 네이티브 수정 가능)"
                 >
-                  📊 PPT 종합 보고서 내보내기 {!canExportAnalysis && "🔒"}
+                  <Icon name="download" size={15} /> PPT 종합 보고서 내보내기 {!canExportAnalysis && <Icon name="lock" size={13} />}
                 </button>
                 <button
                   type="button"
@@ -2296,7 +2235,7 @@ JSON 출력 예시:
                   className="system-toggle-all-btn"
                   title="프로젝트 일정의 모든 소항목 펼치기"
                 >
-                  ▾ 전체 펼치기
+                  <Icon name="chevDown" size={14} /> 전체 펼치기
                 </button>
                 <button
                   type="button"
@@ -2304,7 +2243,7 @@ JSON 출력 예시:
                   className="system-toggle-all-btn"
                   title="프로젝트 일정의 모든 소항목 접기"
                 >
-                  ▴ 전체 접기
+                  <Icon name="chevUp" size={14} /> 전체 접기
                 </button>
               </div>
             </div>
@@ -2313,12 +2252,12 @@ JSON 출력 예시:
             {/* 소항목 필터 버튼 그룹 */}
             <div className="system-sub-nav">
               {[
-                { id: 'all', label: '🌐 전체 표시' },
-                ...(edit ? [{ id: 'form', label: '📝 프로젝트 등록/수정' }] : []),
-                { id: 'filter', label: '🔍 일정 조회 필터' },
-                { id: 'gantt', label: '📊 프로젝트 간트차트' },
-                { id: 'calendar', label: '📅 프로젝트 일정 달력' },
-                { id: 'list', label: '📋 프로젝트 목록' }
+                { id: 'all', icon: 'layers', label: '전체 표시' },
+                ...(edit ? [{ id: 'form', icon: 'pencil', label: '프로젝트 등록/수정' }] : []),
+                { id: 'filter', icon: 'filter', label: '일정 조회 필터' },
+                { id: 'gantt', icon: 'barChart', label: '프로젝트 간트차트' },
+                { id: 'calendar', icon: 'calendar', label: '프로젝트 일정 달력' },
+                { id: 'list', icon: 'list', label: '프로젝트 목록' }
               ].map(sec => (
                 <button
                   key={sec.id}
@@ -2326,6 +2265,7 @@ JSON 출력 예시:
                   onClick={() => handleSelectProjectSection(sec.id)}
                   className={`system-sub-btn ${activeProjectSection === sec.id ? 'active' : ''}`}
                 >
+                  <Icon name={sec.icon} size={15} />
                   {sec.label}
                 </button>
               ))}
@@ -2349,8 +2289,8 @@ JSON 출력 예시:
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span>{editing ? "프로젝트 수정" : "프로젝트 등록"}</span>
-                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: collapsedSections.form ? '#2563eb' : '#64748b' }}>
-                      {collapsedSections.form ? "▸ 펼치기" : "▾ 접기"}
+                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: collapsedSections.form ? 'var(--brand)' : 'var(--brand)' }}>
+                      <FoldLabel collapsed={collapsedSections.form} />
                     </span>
                   </h2>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
@@ -2358,23 +2298,23 @@ JSON 출력 예시:
                       fontSize: '12px',
                       fontWeight: 700,
                       padding: '3px 10px',
-                      borderRadius: '8px',
-                      background: (form.customer || currentCustomer) === 'SK on' ? 'rgba(234, 88, 12, 0.14)' : (form.customer || currentCustomer) === 'Samsung SDI' ? 'rgba(37, 99, 235, 0.14)' : 'rgba(16, 185, 129, 0.14)',
-                      color: (form.customer || currentCustomer) === 'SK on' ? '#ea580c' : (form.customer || currentCustomer) === 'Samsung SDI' ? '#2563eb' : '#059669',
-                      border: `1px solid ${(form.customer || currentCustomer) === 'SK on' ? 'rgba(234, 88, 12, 0.3)' : (form.customer || currentCustomer) === 'Samsung SDI' ? 'rgba(37, 99, 235, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`
+                      borderRadius: 'var(--radius-md)',
+                      background: (form.customer || currentCustomer) === 'SK on' ? 'color-mix(in srgb, var(--signal) 14%, transparent)' : (form.customer || currentCustomer) === 'Samsung SDI' ? 'color-mix(in srgb, var(--brand) 14%, transparent)' : 'color-mix(in srgb, var(--ok) 14%, transparent)',
+                      color: (form.customer || currentCustomer) === 'SK on' ? 'var(--signal)' : (form.customer || currentCustomer) === 'Samsung SDI' ? 'var(--brand)' : 'var(--ok)',
+                      border: `1px solid ${(form.customer || currentCustomer) === 'SK on' ? 'color-mix(in srgb, var(--signal) 30%, transparent)' : (form.customer || currentCustomer) === 'Samsung SDI' ? 'color-mix(in srgb, var(--brand) 30%, transparent)' : 'color-mix(in srgb, var(--ok) 30%, transparent)'}`
                     }}>
                       소속 고객사: <b>{form.customer || currentCustomer}</b>
                     </span>
                   </div>
                   {editing && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
-                      <span style={{ fontSize: '13px', color: '#1d4ed8', fontWeight: 'bold', background: '#eff6ff', padding: '3px 9px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+                      <span style={{ fontSize: '13px', color: 'var(--brand)', fontWeight: 'bold', background: 'var(--brand-wash)', padding: '3px 9px', borderRadius: 'var(--radius-md)', border: '1px solid color-mix(in srgb, var(--brand) 40%, transparent)' }}>
                         수정 대상: {form.name || "선택됨"}
                       </span>
                       <button
                         type="button"
                         onClick={() => { setEditing(null); setForm(blank(currentCustomer)); setMilestones(newMs()); setMsg(""); }}
-                        style={{ fontSize: '12px', padding: '4px 10px', background: 'var(--bg-card-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: '6px', cursor: 'pointer' }}
+                        style={{ fontSize: '12px', padding: '4px 10px', background: 'var(--bg-card-subtle)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
                       >
                         수정 취소
                       </button>
@@ -2387,7 +2327,7 @@ JSON 출력 예시:
                     onClick={() => toggleSection('form')}
                     style={{
                       padding: '6px 12px',
-                      borderRadius: '8px',
+                      borderRadius: 'var(--radius-md)',
                       border: '1px solid var(--border-subtle)',
                       background: 'var(--bg-card)',
                       fontSize: '12px',
@@ -2396,7 +2336,7 @@ JSON 출력 예시:
                       cursor: 'pointer'
                     }}
                   >
-                    {collapsedSections.form ? '▾ 입력란 펼치기' : '▴ 입력란 접기'}
+                    <FoldLabel collapsed={collapsedSections.form} closed="입력란 펼치기" open="입력란 접기" />
                   </button>
                   <a
                     href={`${import.meta.env.BASE_URL || '/'}master-schedule-template.xlsx`.replace('//', '/')}
@@ -2408,56 +2348,53 @@ JSON 출력 예시:
                       padding: '8px 14px',
                       height: '66px',
                       background: 'var(--bg-card)',
-                      border: '1.5px solid #10b981',
-                      borderRadius: '12px',
+                      border: '1px solid var(--line-2)',
+                      borderRadius: 'var(--radius-lg)',
                       color: 'var(--text-primary)',
                       textDecoration: 'none',
                       cursor: 'pointer',
-                      boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)',
+                      boxShadow: 'none',
                       boxSizing: 'border-box',
                       transition: 'all 0.2s ease',
                       flexShrink: 0
                     }}
                     onMouseOver={e => {
                       e.currentTarget.style.background = 'var(--bg-hover)';
-                      e.currentTarget.style.borderColor = '#059669';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.25)';
+                      e.currentTarget.style.borderColor = 'var(--border-strong)';
                     }}
                     onMouseOut={e => {
                       e.currentTarget.style.background = 'var(--bg-card)';
-                      e.currentTarget.style.borderColor = '#10b981';
-                      e.currentTarget.style.transform = 'none';
-                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.15)';
+                      e.currentTarget.style.borderColor = 'var(--line-2)';
                     }}
                     title="클릭 시 'Master Schedule 양식.xlsx' 파일이 다운로드됩니다."
                   >
                     <div style={{
                       width: '38px',
                       height: '38px',
-                      borderRadius: '8px',
-                      background: 'linear-gradient(135deg, #10b981, #059669)',
-                      color: '#fff',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--surface-2)',
+                      border: '1px solid var(--line-2)',
+                      color: 'var(--ink-2)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontSize: '20px',
-                      boxShadow: '0 2px 4px rgba(5, 150, 105, 0.3)'
+                      boxShadow: 'none'
                     }}>
-                      📥
+                      <Icon name="download" size={20} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <b style={{ fontSize: '13px', color: 'var(--text-primary)' }}>Master Schedule 양식</b>
-                        <span style={{ fontSize: '10px', fontWeight: 'bold', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '1px 5px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>Excel</span>
+                        <span style={{ fontSize: '10px', fontWeight: 600, fontFamily: 'var(--font-mono)', letterSpacing: '.04em', background: 'var(--ok-wash)', color: 'var(--ok)', padding: '1px 6px', borderRadius: 'var(--radius-xs)' }}>EXCEL</span>
                       </div>
-                      <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '600', marginTop: '3px' }}>
-                        양식 다운로드 받기 ⇩
+                      <span style={{ fontSize: '11.5px', color: 'var(--ink-3)', fontWeight: '500', marginTop: '3px' }}>
+                        양식 다운로드 받기
                       </span>
                     </div>
                   </a>
-                  <div style={{ border: '1.5px solid rgba(56, 189, 248, 0.35)', borderRadius: '12px', padding: '6px 12px', background: 'rgba(56, 189, 248, 0.06)', boxShadow: '0 1px 4px rgba(56, 189, 248, 0.10)' }}>
-                    <div style={{ textAlign: 'center', marginBottom: '6px', fontSize: '13px' }}>
+                  <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--radius-lg)', padding: '8px 12px 10px', background: 'var(--surface-2)' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '8px', fontSize: '13px' }}>
                       <b style={{ color: 'var(--text-primary)' }}>{editing ? "최신 Master Schedule 등록 (최신화)" : "Master Schedule 등록"}</b>{" "}
                       <span style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '12px' }}>
                         {editing ? "※마스터 스케줄 첨부 시 일정 및 공수 데이터가 최신 버전으로 즉시 갱신됩니다" : "※공수 포함 등록시 공수 통합 관리 자동 반영"}
@@ -2565,7 +2502,7 @@ JSON 출력 예시:
                         fontWeight: 600,
                         background: 'var(--bg-card-subtle)',
                         border: '1px solid var(--border-subtle)',
-                        borderRadius: '6px',
+                        borderRadius: 'var(--radius-md)',
                         color: 'var(--text-primary)',
                         cursor: 'pointer',
                         display: 'inline-flex',
@@ -2575,7 +2512,7 @@ JSON 출력 예시:
                       }}
                       title="Site 관리 (Site 목록 추가, 수정, 삭제)"
                     >
-                      🏢 Site 관리 {!del && "🔒"}
+                      <Icon name="building" size={14} /> Site 관리 {!del && <Icon name="lock" size={12} />}
                     </button>
                     <button
                       type="button"
@@ -2586,7 +2523,7 @@ JSON 출력 예시:
                         fontWeight: 600,
                         background: 'var(--bg-card-subtle)',
                         border: '1px solid var(--border-subtle)',
-                        borderRadius: '6px',
+                        borderRadius: 'var(--radius-md)',
                         color: 'var(--text-primary)',
                         cursor: 'pointer',
                         display: 'inline-flex',
@@ -2596,7 +2533,7 @@ JSON 출력 예시:
                       }}
                       title="담당자 관리 (부서별 인원 추가, 수정, 삭제)"
                     >
-                      👥 담당자 관리 {!del && "🔒"}
+                      <Icon name="users" size={14} /> 담당자 관리 {!del && <Icon name="lock" size={12} />}
                     </button>
                   </div>
 
@@ -2606,19 +2543,19 @@ JSON 출력 예시:
                       <span>마일스톤 기준 상태 자동 계산</span>
                     </label>
                     {form.autoStatus && (
-                      <span style={{ fontSize: '12px', color: '#059669', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--ok)', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                         (현재 계산: {computedCurrentStatus})
                       </span>
                     )}
                     {form.isManualStatus && (
-                      <span style={{ fontSize: '12px', color: '#d97706', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                        ⚠️ 수동 수정 상태 (수정자: {form.manualStatusBy || currentUserName})
+                      <span style={{ fontSize: '12px', color: 'var(--signal)', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                        <Icon name="alert" size={14} /> 수동 수정 상태 (수정자: {form.manualStatusBy || currentUserName})
                       </span>
                     )}
                   </div>
 
                   {form.isManualStatus && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--warning-muted)', border: '1px solid rgba(217,119,6,0.30)', padding: '6px 12px', borderRadius: '6px', margin: '4px 0 8px', fontSize: '12px', color: 'var(--warning)', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--warning-muted)', border: '1px solid color-mix(in srgb, var(--signal) 30%, transparent)', padding: '6px 12px', borderRadius: 'var(--radius-md)', margin: '4px 0 8px', fontSize: '12px', color: 'var(--warning)', flexWrap: 'wrap' }}>
                       <span>수동 수정한 인원 이름:</span>
                       <input style={{ width: '140px', padding: '4px 8px', fontSize: '12px' }} value={form.manualStatusBy} onChange={e => setForm({ ...form, manualStatusBy: e.target.value })} placeholder="이름 입력" list="people-status-list" />
                       <datalist id="people-status-list">{peopleNames.map(n => <option key={n} value={n} />)}</datalist>
@@ -2634,7 +2571,7 @@ JSON 출력 예시:
                     {!form.autoProgress && (
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginLeft: '4px' }}>
                         <input type="range" min="0" max="100" value={form.progress} onChange={e => setForm({ ...form, progress: e.target.value })} style={{ width: '150px', cursor: 'pointer' }} />
-                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0b68b5' }}>{form.progress}%</span>
+                        <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--brand)' }}>{form.progress}%</span>
                       </div>
                     )}
                   </div>
@@ -2667,7 +2604,7 @@ JSON 출력 예시:
                     </div>
                   )}
 
-                  {msg && <p className="notice" style={{ marginTop: '10px', fontWeight: 'bold', color: '#059669' }}>{msg}</p>}
+                  {msg && <p className="notice" style={{ marginTop: '10px', fontWeight: 'bold', color: 'var(--ok)' }}>{msg}</p>}
 
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '15px', flexWrap: 'wrap' }}>
                     <button className="primary" onClick={save}>{editing ? "수정 저장" : "프로젝트 추가"}</button>
@@ -2675,7 +2612,7 @@ JSON 출력 예시:
                       <button
                         type="button"
                         onClick={() => { setEditing(null); setForm(blank()); setMilestones(newMs()); setMsg(""); }}
-                        style={{ background: '#64748b', color: '#fff', padding: '10px 18px', borderRadius: '6px', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}
+                        style={{ background: 'var(--brand)', color: 'var(--on-brand)', padding: '10px 18px', borderRadius: 'var(--radius-md)', fontWeight: 'bold', border: 'none', cursor: 'pointer' }}
                       >
                         수정 취소
                       </button>
@@ -2687,7 +2624,7 @@ JSON 출력 예시:
                   onClick={() => toggleSection('form')}
                   className="section-collapsed-placeholder"
                 >
-                  📝 프로젝트 {editing ? "수정" : "등록"} 입력란이 접혀 있습니다. (클릭하여 입력란 펼치기 ▾)
+                  프로젝트 {editing ? "수정" : "등록"} 입력란이 접혀 있습니다. (클릭하여 입력란 펼치기)
                 </div>
               )}
             </section>
@@ -2701,8 +2638,8 @@ JSON 출력 예시:
             >
               <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>일정 조회 필터</span>
-                <span style={{ fontSize: '13px', fontWeight: 'bold', color: collapsedSections.filter ? '#2563eb' : '#64748b' }}>
-                  {collapsedSections.filter ? "▸ 펼치기" : "▾ 접기"}
+                <span style={{ fontSize: '13px', fontWeight: 'bold', color: collapsedSections.filter ? 'var(--brand)' : 'var(--brand)' }}>
+                  <FoldLabel collapsed={collapsedSections.filter} />
                 </span>
               </h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
@@ -2713,7 +2650,7 @@ JSON 출력 예시:
                     className="filter-reset-btn"
                     title="조회 연도, Site, 담당자 필터를 초기화합니다"
                   >
-                    🔄 필터 초기화
+                    <Icon name="refresh" size={14} /> 필터 초기화
                   </button>
                 )}
                 <button
@@ -2721,7 +2658,7 @@ JSON 출력 예시:
                   onClick={() => toggleSection('filter')}
                   style={{
                     padding: '6px 12px',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--border-subtle)',
                     background: 'var(--bg-card)',
                     fontSize: '12px',
@@ -2730,7 +2667,7 @@ JSON 출력 예시:
                     cursor: 'pointer'
                   }}
                 >
-                  {collapsedSections.filter ? '▾ 필터 펼치기' : '▴ 필터 접기'}
+                  <FoldLabel collapsed={collapsedSections.filter} closed="필터 펼치기" open="필터 접기" />
                 </button>
               </div>
             </div>
@@ -2766,7 +2703,7 @@ JSON 출력 예시:
                   className="filter-reset-btn"
                   onClick={() => { handlePresetYears('current'); setSiteFilter("전체"); setPersonFilter("전체"); }}
                 >
-                  🔄 필터 초기화
+                  <Icon name="refresh" size={14} /> 필터 초기화
                 </button>
               </div>
             ) : (
@@ -2776,7 +2713,7 @@ JSON 출력 예시:
                   padding: '10px 14px',
                   background: 'var(--bg-card-subtle)',
                   border: '1px dashed var(--border-medium)',
-                  borderRadius: '8px',
+                  borderRadius: 'var(--radius-md)',
                   textAlign: 'center',
                   color: 'var(--text-secondary)',
                   fontSize: '13px',
@@ -2784,7 +2721,7 @@ JSON 출력 예시:
                   marginTop: '8px'
                 }}
               >
-                🔍 연도: <b>{selectedYearsLabel}</b> · Site: <b>{siteFilter}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경 ▾)
+                <Icon name="filter" size={14} /> 연도: <b>{selectedYearsLabel}</b> · Site: <b>{siteFilter}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경)
               </div>
             )}
           </section>
@@ -2796,15 +2733,15 @@ JSON 출력 예시:
               if (e.target.tagName !== 'BUTTON') toggleSection('gantt');
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                <h2>프로젝트 간트차트 {ganttView.length > 0 && <span style={{ fontSize: '14px', color: '#2563eb', fontWeight: 'normal' }}>({ganttView.length}건)</span>}</h2>
+                <h2>프로젝트 간트차트 {ganttView.length > 0 && <span style={{ fontSize: '14px', color: 'var(--brand)', fontWeight: 'normal' }}>({ganttView.length}건)</span>}</h2>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); toggleSection('gantt'); }}
                   style={{
                     background: collapsedSections.gantt ? 'var(--accent)' : 'var(--bg-card-subtle)',
-                    color: collapsedSections.gantt ? '#fff' : 'var(--text-secondary)',
+                    color: collapsedSections.gantt ? 'var(--on-brand)' : 'var(--text-secondary)',
                     border: '1px solid var(--border-subtle)',
-                    borderRadius: '4px',
+                    borderRadius: 'var(--radius-md)',
                     padding: '2px 8px',
                     fontSize: '11px',
                     cursor: 'pointer',
@@ -2812,12 +2749,12 @@ JSON 출력 예시:
                     flexShrink: 0
                   }}
                 >
-                  {collapsedSections.gantt ? '▸ 펼치기' : '▾ 접기'}
+                  <FoldLabel collapsed={collapsedSections.gantt} />
                 </button>
               </div>
               <div className="view-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, whiteSpace: 'nowrap', flexWrap: 'wrap' }}>
                 {/* 간트 일정 기준 모드 선택 토글 버튼 */}
-                <div style={{ display: 'inline-flex', background: 'var(--bg-card)', borderRadius: '6px', border: '1px solid var(--border-medium)', padding: '2px' }}>
+                <div style={{ display: 'inline-flex', background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-medium)', padding: '2px' }}>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setGanttMode('construction'); }}
@@ -2825,10 +2762,10 @@ JSON 출력 예시:
                       padding: '4px 9px',
                       fontSize: '11px',
                       fontWeight: ganttMode === 'construction' ? 700 : 500,
-                      background: ganttMode === 'construction' ? '#2563eb' : 'transparent',
-                      color: ganttMode === 'construction' ? '#ffffff' : 'var(--text-secondary)',
+                      background: ganttMode === 'construction' ? 'var(--brand)' : 'transparent',
+                      color: ganttMode === 'construction' ? 'var(--on-brand)' : 'var(--text-secondary)',
                       border: 'none',
-                      borderRadius: '4px',
+                      borderRadius: 'var(--radius-md)',
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -2837,7 +2774,7 @@ JSON 출력 예시:
                     }}
                     title="공수 투입 시점 및 현장 공사 일정을 기준으로 간트차트 막대와 진행률(%)을 표시합니다"
                   >
-                    🏗️ 공사 일정 기준
+                    <Icon name="wrench" size={14} /> 공사 일정 기준
                   </button>
                   <button
                     type="button"
@@ -2846,10 +2783,10 @@ JSON 출력 예시:
                       padding: '4px 9px',
                       fontSize: '11px',
                       fontWeight: ganttMode === 'project' ? 700 : 500,
-                      background: ganttMode === 'project' ? '#2563eb' : 'transparent',
-                      color: ganttMode === 'project' ? '#ffffff' : 'var(--text-secondary)',
+                      background: ganttMode === 'project' ? 'var(--brand)' : 'transparent',
+                      color: ganttMode === 'project' ? 'var(--on-brand)' : 'var(--text-secondary)',
                       border: 'none',
-                      borderRadius: '4px',
+                      borderRadius: 'var(--radius-md)',
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -2858,7 +2795,7 @@ JSON 출력 예시:
                     }}
                     title="프로젝트 전체 계약 및 전 기간을 기준으로 간트차트 막대와 전체 진행률(%)을 표시합니다"
                   >
-                    📋 전체 프로젝트 일정 기준
+                    <Icon name="list" size={14} /> 전체 프로젝트 일정 기준
                   </button>
                 </div>
               </div>
@@ -2874,19 +2811,19 @@ JSON 출력 예시:
                   alignItems: 'center',
                   background: 'var(--bg-card-subtle)',
                   padding: '8px 12px',
-                  borderRadius: '8px',
+                  borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--border-subtle)',
                   marginBottom: '10px'
                 }}>
                   <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    📅 <b>진행 기간 설정:</b>
+                    <Icon name="calendar" size={14} /> <b>진행 기간 설정:</b>
                   </span>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                     <input
                       type="date"
                       value={ganttStartDate}
                       onChange={e => setGanttStartDate(e.target.value)}
-                      style={{ padding: '3px 8px', fontSize: '12px', border: '1px solid var(--input-border)', borderRadius: '4px', height: '28px', background: 'var(--input-bg)', color: 'var(--input-text)' }}
+                      style={{ padding: '3px 8px', fontSize: '12px', border: '1px solid var(--input-border)', borderRadius: 'var(--radius-md)', height: '28px', background: 'var(--input-bg)', color: 'var(--input-text)' }}
                       title="간트차트 조회 시작일"
                     />
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>~</span>
@@ -2894,7 +2831,7 @@ JSON 출력 예시:
                       type="date"
                       value={ganttEndDate}
                       onChange={e => setGanttEndDate(e.target.value)}
-                      style={{ padding: '3px 8px', fontSize: '12px', border: '1px solid var(--input-border)', borderRadius: '4px', height: '28px', background: 'var(--input-bg)', color: 'var(--input-text)' }}
+                      style={{ padding: '3px 8px', fontSize: '12px', border: '1px solid var(--input-border)', borderRadius: 'var(--radius-md)', height: '28px', background: 'var(--input-bg)', color: 'var(--input-text)' }}
                       title="간트차트 조회 종료일"
                     />
                   </div>
@@ -2903,28 +2840,28 @@ JSON 출력 예시:
                     <button
                       type="button"
                       onClick={() => setQuickRange('thisMonth')}
-                      style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                      style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}
                     >
                       이번 달
                     </button>
                     <button
                       type="button"
                       onClick={() => setQuickRange('nextMonth')}
-                      style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                      style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}
                     >
                       다음 달
                     </button>
                     <button
                       type="button"
                       onClick={() => setQuickRange('thisQuarter')}
-                      style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                      style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}
                     >
                       이번 분기
                     </button>
                     <button
                       type="button"
                       onClick={() => setQuickRange('thisYear')}
-                      style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                      style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}
                     >
                       올해 전체
                     </button>
@@ -2932,18 +2869,18 @@ JSON 출력 예시:
                       <button
                         type="button"
                         onClick={() => { setGanttStartDate(''); setGanttEndDate(''); }}
-                        style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--danger-muted)', color: 'var(--danger)', border: '1px solid var(--danger-muted)', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}
+                        style={{ padding: '3px 8px', fontSize: '11px', background: 'var(--danger-muted)', color: 'var(--danger)', border: '1px solid var(--danger-muted)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 600 }}
                       >
-                        ✕ 기간 초기화
+                        <Icon name="x" size={12} /> 기간 초기화
                       </button>
                     )}
                   </div>
 
-                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#64748b' }}>
+                  <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--brand)' }}>
                     {ganttStartDate || ganttEndDate ? (
                       <span>
-                        기간 내 진행: <b style={{ color: '#2563eb' }}>{ganttView.length}</b>건
-                        <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '4px' }}>(전체 {view.length}건 중)</span>
+                        기간 내 진행: <b style={{ color: 'var(--brand)' }}>{ganttView.length}</b>건
+                        <span style={{ fontSize: '11px', color: 'var(--brand)', marginLeft: '4px' }}>(전체 {view.length}건 중)</span>
                       </span>
                     ) : (
                       <span>전체 프로젝트: <b>{view.length}</b>건</span>
@@ -2955,11 +2892,12 @@ JSON 출력 예시:
                   <div className="axis">
                     <span>{iso(gs)}</span>
                     {(ganttStartDate || ganttEndDate) && (
-                      <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 'bold' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--brand)', fontWeight: 'bold' }}>
                         조회기간: {ganttStartDate || '시작'} ~ {ganttEndDate || '종료'}
                       </span>
                     )}
                     <span>{iso(ge)}</span>
+                    <span className="g-today-chip" style={{ left: pos(iso()) + "%" }}>TODAY</span>
                   </div>
 
                   {ganttView.length === 0 ? (
@@ -2968,12 +2906,12 @@ JSON 출력 예시:
                       textAlign: 'center',
                       color: 'var(--text-secondary)',
                       background: 'var(--bg-card-subtle)',
-                      borderRadius: '8px',
+                      borderRadius: 'var(--radius-md)',
                       border: '1px dashed var(--border-medium)',
                       margin: '12px 0'
                     }}>
                       <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
-                        🔍 설정하신 기간 동안 진행되는 프로젝트가 없습니다.
+                        설정하신 기간 동안 진행되는 프로젝트가 없습니다.
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                         설정 기간: <b>{ganttStartDate || '처음'}</b> ~ <b>{ganttEndDate || '끝'}</b>
@@ -2985,10 +2923,10 @@ JSON 출력 예시:
                           marginTop: '10px',
                           padding: '5px 12px',
                           fontSize: '12px',
-                          background: '#2563eb',
-                          color: '#fff',
+                          background: 'var(--brand)',
+                          color: 'var(--on-brand)',
                           border: 'none',
-                          borderRadius: '6px',
+                          borderRadius: 'var(--radius-md)',
                           cursor: 'pointer',
                           fontWeight: 600
                         }}
@@ -3003,25 +2941,23 @@ JSON 출력 예시:
                       <div className="gblock" key={p.id}>
                         <div className="grow">
                           <button className="toggle" onClick={() => setGanttExpanded({ ...ganttExpanded, [p.id]: !ganttExpanded[p.id] })}>
-                            {ganttExpanded[p.id] ? "▾" : "▸"}
+                            <Icon name={ganttExpanded[p.id] ? "chevDown" : "chevRight"} size={15} />
                           </button>
                           <div className="glabel">
                             {p.manufacturingNo ? (
-                              <b style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
+                              <span className="g-no">
                                 {p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')}
                                 {isGanttConstruction && gd.hasConstructionData && (
-                                  <span style={{ marginLeft: '4px', fontSize: '9px', padding: '1px 5px', background: 'rgba(37, 99, 235, 0.12)', color: '#2563eb', borderRadius: '3px', fontWeight: 700 }}>
-                                    공사
-                                  </span>
+                                  <span className="g-tag">공사</span>
                                 )}
-                              </b>
+                              </span>
                             ) : null}
-                            <b style={{ marginTop: '1px', fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>
+                            <span className="g-nm" title={p.name}>
                               {p.name}
-                            </b>
-                            <small style={{ marginTop: '1px', fontSize: '8px' }}>
-                              {p.site} · {p.line || "-"} · <span style={{ color: isGanttConstruction ? '#2563eb' : 'inherit', fontWeight: isGanttConstruction ? 700 : 'normal' }}>{gd.startDate ? gd.startDate.slice(5) : ''} ~ {gd.endDate ? gd.endDate.slice(5) : ''}</span>
-                            </small>
+                            </span>
+                            <span className="g-mt">
+                              {p.site} · {p.line || "-"} · <span className="mono" style={isGanttConstruction ? { color: 'var(--brand)', fontWeight: 600 } : undefined}>{gd.startDate ? gd.startDate.slice(5) : ''} ~ {gd.endDate ? gd.endDate.slice(5) : ''}</span>
+                            </span>
                           </div>
                           <div className="track">
                             {(ganttStartDate || ganttEndDate) && (
@@ -3032,9 +2968,9 @@ JSON 출력 예시:
                                   width: `${Math.max(0, (ganttEndDate ? pos(ganttEndDate) : 100) - (ganttStartDate ? pos(ganttStartDate) : 0))}%`,
                                   top: 0,
                                   bottom: 0,
-                                  backgroundColor: 'rgba(59, 130, 246, 0.06)',
-                                  borderLeft: ganttStartDate ? '1px dashed #60a5fa' : 'none',
-                                  borderRight: ganttEndDate ? '1px dashed #60a5fa' : 'none',
+                                  backgroundColor: 'color-mix(in srgb, var(--brand) 6%, transparent)',
+                                  borderLeft: ganttStartDate ? '1px dashed var(--brand)' : 'none',
+                                  borderRight: ganttEndDate ? '1px dashed var(--brand)' : 'none',
                                   pointerEvents: 'none',
                                   zIndex: 0
                                 }}
@@ -3042,7 +2978,7 @@ JSON 출력 예시:
                             )}
                             <div
                               className="projectbar"
-                              style={{ left: pos(gd.startDate) + "%", width: Math.min(barW(gd.startDate, gd.endDate), 100 - pos(gd.startDate)) + "%", background: p.projectColor }}
+                              style={{ left: pos(gd.startDate) + "%", width: Math.min(barW(gd.startDate, gd.endDate), 100 - pos(gd.startDate)) + "%", '--c': p.projectColor }}
                               title={`${p.name} | ${isGanttConstruction ? '공사 일정' : '전체 일정'}: ${gd.startDate} ~ ${gd.endDate} | 진행률: ${gd.progress}% (${gd.reason})`}
                             >
                               <i style={{ width: gd.progress + "%" }} />
@@ -3055,10 +2991,10 @@ JSON 출력 예시:
                           <div className="grow sub" key={m.id || m.name}>
                             <span />
                             <div className="glabel">
-                              <span style={{ fontSize: '9px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {m.name}
                               </span>
-                              <small style={{ fontSize: '8px' }}>{m.startDate} ~ {m.endDate}</small>
+                              <small>{m.startDate} ~ {m.endDate}</small>
                             </div>
                             <div className="track">
                               {(ganttStartDate || ganttEndDate) && (
@@ -3069,16 +3005,16 @@ JSON 출력 예시:
                                     width: `${Math.max(0, (ganttEndDate ? pos(ganttEndDate) : 100) - (ganttStartDate ? pos(ganttStartDate) : 0))}%`,
                                     top: 0,
                                     bottom: 0,
-                                    backgroundColor: 'rgba(59, 130, 246, 0.06)',
-                                    borderLeft: ganttStartDate ? '1px dashed #60a5fa' : 'none',
-                                    borderRight: ganttEndDate ? '1px dashed #60a5fa' : 'none',
+                                    backgroundColor: 'color-mix(in srgb, var(--brand) 6%, transparent)',
+                                    borderLeft: ganttStartDate ? '1px dashed var(--brand)' : 'none',
+                                    borderRight: ganttEndDate ? '1px dashed var(--brand)' : 'none',
                                     pointerEvents: 'none',
                                     zIndex: 0
                                   }}
                                 />
                               )}
-                              <div className="msbar" style={{ left: pos(m.startDate) + "%", width: Math.min(barW(m.startDate, m.endDate), 100 - pos(m.startDate)) + "%", borderColor: p.projectColor, background: p.projectColor + "38" }}>
-                                <i style={{ width: pct(m.startDate, m.endDate) + "%", background: p.projectColor }} />
+                              <div className="msbar" style={{ left: pos(m.startDate) + "%", width: Math.min(barW(m.startDate, m.endDate), 100 - pos(m.startDate)) + "%", '--c': p.projectColor }}>
+                                <i style={{ width: pct(m.startDate, m.endDate) + "%" }} />
                               </div>
                               <div className="today" style={{ left: pos(iso()) + "%" }} />
                             </div>
@@ -3095,14 +3031,14 @@ JSON 출력 예시:
                 onClick={() => toggleSection('gantt')}
                 className="section-collapsed-placeholder"
               >
-                📊 프로젝트 간트차트가 접혀 있습니다.
+                프로젝트 간트차트가 접혀 있습니다.
                 {ganttStartDate || ganttEndDate ? (
-                  <span style={{ color: '#2563eb', fontWeight: 600 }}>
+                  <span style={{ color: 'var(--brand)', fontWeight: 600 }}>
                     {' '}(설정 기간: {ganttStartDate || '처음'} ~ {ganttEndDate || '끝'}, {ganttView.length}건 진행)
                   </span>
                 ) : (
                   <span> ({view.length}건)</span>
-                )} (클릭하여 펼치기 ▾)
+                )} (클릭하여 펼치기)
               </div>
             )}
           </section>
@@ -3115,7 +3051,7 @@ JSON 출력 예시:
             }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <h2>{calendarMode === 'construction' ? '🏗️ 공사일정 달력' : '📅 프로젝트 일정 달력'}</h2>
+                  <h2>{calendarMode === 'construction' ? '공사일정 달력' : '프로젝트 일정 달력'}</h2>
                   <div className="cal-mode-toggle" onClick={e => e.stopPropagation()}>
                     <button
                       type="button"
@@ -3126,7 +3062,7 @@ JSON 출력 예시:
                       }}
                       title="공수가 처음 반영되는 시점 또는 현장 공사 시작 시점부터 실제 현장 작업 기간만 표시합니다"
                     >
-                      🏗️ 공사일정
+                      공사일정
                     </button>
                     <button
                       type="button"
@@ -3137,23 +3073,23 @@ JSON 출력 예시:
                       }}
                       title="프로젝트 시작일부터 종료일까지 전체 일정을 표시합니다"
                     >
-                      📋 전체 프로젝트 일정
+                      전체 프로젝트 일정
                     </button>
                   </div>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); toggleSection('calendar'); }}
                     style={{
-                      background: collapsedSections.calendar ? '#3b82f6' : '#f1f5f9',
-                      color: collapsedSections.calendar ? '#fff' : '#475569',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '4px',
+                      background: collapsedSections.calendar ? 'var(--brand)' : 'var(--brand-wash)',
+                      color: collapsedSections.calendar ? 'var(--on-brand)' : 'var(--brand)',
+                      border: '1px solid color-mix(in srgb, var(--brand) 40%, transparent)',
+                      borderRadius: 'var(--radius-md)',
                       padding: '2px 8px',
                       fontSize: '11px',
                       cursor: 'pointer'
                     }}
                   >
-                    {collapsedSections.calendar ? '▸ 펼치기' : '▾ 접기'}
+                    <FoldLabel collapsed={collapsedSections.calendar} />
                   </button>
                 </div>
                 <p>
@@ -3173,16 +3109,16 @@ JSON 출력 예시:
                     try { localStorage.setItem('pm_show_daily_dept_matrix', String(next)); } catch (err) {}
                   }}
                   style={{
-                    background: showDailyDeptMatrix ? 'rgba(37, 99, 235, 0.12)' : 'var(--bg-card)',
-                    color: showDailyDeptMatrix ? '#2563eb' : 'var(--text-secondary)',
+                    background: showDailyDeptMatrix ? 'color-mix(in srgb, var(--brand) 12%, transparent)' : 'var(--bg-card)',
+                    color: showDailyDeptMatrix ? 'var(--brand)' : 'var(--text-secondary)',
                     border: '1px solid var(--border-medium)',
                     padding: '4px 10px',
-                    borderRadius: '6px',
+                    borderRadius: 'var(--radius-md)',
                     fontWeight: '700'
                   }}
                   title="일일단위 부서별 인원 수 및 총합을 볼 수 있는 매트릭스 표를 펼치거나 접습니다"
                 >
-                  📊 일일 부서별 공수표 {showDailyDeptMatrix ? '접기' : '보기'}
+                  <Icon name="table" size={14} /> 일일 부서별 공수표 {showDailyDeptMatrix ? '접기' : '보기'}
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)); }}>‹</button>
                 <b>{month.getFullYear()}년 {month.getMonth() + 1}월</b>
@@ -3262,17 +3198,17 @@ JSON 출력 예시:
                                     style={{
                                       display: 'inline-block',
                                       fontSize: '9.5px',
-                                      background: dayManpower >= 20 ? 'rgba(239, 68, 68, 0.15)' : dayManpower >= 10 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(14, 165, 233, 0.15)',
-                                      color: dayManpower >= 20 ? '#ef4444' : dayManpower >= 10 ? '#f59e0b' : '#38bdf8',
-                                      border: dayManpower >= 20 ? '1px solid rgba(239, 68, 68, 0.3)' : dayManpower >= 10 ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(14, 165, 233, 0.3)',
+                                      background: dayManpower >= 20 ? 'color-mix(in srgb, var(--bad) 15%, transparent)' : dayManpower >= 10 ? 'color-mix(in srgb, var(--signal) 15%, transparent)' : 'color-mix(in srgb, var(--teal) 15%, transparent)',
+                                      color: dayManpower >= 20 ? 'var(--bad)' : dayManpower >= 10 ? 'var(--signal)' : 'var(--teal)',
+                                      border: dayManpower >= 20 ? '1px solid color-mix(in srgb, var(--bad) 30%, transparent)' : dayManpower >= 10 ? '1px solid color-mix(in srgb, var(--signal) 30%, transparent)' : '1px solid color-mix(in srgb, var(--teal) 30%, transparent)',
                                       padding: '1px 5px',
-                                      borderRadius: '10px',
+                                      borderRadius: 'var(--radius-lg)',
                                       fontWeight: '700',
                                       marginTop: '2px',
                                       marginLeft: '3px'
                                     }}
                                   >
-                                    👥 {dayManpower}명
+                                    <Icon name="users" size={12} /> {dayManpower}명
                                   </span>
                                 )}
                               </div>
@@ -3284,7 +3220,7 @@ JSON 출력 예시:
                             <button
                               key={p.id}
                               className="calendar-bar"
-                              style={{ left: `${(start / 7) * 100}%`, width: `${((end - start + 1) / 7) * 100}%`, top: `${lane * 21 + 2}px`, background: p.projectColor }}
+                              style={{ left: `${(start / 7) * 100}%`, width: `${((end - start + 1) / 7) * 100}%`, top: `${lane * 21 + 2}px`, '--c': p.projectColor }}
                               onClick={() => setSelectedDay({
                                 date: `${weekStart} ~ ${weekEnd}`,
                                 active: [p],
@@ -3310,16 +3246,16 @@ JSON 출력 예시:
                   })}
                 </div>
 
-                {/* 📊 일일 부서별 투입 공수 현황 매트릭스 테이블 */}
+                {/* 일일 부서별 투입 공수 현황 매트릭스 테이블 */}
                 {showDailyDeptMatrix && (
                   <div className="cal-matrix-section">
                     <div className="cal-matrix-header">
                       <h3>
-                        <span>📊</span>
+                        <Icon name="table" size={16} />
                         <span>{month.getFullYear()}년 {month.getMonth() + 1}월 일일 부서별 공수 투입 현황 (Daily Department Matrix)</span>
                       </h3>
                       <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        당월 누적 총 공수: <b style={{ color: '#ea580c', fontSize: '13.5px' }}>{monthMatrixData.totalMonthManday}</b> M/D
+                        당월 누적 총 공수: <b style={{ color: 'var(--signal)', fontSize: '13.5px' }}>{monthMatrixData.totalMonthManday}</b> M/D
                       </span>
                     </div>
                     <div className="cal-matrix-table-wrap">
@@ -3337,7 +3273,7 @@ JSON 출력 예시:
                                 </th>
                               );
                             })}
-                            <th style={{ background: '#ea580c', color: '#fff' }}>월간 합계</th>
+                            <th style={{ background: 'var(--signal)', color: 'var(--on-brand)' }}>월간 합계</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -3360,7 +3296,7 @@ JSON 출력 예시:
                             );
                           })}
                           <tr className="row-total">
-                            <td className="td-dept" style={{ color: '#ea580c' }}>당일 총합 (명)</td>
+                            <td className="td-dept" style={{ color: 'var(--signal)' }}>당일 총합 (명)</td>
                             {monthMatrixData.days.map(dStr => {
                               const val = monthMatrixData.dayDataMap[dStr]?.total || 0;
                               return (
@@ -3369,7 +3305,7 @@ JSON 출력 예시:
                                 </td>
                               );
                             })}
-                            <td style={{ background: '#ea580c', color: '#fff', fontSize: '12px' }}>
+                            <td style={{ background: 'var(--signal)', color: 'var(--on-brand)', fontSize: '12px' }}>
                               <b>{monthMatrixData.totalMonthManday} M/D</b>
                             </td>
                           </tr>
@@ -3384,7 +3320,7 @@ JSON 출력 예시:
                 onClick={() => toggleSection('calendar')}
                 className="section-collapsed-placeholder"
               >
-                📅 프로젝트 일정 달력 ({month.getFullYear()}년 {month.getMonth() + 1}월)이 접혀 있습니다. (클릭하여 펼치기 ▾)
+                프로젝트 일정 달력 ({month.getFullYear()}년 {month.getMonth() + 1}월)이 접혀 있습니다. (클릭하여 펼치기)
               </div>
             )}
           </section>
@@ -3401,16 +3337,16 @@ JSON 출력 예시:
                   type="button"
                   onClick={() => toggleSection('list')}
                   style={{
-                    background: collapsedSections.list ? '#3b82f6' : '#f1f5f9',
-                    color: collapsedSections.list ? '#fff' : '#475569',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '4px',
+                    background: collapsedSections.list ? 'var(--brand)' : 'var(--brand-wash)',
+                    color: collapsedSections.list ? 'var(--on-brand)' : 'var(--brand)',
+                    border: '1px solid color-mix(in srgb, var(--brand) 40%, transparent)',
+                    borderRadius: 'var(--radius-md)',
                     padding: '2px 8px',
                     fontSize: '11px',
                     cursor: 'pointer'
                   }}
                 >
-                  {collapsedSections.list ? '▸ 펼치기' : '▾ 접기'}
+                  <FoldLabel collapsed={collapsedSections.list} />
                 </button>
               </div>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="제조번호, Site, Line, 프로젝트, 담당자 검색" />
@@ -3427,7 +3363,7 @@ JSON 출력 예시:
               <>
                 {view.length === 0 ? (
                   <div style={{ padding: '36px 20px', textAlign: 'center', background: 'var(--bg-card-subtle)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--border-medium)', margin: '10px 14px' }}>
-                    <div style={{ fontSize: '28px', marginBottom: '8px' }}>📭</div>
+                    <div style={{ marginBottom: '10px', color: 'var(--ink-4)' }}><Icon name="folder" size={28} stroke={1.4} /></div>
                     <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
                       {isAllYears ? "조회 조건에 일치하는 프로젝트가 없습니다." : `선택하신 ${selectedYearsLabel}에 일치하는 프로젝트가 없습니다.`}
                     </div>
@@ -3438,9 +3374,9 @@ JSON 출력 예시:
                       <button
                         type="button"
                         onClick={() => handlePresetYears('all')}
-                        style={{ marginTop: '12px', padding: '6px 14px', borderRadius: '6px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                        style={{ marginTop: '12px', padding: '6px 14px', borderRadius: 'var(--radius-md)', background: 'var(--brand-wash)', color: 'var(--brand)', border: '1px solid color-mix(in srgb, var(--brand) 40%, transparent)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
                       >
-                        🌐 전체 누적 프로젝트 보기
+                        전체 누적 프로젝트 보기
                       </button>
                     )}
                   </div>
@@ -3454,32 +3390,32 @@ JSON 출력 예시:
                       {selectedProjects.size > 0 && (
                         <button
                           onClick={() => { if (!del) return showPermissionModal("프로젝트 다중 삭제"); removeSelected(); }}
-                          style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                          style={{ background: 'var(--bad)', color: 'var(--on-brand)', border: 'none', padding: '4px 10px', borderRadius: 'var(--radius-md)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
                         >
-                          선택 항목 삭제 ({selectedProjects.size}) {!del && "🔒"}
+                          선택 항목 삭제 ({selectedProjects.size}) {!del && <Icon name="lock" size={12} />}
                         </button>
                       )}
                     </div>
                   </>
                 )}
                 {view.map(p => (
-                  <article key={p.id} style={{ borderLeft: `7px solid ${p.projectColor}` }}>
+                  <article key={p.id} style={{ borderLeft: `3px solid ${p.projectColor}` }}>
                     <div>
                       <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <input type="checkbox" checked={selectedProjects.has(p.id)} onChange={() => toggleSelect(p.id)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
                         {p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}
                       </h3>
                       <p>
-                        {p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} &nbsp;|&nbsp; 소장 {p.pm || p.manager || "-"} · 설계 {p.design || "-"} · 설비 {p.facilityTechnology || "-"} · 제어 {p.control || "-"} · 비전 {p.vision || "-"} &nbsp;|&nbsp; {p.startDate} ~ {p.endDate} · <b style={{ color: p.isManualStatus ? (p.status === "PO대기중" ? '#dc2626' : '#d97706') : 'inherit' }}>{p.status}</b>
+                        {p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} &nbsp;|&nbsp; 소장 {p.pm || p.manager || "-"} · 설계 {p.design || "-"} · 설비 {p.facilityTechnology || "-"} · 제어 {p.control || "-"} · 비전 {p.vision || "-"} &nbsp;|&nbsp; {p.startDate} ~ {p.endDate} · <b style={{ color: p.isManualStatus ? (p.status === "PO대기중" ? 'var(--bad)' : 'var(--signal)') : 'inherit' }}>{p.status}</b>
                       </p>
                       {p.isManualStatus && (
-                        <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--warning-muted)', border: '1px solid rgba(217,119,6,0.28)', padding: '4px 9px', borderRadius: '6px', fontSize: '11px', color: 'var(--warning)', fontWeight: '600' }}>
-                          <span>⚠️ <b>수동 설정 ({p.manualStatusBy || "담당자"})</b> : 상태 확인 후 상태 변경을 해주세요</span>
+                        <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--warning-muted)', border: '1px solid color-mix(in srgb, var(--signal) 28%, transparent)', padding: '4px 9px', borderRadius: 'var(--radius-md)', fontSize: '11px', color: 'var(--warning)', fontWeight: '600' }}>
+                          <span><Icon name="alert" size={13} /> <b>수동 설정 ({p.manualStatusBy || "담당자"})</b> : 상태 확인 후 상태 변경을 해주세요</span>
                           {edit && p.status !== "PO대기중" && (
                             <button
                               type="button"
                               onClick={() => switchToAutoStatus(p)}
-                              style={{ background: '#fef08a', border: '1px solid #fde047', color: '#854d0e', padding: '2px 7px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}
+                              style={{ background: 'var(--warn)', border: '1px solid var(--warn)', color: 'var(--on-brand)', padding: '2px 7px', borderRadius: 'var(--radius-md)', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}
                               title="마일스톤 기반 자동 상태 계산으로 복귀"
                             >
                               자동 상태 전환
@@ -3514,28 +3450,28 @@ JSON 출력 예시:
                           setSelectedManpowerProject(p);
                         }}
                         style={{
-                          background: p.manpower ? '#eff6ff' : '#f8fafc',
-                          color: !canViewManpowerDetail ? '#9ca3af' : (p.manpower ? '#1d4ed8' : '#4b5563'),
-                          border: p.manpower ? '1px solid #bfdbfe' : '1px solid #d1d5db',
+                          background: p.manpower ? 'var(--brand-wash)' : 'var(--brand-wash)',
+                          color: !canViewManpowerDetail ? 'var(--ink-3)' : (p.manpower ? 'var(--brand)' : 'var(--ink-2)'),
+                          border: p.manpower ? '1px solid color-mix(in srgb, var(--brand) 40%, transparent)' : '1px solid var(--line-2)',
                           fontWeight: 'bold',
                           cursor: 'pointer'
                         }}
                         title={!canViewManpowerDetail ? "공수 상세 확인은 Grade 2 이상 권한이 필요합니다" : "프로젝트 공수 상세 내역을 확인합니다"}
                       >
-                        공수 확인 {p.manpower?.totalManday ? `(${p.manpower.totalManday}M/D)` : ''} {!canViewManpowerDetail && "🔒"}
+                        공수 확인 {p.manpower?.totalManday ? `(${p.manpower.totalManday}M/D)` : ''} {!canViewManpowerDetail && <Icon name="lock" size={12} />}
                       </button>
                       <button
                         onClick={() => {
                           if (!edit) return showPermissionModal("프로젝트 수정");
                           editProject(p);
                         }}
-                        style={{ color: edit ? 'inherit' : '#9ca3af' }}
+                        style={{ color: edit ? 'inherit' : 'var(--ink-3)' }}
                         title={!edit ? "프로젝트 수정 권한이 없습니다 (Grade 3 이상 가능)" : ""}
                       >
-                        수정 {!edit && "🔒"}
+                        수정 {!edit && <Icon name="lock" size={12} />}
                       </button>
-                      <button onClick={() => { if (!del) return showPermissionModal("프로젝트 삭제"); remove(p.id); }} style={{ color: del ? 'inherit' : '#9ca3af' }}>
-                        삭제 {!del && "🔒"}
+                      <button onClick={() => { if (!del) return showPermissionModal("프로젝트 삭제"); remove(p.id); }} style={{ color: del ? 'inherit' : 'var(--ink-3)' }}>
+                        삭제 {!del && <Icon name="lock" size={12} />}
                       </button>
                     </aside>
                   </article>
@@ -3548,7 +3484,7 @@ JSON 출력 예시:
                   padding: '12px 16px',
                   background: 'var(--bg-card-subtle)',
                   border: '1px dashed var(--border-medium)',
-                  borderRadius: '8px',
+                  borderRadius: 'var(--radius-md)',
                   textAlign: 'center',
                   color: 'var(--text-secondary)',
                   fontSize: '13px',
@@ -3556,7 +3492,7 @@ JSON 출력 예시:
                   margin: '8px 14px 14px'
                 }}
               >
-                📋 프로젝트 목록 ({view.length}건, 필터: {filter})이 접혀 있습니다. (클릭하여 펼치기 ▾)
+                프로젝트 목록 ({view.length}건, 필터: {filter})이 접혀 있습니다. (클릭하여 펼치기)
               </div>
             )}
           </section>
@@ -3570,10 +3506,10 @@ JSON 출력 예시:
 
                 {/* 당일 부서별 공수 투입 카드 */}
                 {selectedDay.dayDeptStat && selectedDay.dayDeptStat.total > 0 && (
-                  <div style={{ margin: '14px 0 16px', background: 'var(--bg-card-subtle)', padding: '14px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ margin: '14px 0 16px', background: 'var(--bg-card-subtle)', padding: '14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <span style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                        👥 당일 부서별 공수 투입 현황
+                        <Icon name="users" size={15} /> 당일 부서별 공수 투입 현황
                       </span>
                       <span style={{ fontSize: '14px', fontWeight: '800', color: 'var(--accent)' }}>
                         총합 {selectedDay.dayDeptStat.total}명
@@ -3624,24 +3560,24 @@ JSON 출력 예시:
                     <span style={{
                       fontSize: "11px",
                       padding: "3px 8px",
-                      borderRadius: "12px",
-                      background: "rgba(245, 158, 11, 0.15)",
-                      color: "#f59e0b",
+                      borderRadius: "var(--radius-lg)",
+                      background: "color-mix(in srgb, var(--signal) 15%, transparent)",
+                      color: "var(--signal)",
                       fontWeight: "bold",
-                      border: "1px solid rgba(245, 158, 11, 0.35)",
+                      border: "1px solid color-mix(in srgb, var(--signal) 35%, transparent)",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: "4px"
                     }}>
-                      🔒 최고관리자 전용
+                      <Icon name="lock" size={12} /> 최고관리자 전용
                     </span>
                   </div>
                   <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                     <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "12px", color: "var(--text-secondary)" }}>
                       <span>전체 <b>{users.length}</b>명</span>
                       <span style={{ color: "var(--border-medium)" }}>•</span>
-                      <span style={{ color: "#10b981", fontWeight: "600" }}>
-                        🟢 활동 중 <b>{users.filter(u => formatLastAccessTime(u.last_sign_in_at || u.last_active_at).isOnline || session?.user?.email?.toLowerCase() === u.email?.toLowerCase()).length}</b>명
+                      <span style={{ color: "var(--ok)", fontWeight: "600" }}>
+                        <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--ok)', marginRight: 6 }} />활동 중 <b>{users.filter(u => formatLastAccessTime(u.last_sign_in_at || u.last_active_at).isOnline || session?.user?.email?.toLowerCase() === u.email?.toLowerCase()).length}</b>명
                       </span>
                     </div>
                     <button
@@ -3651,7 +3587,7 @@ JSON 출력 예시:
                         background: "var(--bg-card)",
                         border: "1px solid var(--border-subtle)",
                         color: "var(--text-secondary)",
-                        borderRadius: "6px",
+                        borderRadius: "var(--radius-md)",
                         padding: "4px 9px",
                         fontSize: "11.5px",
                         cursor: "pointer",
@@ -3663,7 +3599,7 @@ JSON 출력 예시:
                       }}
                       title="사용자 목록 및 최근 접속 시간 새로고침"
                     >
-                      🔄 새로고침
+                      <Icon name="refresh" size={14} /> 새로고침
                     </button>
                   </div>
                 </div>
@@ -3671,14 +3607,14 @@ JSON 출력 예시:
                   padding: "10px 14px",
                   background: "var(--accent-muted)",
                   border: "1px solid var(--accent-border)",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-md)",
                   fontSize: "12px",
                   color: "var(--text-primary)",
                   marginBottom: "16px",
                   lineHeight: "1.5"
                 }}>
-                  <b>💡 계정 및 팀원 프로필 가이드</b><br />
-                  • <b>팀명 및 이름 확인</b>: 각 사용자의 성명 및 소속팀을 확인하고 [✏️ 수정] 버튼으로 언제든 직접 변경할 수 있습니다.<br />
+                  <b>계정 및 팀원 프로필 가이드</b><br />
+                  • <b>팀명 및 이름 확인</b>: 각 사용자의 성명 및 소속팀을 확인하고 [수정] 버튼으로 언제든 직접 변경할 수 있습니다.<br />
                   • <b>마지막 접속 시간</b>: 각 사용자의 시스템 마지막 로그인 및 접속 일시를 실시간으로 확인합니다. (최고관리자 전용 비공개)<br />
                   • <b>활성 해제</b>: 계정 로그인이 일시 차단됩니다. (언제든지 다시 활성화 가능)<br />
                   • <b>사용자 삭제</b>: 계정을 영구 제거하며, <b>해당 계정으로는 다시 로그인할 수 없습니다.</b>
@@ -3706,7 +3642,7 @@ JSON 출력 예시:
                           padding: "12px 14px",
                           background: u.active ? "var(--bg-card-subtle)" : "var(--bg-card)",
                           border: `1px solid ${u.active ? "var(--border-subtle)" : "var(--border-faint)"}`,
-                          borderRadius: "10px",
+                          borderRadius: "var(--radius-lg)",
                           opacity: u.active ? 1 : 0.75,
                           transition: "all 0.2s",
                         }}
@@ -3719,14 +3655,14 @@ JSON 출력 예시:
                                 value={editName}
                                 onChange={e => setEditName(e.target.value)}
                                 placeholder="이름 (예: 홍길동)"
-                                style={{ width: "160px", padding: "4px 8px", fontSize: "12px", background: "var(--input-bg)", color: "var(--text-primary)", border: "1px solid var(--border-medium)", borderRadius: "4px" }}
+                                style={{ width: "160px", padding: "4px 8px", fontSize: "12px", background: "var(--input-bg)", color: "var(--text-primary)", border: "1px solid var(--border-medium)", borderRadius: "var(--radius-md)" }}
                               />
                               <input
                                 type="text"
                                 value={editTeam}
                                 onChange={e => setEditTeam(e.target.value)}
                                 placeholder="소속팀 (예: PM팀)"
-                                style={{ width: "120px", padding: "4px 8px", fontSize: "12px", background: "var(--input-bg)", color: "var(--text-primary)", border: "1px solid var(--border-medium)", borderRadius: "4px" }}
+                                style={{ width: "120px", padding: "4px 8px", fontSize: "12px", background: "var(--input-bg)", color: "var(--text-primary)", border: "1px solid var(--border-medium)", borderRadius: "var(--radius-md)" }}
                               />
                               <button
                                 type="button"
@@ -3737,14 +3673,14 @@ JSON 출력 예시:
                                   });
                                   setEditingUserId(null);
                                 }}
-                                style={{ padding: "4px 8px", fontSize: "11px", fontWeight: "bold", background: "var(--accent)", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}
+                                style={{ padding: "4px 8px", fontSize: "11px", fontWeight: "bold", background: "var(--accent)", color: "var(--on-brand)", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer" }}
                               >
                                 저장
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setEditingUserId(null)}
-                                style={{ padding: "4px 8px", fontSize: "11px", background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)", borderRadius: "4px", cursor: "pointer" }}
+                                style={{ padding: "4px 8px", fontSize: "11px", background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-subtle)", borderRadius: "var(--radius-md)", cursor: "pointer" }}
                               >
                                 취소
                               </button>
@@ -3755,18 +3691,18 @@ JSON 출력 예시:
                                 {displayName}
                               </span>
                               {isSuperAdmin && (
-                                <span style={{ fontSize: "10px", background: "rgba(245, 158, 11, 0.18)", color: "#f59e0b", border: "1px solid rgba(245, 158, 11, 0.4)", padding: "1px 7px", borderRadius: "8px", fontWeight: "bold" }}>
+                                <span style={{ fontSize: "10px", background: "color-mix(in srgb, var(--signal) 18%, transparent)", color: "var(--signal)", border: "1px solid color-mix(in srgb, var(--signal) 40%, transparent)", padding: "1px 7px", borderRadius: "var(--radius-md)", fontWeight: "bold" }}>
                                   최고관리자
                                 </span>
                               )}
                               {isSelf && !isSuperAdmin && (
-                                <span style={{ fontSize: "10px", background: "rgba(14, 165, 233, 0.18)", color: "#38bdf8", border: "1px solid rgba(14, 165, 233, 0.4)", padding: "1px 6px", borderRadius: "8px", fontWeight: "bold" }}>
+                                <span style={{ fontSize: "10px", background: "color-mix(in srgb, var(--teal) 18%, transparent)", color: "var(--teal)", border: "1px solid color-mix(in srgb, var(--teal) 40%, transparent)", padding: "1px 6px", borderRadius: "var(--radius-md)", fontWeight: "bold" }}>
                                   현재 접속
                                 </span>
                               )}
                               {newRegisteredUsers.some(nu => nu.email?.toLowerCase() === u.email?.toLowerCase()) && (
-                                <span style={{ fontSize: "10px", background: "rgba(16, 185, 129, 0.18)", color: "#10b981", border: "1px solid rgba(16, 185, 129, 0.4)", padding: "1px 6px", borderRadius: "8px", fontWeight: "bold" }}>
-                                  ⭐ 신규 가입
+                                <span style={{ fontSize: "10px", background: "color-mix(in srgb, var(--ok) 18%, transparent)", color: "var(--ok)", border: "1px solid color-mix(in srgb, var(--ok) 40%, transparent)", padding: "1px 6px", borderRadius: "var(--radius-md)", fontWeight: "bold" }}>
+                                  신규 가입
                                 </span>
                               )}
                               <button
@@ -3780,7 +3716,7 @@ JSON 출력 예시:
                                   background: "transparent",
                                   border: "1px solid var(--border-subtle)",
                                   color: "var(--text-secondary)",
-                                  borderRadius: "4px",
+                                  borderRadius: "var(--radius-md)",
                                   padding: "1px 6px",
                                   fontSize: "10.5px",
                                   cursor: "pointer",
@@ -3788,38 +3724,38 @@ JSON 출력 예시:
                                 }}
                                 title="이름 및 소속팀 수정"
                               >
-                                ✏️ 수정
+                                <Icon name="pencil" size={12} /> 수정
                               </button>
                             </div>
                           )}
                           <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-secondary)" }}>
-                            <span>✉️ {u.email}</span>
+                            <span>{u.email}</span>
                             {userTeam && <span style={{ color: "var(--text-muted)" }}>• {userTeam}</span>}
                           </div>
 
                           <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11.5px", marginTop: "2px", flexWrap: "wrap" }}>
                             <span style={{ color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: "3px" }}>
-                              🕒 마지막 접속:
+                              <Icon name="clock" size={12} /> 마지막 접속:
                             </span>
                             {(accessInfo.raw || isSelf) ? (
                               <span style={{
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: "5px",
-                                color: (accessInfo.isOnline || isSelf) ? "#10b981" : "var(--text-secondary)",
+                                color: (accessInfo.isOnline || isSelf) ? "var(--ok)" : "var(--text-secondary)",
                                 fontWeight: "500",
-                                background: (accessInfo.isOnline || isSelf) ? "rgba(16, 185, 129, 0.1)" : "var(--bg-card)",
+                                background: (accessInfo.isOnline || isSelf) ? "color-mix(in srgb, var(--ok) 10%, transparent)" : "var(--bg-card)",
                                 padding: "1px 7px",
-                                borderRadius: "6px",
-                                border: `1px solid ${(accessInfo.isOnline || isSelf) ? "rgba(16, 185, 129, 0.3)" : "var(--border-subtle)"}`
+                                borderRadius: "var(--radius-md)",
+                                border: `1px solid ${(accessInfo.isOnline || isSelf) ? "color-mix(in srgb, var(--ok) 30%, transparent)" : "var(--border-subtle)"}`
                               }}>
                                 {(accessInfo.isOnline || isSelf) && (
                                   <span style={{
                                     width: "6px",
                                     height: "6px",
                                     borderRadius: "50%",
-                                    backgroundColor: "#10b981",
-                                    boxShadow: "0 0 6px #10b981",
+                                    backgroundColor: "var(--ok)",
+                                    boxShadow: "none",
                                     display: "inline-block"
                                   }} />
                                 )}
@@ -3841,7 +3777,7 @@ JSON 출력 예시:
                           style={{
                             padding: "6px 8px",
                             fontSize: "12.5px",
-                            borderRadius: "6px",
+                            borderRadius: "var(--radius-md)",
                             border: "1px solid var(--border-medium)",
                             background: "var(--input-bg)",
                             color: "var(--text-primary)",
@@ -3874,23 +3810,23 @@ JSON 출력 예시:
                             padding: "6px 8px",
                             fontSize: "11.5px",
                             fontWeight: "bold",
-                            color: cannotDelete ? "var(--text-muted)" : "#ef4444",
-                            background: cannotDelete ? "var(--bg-card)" : "rgba(239, 68, 68, 0.12)",
-                            border: `1px solid ${cannotDelete ? "var(--border-subtle)" : "rgba(239, 68, 68, 0.3)"}`,
-                            borderRadius: "6px",
+                            color: cannotDelete ? "var(--text-muted)" : "var(--bad)",
+                            background: cannotDelete ? "var(--bg-card)" : "color-mix(in srgb, var(--bad) 12%, transparent)",
+                            border: `1px solid ${cannotDelete ? "var(--border-subtle)" : "color-mix(in srgb, var(--bad) 30%, transparent)"}`,
+                            borderRadius: "var(--radius-md)",
                             cursor: cannotDelete ? "not-allowed" : "pointer",
                             transition: "all 0.15s ease",
                           }}
                           onMouseEnter={e => {
                             if (!cannotDelete) {
-                              e.currentTarget.style.background = "#dc2626";
-                              e.currentTarget.style.color = "#ffffff";
+                              e.currentTarget.style.background = "var(--bad)";
+                              e.currentTarget.style.color = "var(--on-brand)";
                             }
                           }}
                           onMouseLeave={e => {
                             if (!cannotDelete) {
-                              e.currentTarget.style.background = "rgba(239, 68, 68, 0.12)";
-                              e.currentTarget.style.color = "#ef4444";
+                              e.currentTarget.style.background = "color-mix(in srgb, var(--bad) 12%, transparent)";
+                              e.currentTarget.style.color = "var(--bad)";
                             }
                           }}
                         >
@@ -3944,12 +3880,12 @@ JSON 출력 예시:
             style={{
               maxWidth: '430px',
               width: '92%',
-              background: 'var(--bg-card, #ffffff)',
-              borderRadius: '24px',
+              background: 'var(--bg-card, var(--surface))',
+              borderRadius: 'var(--radius-xl)',
               padding: '36px 28px 28px',
               textAlign: 'center',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
-              border: '1px solid var(--border-subtle, #e2e8f0)',
+              boxShadow: 'var(--shadow-xl)',
+              border: '1px solid var(--border-subtle, color-mix(in srgb, var(--brand) 40%, transparent))',
               animation: 'modalFadeIn 0.2s ease-out'
             }}
           >
@@ -3958,17 +3894,17 @@ JSON 출력 예시:
                 width: '64px',
                 height: '64px',
                 borderRadius: '50%',
-                background: 'rgba(239, 68, 68, 0.12)',
-                border: '1px solid rgba(239, 68, 68, 0.25)',
+                background: 'color-mix(in srgb, var(--bad) 12%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--bad) 25%, transparent)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 20px',
                 fontSize: '28px',
-                boxShadow: '0 2px 8px rgba(239, 68, 68, 0.12)'
+                boxShadow: 'none'
               }}
             >
-              🔒
+              <Icon name="lock" size={28} />
             </div>
 
             <h3
@@ -3976,7 +3912,7 @@ JSON 출력 예시:
                 margin: '0 0 14px',
                 fontSize: '22px',
                 fontWeight: 800,
-                color: 'var(--text-primary, #0f172a)',
+                color: 'var(--text-primary, var(--brand))',
                 letterSpacing: '-0.02em'
               }}
             >
@@ -3987,7 +3923,7 @@ JSON 출력 예시:
               style={{
                 margin: '0 0 24px',
                 fontSize: '14.5px',
-                color: 'var(--text-secondary, #475569)',
+                color: 'var(--text-secondary, var(--brand))',
                 lineHeight: 1.65,
                 wordBreak: 'keep-all'
               }}
@@ -3998,9 +3934,9 @@ JSON 출력 예시:
 
             <div
               style={{
-                background: 'var(--bg-card-subtle, #f1f5f9)',
-                border: '1px solid var(--border-medium, #cbd5e1)',
-                borderRadius: '14px',
+                background: 'var(--bg-card-subtle, var(--brand-wash))',
+                border: '1px solid var(--border-medium, color-mix(in srgb, var(--brand) 40%, transparent))',
+                borderRadius: 'var(--radius-xl)',
                 padding: '16px 20px',
                 marginBottom: '24px',
                 textAlign: 'left'
@@ -4009,7 +3945,7 @@ JSON 출력 예시:
               <div
                 style={{
                   fontWeight: 700,
-                  color: 'var(--text-primary, #0f172a)',
+                  color: 'var(--text-primary, var(--brand))',
                   fontSize: '14.5px',
                   marginBottom: '12px',
                   display: 'flex',
@@ -4017,7 +3953,7 @@ JSON 출력 예시:
                   gap: '6px'
                 }}
               >
-                <span>📌</span>
+                <Icon name="info" size={14} />
                 <span>권한 부여 및 시스템 문의</span>
               </div>
               <div
@@ -4026,7 +3962,7 @@ JSON 출력 예시:
                   flexDirection: 'column',
                   gap: '6px',
                   fontSize: '13.5px',
-                  color: 'var(--text-secondary, #334155)',
+                  color: 'var(--text-secondary, var(--brand))',
                   lineHeight: 1.6
                 }}
               >
@@ -4042,18 +3978,18 @@ JSON 출력 예시:
               style={{
                 width: '100%',
                 padding: '13px 0',
-                background: '#2563eb',
-                color: '#ffffff',
+                background: 'var(--brand)',
+                color: 'var(--on-brand)',
                 fontSize: '15px',
                 fontWeight: 700,
                 border: 'none',
-                borderRadius: '12px',
+                borderRadius: 'var(--radius-lg)',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
+                boxShadow: 'none',
                 transition: 'all 0.15s ease'
               }}
-              onMouseOver={e => e.currentTarget.style.background = '#1d4ed8'}
-              onMouseOut={e => e.currentTarget.style.background = '#2563eb'}
+              onMouseOver={e => { e.currentTarget.style.opacity = '0.88'; }}
+              onMouseOut={e => { e.currentTarget.style.opacity = '1'; }}
             >
               확인 (닫기)
             </button>

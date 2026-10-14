@@ -325,19 +325,19 @@
 .quote-pill-btn.active-nc {
   background: var(--bg-card);
   color: var(--warning);
-  box-shadow: 0 0 0 1px var(--warning-muted);
+  box-shadow: none;
 }
 
 .quote-pill-btn.active-stk {
   background: var(--bg-card);
-  color: #dc2626;
-  box-shadow: 0 0 0 1.5px rgba(220, 38, 38, 0.40);
+  color: var(--bad);
+  box-shadow: none;
 }
 
 [data-theme="dark"] .quote-pill-btn.active-stk,
 body.theme-dark .quote-pill-btn.active-stk {
-  color: #f87171;
-  box-shadow: 0 0 0 1.5px rgba(248, 113, 113, 0.50);
+  color: var(--bad);
+  box-shadow: none;
 }
 
 /* ── Select ── */
@@ -356,7 +356,7 @@ body.theme-dark .quote-pill-btn.active-stk {
 
 .quote-select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--input-focus-ring);
+  box-shadow: none;
 }
 
 /* ── Stat Bar ── */
@@ -406,26 +406,26 @@ body.theme-dark .quote-pill-btn.active-stk {
 .badge-process.nc {
   background: var(--warning-muted);
   color: var(--warning);
-  border: 1px solid rgba(217, 119, 6, 0.25);
+  border: 1px solid color-mix(in srgb, var(--signal) 25%, transparent);
 }
 
 .badge-process.stk {
-  background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
-  border: 1px solid rgba(239, 68, 68, 0.25);
+  background: color-mix(in srgb, var(--bad) 12%, transparent);
+  color: var(--bad);
+  border: 1px solid color-mix(in srgb, var(--bad) 25%, transparent);
 }
 
 [data-theme="dark"] .badge-process.stk,
 body.theme-dark .badge-process.stk {
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.18);
-  border-color: rgba(248, 113, 113, 0.30);
+  color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 18%, transparent);
+  border-color: color-mix(in srgb, var(--bad) 30%, transparent);
 }
 
 .badge-process.both {
   background: var(--success-muted);
   color: var(--success);
-  border: 1px solid rgba(5, 150, 105, 0.22);
+  border: 1px solid color-mix(in srgb, var(--ok) 25%, transparent);
 }
 
 .badge-process.other {
@@ -501,5 +501,5 @@ body.theme-dark .badge-process.stk {
   top: 0;
   background: var(--bg-card-subtle);
   z-index: 2;
-  box-shadow: 0 1px 0 var(--border-faint);
+  box-shadow: none;
 }

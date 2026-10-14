@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { Icon } from './icons';
 import { normalizeJVName } from './utils';
 
 /**
@@ -203,9 +204,9 @@ export default function SmartProjectSelector({
           padding: compact ? '6px 12px' : '8px 14px',
           background: 'var(--bg-card)',
           border: isOpen ? '1.5px solid var(--neon-cyan)' : '1px solid var(--border-medium)',
-          borderRadius: '10px',
+          borderRadius: 'var(--radius-lg)',
           cursor: 'pointer',
-          boxShadow: isOpen ? '0 0 14px var(--neon-cyan-glow)' : 'var(--shadow-sm)',
+          boxShadow: isOpen ? 'none' : 'var(--shadow-sm)',
           transition: 'all 0.2s ease',
           userSelect: 'none',
           minHeight: compact ? '34px' : '40px',
@@ -214,19 +215,19 @@ export default function SmartProjectSelector({
         title={selectedProject ? `${selectedProject.manufacturingNo ? `[${selectedProject.manufacturingNo}] ` : ''}${selectedProject.name}` : placeholder}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', flex: 1 }}>
-          <span style={{ fontSize: compact ? '13px' : '15px', flexShrink: 0 }}>🏢</span>
+          <span style={{ fontSize: compact ? '13px' : '15px', flexShrink: 0 }}><Icon name="building" size="1.1em" /></span>
           {selectedProject ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
               {selectedProject.manufacturingNo && (
                 <span
                   style={{
-                    background: 'rgba(37, 99, 235, 0.15)',
+                    background: 'color-mix(in srgb, var(--brand) 15%, transparent)',
                     color: 'var(--neon-cyan)',
                     padding: '2px 7px',
-                    borderRadius: '5px',
+                    borderRadius: 'var(--radius-md)',
                     fontSize: '11px',
                     fontWeight: 700,
-                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    border: '1px solid color-mix(in srgb, var(--teal) 30%, transparent)',
                     flexShrink: 0
                   }}
                 >
@@ -261,7 +262,7 @@ export default function SmartProjectSelector({
                 cursor: 'pointer',
                 padding: '2px 5px',
                 fontSize: '12px',
-                borderRadius: '4px',
+                borderRadius: 'var(--radius-md)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -271,11 +272,11 @@ export default function SmartProjectSelector({
               onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
             >
-              ✕
+              <Icon name="x" size="1.1em" />
             </button>
           )}
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
-            ▼
+            <Icon name="chevDown" size="1.1em" />
           </span>
         </div>
       </div>
@@ -292,13 +293,13 @@ export default function SmartProjectSelector({
             maxWidth: '560px',
             background: 'var(--bg-card)',
             border: '1px solid var(--border-medium)',
-            borderRadius: '14px',
+            borderRadius: 'var(--radius-xl)',
             boxShadow: 'var(--shadow-lg)',
             zIndex: 9999,
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            backdropFilter: 'blur(16px)',
+            backdropFilter: 'none',
             color: 'var(--text-primary)'
           }}
         >
@@ -311,12 +312,12 @@ export default function SmartProjectSelector({
                 gap: '8px',
                 background: 'var(--input-bg)',
                 border: '1.5px solid var(--primary-blue)',
-                borderRadius: '8px',
+                borderRadius: 'var(--radius-md)',
                 padding: '7px 12px',
-                boxShadow: '0 0 10px rgba(37, 99, 235, 0.15)'
+                boxShadow: 'none'
               }}
             >
-              <span style={{ fontSize: '14px', color: 'var(--neon-cyan)' }}>🔍</span>
+              <span style={{ fontSize: '14px', color: 'var(--neon-cyan)' }}><Icon name="search" size="1.1em" /></span>
               <input
                 ref={searchInputRef}
                 type="text"
@@ -345,7 +346,7 @@ export default function SmartProjectSelector({
                     padding: 0
                   }}
                 >
-                  ✕
+                  <Icon name="x" size="1.1em" />
                 </button>
               )}
             </div>
@@ -358,14 +359,14 @@ export default function SmartProjectSelector({
                 onClick={() => setYearFilter('ALL')}
                 style={{
                   padding: '3px 9px',
-                  borderRadius: '14px',
+                  borderRadius: 'var(--radius-xl)',
                   fontSize: '11px',
                   fontWeight: yearFilter === 'ALL' ? 700 : 500,
                   background: yearFilter === 'ALL' ? 'var(--primary-blue)' : 'var(--bg-card)',
                   color: yearFilter === 'ALL' ? '#ffffff' : 'var(--text-secondary)',
                   border: yearFilter === 'ALL' ? '1px solid var(--primary-blue)' : '1px solid var(--border-subtle)',
                   cursor: 'pointer',
-                  boxShadow: yearFilter === 'ALL' ? '0 0 10px rgba(37, 99, 235, 0.35)' : 'none',
+                  boxShadow: yearFilter === 'none' ? 'none' : 'none',
                   transition: 'all 0.15s ease'
                 }}
               >
@@ -378,14 +379,14 @@ export default function SmartProjectSelector({
                   onClick={() => setYearFilter(yr)}
                   style={{
                     padding: '3px 9px',
-                    borderRadius: '14px',
+                    borderRadius: 'var(--radius-xl)',
                     fontSize: '11px',
                     fontWeight: yearFilter === yr ? 700 : 500,
                     background: yearFilter === yr ? 'var(--primary-blue)' : 'var(--bg-card)',
                     color: yearFilter === yr ? '#ffffff' : 'var(--text-secondary)',
                     border: yearFilter === yr ? '1px solid var(--primary-blue)' : '1px solid var(--border-subtle)',
                     cursor: 'pointer',
-                    boxShadow: yearFilter === yr ? '0 0 10px rgba(37, 99, 235, 0.35)' : 'none',
+                    boxShadow: yearFilter === yr ? 'none' : 'none',
                     transition: 'all 0.15s ease'
                   }}
                 >
@@ -403,12 +404,12 @@ export default function SmartProjectSelector({
                   onClick={() => setSiteFilter('ALL')}
                   style={{
                     padding: '2px 8px',
-                    borderRadius: '12px',
+                    borderRadius: 'var(--radius-lg)',
                     fontSize: '10.5px',
                     fontWeight: siteFilter === 'ALL' ? 700 : 500,
-                    background: siteFilter === 'ALL' ? '#0891b2' : 'var(--bg-card)',
-                    color: siteFilter === 'ALL' ? '#ffffff' : 'var(--text-secondary)',
-                    border: siteFilter === 'ALL' ? '1px solid #0891b2' : '1px solid var(--border-subtle)',
+                    background: siteFilter === 'ALL' ? 'var(--teal)' : 'var(--bg-card)',
+                    color: siteFilter === 'ALL' ? 'var(--on-brand)' : 'var(--text-secondary)',
+                    border: siteFilter === 'ALL' ? '1px solid var(--teal)' : '1px solid var(--border-subtle)',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease'
                   }}
@@ -422,12 +423,12 @@ export default function SmartProjectSelector({
                     onClick={() => setSiteFilter(s)}
                     style={{
                       padding: '2px 8px',
-                      borderRadius: '12px',
+                      borderRadius: 'var(--radius-lg)',
                       fontSize: '10.5px',
                       fontWeight: siteFilter === s ? 700 : 500,
-                      background: siteFilter === s ? '#0891b2' : 'var(--bg-card)',
-                      color: siteFilter === s ? '#ffffff' : 'var(--text-secondary)',
-                      border: siteFilter === s ? '1px solid #0891b2' : '1px solid var(--border-subtle)',
+                      background: siteFilter === s ? 'var(--teal)' : 'var(--bg-card)',
+                      color: siteFilter === s ? 'var(--on-brand)' : 'var(--text-secondary)',
+                      border: siteFilter === s ? '1px solid var(--teal)' : '1px solid var(--border-subtle)',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease'
                     }}
@@ -443,7 +444,7 @@ export default function SmartProjectSelector({
           <div style={{ padding: '7px 14px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11.5px', color: 'var(--text-muted)' }}>
             <span>검색 결과: <b style={{ color: 'var(--text-primary)' }}>{filteredList.length}</b>건 (전체 {projects.length}개)</span>
             {selectedProject && (
-              <span style={{ color: 'var(--neon-cyan)', fontWeight: 700 }}>현재 선택됨 ✓</span>
+              <span style={{ color: 'var(--neon-cyan)', fontWeight: 700 }}>현재 선택됨 <Icon name="check" size="1.1em" /></span>
             )}
           </div>
 
@@ -457,7 +458,7 @@ export default function SmartProjectSelector({
           >
             {filteredList.length === 0 ? (
               <div style={{ padding: '36px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <span style={{ fontSize: '26px', display: 'block', marginBottom: '8px' }}>🔍</span>
+                <span style={{ fontSize: '26px', display: 'block', marginBottom: '8px' }}><Icon name="search" size="1.1em" /></span>
                 <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text-secondary)' }}>
                   일치하는 프로젝트가 없습니다.
                 </div>
@@ -479,7 +480,7 @@ export default function SmartProjectSelector({
                       padding: '10px 14px',
                       borderBottom: '1px solid var(--border-subtle)',
                       cursor: 'pointer',
-                      background: isSelected ? 'rgba(37, 99, 235, 0.16)' : 'transparent',
+                      background: isSelected ? 'color-mix(in srgb, var(--brand) 16%, transparent)' : 'transparent',
                       borderLeft: isSelected ? '4px solid var(--neon-cyan)' : '4px solid transparent',
                       transition: 'all 0.12s ease',
                       display: 'flex',
@@ -499,13 +500,13 @@ export default function SmartProjectSelector({
                         {p.manufacturingNo ? (
                           <span
                             style={{
-                              background: 'rgba(37, 99, 235, 0.15)',
+                              background: 'color-mix(in srgb, var(--brand) 15%, transparent)',
                               color: 'var(--neon-cyan)',
                               padding: '1px 6px',
-                              borderRadius: '4px',
+                              borderRadius: 'var(--radius-md)',
                               fontSize: '11px',
                               fontWeight: 700,
-                              border: '1px solid rgba(56, 189, 248, 0.25)'
+                              border: '1px solid color-mix(in srgb, var(--teal) 25%, transparent)'
                             }}
                           >
                             {p.manufacturingNo}
@@ -520,7 +521,7 @@ export default function SmartProjectSelector({
 
                       {isSelected && (
                         <span style={{ color: 'var(--neon-cyan)', fontWeight: 800, fontSize: '12px' }}>
-                          ✓ 선택됨
+                          <Icon name="check" size="1.1em" /> 선택됨
                         </span>
                       )}
                     </div>
@@ -533,7 +534,7 @@ export default function SmartProjectSelector({
                     {/* 하단 정보: 기간 및 담당자 */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                       <span>
-                        📅 {sDate || '미정'} ~ {eDate || '미정'}
+                        <Icon name="calendar" size="1.1em" /> {sDate || '미정'} ~ {eDate || '미정'}
                       </span>
                       {p.pm && (
                         <span>담당: {p.pm}</span>

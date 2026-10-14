@@ -1,188 +1,266 @@
 /* ========================================================
-   TW PROJECT MANAGEMENT — PREMIUM DESIGN SYSTEM v3.0
-   Inspired by: PREVAX · PINTEL · Linear · Vercel · Supabase
-   Architecture: CSS Custom Properties + Semantic Token System
+   TW PROJECT MANAGEMENT — DESIGN SYSTEM v4
+   라이트 = Atelier (종이 톤 · 브랜드 블루 1색)
+   다크   = Obsidian (그라파이트 · 샴페인 골드 1색)
+   원칙: 헤어라인 · 작은 반경 · 그림자/그라데이션/네온 없음 · 이모지 대신 선 아이콘
+   토큰만 바꾸면 전체 화면이 따라오도록, 예전 변수 이름(--bg-card 등)은 별칭으로 남겨 둔다.
    ======================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
-
-/* ─── GLOBAL RESET ─────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
-/* ─── DESIGN TOKEN SYSTEM ──────────────────────────────── */
+/* ─── LIGHT · Atelier ──────────────────────────────────── */
+:root,
+[data-theme="light"],
+body.theme-light {
+  color-scheme: light;
+
+  /* 원색 토큰 */
+  --bg:        #F6F5F2;
+  --bg-2:      #EFEDE8;
+  --surface:   #FFFFFF;
+  --surface-2: #FAF9F7;
+  --line:      #E8E5DE;
+  --line-2:    #D8D4CB;
+  --ink:       #14171D;
+  --ink-2:     #454B58;
+  --ink-3:     #7A8090;
+  --ink-4:     #A8ADB8;
+
+  --brand:      #0B57A4;
+  --brand-2:    #09478A;
+  --brand-wash: #EDF3FA;
+  --brand-line: #C7DAEE;
+  --on-brand:   #FFFFFF;
+
+  --signal:      #D94A1F;
+  --signal-wash: #FCEEE9;
+  --ok:          #2B7A58;
+  --ok-wash:     #E7F2EC;
+  --warn:        #A9701A;
+  --warn-wash:   #F7EFDF;
+  --bad:         #BE3A2D;
+  --bad-wash:    #F9E9E6;
+  --teal:        #21798A;
+  --teal-wash:   #E4F1F4;
+
+  --btn-bg:  #14171D;
+  --btn-ink: #FFFFFF;
+  --hatch:   rgba(20, 23, 29, .30);
+
+  /* 예전 이름(별칭) — 기존 CSS 가 그대로 새 색을 따른다 */
+  --bg-canvas:        var(--bg);
+  --bg-base:          var(--surface);
+  --bg-card:          var(--surface);
+  --bg-card-raised:   var(--surface-2);
+  --bg-card-subtle:   #F6F5F2;
+  --bg-hover:         #F1EFEA;
+  --bg-selected:      var(--brand-wash);
+  --bg-overlay:       rgba(20, 23, 29, 0.46);
+  --panel-bg:         var(--surface);
+
+  --border-faint:     #EFEDE7;
+  --border-subtle:    var(--line);
+  --border-medium:    var(--line-2);
+  --border-strong:    #B9B4A8;
+  --border-color:     var(--line);
+  --border-hover:     var(--line-2);
+
+  --text-primary:     var(--ink);
+  --text-secondary:   var(--ink-2);
+  --text-tertiary:    #5C6370;
+  --text-muted:       var(--ink-3);
+  --text-on-accent:   var(--on-brand);
+  --text-color:       var(--ink);
+
+  --header-bg:        var(--surface);
+  --header-border:    var(--line);
+  --header-shadow:    none;
+
+  --input-bg:         var(--surface);
+  --input-border:     var(--line-2);
+  --input-text:       var(--ink);
+  --input-focus-ring: rgba(11, 87, 164, 0.16);
+
+  --accent:           var(--brand);
+  --accent-hover:     var(--brand-2);
+  --accent-muted:     var(--brand-wash);
+  --accent-border:    var(--brand-line);
+  --accent-glow:      transparent;
+  --primary-blue:     var(--brand);
+  --primary:          var(--brand);
+  --neon-cyan:        var(--teal);
+  --neon-cyan-glow:   transparent;
+
+  --success:          var(--ok);
+  --success-muted:    var(--ok-wash);
+  --warning:          var(--warn);
+  --warning-muted:    var(--warn-wash);
+  --warning-bg:       var(--warn-wash);
+  --danger:           var(--bad);
+  --danger-muted:     var(--bad-wash);
+  --danger-bg:        var(--bad-wash);
+  --info:             var(--teal);
+  --info-muted:       var(--teal-wash);
+
+  --shadow-xs:  0 1px 0 rgba(20, 23, 29, 0.04);
+  --shadow-sm:  0 1px 2px rgba(20, 23, 29, 0.05);
+  --shadow-md:  0 6px 18px rgba(20, 23, 29, 0.08);
+  --shadow-lg:  0 14px 36px rgba(20, 23, 29, 0.10), 0 2px 6px rgba(20, 23, 29, 0.05);
+  --shadow-xl:  0 28px 64px rgba(20, 23, 29, 0.16), 0 4px 12px rgba(20, 23, 29, 0.06);
+  --shadow-key: 0 1px 0 rgba(20, 23, 29, 0.06);
+
+  --pill-bg:          var(--bg-2);
+  --pill-border:      var(--line);
+  --pill-text:        var(--ink-3);
+  --pill-active-bg:   var(--surface);
+  --pill-active-text: var(--ink);
+  --pill-active-shadow: none;
+}
+
+/* ─── DARK · Obsidian ──────────────────────────────────── */
+[data-theme="dark"],
+body.theme-dark {
+  color-scheme: dark;
+
+  --bg:        #09090A;
+  --bg-2:      #0E0E10;
+  --surface:   #111113;
+  --surface-2: #151517;
+  --line:      rgba(255, 255, 255, 0.075);
+  --line-2:    rgba(255, 255, 255, 0.13);
+  --ink:       #EEEBE3;
+  --ink-2:     #BAB6AC;
+  --ink-3:     #85827A;
+  --ink-4:     #55534E;
+
+  --brand:      #CDAE72;
+  --brand-2:    #E2C990;
+  --brand-wash: rgba(205, 174, 114, 0.09);
+  --brand-line: rgba(205, 174, 114, 0.34);
+  --on-brand:   #15110A;
+
+  --signal:      #EB7A5D;
+  --signal-wash: rgba(235, 122, 93, 0.13);
+  --ok:          #86B596;
+  --ok-wash:     rgba(134, 181, 150, 0.13);
+  --warn:        #C9A25A;
+  --warn-wash:   rgba(201, 162, 90, 0.13);
+  --bad:         #E0705F;
+  --bad-wash:    rgba(224, 112, 95, 0.13);
+  --teal:        #8FA8BD;
+  --teal-wash:   rgba(143, 168, 189, 0.13);
+
+  --btn-bg:  #CDAE72;
+  --btn-ink: #15110A;
+  --hatch:   rgba(238, 235, 227, .34);
+
+  --bg-canvas:        var(--bg);
+  --bg-base:          var(--bg-2);
+  --bg-card:          var(--surface);
+  --bg-card-raised:   var(--surface-2);
+  --bg-card-subtle:   #0C0C0E;
+  --bg-hover:         rgba(255, 255, 255, 0.045);
+  --bg-selected:      var(--brand-wash);
+  --bg-overlay:       rgba(0, 0, 0, 0.72);
+  --panel-bg:         var(--surface);
+
+  --border-faint:     rgba(255, 255, 255, 0.045);
+  --border-subtle:    var(--line);
+  --border-medium:    var(--line-2);
+  --border-strong:    rgba(255, 255, 255, 0.28);
+  --border-color:     var(--line);
+  --border-hover:     var(--line-2);
+
+  --text-primary:     var(--ink);
+  --text-secondary:   var(--ink-2);
+  --text-tertiary:    #A09D94;
+  --text-muted:       var(--ink-3);
+  --text-on-accent:   var(--on-brand);
+  --text-color:       var(--ink);
+
+  --header-bg:        var(--bg-2);
+  --header-border:    var(--line);
+  --header-shadow:    none;
+
+  --input-bg:         var(--bg-2);
+  --input-border:     var(--line-2);
+  --input-text:       var(--ink);
+  --input-focus-ring: rgba(205, 174, 114, 0.22);
+
+  --accent:           var(--brand);
+  --accent-hover:     var(--brand-2);
+  --accent-muted:     var(--brand-wash);
+  --accent-border:    var(--brand-line);
+  --accent-glow:      transparent;
+  --primary-blue:     var(--brand);
+  --primary:          var(--brand);
+  --neon-cyan:        var(--teal);
+  --neon-cyan-glow:   transparent;
+
+  --success:          var(--ok);
+  --success-muted:    var(--ok-wash);
+  --warning:          var(--warn);
+  --warning-muted:    var(--warn-wash);
+  --warning-bg:       var(--warn-wash);
+  --danger:           var(--bad);
+  --danger-muted:     var(--bad-wash);
+  --danger-bg:        var(--bad-wash);
+  --info:             var(--teal);
+  --info-muted:       var(--teal-wash);
+
+  --shadow-xs:  none;
+  --shadow-sm:  0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  --shadow-md:  0 8px 22px rgba(0, 0, 0, 0.5);
+  --shadow-lg:  0 18px 44px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-xl:  0 28px 70px rgba(0, 0, 0, 0.72), 0 4px 14px rgba(0, 0, 0, 0.5);
+  --shadow-key: 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  --pill-bg:          var(--surface-2);
+  --pill-border:      var(--line);
+  --pill-text:        var(--ink-3);
+  --pill-active-bg:   var(--surface-2);
+  --pill-active-text: var(--ink);
+  --pill-active-shadow: none;
+}
+
+/* ─── 공통(테마와 무관) 토큰 ─────────────────────────────── */
 :root {
-  /* Typography */
-  --font-sans: 'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --font-sans:    'Pretendard Variable', 'Pretendard', 'Noto Sans KR', 'Malgun Gothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body:    var(--font-sans);
+  --font-mono:    'JetBrains Mono', 'Cascadia Mono', Consolas, ui-monospace, monospace;
+  /* 큰 숫자용: 다크는 세리프(Obsidian), 라이트는 얇은 산세리프(Atelier) */
+  --font-display: var(--font-sans);
+  --display-weight: 300;
+  --display-tracking: -0.045em;
 
-  /* Semantic Color Palette — LIGHT MODE */
-  /* Base canvas */
-  --bg-canvas:        #f4f6f9;
-  --bg-base:          #ffffff;
-  --bg-card:          #ffffff;
-  --bg-card-raised:   #f8fafd;
-  --bg-card-subtle:   #f1f4f8;
-  --bg-hover:         #edf0f5;
-  --bg-selected:      #e8effe;
-  --bg-overlay:       rgba(0, 0, 0, 0.45);
-
-  /* Borders */
-  --border-faint:     #eaeef4;
-  --border-subtle:    #dde3ed;
-  --border-medium:    #c5cdd9;
-  --border-strong:    #9ba8bb;
-
-  /* Text */
-  --text-primary:     #0d1117;
-  --text-secondary:   #3d4a5c;
-  --text-tertiary:    #6b7a8f;
-  --text-muted:       #9eaab8;
-  --text-on-accent:   #ffffff;
-  --text-color:       #0d1117;
-
-  /* Header */
-  --header-bg:        rgba(255, 255, 255, 0.92);
-  --header-border:    #e5e9f0;
-  --header-shadow:    0 1px 0 rgba(0,0,0,0.06);
-
-  /* Input */
-  --input-bg:         #ffffff;
-  --input-border:     #d0d7e3;
-  --input-text:       #0d1117;
-  --input-focus-ring: rgba(37, 99, 235, 0.18);
-
-  /* Brand Accent — Electric Blue */
-  --accent:           #2563eb;
-  --accent-hover:     #1d4ed8;
-  --accent-muted:     rgba(37, 99, 235, 0.10);
-  --accent-border:    rgba(37, 99, 235, 0.28);
-  --accent-glow:      rgba(37, 99, 235, 0.22);
-
-  /* Status Colors */
-  --success:          #059669;
-  --success-muted:    rgba(5, 150, 105, 0.10);
-  --warning:          #d97706;
-  --warning-muted:    rgba(217, 119, 6, 0.10);
-  --danger:           #dc2626;
-  --danger-muted:     rgba(220, 38, 38, 0.10);
-  --info:             #0284c7;
-  --info-muted:       rgba(2, 132, 199, 0.10);
-
-  /* Elevation */
-  --shadow-xs:  0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-sm:  0 1px 4px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0,0,0,0.03);
-  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg:  0 12px 32px rgba(0, 0, 0, 0.10), 0 4px 8px rgba(0,0,0,0.05);
-  --shadow-xl:  0 24px 64px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0,0,0,0.06);
-
-  /* Nav pills */
-  --pill-bg:          #edf0f5;
-  --pill-border:      #dde3ed;
-  --pill-text:        #6b7a8f;
-  --pill-active-bg:   #ffffff;
-  --pill-active-text: #2563eb;
-  --pill-active-shadow: 0 1px 4px rgba(37,99,235,0.18), 0 0 0 1px rgba(37,99,235,0.14);
-
-  /* Transitions */
   --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --dur-fast:    120ms;
   --dur-base:    200ms;
   --dur-slow:    350ms;
 
-  /* Border Radius */
-  --radius-xs:  4px;
-  --radius-sm:  6px;
-  --radius-md:  10px;
-  --radius-lg:  14px;
-  --radius-xl:  20px;
-  --radius-pill: 999px;
+  /* 반경: 둥근 사각형을 줄이고 꼭 필요한 곳에만 쓴다 */
+  --radius-xs:   2px;   /* 배지 · 막대 · 키캡 */
+  --radius-sm:   3px;   /* 칩 · 작은 버튼 */
+  --radius-md:   4px;   /* 버튼 · 입력 · 카드 · 표 */
+  --radius-lg:   6px;   /* 팝오버 · 드롭다운 · 붙여넣기 칸 */
+  --radius-xl:   8px;   /* 모달 */
+  --radius-pill: 999px; /* 점 · 아바타 · 스위치처럼 진짜 원형인 것만 */
 }
-
-/* ─── DARK THEME ─────────────────────────────────────────
-   Base: Pure OLED Black #000000 with rich neutral charcoals & high contrast
-   ─────────────────────────────────────────────────────── */
 [data-theme="dark"],
 body.theme-dark {
-  /* Base canvas — Pure black #000000 as requested */
-  --bg-canvas:        #000000;
-  --bg-base:          #080808;
-  --bg-card:          #101012;
-  --bg-card-raised:   #17171a;
-  --bg-card-subtle:   #0a0a0c;
-  --bg-hover:         #1c1c20;
-  --bg-selected:      #26262c;
-  --bg-overlay:       rgba(0, 0, 0, 0.82);
-
-  /* Borders — Neutral high-visibility, zero blue tint */
-  --border-faint:     rgba(255, 255, 255, 0.08);
-  --border-subtle:    rgba(255, 255, 255, 0.14);
-  --border-medium:    rgba(255, 255, 255, 0.22);
-  --border-strong:    rgba(255, 255, 255, 0.36);
-
-  /* Text — Crisp White (#ffffff) default for dark mode */
-  --text-primary:     #ffffff;
-  --text-secondary:   #f1f5f9;
-  --text-tertiary:    #cbd5e1;
-  --text-muted:       #94a3b8;
-  --text-on-accent:   #ffffff;
-  --text-color:       #ffffff;
-
-  /* Header — Pure black backdrop blur */
-  --header-bg:        rgba(0, 0, 0, 0.94);
-  --header-border:    #222226;
-  --header-shadow:    0 2px 8px rgba(0, 0, 0, 0.7);
-
-  /* Input */
-  --input-bg:         #0a0a0c;
-  --input-border:     #2b2b30;
-  --input-text:       #ffffff;
-  --input-focus-ring: rgba(245, 158, 11, 0.28);
-
-  /* Brand Accent & Warm Color Spectrum */
-  --accent:           #3b82f6;
-  --accent-hover:     #60a5fa;
-  --accent-muted:     rgba(59, 130, 246, 0.14);
-  --accent-border:    rgba(59, 130, 246, 0.32);
-  --accent-glow:      rgba(59, 130, 246, 0.25);
-
-  /* Vibrant Warm & Status Colors */
-  --warm-amber:       #f59e0b;
-  --warm-gold:        #fbbf24;
-  --warm-orange:      #ea580c;
-  --warm-lime:        #84cc16;
-
-  --success:          #10b981;
-  --success-muted:    rgba(16, 185, 129, 0.15);
-  --warning:          #f59e0b;
-  --warning-muted:    rgba(245, 158, 11, 0.15);
-  --danger:           #f87171;
-  --danger-muted:     rgba(248, 113, 113, 0.15);
-  --info:             #38bdf8;
-  --info-muted:       rgba(56, 189, 248, 0.15);
-
-  /* Elevation — deeper shadows in pure black */
-  --shadow-xs:  0 1px 3px rgba(0, 0, 0, 0.60);
-  --shadow-sm:  0 1px 6px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255,255,255,0.04);
-  --shadow-md:  0 4px 16px rgba(0, 0, 0, 0.75), 0 1px 4px rgba(0,0,0,0.50);
-  --shadow-lg:  0 16px 48px rgba(0, 0, 0, 0.85), 0 4px 12px rgba(0,0,0,0.60);
-  --shadow-xl:  0 32px 80px rgba(0, 0, 0, 0.95), 0 8px 24px rgba(0,0,0,0.70);
-
-  /* Nav pills */
-  --pill-bg:          rgba(255, 255, 255, 0.06);
-  --pill-border:      rgba(255, 255, 255, 0.12);
-  --pill-text:        #cbd5e1;
-  --pill-active-bg:   #1e2025;
-  --pill-active-text: #ffffff;
-  --pill-active-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --font-display: 'Instrument Serif', 'Noto Serif KR', Georgia, serif;
+  --display-weight: 400;
+  --display-tracking: -0.02em;
 }
 
-/* ─── BASE ELEMENT STYLES ───────────────────────────────── */
+/* ─── BASE ─────────────────────────────────────────────── */
 html {
   font-size: 16px;
   scroll-behavior: smooth;
   overflow-x: auto;
   overflow-y: scroll;
+  -webkit-text-size-adjust: 100%;
 }
 
 html, body, #root {
@@ -194,36 +272,38 @@ html, body, #root {
 
 body {
   min-height: 100vh;
-  background-color: var(--bg-canvas);
-  color: var(--text-primary);
+  background-color: var(--bg);
+  color: var(--ink);
   font-family: var(--font-sans);
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.55;
+  letter-spacing: -0.008em;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  transition: background-color var(--dur-base) var(--ease-in-out),
-              color var(--dur-base) var(--ease-in-out);
+  transition: background-color var(--dur-base) var(--ease-in-out), color var(--dur-base) var(--ease-in-out);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-/* Dark mode canvas with ambient radial gradient */
-body.theme-dark,
-[data-theme="dark"] body {
-  background-color: var(--bg-canvas);
-  background-image:
-    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(59, 130, 246, 0.10) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 40% at 85% 60%, rgba(99, 102, 241, 0.05) 0%, transparent 60%);
-  background-attachment: fixed;
-  background-repeat: no-repeat;
+h1, h2, h3, h4 { letter-spacing: -0.025em; }
+
+::selection { background: color-mix(in srgb, var(--brand) 26%, transparent); }
+
+a { color: inherit; }
+
+/* 키보드 이동 시에만 보이는 초점 표시 */
+:where(button, a, [role="button"], summary):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
 }
 
 /* ─── FORM ELEMENTS ────────────────────────────────────── */
 button, input, select, textarea {
   font-family: var(--font-sans);
   font-size: 13px;
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 input, select, textarea {
@@ -236,50 +316,49 @@ input, select, textarea {
               background-color var(--dur-base) var(--ease-in-out);
 }
 
+input:hover:not(:focus):not(:disabled), select:hover:not(:focus):not(:disabled), textarea:hover:not(:focus):not(:disabled) {
+  border-color: var(--border-strong);
+}
+
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 3px var(--input-focus-ring) !important;
 }
 
-/* Strict dark mode input overrides */
+input:disabled, select:disabled, textarea:disabled { opacity: .55; cursor: not-allowed; }
+
+input[type="checkbox"], input[type="radio"], input[type="range"], progress { accent-color: var(--brand); }
+
+/* 입력 색은 화면마다 따로 덮어쓰이는 경우가 많아 한 곳에서 테마 토큰으로 강제한다 */
 [data-theme="dark"] input,
 [data-theme="dark"] select,
 [data-theme="dark"] textarea,
 body.theme-dark input,
 body.theme-dark select,
-body.theme-dark textarea {
-  background-color: #0c1220 !important;
-  border-color: rgba(148, 163, 184, 0.18) !important;
-  color: #e8edf5 !important;
-}
-
-/* Strict light mode input overrides */
+body.theme-dark textarea,
 [data-theme="light"] input,
 [data-theme="light"] select,
 [data-theme="light"] textarea,
 body.theme-light input,
 body.theme-light select,
 body.theme-light textarea {
-  background-color: #ffffff !important;
-  border-color: #d0d7e3 !important;
-  color: #0d1117 !important;
+  background-color: var(--input-bg) !important;
+  border-color: var(--input-border) !important;
+  color: var(--input-text) !important;
 }
 
-::placeholder { color: var(--text-muted) !important; opacity: 0.75; }
+::placeholder { color: var(--ink-4) !important; opacity: 1; }
 [data-theme="dark"] ::placeholder,
-body.theme-dark ::placeholder { color: #94a3b8 !important; opacity: 1; }
+body.theme-dark ::placeholder { color: #6B6962 !important; }
 
 /* ─── SCROLLBAR ─────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: var(--border-medium);
-  border-radius: var(--radius-pill);
-}
-::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: var(--radius-xs); border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); background-clip: padding-box; }
 
-/* ─── UTILITY CLASSES ───────────────────────────────────── */
+/* ─── 공통 부품 ─────────────────────────────────────────── */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -290,4 +369,45 @@ body.theme-dark ::placeholder { color: #94a3b8 !important; opacity: 1; }
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+.ui-icon { flex: none; vertical-align: -0.18em; }
+
+.mono { font-family: var(--font-mono); letter-spacing: 0; }
+
+/* 영문 소제목: 작은 고정폭 + 넓은 자간 */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font: 600 10.5px var(--font-mono);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.eyebrow::before { content: ''; width: 6px; height: 6px; background: var(--brand); border-radius: 1px; }
+
+kbd, .kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  font: 600 10.5px var(--font-mono);
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-key);
+}
+
+/* 아이콘이 들어간 버튼/링크는 아이콘과 글자를 한 줄로 맞춘다 (화면별 스타일이 있으면 그쪽이 이긴다) */
+@layer base {
+  :where(button, a):has(> .ui-icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
 }

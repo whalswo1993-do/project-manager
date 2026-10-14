@@ -1,4 +1,5 @@
 import { Fragment, useState, useRef, useEffect, useMemo } from 'react';
+import { Icon } from './icons';
 import './Quotations.css';
 import { supabase } from './supabase';
 import * as XLSX from 'xlsx';
@@ -7,7 +8,7 @@ import { PasteZone, PasteEntry } from './PasteZone';
 
 // 품목 구분 (견적 라인 대분류 + 상세 리스트 품목 구분). 화면 필터 순서이기도 하다.
 const CATEGORY_ORDER = ['가공품', '시장품', '잡자재', '기구 SET', '인건비', '경비', '프로그램', '차감', '기타'];
-const CATEGORY_ICON = { '가공품': '🛠️', '시장품': '🛒', '잡자재': '🔩', '기구 SET': '📦', '인건비': '👷', '경비': '✈️', '프로그램': '💻', '차감': '➖', '기타': '⚙️' };
+const CATEGORY_ICON = { '가공품': '', '시장품': '', '잡자재': '', '기구 SET': '', '인건비': '', '경비': '', '프로그램': '', '차감': '', '기타': '' };
 function normalizeCategory(raw) {
     const c = String(raw || '').trim();
     if (/가공/.test(c)) return '가공품';
@@ -68,16 +69,16 @@ export default function Quotations(props) {
 
 function QuotationsAccessDenied() {
     return (
-            <div style={{ padding: '48px 24px', textAlign: 'center', background: 'var(--bg-card, #fff)', borderRadius: '24px', border: '1px solid var(--border-subtle, var(--border-faint))', margin: '40px auto', maxWidth: '440px', boxShadow: 'var(--shadow-md, 0 4px 20px rgba(0,0,0,0.06))' }}>
-                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', fontSize: '28px' }}>🔒</div>
-                <h3 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary, #0f172a)', margin: '0 0 12px' }}>견적 관리 접근 권한 제한</h3>
-                <p style={{ fontSize: '14.5px', color: 'var(--text-secondary, #64748b)', lineHeight: 1.65, margin: '0 0 20px' }}>
+            <div style={{ padding: '48px 24px', textAlign: 'center', background: 'var(--bg-card, var(--surface))', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-subtle, var(--border-faint))', margin: '40px auto', maxWidth: '440px', boxShadow: 'var(--shadow-md, 0 4px 20px rgba(0,0,0,0.06))' }}>
+                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--bad-wash)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px', fontSize: '28px' }}><Icon name="lock" size="1.1em" /></div>
+                <h3 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary, var(--brand))', margin: '0 0 12px' }}>견적 관리 접근 권한 제한</h3>
+                <p style={{ fontSize: '14.5px', color: 'var(--text-secondary, var(--brand))', lineHeight: 1.65, margin: '0 0 20px' }}>
                     견적 조회 및 관리 기능은 <b>Grade 3(PM/소장) 이상</b> 등급만 이용할 수 있습니다.<br />
                     해당 기능을 이용하시려면 운영자에게 권한을 부여받으시기 바랍니다.
                 </p>
-                <div style={{ background: 'var(--bg-card-subtle, var(--bg-card-subtle))', border: '1px solid var(--border-medium, var(--border-subtle))', borderRadius: '14px', padding: '16px 20px', textAlign: 'left', fontSize: '13.5px', color: 'var(--text-secondary, #334155)', margin: '0 auto' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary, #0f172a)', marginBottom: '10px', fontSize: '14.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span>📌</span><span>권한 부여 및 시스템 문의</span>
+                <div style={{ background: 'var(--bg-card-subtle, var(--bg-card-subtle))', border: '1px solid var(--border-medium, var(--border-subtle))', borderRadius: 'var(--radius-xl)', padding: '16px 20px', textAlign: 'left', fontSize: '13.5px', color: 'var(--text-secondary, var(--brand))', margin: '0 auto' }}>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary, var(--brand))', marginBottom: '10px', fontSize: '14.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span><Icon name="info" size="1.1em" /></span><span>권한 부여 및 시스템 문의</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', lineHeight: 1.6 }}>
                         <div>• 담당자: 조민재 선임 (PM팀)</div>
@@ -98,39 +99,39 @@ function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, p
             error: { background: '#fee2e2', color: '#991b1b' },
             warn: { background: '#fef3c7', color: '#92400e' },
         };
-        return <span style={{ ...tones[tone], borderRadius: '999px', padding: '2px 10px', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap' }}>{text}</span>;
+        return <span style={{ ...tones[tone], borderRadius: 'var(--radius-xl)', padding: '2px 10px', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap' }}>{text}</span>;
     };
 
     return (
-        <div style={{ marginTop: '14px', border: '1px solid var(--border-subtle)', borderRadius: '12px', padding: '14px 16px', background: 'var(--bg-card, #fff)' }}>
+        <div style={{ marginTop: '14px', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', background: 'var(--bg-card, var(--surface))' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
                 <div>
-                    <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text-primary)' }}>📋 저장 전 미리보기</div>
+                    <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text-primary)' }}><Icon name="list" size="1.1em" /> 저장 전 미리보기</div>
                     <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
                         {draft.fileName ? `파일: ${draft.fileName}` : '표 붙여넣기 — 다른 시트를 계속 붙여넣으면 아래에 합쳐집니다'} · 원본 파일은 서버에 저장하지 않습니다
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
                         {draft.analyses.map((a, i) => (
-                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '2px 4px 2px 10px', borderRadius: '999px', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
-                                {a.kind === 'quotation' ? '📋' : '🧾'} {a.sheetName} · {a.kind === 'quotation' ? `견적서 ${a.lines.length}행` : `${a.listLabel || '상세 리스트'} ${a.items.length}행`}
+                            <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '2px 4px 2px 10px', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                                {a.kind === 'quotation' ? '' : ''} {a.sheetName} · {a.kind === 'quotation' ? `견적서 ${a.lines.length}행` : `${a.listLabel || '상세 리스트'} ${a.items.length}행`}
                                 {!draft.fileName && (
-                                    <button type="button" title="이 붙여넣기 빼기" onClick={() => onRemoveSource(i)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '0 4px' }}>✕</button>
+                                    <button type="button" title="이 붙여넣기 빼기" onClick={() => onRemoveSource(i)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: '0 4px' }}><Icon name="x" size="1.1em" /></button>
                                 )}
                             </span>
                         ))}
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                    <button type="button" onClick={onReset} disabled={busy} style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', background: 'var(--bg-card-subtle)', color: 'var(--text-primary)', cursor: 'pointer' }}>
-                        ✖ 취소
+                    <button type="button" onClick={onReset} disabled={busy} style={{ padding: '7px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', background: 'var(--bg-card-subtle)', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                        <Icon name="x" size="1.1em" /> 취소
                     </button>
-                    <button type="button" onClick={onSave} disabled={busy || !canManage} style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', background: busy ? '#94a3b8' : 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
-                        {busy ? '저장 중...' : `💾 ${preview.quotations.length}건 저장`}
+                    <button type="button" onClick={onSave} disabled={busy || !canManage} style={{ padding: '7px 14px', borderRadius: 'var(--radius-md)', border: 'none', background: busy ? 'var(--brand)' : 'var(--brand)', color: 'var(--on-brand)', fontWeight: 700, cursor: 'pointer' }}>
+                        {busy ? '저장 중...' : `${preview.quotations.length}건 저장`}
                     </button>
                 </div>
             </div>
 
-            {preview.warnings.map((w, i) => <div key={i} style={{ fontSize: '12px', color: '#92400e', marginBottom: '6px' }}>⚠ {w}</div>)}
+            {preview.warnings.map((w, i) => <div key={i} style={{ fontSize: '12px', color: 'var(--signal)', marginBottom: '6px' }}><Icon name="alert" size="1.1em" /> {w}</div>)}
 
             {preview.quotations.map((q, qi) => {
                 const s = q.summary;
@@ -139,10 +140,10 @@ function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, p
                 const proj = resolveQuotationProject(effectiveTitle, projects);
                 const existing = q.appendTo || findExistingQuotation(q, effectiveTitle, quotations);
                 const saveMode = q.appendTo
-                    ? chip(`➕ 등록된 견적에 상세 리스트 추가${existing.revision ? ` (${existing.revision})` : ''}`, 'ok')
+                    ? chip(`등록된 견적에 상세 리스트 추가${existing.revision ? ` (${existing.revision})` : ''}`, 'ok')
                     : existing
-                        ? chip(`♻ 등록된 같은 견적을 갱신${existing.revision ? ` (${existing.revision})` : ''} — 이번에 넣은 시트 부분만 바뀝니다`, 'warn')
-                        : chip('🆕 새 견적으로 등록');
+                        ? chip(`등록된 같은 견적을 갱신${existing.revision ? ` (${existing.revision})` : ''} — 이번에 넣은 시트 부분만 바뀝니다`, 'warn')
+                        : chip('새 견적으로 등록');
                 const catCounts = {};
                 q.items.forEach(it => { const c = normalizeCategory(it.item_category); catCounts[c] = (catCounts[c] || 0) + 1; });
                 return (
@@ -154,18 +155,18 @@ function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, p
                             type="text"
                             value={titleOverrides[qi] ?? q.title}
                             onChange={e => setTitleOverrides(prev => ({ ...prev, [qi]: e.target.value }))}
-                            style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '14px', fontWeight: 700 }}
+                            style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', fontSize: '14px', fontWeight: 700 }}
                         />
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
                             {saveMode}
-                            {proj.linkedLabel ? chip(`🔗 등록 프로젝트 연결: ${proj.linkedLabel}`, 'ok') : chip(`📁 프로젝트: ${effectiveTitle}`)}
+                            {proj.linkedLabel ? chip(`등록 프로젝트 연결: ${proj.linkedLabel}`, 'ok') : chip(`프로젝트: ${effectiveTitle}`)}
                             {q.quote_no && chip(`견적번호 ${q.quote_no}`)}
                             {q.revision && chip(`리비전 ${q.revision}`)}
                             {q.quote_date && chip(`견적일 ${q.quote_date}`)}
                             {chip(`견적 라인 ${s.lines}`)}
                             {chip(`상세 품목 ${s.details}`)}
-                            {s.blocks > 0 && chip(`상세↔견적 단가 연결 ${s.linkedBlocks}/${s.blocks}`, s.linkedBlocks === s.blocks ? 'ok' : 'warn')}
-                            {s.errors ? chip(`✗ 검증 오류 ${s.errors}`, 'error') : chip('✓ 수량×단가=금액 검증 통과', 'ok')}
+                            {s.blocks > 0 && chip(`상세견적 단가 연결 ${s.linkedBlocks}/${s.blocks}`, s.linkedBlocks === s.blocks ? 'ok' : 'warn')}
+                            {s.errors ? chip(`✗ 검증 오류 ${s.errors}`, 'error') : chip('수량×단가=금액 검증 통과', 'ok')}
                             {s.warnings > 0 && chip(`△ 경고 ${s.warnings}`, 'warn')}
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
@@ -174,16 +175,16 @@ function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, p
                         {q.checks.length > 0 && (
                             <ul style={{ margin: '8px 0 0', paddingLeft: '18px', fontSize: '12px' }}>
                                 {q.checks.slice(0, 12).map((c, i) => (
-                                    <li key={i} style={{ color: c.level === 'error' ? '#b91c1c' : '#92400e' }}>{c.message}{c.row ? ` (행 ${c.row})` : ''}</li>
+                                    <li key={i} style={{ color: c.level === 'error' ? 'var(--bad)' : 'var(--signal)' }}>{c.message}{c.row ? ` (행 ${c.row})` : ''}</li>
                                 ))}
                             </ul>
                         )}
                         <button
                             type="button"
                             onClick={() => setPreviewOpen(prev => ({ ...prev, [qi]: !prev[qi] }))}
-                            style={{ marginTop: '8px', background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: 0, fontSize: '12.5px', fontWeight: 600 }}
+                            style={{ marginTop: '8px', background: 'none', border: 'none', color: 'var(--brand)', cursor: 'pointer', padding: 0, fontSize: '12.5px', fontWeight: 600 }}
                         >
-                            {open ? '▴ 품목 접기' : `▾ 품목 ${q.items.length}개 보기`}
+                            {open ? '품목 접기' : `품목 ${q.items.length}개 보기`}
                         </button>
                         {open && (
                             <div style={{ overflowX: 'auto', marginTop: '6px', maxHeight: '420px', overflowY: 'auto' }}>
@@ -215,7 +216,7 @@ function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, p
                                                     <td>{it.quantity}{it.uom ? ` ${it.uom}` : ''}</td>
                                                     <td className="money-cell">{fmtKRW(it.unit_price)}</td>
                                                     <td className="money-cell">{fmtKRW(it.total_price)}</td>
-                                                    <td style={{ textAlign: 'center' }}>{it.check_status === 'ok' ? '✓' : it.check_status === 'mismatch' ? <span style={{ color: '#dc2626' }}>✗</span> : '–'}</td>
+                                                    <td style={{ textAlign: 'center' }}>{it.check_status === 'ok' ? '' : it.check_status === 'mismatch' ? <span style={{ color: 'var(--bad)' }}>✗</span> : '–'}</td>
                                                 </tr>
                                             );
                                         })}
@@ -386,7 +387,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
     const handleFileSelect = async (file) => {
         if (!file) return;
         if (!/\.(xlsx|xlsm|xls)$/i.test(file.name)) {
-            setMsg(<span style={{ color: '#ef4444' }}>엑셀 견적서(.xlsx / .xls)만 분석할 수 있습니다. PDF·이미지는 표를 엑셀에서 복사해 붙여넣어 주세요.</span>);
+            setMsg(<span style={{ color: 'var(--bad)' }}>엑셀 견적서(.xlsx / .xls)만 분석할 수 있습니다. PDF·이미지는 표를 엑셀에서 복사해 붙여넣어 주세요.</span>);
             if (fileInputRef.current) fileInputRef.current.value = "";
             return;
         }
@@ -401,7 +402,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
             setMsg(`'${file.name}' 분석 완료 — 아래 미리보기에서 품목과 검증 결과를 확인한 뒤 저장하세요.`);
         } catch (error) {
             console.error("Quotation parse error:", error);
-            setMsg(<span style={{ color: '#ef4444' }}>분석 실패: {error.message}</span>);
+            setMsg(<span style={{ color: 'var(--bad)' }}>분석 실패: {error.message}</span>);
         } finally {
             setIsExtracting(false);
             if (fileInputRef.current) fileInputRef.current.value = "";
@@ -413,7 +414,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
         const n = (draft?.analyses.length || 0) + 1;
         const analysis = analyzePastedText(text, `붙여넣기 ${n}`);
         if (analysis.kind === 'unknown') {
-            setMsg(<span style={{ color: '#ef4444' }}>붙여넣은 표에서 수량·단가·금액 열을 찾지 못했습니다. 품목 행이 포함되도록 드래그해 주세요.</span>);
+            setMsg(<span style={{ color: 'var(--bad)' }}>붙여넣은 표에서 수량·단가·금액 열을 찾지 못했습니다. 품목 행이 포함되도록 드래그해 주세요.</span>);
             return;
         }
         setDraft(prev => ({ fileName: prev?.fileName || '', analyses: [...(prev?.analyses || []), analysis] }));
@@ -534,9 +535,9 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
         } catch (error) {
             console.error("Quotation save error:", error);
             setMsg(
-                <span style={{ color: '#ef4444' }}>
+                <span style={{ color: 'var(--bad)' }}>
                     저장 실패: {error.message}
-                    <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal', marginTop: '4px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--brand)', fontWeight: 'normal', marginTop: '4px' }}>
                         DB에 견적 상세 컬럼(quote_no, maker, spec 등)이 아직 없으면 이 오류가 납니다. 담당자에게 문의해주세요.
                     </div>
                 </span>
@@ -858,7 +859,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                 <div className="system-header-row">
                     <div className="system-title-group">
                         <div className="system-logo-icon theme-quotations">
-                            💰
+                            <Icon name="receipt" size="1.1em" />
                         </div>
                         <div className="system-title-text">
                             <h2>
@@ -877,7 +878,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                             className="system-toggle-all-btn"
                             title="견적 조회의 모든 소항목 펼치기"
                         >
-                            ▾ 전체 펼치기
+                            <Icon name="chevDown" size="1.1em" /> 전체 펼치기
                         </button>
                         <button
                             type="button"
@@ -885,7 +886,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                             className="system-toggle-all-btn"
                             title="견적 조회의 모든 소항목 접기"
                         >
-                            ▴ 전체 접기
+                            <Icon name="chevUp" size="1.1em" /> 전체 접기
                         </button>
                     </div>
                 </div>
@@ -893,10 +894,10 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                 {/* 소항목 필터 버튼 그룹 */}
                 <div className="system-sub-nav">
                     {[
-                        { id: 'all', label: '🌐 전체 표시' },
-                        { id: 'newQuote', label: '➕ 새 견적서 등록' },
-                        { id: 'itemSearch', label: '🔍 단가 & 품목 검색 및 단가 추이' },
-                        { id: 'projectSummary', label: '📊 프로젝트별 견적 종합 요약 및 내역' }
+                        { id: 'all', label: '전체 표시' },
+                        { id: 'newQuote', label: '새 견적서 등록' },
+                        { id: 'itemSearch', label: '단가 & 품목 검색 및 단가 추이' },
+                        { id: 'projectSummary', label: '프로젝트별 견적 종합 요약 및 내역' }
                     ].map(sec => (
                         <button
                             key={sec.id}
@@ -913,27 +914,27 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
             {(activeQuoteSection === 'all' || activeQuoteSection === 'newQuote') && (
             <section>
                 {!canManage && (
-                    <div style={{background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', fontSize: '12px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px'}}>
-                        <span>ℹ️ <b>견적 조회 전용 모드 ({role?.toUpperCase() || 'GRADE2'})</b> : 견적 비용 집계 및 품목별 단가 검색만 가능하며, 견적서 등록 및 삭제 권한은 제한됩니다.</span>
+                    <div style={{background: 'var(--brand-wash)', border: '1px solid color-mix(in srgb, var(--brand) 40%, transparent)', borderRadius: 'var(--radius-md)', padding: '10px 14px', marginBottom: '14px', fontSize: '12px', color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <span><Icon name="info" size="1.1em" /> <b>견적 조회 전용 모드 ({role?.toUpperCase() || 'GRADE2'})</b> : 견적 비용 집계 및 품목별 단가 검색만 가능하며, 견적서 등록 및 삭제 권한은 제한됩니다.</span>
                     </div>
                 )}
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom: collapsedSections.newQuote ? '0' : '14px'}}>
                     <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                        <h2 style={{margin: 0}}>새 견적서 등록 {!canManage && "🔒"}</h2>
+                        <h2 style={{margin: 0}}>새 견적서 등록 {!canManage && ""}</h2>
                         <button
                             type="button"
                             onClick={() => toggleSection('newQuote')}
                             style={{
-                                background: collapsedSections.newQuote ? '#3b82f6' : 'var(--bg-card-subtle)',
-                                color: collapsedSections.newQuote ? '#fff' : '#475569',
+                                background: collapsedSections.newQuote ? 'var(--brand)' : 'var(--bg-card-subtle)',
+                                color: collapsedSections.newQuote ? 'var(--on-brand)' : 'var(--brand)',
                                 border: '1px solid var(--border-subtle)',
-                                borderRadius: '4px',
+                                borderRadius: 'var(--radius-md)',
                                 padding: '2px 8px',
                                 fontSize: '11px',
                                 cursor: 'pointer'
                             }}
                         >
-                            {collapsedSections.newQuote ? '▸ 펼치기' : '▾ 접기'}
+                            {collapsedSections.newQuote ? '펼치기' : '접기'}
                         </button>
                     </div>
                 </div>
@@ -946,7 +947,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                             align="center"
                             drmNote
                             file={{
-                                label: `파일 첨부 (Excel)${!canManage ? ' 🔒' : ''}`,
+                                label: `파일 첨부 (Excel)${!canManage ? ' ' : ''}`,
                                 busy: isExtracting,
                                 busyLabel: '처리 중...',
                                 disabled: isExtracting,
@@ -978,20 +979,20 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                     if (text && text.trim().length > 5) {
                                         handlePastedText(text);
                                     } else {
-                                        setMsg(<span style={{ color: '#ef4444' }}>붙여넣은 내용에 표 데이터가 없습니다. 엑셀에서 표 범위를 드래그해 복사(Ctrl+C)한 뒤 붙여넣어 주세요.</span>);
+                                        setMsg(<span style={{ color: 'var(--bad)' }}>붙여넣은 내용에 표 데이터가 없습니다. 엑셀에서 표 범위를 드래그해 복사(Ctrl+C)한 뒤 붙여넣어 주세요.</span>);
                                     }
                                 }}
                             />
                         </PasteEntry>
 
-                        {msg &&<p className="notice" style={{marginTop:'12px',fontWeight:'bold',color:'#059669',textAlign:'center'}}>{msg}</p>}
+                        {msg &&<p className="notice" style={{marginTop:'12px',fontWeight:'bold',color:'var(--ok)',textAlign:'center'}}>{msg}</p>}
                         {!draft && (
                             <div style={{ marginTop: '12px', textAlign: 'center' }}>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '6px 8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                                     {['① 견적서 시트 표 복사 → 붙여넣기', '② 상세 리스트(Detail List) 시트 표 복사 → 이어서 붙여넣기', '③ 미리보기에서 단가 검증 확인 → 저장'].map((step, i) => (
                                         <Fragment key={step}>
-                                            {i > 0 && <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>▸</span>}
-                                            <span style={{ padding: '3px 10px', borderRadius: '999px', border: '1px solid var(--border-subtle)', background: 'var(--bg-card-subtle)' }}>{step}</span>
+                                            {i > 0 && <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}><Icon name="chevRight" size="1.1em" /></span>}
+                                            <span style={{ padding: '3px 10px', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-subtle)', background: 'var(--bg-card-subtle)' }}>{step}</span>
                                         </Fragment>
                                     ))}
                                 </div>
@@ -1025,15 +1026,15 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                             padding: '10px 14px',
                             background: 'var(--bg-card-subtle)',
                             border: '1px dashed var(--border-subtle)',
-                            borderRadius: '8px',
+                            borderRadius: 'var(--radius-md)',
                             textAlign: 'center',
-                            color: '#64748b',
+                            color: 'var(--brand)',
                             fontSize: '13px',
                             cursor: 'pointer',
                             marginTop: '8px'
                         }}
                     >
-                        📝 새 견적서 등록 영역이 접혀 있습니다. (클릭하여 펼치기 ▾)
+                        <Icon name="pencil" size="1.1em" /> 새 견적서 등록 영역이 접혀 있습니다. (클릭하여 펼치기 <Icon name="chevDown" size="1.1em" /> )
                     </div>
                 )}
             </section>
@@ -1052,19 +1053,19 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                 type="button"
                                 onClick={() => toggleSection('itemSearch')}
                                 style={{
-                                    background: collapsedSections.itemSearch ? '#3b82f6' : 'var(--bg-card-subtle)',
-                                    color: collapsedSections.itemSearch ? '#fff' : '#475569',
+                                    background: collapsedSections.itemSearch ? 'var(--brand)' : 'var(--bg-card-subtle)',
+                                    color: collapsedSections.itemSearch ? 'var(--on-brand)' : 'var(--brand)',
                                     border: '1px solid var(--border-subtle)',
-                                    borderRadius: '4px',
+                                    borderRadius: 'var(--radius-md)',
                                     padding: '2px 8px',
                                     fontSize: '11px',
                                     cursor: 'pointer'
                                 }}
                             >
-                                {collapsedSections.itemSearch ? '▸ 펼치기' : '▾ 접기'}
+                                {collapsedSections.itemSearch ? '펼치기' : '접기'}
                             </button>
                         </div>
-                        <span style={{ fontSize: '12px', color: '#64748b' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--brand)' }}>
                             공정(NC/STK), 프로젝트, 구분(가공품/시장품/인건비 등), 품목을 선택하면 조건에 맞는 품목들만 실시간 연동됩니다. 직접 검색은 메이커·재질·규격으로도 됩니다.
                         </span>
                     </div>
@@ -1075,7 +1076,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                             className="filter-reset-btn"
                             title="선택된 모든 검색 조건 및 필터를 초기화합니다"
                         >
-                            🔄 필터 초기화
+                            <Icon name="refresh" size="1.1em" /> 필터 초기화
                         </button>
                     )}
                 </div>
@@ -1088,12 +1089,12 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                     {/* 행 0: 자료 구분 — 부품 단가(상세 리스트)와 견적 항목(SET·인건비·경비)을 나눠 본다 */}
                     <div className="quote-filter-row">
                         <div className="quote-filter-group">
-                            <label className="quote-filter-label">📄 자료 구분</label>
+                            <label className="quote-filter-label"><Icon name="file" size="1.1em" /> 자료 구분</label>
                             <div className="quote-pill-group">
                                 {[
                                     { id: '전체', label: `전체 (${sourceCounts.all})` },
-                                    { id: 'detail', label: `🧾 부품 단가 · 상세 리스트 (${sourceCounts.detail})` },
-                                    { id: 'quotation', label: `📋 견적 항목 · SET·인건비·경비 (${sourceCounts.quotation})` },
+                                    { id: 'detail', label: `부품 단가 · 상세 리스트 (${sourceCounts.detail})` },
+                                    { id: 'quotation', label: `견적 항목 · SET·인건비·경비 (${sourceCounts.quotation})` },
                                 ].map(opt => (
                                     <button key={opt.id} type="button" className={`quote-pill-btn ${filterSource === opt.id ? 'active' : ''}`} onClick={() => setFilterSource(opt.id)}>
                                         {opt.label}
@@ -1108,7 +1109,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                         {/* 1. 공정 필터 */}
                         <div className="quote-filter-group">
                             <label className="quote-filter-label">
-                                ⚙️ 공정 선택 (Notching / Stacking)
+                                <Icon name="settings" size="1.1em" /> 공정 선택 (Notching / Stacking)
                             </label>
                             <div className="quote-pill-group">
                                 <button 
@@ -1138,7 +1139,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                         {/* 2. 프로젝트 필터 (공정에 맞춰 연동) */}
                         <div className="quote-filter-group" style={{ flex: '1 1 240px' }}>
                             <label className="quote-filter-label">
-                                📁 프로젝트 선택 ({availableProjects.length}개 프로젝트)
+                                <Icon name="folder" size="1.1em" /> 프로젝트 선택 ({availableProjects.length}개 프로젝트)
                             </label>
                             <select 
                                 className="quote-select"
@@ -1158,7 +1159,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                         {/* 3. 품목 구분 필터 (가공품 / 시장품 / 기타) */}
                         <div className="quote-filter-group">
                             <label className="quote-filter-label">
-                                🏷️ 품목 구분
+                                 품목 구분
                             </label>
                             <div className="quote-pill-group">
                                 <button 
@@ -1187,7 +1188,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                         {/* 4. 복합 연동 품목 드롭다운 */}
                         <div className="quote-filter-group" style={{ flex: '1 1 240px' }}>
                             <label className="quote-filter-label">
-                                🔍 품목 선택 (조건 만족: {availableItemNames.length}개 품목)
+                                <Icon name="search" size="1.1em" /> 품목 선택 (조건 만족: {availableItemNames.length}개 품목)
                             </label>
                             <select 
                                 className="quote-select"
@@ -1216,7 +1217,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                         {/* 5. 직접 검색창 (실시간 타이핑 자동완성) */}
                         <div className="quote-filter-group" style={{ flex: '1 1 200px', position: 'relative' }} ref={searchContainerRef}>
                             <label className="quote-filter-label">
-                                ⌨️ 직접 검색
+                                 직접 검색
                             </label>
                             <input 
                                 type="text"
@@ -1233,7 +1234,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                 onFocus={() => setIsSearchFocused(true)}
                                 style={{
                                     padding: '7px 12px',
-                                    borderRadius: '8px',
+                                    borderRadius: 'var(--radius-md)',
                                     border: '1px solid var(--border-subtle)',
                                     fontSize: '13px',
                                     outline: 'none',
@@ -1250,7 +1251,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                             setIsSearchFocused(false);
                                         }}>
                                             <span style={{ fontWeight: 600 }}>{item.name}</span>
-                                            <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '6px' }}>({item.count}건)</span>
+                                            <span style={{ fontSize: '11px', color: 'var(--brand)', marginLeft: '6px' }}>({item.count}건)</span>
                                         </li>
                                     ))}
                                 </ul>
@@ -1261,7 +1262,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                         {availableUnitNames.length > 0 && (
                             <div className="quote-filter-group" style={{ flex: '0 1 180px' }}>
                                 <label className="quote-filter-label">
-                                    🧩 유닛/파트
+                                     유닛/파트
                                 </label>
                                 <select 
                                     className="quote-select"
@@ -1280,7 +1281,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                         {/* 7. 정렬 */}
                         <div className="quote-filter-group" style={{ flex: '0 0 140px' }}>
                             <label className="quote-filter-label">
-                                ↕️ 정렬
+                                 정렬
                             </label>
                             <select 
                                 className="quote-select"
@@ -1306,13 +1307,13 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                         {filteredResults.length > 0 && (
                             <>
                                 <div className="quote-stat-chip">
-                                    <span>최저 단가:</span> <b style={{ color: '#16a34a' }}>₩{statMinPrice.toLocaleString()}</b>
+                                    <span>최저 단가:</span> <b style={{ color: 'var(--ok)' }}>₩{statMinPrice.toLocaleString()}</b>
                                 </div>
                                 <div className="quote-stat-chip">
-                                    <span>최고 단가:</span> <b style={{ color: '#dc2626' }}>₩{statMaxPrice.toLocaleString()}</b>
+                                    <span>최고 단가:</span> <b style={{ color: 'var(--bad)' }}>₩{statMaxPrice.toLocaleString()}</b>
                                 </div>
                                 <div className="quote-stat-chip">
-                                    <span>평균 단가:</span> <b style={{ color: '#2563eb' }}>₩{statAvgPrice.toLocaleString()}</b>
+                                    <span>평균 단가:</span> <b style={{ color: 'var(--brand)' }}>₩{statAvgPrice.toLocaleString()}</b>
                                 </div>
                                 <div className="quote-stat-chip">
                                     <span>합계 금액:</span> <b>₩{statTotalPrice.toLocaleString()}</b>
@@ -1326,7 +1327,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                             className="quote-collapse-toggle-btn"
                             onClick={() => setIsListCollapsed(prev => !prev)}
                         >
-                            {isListCollapsed ? '▾ 결과 목록 펼치기' : '▴ 결과 목록 접기'}
+                            {isListCollapsed ? '결과 목록 펼치기' : '결과 목록 접기'}
                         </button>
                     )}
                 </div>
@@ -1337,8 +1338,8 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                         className="quote-collapsed-banner"
                         onClick={() => setIsListCollapsed(false)}
                     >
-                        <span>📋 조회된 품목 <b>{filteredResults.length}건</b>의 목록이 접혀 있습니다.</span>
-                        <span className="expand-link">클릭하여 펼쳐보기 ▾</span>
+                        <span><Icon name="list" size="1.1em" /> 조회된 품목 <b>{filteredResults.length}건</b>의 목록이 접혀 있습니다.</span>
+                        <span className="expand-link">클릭하여 펼쳐보기 <Icon name="chevDown" size="1.1em" /></span>
                     </div>
                 ) : (
                     <>
@@ -1389,7 +1390,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                                         {item.unit_name || '-'}
                                                     </td>
                                                     <td style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>
-                                                        {item.isLine && <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#2563eb', border: '1px solid #93c5fd', borderRadius: '4px', padding: '0 4px', marginRight: '6px' }}>견적</span>}
+                                                        {item.isLine && <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--brand)', border: '1px solid var(--brand)', borderRadius: 'var(--radius-md)', padding: '0 4px', marginRight: '6px' }}>견적</span>}
                                                         {item.item_name}
                                                         {(item.parent_item || item.section) && (
                                                             <div style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-tertiary)' }}>
@@ -1417,10 +1418,10 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan="10" style={{ textAlign: 'center', color: '#64748b', padding: '36px 20px' }}>
-                                                <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔍</div>
+                                            <td colSpan="10" style={{ textAlign: 'center', color: 'var(--brand)', padding: '36px 20px' }}>
+                                                <div style={{ fontSize: '24px', marginBottom: '8px' }}><Icon name="search" size="1.1em" /></div>
                                                 <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>선택하신 조건에 해당하는 견적 품목이 없습니다.</div>
-                                                <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>공정, 프로젝트 또는 구분 조건을 변경하거나 초기화해 보세요.</div>
+                                                <div style={{ fontSize: '12px', color: 'var(--brand)', marginTop: '4px' }}>공정, 프로젝트 또는 구분 조건을 변경하거나 초기화해 보세요.</div>
                                             </td>
                                         </tr>
                                     )}
@@ -1435,13 +1436,13 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                     style={{
                                         background: 'none',
                                         border: 'none',
-                                        color: '#64748b',
+                                        color: 'var(--brand)',
                                         fontSize: '12px',
                                         cursor: 'pointer',
                                         padding: '4px 8px'
                                     }}
                                 >
-                                    ▴ 목록 접기
+                                    <Icon name="chevUp" size="1.1em" /> 목록 접기
                                 </button>
                             </div>
                         )}
@@ -1455,15 +1456,15 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                     padding: '12px 16px',
                     background: 'var(--bg-card-subtle)',
                     border: '1px dashed var(--border-subtle)',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-md)',
                     textAlign: 'center',
-                    color: '#64748b',
+                    color: 'var(--brand)',
                     fontSize: '13px',
                     cursor: 'pointer',
                     marginTop: '8px'
                 }}
             >
-                🔍 품목별 견적 단가 조회 및 비교 섹션이 접혀 있습니다. (총 {filteredResults.length}건 검색됨, 클릭하여 펼치기 ▾)
+                <Icon name="search" size="1.1em" /> 품목별 견적 단가 조회 및 비교 섹션이 접혀 있습니다. (총 {filteredResults.length}건 검색됨, 클릭하여 펼치기 <Icon name="chevDown" size="1.1em" /> )
             </div>
         )}
     </section>
@@ -1479,19 +1480,19 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                 type="button"
                                 onClick={() => toggleSection('projectSummary')}
                                 style={{
-                                    background: collapsedSections.projectSummary ? '#3b82f6' : 'var(--bg-card-subtle)',
-                                    color: collapsedSections.projectSummary ? '#fff' : '#475569',
+                                    background: collapsedSections.projectSummary ? 'var(--brand)' : 'var(--bg-card-subtle)',
+                                    color: collapsedSections.projectSummary ? 'var(--on-brand)' : 'var(--brand)',
                                     border: '1px solid var(--border-subtle)',
-                                    borderRadius: '4px',
+                                    borderRadius: 'var(--radius-md)',
                                     padding: '2px 8px',
                                     fontSize: '11px',
                                     cursor: 'pointer'
                                 }}
                             >
-                                {collapsedSections.projectSummary ? '▸ 펼치기' : '▾ 접기'}
+                                {collapsedSections.projectSummary ? '펼치기' : '접기'}
                             </button>
                         </div>
-                        <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 'normal' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--brand)', fontWeight: 'normal' }}>
                             ※품목별 견적단가를 확인하기 위한 단순 합산 집계로 최종 견적 금액과 총 금액의 차이가 있을 수 있습니다.
                         </span>
                     </div>
@@ -1505,12 +1506,12 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                     fontSize: '12px',
                                     background: 'var(--bg-card-subtle)',
                                     border: '1px solid var(--border-subtle)',
-                                    borderRadius: '6px',
+                                    borderRadius: 'var(--radius-md)',
                                     cursor: 'pointer',
                                     color: 'var(--text-primary)'
                                 }}
                             >
-                                ▾ 모든 프로젝트 펼치기
+                                <Icon name="chevDown" size="1.1em" /> 모든 프로젝트 펼치기
                             </button>
                             <button
                                 type="button"
@@ -1520,12 +1521,12 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                     fontSize: '12px',
                                     background: 'var(--bg-card-subtle)',
                                     border: '1px solid var(--border-subtle)',
-                                    borderRadius: '6px',
+                                    borderRadius: 'var(--radius-md)',
                                     cursor: 'pointer',
                                     color: 'var(--text-primary)'
                                 }}
                             >
-                                ▴ 모든 프로젝트 접기
+                                <Icon name="chevUp" size="1.1em" /> 모든 프로젝트 접기
                             </button>
                         </div>
                     )}
@@ -1547,25 +1548,25 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                                 style={{
                                                     padding: '2px 8px',
                                                     fontSize: '11px',
-                                                    color: 'white',
-                                                    background: canManage ? '#ef4444' : '#9ca3af',
+                                                    color: 'var(--on-brand)',
+                                                    background: canManage ? 'var(--bad)' : 'var(--ink-4)',
                                                     border: 'none',
-                                                    borderRadius: '4px',
+                                                    borderRadius: 'var(--radius-md)',
                                                     cursor: 'pointer'
                                                 }}
                                                 title={!canManage ? "삭제 권한이 없습니다 (클릭 시 권한 안내)" : ""}
                                             >
-                                                전체 삭제 {!canManage && "🔒"}
+                                                전체 삭제 {!canManage && ""}
                                             </button>
                                         </h3>
                                         <div className="pa-summary">
                                             <span className="pa-badge other">견적 {group.quotations.length}건</span>
-                                            <span className="pa-badge process">🧾 부품 {group.part_count}개</span>
-                                            <span className="pa-badge purchase">📋 견적 항목 {group.line_count}개</span>
+                                            <span className="pa-badge process"><Icon name="receipt" size="1.1em" /> 부품 {group.part_count}개</span>
+                                            <span className="pa-badge purchase"><Icon name="list" size="1.1em" /> 견적 항목 {group.line_count}개</span>
                                             {group.latest_date && <span className="pa-badge other">최근 견적일 {group.latest_date}</span>}
                                         </div>
                                     </div>
-                                    <div className="pa-total" title="같은 견적번호는 최신 리비전 총액만 합산">총 ₩ {fmtKRW(group.total_amount)} <span>{expandedProjects[group.name] ? '▴' : '▾'}</span></div>
+                                    <div className="pa-total" title="같은 견적번호는 최신 리비전 총액만 합산">총 ₩ {fmtKRW(group.total_amount)} <span>{expandedProjects[group.name] ? '' : ''}</span></div>
                                 </div>
                                 
                                 {expandedProjects[group.name] && (
@@ -1577,9 +1578,9 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                             // 견적 항목 → 상세 리스트 종류별(형교환 상세 / 개조 상세 …)로 묶어서 보여준다
                                             const itemGroups = [];
                                             const lineItems = itemsInQuotation.filter(i => i.source === 'quotation');
-                                            if (lineItems.length) itemGroups.push({ key: 'lines', label: '📋 견적 항목 (SET · 인건비 · 경비)', items: lineItems });
+                                            if (lineItems.length) itemGroups.push({ key: 'lines', label: '견적 항목 (SET · 인건비 · 경비)', items: lineItems });
                                             itemsInQuotation.filter(i => i.source !== 'quotation').forEach(i => {
-                                                const label = `🧾 ${i.section || '부품 상세'}`;
+                                                const label = `${i.section || '부품 상세'}`;
                                                 let g = itemGroups.find(x => x.label === label);
                                                 if (!g) { g = { key: label, label, items: [] }; itemGroups.push(g); }
                                                 g.items.push(i);
@@ -1588,12 +1589,12 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                                 <div key={quotation.id} className="pa-quotation">
                                                     <h4 className="pa-quotation-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                         <span>
-                                                            📄 {quotation.title}{' '}
+                                                            <Icon name="file" size="1.1em" /> {quotation.title}{' '}
                                                             <small>
                                                                 ({[quotation.quote_no, quotation.revision, quotation.quote_date ? `견적일 ${quotation.quote_date}` : null].filter(Boolean).join(' · ') || '견적번호 없음'} / 등록 {new Date(quotation.created_at).toLocaleDateString()})
                                                             </small>
                                                             {quotation.parse_summary && quotation.parse_summary.errors > 0 && (
-                                                                <span style={{ marginLeft: '6px', fontSize: '11px', color: '#dc2626' }}>⚠ 검증 오류 {quotation.parse_summary.errors}건</span>
+                                                                <span style={{ marginLeft: '6px', fontSize: '11px', color: 'var(--bad)' }}><Icon name="alert" size="1.1em" /> 검증 오류 {quotation.parse_summary.errors}건</span>
                                                             )}
                                                         </span>
                                                         <button 
@@ -1605,15 +1606,15 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                                             style={{
                                                                 padding: '2px 8px',
                                                                 fontSize: '11px',
-                                                                color: 'white',
-                                                                background: canManage ? '#ef4444' : '#9ca3af',
+                                                                color: 'var(--on-brand)',
+                                                                background: canManage ? 'var(--bad)' : 'var(--ink-4)',
                                                                 border: 'none',
-                                                                borderRadius: '4px',
+                                                                borderRadius: 'var(--radius-md)',
                                                                 cursor: 'pointer'
                                                             }}
                                                             title={!canManage ? "삭제 권한이 없습니다 (클릭 시 권한 안내)" : ""}
                                                         >
-                                                            삭제 {!canManage && "🔒"}
+                                                            삭제 {!canManage && ""}
                                                         </button>
                                                     </h4>
                                                     <div style={{ overflowX: 'auto' }}>
@@ -1648,7 +1649,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                                                                     <td>
                                                                                         {item.item_name}
                                                                                         {item.parent_item && <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>⤷ {item.parent_item}</div>}
-                                                                                        {item.check_status === 'mismatch' && <span style={{ color: '#dc2626', fontSize: '11px' }}> ⚠ 수량×단가≠금액</span>}
+                                                                                        {item.check_status === 'mismatch' && <span style={{ color: 'var(--bad)', fontSize: '11px' }}> <Icon name="alert" size="1.1em" /> 수량×단가≠금액</span>}
                                                                                     </td>
                                                                                     <td style={{ fontSize: '12px' }}>{[item.maker, item.spec].filter(Boolean).join(' · ') || '-'}</td>
                                                                                     <td>{item.quantity}{item.uom ? ` ${item.uom}` : ''}</td>
@@ -1671,7 +1672,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                             </div>
                         ))}
                         {Object.values(groupedQuotations).length === 0 && (
-                            <div style={{ padding: '2rem', textAlign: 'center', color: '#57606a', border: '1px solid #dce5ed', borderRadius: '8px' }}>
+                            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--ink-2)', border: '1px solid color-mix(in srgb, var(--brand) 40%, transparent)', borderRadius: 'var(--radius-md)' }}>
                                 아직 등록된 견적서가 없습니다.
                             </div>
                         )}
@@ -1683,15 +1684,15 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                             padding: '12px 16px',
                             background: 'var(--bg-card-subtle)',
                             border: '1px dashed var(--border-subtle)',
-                            borderRadius: '8px',
+                            borderRadius: 'var(--radius-md)',
                             textAlign: 'center',
-                            color: '#64748b',
+                            color: 'var(--brand)',
                             fontSize: '13px',
                             cursor: 'pointer',
                             marginTop: '12px'
                         }}
                     >
-                        📊 프로젝트별 견적 비용 집계 ({Object.keys(groupedQuotations).length}개 프로젝트)가 접혀 있습니다. (클릭하여 펼치기 ▾)
+                        <Icon name="barChart" size="1.1em" /> 프로젝트별 견적 비용 집계 ({Object.keys(groupedQuotations).length}개 프로젝트)가 접혀 있습니다. (클릭하여 펼치기 <Icon name="chevDown" size="1.1em" /> )
                     </div>
                 )}
             </section>

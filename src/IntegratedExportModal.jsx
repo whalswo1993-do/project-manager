@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Icon } from './icons';
 import { getConstructionPeriod } from './utils';
 
 /**
@@ -143,8 +144,8 @@ export default function IntegratedExportModal({
         width: '100vw',
         height: '100vh',
         zIndex: 99999,
-        background: 'rgba(15, 23, 42, 0.65)',
-        backdropFilter: 'blur(8px)',
+        background: 'color-mix(in srgb, var(--brand) 30%, transparent)',
+        backdropFilter: 'none',
         WebkitBackdropFilter: 'blur(8px)',
         display: 'flex',
         alignItems: 'center',
@@ -159,10 +160,10 @@ export default function IntegratedExportModal({
           width: '760px',
           maxWidth: '94vw',
           maxHeight: '90vh',
-          background: 'var(--bg-card, #ffffff)',
-          border: '1px solid var(--border-medium, #cbd5e1)',
-          borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+          background: 'var(--bg-card, var(--surface))',
+          border: '1px solid var(--border-medium, color-mix(in srgb, var(--brand) 40%, transparent))',
+          borderRadius: 'var(--radius-xl)',
+          boxShadow: 'none',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -173,8 +174,8 @@ export default function IntegratedExportModal({
         {/* 모달 헤더 */}
         <div style={{
           padding: '18px 24px',
-          background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-          color: '#ffffff',
+          background: 'var(--brand)',
+          color: 'var(--on-brand)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -182,12 +183,12 @@ export default function IntegratedExportModal({
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '20px' }}>📊</span>
+              <span style={{ fontSize: '20px' }}><Icon name="barChart" size="1.1em" /></span>
               <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#ffffff' }}>
                 {customer ? `[${customer}] 종합 일정 보고서 PPT 내보내기` : "종합 일정 보고서 PPT 내보내기"}
               </h2>
             </div>
-            <p style={{ margin: '4px 0 0 28px', fontSize: '12px', color: '#bfdbfe' }}>
+            <p style={{ margin: '4px 0 0 28px', fontSize: '12px', color: 'var(--brand)' }}>
               {customer ? `${customer} 프로젝트 전용 맞춤형 보고서` : '프로젝트 종합 보고서'} (Office 네이티브 표/도형 100% 직접 수정 가능)
             </p>
           </div>
@@ -196,13 +197,13 @@ export default function IntegratedExportModal({
             onClick={onClose}
             disabled={isExporting}
             style={{
-              background: 'rgba(255, 255, 255, 0.2)',
+              background: 'var(--surface)',
               border: 'none',
               color: '#ffffff',
               fontSize: '18px',
               width: '32px',
               height: '32px',
-              borderRadius: '8px',
+              borderRadius: 'var(--radius-md)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -210,7 +211,7 @@ export default function IntegratedExportModal({
               flexShrink: 0
             }}
           >
-            ✕
+            <Icon name="x" size="1.1em" />
           </button>
         </div>
 
@@ -238,18 +239,18 @@ export default function IntegratedExportModal({
               alignItems: 'center',
               gap: '6px'
             }}>
-              <span>🎯</span>
+              <span><Icon name="info" size="1.1em" /></span>
               <span>1. 일정 산출 기준 선택</span>
-              <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 500 }}>(필수)</span>
+              <span style={{ fontSize: '11px', color: 'var(--brand)', fontWeight: 500 }}>(필수)</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px', width: '100%', boxSizing: 'border-box' }}>
               <div
                 onClick={() => setMode('construction')}
                 style={{
-                  border: `2px solid ${mode === 'construction' ? '#2563eb' : 'var(--border-subtle, #e2e8f0)'}`,
-                  background: mode === 'construction' ? 'rgba(37, 99, 235, 0.05)' : 'var(--bg-card-subtle, #f8fafc)',
-                  borderRadius: '10px',
+                  border: `2px solid ${mode === 'construction' ? 'var(--brand)' : 'var(--border-subtle, color-mix(in srgb, var(--brand) 40%, transparent))'}`,
+                  background: mode === 'construction' ? 'color-mix(in srgb, var(--brand) 5%, transparent)' : 'var(--bg-card-subtle, var(--brand-wash))',
+                  borderRadius: 'var(--radius-lg)',
                   padding: '12px 14px',
                   cursor: 'pointer',
                   transition: 'all 0.15s',
@@ -265,8 +266,8 @@ export default function IntegratedExportModal({
                     onChange={() => setMode('construction')}
                     style={{ cursor: 'pointer', flexShrink: 0, width: '16px', height: '16px' }}
                   />
-                  <b style={{ fontSize: '13px', color: mode === 'construction' ? '#2563eb' : 'var(--text-primary)', whiteSpace: 'normal' }}>
-                    🏗️ 공사 일정 기준 (추천)
+                  <b style={{ fontSize: '13px', color: mode === 'construction' ? 'var(--brand)' : 'var(--text-primary)', whiteSpace: 'normal' }}>
+                    <Icon name="wrench" size="1.1em" /> 공사 일정 기준 (추천)
                   </b>
                 </div>
                 <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', paddingLeft: '24px', lineHeight: 1.4, wordBreak: 'keep-all' }}>
@@ -277,9 +278,9 @@ export default function IntegratedExportModal({
               <div
                 onClick={() => setMode('project')}
                 style={{
-                  border: `2px solid ${mode === 'project' ? '#2563eb' : 'var(--border-subtle, #e2e8f0)'}`,
-                  background: mode === 'project' ? 'rgba(37, 99, 235, 0.05)' : 'var(--bg-card-subtle, #f8fafc)',
-                  borderRadius: '10px',
+                  border: `2px solid ${mode === 'project' ? 'var(--brand)' : 'var(--border-subtle, color-mix(in srgb, var(--brand) 40%, transparent))'}`,
+                  background: mode === 'project' ? 'color-mix(in srgb, var(--brand) 5%, transparent)' : 'var(--bg-card-subtle, var(--brand-wash))',
+                  borderRadius: 'var(--radius-lg)',
                   padding: '12px 14px',
                   cursor: 'pointer',
                   transition: 'all 0.15s',
@@ -295,8 +296,8 @@ export default function IntegratedExportModal({
                     onChange={() => setMode('project')}
                     style={{ cursor: 'pointer', flexShrink: 0, width: '16px', height: '16px' }}
                   />
-                  <b style={{ fontSize: '13px', color: mode === 'project' ? '#2563eb' : 'var(--text-primary)', whiteSpace: 'normal' }}>
-                    📋 전체 프로젝트 일정 기준
+                  <b style={{ fontSize: '13px', color: mode === 'project' ? 'var(--brand)' : 'var(--text-primary)', whiteSpace: 'normal' }}>
+                    <Icon name="list" size="1.1em" /> 전체 프로젝트 일정 기준
                   </b>
                 </div>
                 <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)', paddingLeft: '24px', lineHeight: 1.4, wordBreak: 'keep-all' }}>
@@ -310,18 +311,18 @@ export default function IntegratedExportModal({
           <section style={{ width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
               <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span>📅</span>
+                <span><Icon name="calendar" size="1.1em" /></span>
                 <span>2. 보고서 대상 기간 설정</span>
               </div>
-              <span style={{ fontSize: '12px', color: '#2563eb', fontWeight: 600 }}>
+              <span style={{ fontSize: '12px', color: 'var(--brand)', fontWeight: 600 }}>
                 포함 대상: <b>{matchingProjectsCount}</b>건 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>(전체 {projects.length}건)</span>
               </span>
             </div>
 
             <div style={{
-              background: 'var(--bg-card-subtle, #f8fafc)',
-              border: '1px solid var(--border-subtle, #e2e8f0)',
-              borderRadius: '10px',
+              background: 'var(--bg-card-subtle, var(--brand-wash))',
+              border: '1px solid var(--border-subtle, color-mix(in srgb, var(--brand) 40%, transparent))',
+              borderRadius: 'var(--radius-lg)',
               padding: '12px 14px',
               boxSizing: 'border-box',
               width: '100%'
@@ -334,10 +335,10 @@ export default function IntegratedExportModal({
                   style={{
                     padding: '6px 10px',
                     fontSize: '12px',
-                    border: '1px solid var(--input-border, #cbd5e1)',
-                    borderRadius: '6px',
-                    background: 'var(--input-bg, #fff)',
-                    color: 'var(--input-text, #0f172a)'
+                    border: '1px solid var(--input-border, color-mix(in srgb, var(--brand) 40%, transparent))',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--input-bg, var(--surface))',
+                    color: 'var(--input-text, var(--brand))'
                   }}
                   title="조회 시작일"
                 />
@@ -349,10 +350,10 @@ export default function IntegratedExportModal({
                   style={{
                     padding: '6px 10px',
                     fontSize: '12px',
-                    border: '1px solid var(--input-border, #cbd5e1)',
-                    borderRadius: '6px',
-                    background: 'var(--input-bg, #fff)',
-                    color: 'var(--input-text, #0f172a)'
+                    border: '1px solid var(--input-border, color-mix(in srgb, var(--brand) 40%, transparent))',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--input-bg, var(--surface))',
+                    color: 'var(--input-text, var(--brand))'
                   }}
                   title="조회 종료일"
                 />
@@ -361,42 +362,42 @@ export default function IntegratedExportModal({
                   <button
                     type="button"
                     onClick={() => handleQuickRange('thisMonth')}
-                    style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--bg-card, #fff)', border: '1px solid var(--border-medium, #cbd5e1)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                    style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--bg-card, var(--surface))', border: '1px solid var(--border-medium, color-mix(in srgb, var(--brand) 40%, transparent))', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}
                   >
                     이번 달
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickRange('nextMonth')}
-                    style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--bg-card, #fff)', border: '1px solid var(--border-medium, #cbd5e1)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                    style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--bg-card, var(--surface))', border: '1px solid var(--border-medium, color-mix(in srgb, var(--brand) 40%, transparent))', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}
                   >
                     다음 달
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickRange('thisQuarter')}
-                    style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--bg-card, #fff)', border: '1px solid var(--border-medium, #cbd5e1)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                    style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--bg-card, var(--surface))', border: '1px solid var(--border-medium, color-mix(in srgb, var(--brand) 40%, transparent))', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}
                   >
                     이번 분기
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickRange('thisYear')}
-                    style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--bg-card, #fff)', border: '1px solid var(--border-medium, #cbd5e1)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                    style={{ padding: '4px 8px', fontSize: '11px', background: 'var(--bg-card, var(--surface))', border: '1px solid var(--border-medium, color-mix(in srgb, var(--brand) 40%, transparent))', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-secondary)' }}
                   >
                     올해 전체
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickRange('all')}
-                    style={{ padding: '4px 8px', fontSize: '11px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '4px', cursor: 'pointer', fontWeight: 700 }}
+                    style={{ padding: '4px 8px', fontSize: '11px', background: 'color-mix(in srgb, var(--bad) 10%, transparent)', color: 'var(--bad)', border: '1px solid color-mix(in srgb, var(--bad) 25%, transparent)', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 700 }}
                   >
                     전체 기간
                   </button>
                 </div>
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                💡 설정하신 기간과 겹치거나 진행 중인 프로젝트만 추출하여 종합 보고서를 작성합니다. (미설정 시 전체 대상)
+                <Icon name="info" size="1.1em" /> 설정하신 기간과 겹치거나 진행 중인 프로젝트만 추출하여 종합 보고서를 작성합니다. (미설정 시 전체 대상)
               </div>
             </div>
           </section>
@@ -404,7 +405,7 @@ export default function IntegratedExportModal({
           {/* 3. 포함할 슬라이드 구성 선택 (잘림 없이 선명하게 표시) */}
           <section style={{ width: '100%', boxSizing: 'border-box' }}>
             <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>📑</span>
+              <span><Icon name="file" size="1.1em" /></span>
               <span>3. 포함할 보고서 슬라이드 선택</span>
             </div>
 
@@ -412,9 +413,9 @@ export default function IntegratedExportModal({
               display: 'flex',
               flexDirection: 'column',
               gap: '8px',
-              background: 'var(--bg-card-subtle, #f8fafc)',
-              border: '1px solid var(--border-subtle, #e2e8f0)',
-              borderRadius: '10px',
+              background: 'var(--bg-card-subtle, var(--brand-wash))',
+              border: '1px solid var(--border-subtle, color-mix(in srgb, var(--brand) 40%, transparent))',
+              borderRadius: 'var(--radius-lg)',
               padding: '12px 14px',
               width: '100%',
               boxSizing: 'border-box'
@@ -433,10 +434,10 @@ export default function IntegratedExportModal({
                     alignItems: 'center',
                     gap: '12px',
                     padding: '10px 12px',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-md)',
                     cursor: 'pointer',
-                    background: slides[item.id] ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card, #ffffff)',
-                    border: `1px solid ${slides[item.id] ? 'rgba(37, 99, 235, 0.3)' : 'var(--border-subtle, #e2e8f0)'}`,
+                    background: slides[item.id] ? 'color-mix(in srgb, var(--brand) 8%, transparent)' : 'var(--bg-card, var(--surface))',
+                    border: `1px solid ${slides[item.id] ? 'color-mix(in srgb, var(--brand) 30%, transparent)' : 'var(--border-subtle, color-mix(in srgb, var(--brand) 40%, transparent))'}`,
                     transition: 'all 0.15s',
                     width: '100%',
                     boxSizing: 'border-box'
@@ -455,7 +456,7 @@ export default function IntegratedExportModal({
                     }}
                   />
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: slides[item.id] ? '#1d4ed8' : 'var(--text-primary)' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: slides[item.id] ? 'var(--brand)' : 'var(--text-primary)' }}>
                       {item.title}
                     </div>
                     <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
@@ -469,19 +470,19 @@ export default function IntegratedExportModal({
 
           {/* 안내 박스 */}
           <div style={{
-            background: 'rgba(16, 185, 129, 0.08)',
-            border: '1px solid rgba(16, 185, 129, 0.25)',
-            borderRadius: '8px',
+            background: 'color-mix(in srgb, var(--ok) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--ok) 25%, transparent)',
+            borderRadius: 'var(--radius-md)',
             padding: '10px 14px',
             fontSize: '11.5px',
-            color: '#065f46',
+            color: 'var(--ok)',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
             width: '100%',
             boxSizing: 'border-box'
           }}>
-            <span style={{ fontSize: '16px', flexShrink: 0 }}>✨</span>
+            <span style={{ fontSize: '16px', flexShrink: 0 }}></span>
             <div style={{ lineHeight: 1.4, wordBreak: 'keep-all' }}>
               <b>100% Native Office 객체:</b> 이미지 캡쳐 없이 PowerPoint 기본 표와 도형으로 생성되어 텍스트, 수치, 서식을 자유롭게 직접 수정할 수 있습니다.
             </div>
@@ -489,16 +490,16 @@ export default function IntegratedExportModal({
 
           {exportError && (
             <div style={{
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-              color: '#dc2626',
-              borderRadius: '8px',
+              background: 'color-mix(in srgb, var(--bad) 10%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--bad) 30%, transparent)',
+              color: 'var(--bad)',
+              borderRadius: 'var(--radius-md)',
               padding: '10px 14px',
               fontSize: '12px',
               width: '100%',
               boxSizing: 'border-box'
             }}>
-              ⚠️ {exportError}
+              <Icon name="alert" size="1.1em" /> {exportError}
             </div>
           )}
 
@@ -507,8 +508,8 @@ export default function IntegratedExportModal({
         {/* 모달 풋터 */}
         <div style={{
           padding: '14px 24px',
-          background: 'var(--bg-card-subtle, #f8fafc)',
-          borderTop: '1px solid var(--border-subtle, #e2e8f0)',
+          background: 'var(--bg-card-subtle, var(--brand-wash))',
+          borderTop: '1px solid var(--border-subtle, color-mix(in srgb, var(--brand) 40%, transparent))',
           display: 'flex',
           justifyContent: 'flex-end',
           alignItems: 'center',
@@ -522,10 +523,10 @@ export default function IntegratedExportModal({
             style={{
               padding: '8px 16px',
               fontSize: '13px',
-              border: '1px solid var(--border-medium, #cbd5e1)',
-              borderRadius: '8px',
-              background: 'var(--bg-card, #fff)',
-              color: 'var(--text-secondary, #475569)',
+              border: '1px solid var(--border-medium, color-mix(in srgb, var(--brand) 40%, transparent))',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--bg-card, var(--surface))',
+              color: 'var(--text-secondary, var(--brand))',
               cursor: 'pointer',
               fontWeight: 600
             }}
@@ -540,26 +541,26 @@ export default function IntegratedExportModal({
             style={{
               padding: '8px 22px',
               fontSize: '13px',
-              borderRadius: '8px',
-              background: isExporting ? '#93c5fd' : '#2563eb',
-              color: '#ffffff',
+              borderRadius: 'var(--radius-md)',
+              background: isExporting ? 'var(--brand)' : 'var(--brand)',
+              color: 'var(--on-brand)',
               border: 'none',
               cursor: isExporting ? 'not-allowed' : 'pointer',
               fontWeight: 700,
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)'
+              boxShadow: 'none'
             }}
           >
             {isExporting ? (
               <>
-                <span className="spinner" style={{ width: '14px', height: '14px', border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
+                <span className="spinner" style={{ width: '14px', height: '14px', border: '2px solid var(--line-2)', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
                 <span>보고서 생성 중...</span>
               </>
             ) : (
               <>
-                <span>📥</span>
+                <span><Icon name="download" size="1.1em" /></span>
                 <span>종합 PPT 보고서 다운로드 (.pptx)</span>
               </>
             )}

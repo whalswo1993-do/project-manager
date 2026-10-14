@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
+import { Icon } from './icons';
 import ExcelJS from 'exceljs';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarController, LineController, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
@@ -476,12 +477,12 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                             padding: '8px 14px',
                             height: '56px',
                             background: 'var(--bg-card)',
-                            border: '1.5px solid #10b981',
-                            borderRadius: '12px',
+                            border: '1.5px solid var(--ok)',
+                            borderRadius: 'var(--radius-lg)',
                             color: 'var(--text-primary)',
                             textDecoration: 'none',
                             cursor: 'pointer',
-                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)',
+                            boxShadow: 'none',
                             boxSizing: 'border-box',
                             transition: 'all 0.2s ease',
                             flexShrink: 0
@@ -503,23 +504,23 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                         <div style={{
                             width: '36px',
                             height: '36px',
-                            borderRadius: '8px',
-                            background: 'linear-gradient(135deg, #10b981, #059669)',
-                            color: '#fff',
+                            borderRadius: 'var(--radius-md)',
+                            background: 'var(--ok)',
+                            color: 'var(--on-brand)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '18px',
-                            boxShadow: '0 2px 4px rgba(5, 150, 105, 0.3)'
+                            boxShadow: 'none'
                         }}>
-                            📥
+                            <Icon name="download" size="1.1em" />
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <b style={{ fontSize: '13px', color: 'var(--text-primary)' }}>Vision SPC 양식</b>
-                                <span style={{ fontSize: '10px', fontWeight: 'bold', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '1px 5px', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>Excel</span>
+                                <span style={{ fontSize: '10px', fontWeight: 'bold', background: 'color-mix(in srgb, var(--ok) 15%, transparent)', color: 'var(--ok)', padding: '1px 5px', borderRadius: 'var(--radius-md)', border: '1px solid color-mix(in srgb, var(--ok) 30%, transparent)' }}>Excel</span>
                             </div>
-                            <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '600', marginTop: '2px' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--ok)', fontWeight: '600', marginTop: '2px' }}>
                                 양식 다운로드 받기 ⇩
                             </span>
                         </div>
@@ -634,7 +635,7 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                                         <option key={k} value={`custom_${k}`}>{k}</option>
                                     ))}
                                 </select>
-                                {presetSelect && <button onClick={handleDeletePreset} style={{background:'var(--danger)', color:'#fff', border:'none', borderRadius:'4px', padding:'4px 8px', cursor:'pointer', marginLeft:'4px'}}>삭제</button>}
+                                {presetSelect && <button onClick={handleDeletePreset} style={{background:'var(--danger)', color:'#fff', border:'none', borderRadius:'var(--radius-md)', padding:'4px 8px', cursor:'pointer', marginLeft:'4px'}}>삭제</button>}
                             </div>
                         </div>
                         <div style={{display:'flex', gap:'0.5rem'}}>
@@ -642,8 +643,8 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
                             <button className="btn" onClick={handleExportPresetsJSON}>내보내기</button>
                             {items.length > 0 && (
                                 <>
-                                    <button className="btn" style={{background: '#24292f', color: '#fff', border: 'none'}} onClick={() => window.print()}>🖨️ 인쇄 / PDF 저장</button>
-                                    <button className="excel-export-btn" onClick={() => exportResultsToExcelWithExcelJS(items, parseFloat(targetCp))}>📊 Excel 리포트 출력</button>
+                                    <button className="btn" style={{background: 'var(--ink-2)', color: '#fff', border: 'none'}} onClick={() => window.print()}> 인쇄 / PDF 저장</button>
+                                    <button className="excel-export-btn" onClick={() => exportResultsToExcelWithExcelJS(items, parseFloat(targetCp))}><Icon name="barChart" size="1.1em" /> Excel 리포트 출력</button>
                                 </>
                             )}
                         </div>
@@ -651,7 +652,7 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
 
                     {!activeItem ? (
                         <div className="welcome-screen">
-                            <div className="welcome-icon">⚡</div>
+                            <div className="welcome-icon"><Icon name="refresh" size="1.1em" /></div>
                             <h2>Vision SPC 분석기</h2>
                             <p>설비 비전 검사 데이터 기반 공정능력(Cp/Cpk) 통계 및 분석을 오프라인에서 실시간으로 지원합니다.</p>
                             <div className="welcome-steps">

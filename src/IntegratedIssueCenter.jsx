@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Icon } from './icons';
 import './IntegratedIssueCenter.css';
 import {
   getLocalIssues,
@@ -261,7 +262,7 @@ export default function IntegratedIssueCenter({
         query: searchQuery.trim() || '없음'
       };
       await exportIssuesExcelReport(filteredIssues, filterInfo);
-      showNotice('📊 시인성 높은 엑셀 보고서가 다운로드되었습니다.');
+      showNotice('시인성 높은 엑셀 보고서가 다운로드되었습니다.');
     } catch (e) {
       console.error('Excel export error:', e);
       alert('엑셀 다운로드 중 오류가 발생했습니다: ' + e.message);
@@ -275,7 +276,7 @@ export default function IntegratedIssueCenter({
         <div className="system-header-row">
           <div className="system-title-group">
             <div className="system-logo-icon theme-issues">
-              🚨
+              
             </div>
             <div className="system-title-text">
               <h2>
@@ -292,10 +293,10 @@ export default function IntegratedIssueCenter({
               type="button"
               className="iic-btn iic-btn-excel-prominent"
               onClick={handleExportExcel}
-              style={{ padding: '7px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: 800, whiteSpace: 'nowrap' }}
+              style={{ padding: '7px 16px', borderRadius: 'var(--radius-lg)', fontSize: '13px', fontWeight: 800, whiteSpace: 'nowrap' }}
               title="현재 필터링된 이슈 목록 및 상세 조치 이력을 고품질 서식 엑셀 보고서로 다운로드합니다"
             >
-              📊 엑셀 보고서 다운로드
+              <Icon name="barChart" size="1.1em" /> 엑셀 보고서 다운로드
             </button>
             <button
               type="button"
@@ -308,10 +309,10 @@ export default function IntegratedIssueCenter({
                 }
                 openCreateModal();
               }}
-              style={{ padding: '7px 16px', borderRadius: '10px', fontSize: '13px', fontWeight: 800, whiteSpace: 'nowrap' }}
+              style={{ padding: '7px 16px', borderRadius: 'var(--radius-lg)', fontSize: '13px', fontWeight: 800, whiteSpace: 'nowrap' }}
               title={canEdit ? "신규 이슈를 등록합니다" : "Grade 2 이상 권한이 필요합니다"}
             >
-              ➕ 새 이슈 등록 {!canEdit && "🔒"}
+              <Icon name="plus" size="1.1em" /> 새 이슈 등록 {!canEdit && ""}
             </button>
           </div>
         </div>
@@ -329,7 +330,7 @@ export default function IntegratedIssueCenter({
 
         <div className="iic-kpi-card kpi-stacking">
           <div className="iic-kpi-label">
-            <span className="badge-proc stacking">🟦 스태킹 (Stacking)</span>
+            <span className="badge-proc stacking"> 스태킹 (Stacking)</span>
           </div>
           <div className="iic-kpi-value">{stats.stackingTotal}<span>건</span></div>
           <div className="iic-kpi-sub">
@@ -339,7 +340,7 @@ export default function IntegratedIssueCenter({
 
         <div className="iic-kpi-card kpi-notching">
           <div className="iic-kpi-label">
-            <span className="badge-proc notching">🟧 노칭 (Notching)</span>
+            <span className="badge-proc notching"> 노칭 (Notching)</span>
           </div>
           <div className="iic-kpi-value">{stats.notchingTotal}<span>건</span></div>
           <div className="iic-kpi-sub">
@@ -350,9 +351,9 @@ export default function IntegratedIssueCenter({
         <div className="iic-kpi-card">
           <div className="iic-kpi-label">분류별 현황</div>
           <div className="iic-kpi-value split-val">
-            <span title="사이트(양산/법인) 이슈">🏭 사이트 {stats.siteIssues}</span>
+            <span title="사이트(양산/법인) 이슈"><Icon name="building" size="1.1em" /> 사이트 {stats.siteIssues}</span>
             <span className="sep">/</span>
-            <span title="프로젝트 이슈">📂 PJT {stats.projectIssues}</span>
+            <span title="프로젝트 이슈"><Icon name="folder" size="1.1em" /> PJT {stats.projectIssues}</span>
           </div>
           <div className="iic-kpi-sub">
             전체 조치 완료율 <b className="rate-text">{stats.resolvedRate}%</b>
@@ -370,21 +371,21 @@ export default function IntegratedIssueCenter({
               className={`iic-view-tab ${viewMode === 'all' ? 'active' : ''}`}
               onClick={() => setViewMode('all')}
             >
-              🌐 전체 통합 보기
+              <Icon name="globe" size="1.1em" /> 전체 통합 보기
             </button>
             <button
               type="button"
               className={`iic-view-tab ${viewMode === 'site' ? 'active' : ''}`}
               onClick={() => setViewMode('site')}
             >
-              🏭 사이트별 이슈 (양산/법인)
+              <Icon name="building" size="1.1em" /> 사이트별 이슈 (양산/법인)
             </button>
             <button
               type="button"
               className={`iic-view-tab ${viewMode === 'project' ? 'active' : ''}`}
               onClick={() => setViewMode('project')}
             >
-              📂 프로젝트별 이슈
+              <Icon name="folder" size="1.1em" /> 프로젝트별 이슈
             </button>
             <button
               type="button"
@@ -392,7 +393,7 @@ export default function IntegratedIssueCenter({
               onClick={() => setViewMode('knowledge')}
               title="과거 동일/유사 문제 해결 사례 및 재발방지 가이드 검색"
             >
-              💡 재발 방지 지식베이스 ({stats.resolved}건)
+              <Icon name="info" size="1.1em" /> 재발 방지 지식베이스 ({stats.resolved}건)
             </button>
           </div>
 
@@ -404,7 +405,7 @@ export default function IntegratedIssueCenter({
               onClick={handleExportExcel}
               title="현재 필터링된 이슈 목록 및 상세 조치 이력을 고품질 서식 엑셀 보고서로 다운로드합니다"
             >
-              📊 엑셀 보고서 다운로드
+              <Icon name="barChart" size="1.1em" /> 엑셀 보고서 다운로드
             </button>
             <button
               type="button"
@@ -418,7 +419,7 @@ export default function IntegratedIssueCenter({
                 openCreateModal();
               }}
             >
-              ➕ 신규 이슈 등록
+              <Icon name="plus" size="1.1em" /> 신규 이슈 등록
             </button>
           </div>
         </div>
@@ -427,14 +428,14 @@ export default function IntegratedIssueCenter({
         <div className="iic-filter-row">
           {/* 1. 전체 SITE 드롭다운 ([Site 관리]에 등록된 SITE만 표시) */}
           <div className="iic-filter-group site-dropdown-group">
-            <span className="filter-label">🏢 전체 SITE:</span>
+            <span className="filter-label"><Icon name="building" size="1.1em" /> 전체 SITE:</span>
             <select
               className="iic-select site-select-prominent"
               value={selectedSiteFilter}
               onChange={(e) => setSelectedSiteFilter(e.target.value)}
               title="등록된 전체 SITE를 선택하여 해당 사이트의 이슈만 필터링합니다"
             >
-              <option value="all">🌐 전체 사이트 ({availableSites.length}개소)</option>
+              <option value="all"><Icon name="globe" size="1.1em" /> 전체 사이트 ({availableSites.length}개소)</option>
               {availableSites.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -446,7 +447,7 @@ export default function IntegratedIssueCenter({
                 onClick={() => setSelectedSiteFilter('all')}
                 title="사이트 필터 초기화"
               >
-                ✕ 해제
+                <Icon name="x" size="1.1em" /> 해제
               </button>
             )}
           </div>
@@ -466,14 +467,14 @@ export default function IntegratedIssueCenter({
               className={`proc-pill pill-stacking ${selectedProcess === 'stacking' ? 'active' : ''}`}
               onClick={() => setSelectedProcess('stacking')}
             >
-              🟦 스태킹 ({stats.stackingTotal})
+               스태킹 ({stats.stackingTotal})
             </button>
             <button
               type="button"
               className={`proc-pill pill-notching ${selectedProcess === 'notching' ? 'active' : ''}`}
               onClick={() => setSelectedProcess('notching')}
             >
-              🟧 노칭 ({stats.notchingTotal})
+               노칭 ({stats.notchingTotal})
             </button>
           </div>
 
@@ -487,16 +488,16 @@ export default function IntegratedIssueCenter({
                 onChange={(e) => setSelectedStatus(e.target.value)}
               >
                 <option value="all">전체 상태</option>
-                <option value="open">🔴 발생/접수</option>
-                <option value="in_progress">🟡 조치 진행중</option>
-                <option value="resolved">🟢 조치 완료</option>
+                <option value="open"><span style={{ display: 'inline-block', width: '0.6em', height: '0.6em', borderRadius: '50%', background: 'var(--bad)', marginRight: '0.4em', verticalAlign: 'baseline' }} /> 발생/접수</option>
+                <option value="in_progress"><span style={{ display: 'inline-block', width: '0.6em', height: '0.6em', borderRadius: '50%', background: 'var(--warn)', marginRight: '0.4em', verticalAlign: 'baseline' }} /> 조치 진행중</option>
+                <option value="resolved"><span style={{ display: 'inline-block', width: '0.6em', height: '0.6em', borderRadius: '50%', background: 'var(--ok)', marginRight: '0.4em', verticalAlign: 'baseline' }} /> 조치 완료</option>
               </select>
             </div>
           )}
 
           {/* 4. 검색 입력창 */}
           <div className="iic-search-box">
-            <span className="search-icon">🔍</span>
+            <span className="search-icon"><Icon name="search" size="1.1em" /></span>
             <input
               type="text"
               placeholder={viewMode === 'knowledge' ? "유사 증상, 원인, 조치 부품 검색 (예: 진공, 커터, 텐션, 센서)..." : "이슈명, 증상, 원인, 조치내용, 조치자 검색..."}
@@ -509,7 +510,7 @@ export default function IntegratedIssueCenter({
                 className="search-clear-btn"
                 onClick={() => setSearchQuery('')}
               >
-                ✕
+                <Icon name="x" size="1.1em" />
               </button>
             )}
           </div>
@@ -520,7 +521,7 @@ export default function IntegratedIssueCenter({
       <div className="iic-content-area">
         {filteredIssues.length === 0 ? (
           <div className="iic-empty-state">
-            <div className="empty-icon">📂</div>
+            <div className="empty-icon"><Icon name="folder" size="1.1em" /></div>
             <h4>조회된 이슈 내역이 없습니다</h4>
             <p>
               {searchQuery || selectedProcess !== 'all' || selectedStatus !== 'all' || selectedSiteFilter !== 'all'
@@ -553,25 +554,25 @@ export default function IntegratedIssueCenter({
                 <div className="card-top-bar">
                   <div className="card-tags">
                     <span className={`tag-type ${issue.issueType}`}>
-                      {issue.issueType === 'site' ? '🏭 사이트(양산)' : '📂 프로젝트'}
+                      {issue.issueType === 'site' ? '사이트(양산)' : '프로젝트'}
                     </span>
                     <span className={`tag-proc ${issue.processType}`}>
-                      {issue.processType === 'stacking' ? '🟦 스태킹' : issue.processType === 'notching' ? '🟧 노칭' : '⚙️ 공통'}
+                      {issue.processType === 'stacking' ? '스태킹' : issue.processType === 'notching' ? '노칭' : '공통'}
                     </span>
                     {issue.severity && (
                       <span className={`tag-severity ${issue.severity}`}>
-                        {issue.severity === 'critical' ? '🚨 긴급' : issue.severity === 'high' ? '⚠️ 높음' : '보통'}
+                        {issue.severity === 'critical' ? '긴급' : issue.severity === 'high' ? '높음' : '보통'}
                       </span>
                     )}
                   </div>
 
                   <div className="card-status-badge">
                     {issue.status === 'resolved' ? (
-                      <span className="badge-status resolved">🟢 조치완료</span>
+                      <span className="badge-status resolved"><span style={{ display: 'inline-block', width: '0.6em', height: '0.6em', borderRadius: '50%', background: 'var(--ok)', marginRight: '0.4em', verticalAlign: 'baseline' }} /> 조치완료</span>
                     ) : issue.status === 'in_progress' ? (
-                      <span className="badge-status in-progress">🟡 조치 진행중</span>
+                      <span className="badge-status in-progress"><span style={{ display: 'inline-block', width: '0.6em', height: '0.6em', borderRadius: '50%', background: 'var(--warn)', marginRight: '0.4em', verticalAlign: 'baseline' }} /> 조치 진행중</span>
                     ) : (
-                      <span className="badge-status open">🔴 접수/발생</span>
+                      <span className="badge-status open"><span style={{ display: 'inline-block', width: '0.6em', height: '0.6em', borderRadius: '50%', background: 'var(--bad)', marginRight: '0.4em', verticalAlign: 'baseline' }} /> 접수/발생</span>
                     )}
                   </div>
                 </div>
@@ -583,17 +584,17 @@ export default function IntegratedIssueCenter({
                   </h4>
 
                   <div className="card-meta">
-                    <span className="meta-site">📍 SITE: <b className="highlight-site">{normalizeJVName(issue.siteName || '')}</b></span>
+                    <span className="meta-site"> SITE: <b className="highlight-site">{normalizeJVName(issue.siteName || '')}</b></span>
                     {issue.projectName && issue.projectName !== '양산 라인 (Mass Production)' && (
-                      <span className="meta-proj">📂 {normalizeJVName(issue.projectName)}</span>
+                      <span className="meta-proj"><Icon name="folder" size="1.1em" /> {normalizeJVName(issue.projectName)}</span>
                     )}
-                    {issue.lineName && <span className="meta-line">⚙️ {issue.lineName}</span>}
-                    <span className="meta-date">📅 발생: {issue.occurredDate}</span>
+                    {issue.lineName && <span className="meta-line"><Icon name="settings" size="1.1em" /> {issue.lineName}</span>}
+                    <span className="meta-date"><Icon name="calendar" size="1.1em" /> 발생: {issue.occurredDate}</span>
                   </div>
 
                   {/* 증상 요약 */}
                   <div className="card-section symptom-section">
-                    <div className="section-title">🚨 현상 / 증상</div>
+                    <div className="section-title"> 현상 / 증상</div>
                     <div className="section-text">{issue.symptom || '기재된 상세 증상 없음'}</div>
                   </div>
 
@@ -601,7 +602,7 @@ export default function IntegratedIssueCenter({
                   {issue.status === 'resolved' ? (
                     <div className="card-section resolved-summary-section">
                       <div className="resolved-summary-header">
-                        <span>✅ <b>대응 완료 내용</b> ({issue.resolver ? `${issue.resolver} · ` : ''}{issue.resolvedDate || '완료'})</span>
+                        <span><Icon name="check" size="1.1em" /> <b>대응 완료 내용</b> ({issue.resolver ? `${issue.resolver} · ` : ''}{issue.resolvedDate || '완료'})</span>
                       </div>
                       {issue.rootCause && (
                         <div className="summary-line">
@@ -632,9 +633,9 @@ export default function IntegratedIssueCenter({
                 <div className="card-footer">
                   <div className="footer-assignee">
                     {issue.assignee ? (
-                      <span>👤 담당: <b>{issue.assignee}</b></span>
+                      <span><Icon name="user" size="1.1em" /> 담당: <b>{issue.assignee}</b></span>
                     ) : issue.reporter ? (
-                      <span>✍️ 등록: {issue.reporter}</span>
+                      <span> 등록: {issue.reporter}</span>
                     ) : (
                       <span>-</span>
                     )}
@@ -649,7 +650,7 @@ export default function IntegratedIssueCenter({
                         onClick={() => openResolveModal(issue)}
                         title="이슈 원인 분석 및 대응 완료 내용을 기재하고 완료 처리합니다"
                       >
-                        ⚡ 조치결과 기재
+                        <Icon name="refresh" size="1.1em" /> 조치결과 기재
                       </button>
                     )}
                     <button
@@ -756,8 +757,8 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
     <div className="iic-modal-overlay" onClick={onClose}>
       <div className="iic-modal-box" onClick={e => e.stopPropagation()}>
         <div className="iic-modal-header">
-          <h3>{form.id ? '✏️ 이슈 수정 및 갱신' : '➕ 신규 이슈 등록 (스태킹/노칭 · SITE/프로젝트)'}</h3>
-          <button type="button" className="close-btn" onClick={onClose}>✕</button>
+          <h3>{form.id ? '이슈 수정 및 갱신' : '신규 이슈 등록 (스태킹/노칭 · SITE/프로젝트)'}</h3>
+          <button type="button" className="close-btn" onClick={onClose}><Icon name="x" size="1.1em" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="iic-modal-form">
@@ -774,14 +775,14 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
                     if (!form.projectName) handleChange('projectName', '양산 라인 (Mass Production)');
                   }}
                 >
-                  🏭 사이트(양산/법인) 이슈
+                  <Icon name="building" size="1.1em" /> 사이트(양산/법인) 이슈
                 </button>
                 <button
                   type="button"
                   className={form.issueType === 'project' ? 'active' : ''}
                   onClick={() => handleChange('issueType', 'project')}
                 >
-                  📂 프로젝트 연계 이슈
+                  <Icon name="folder" size="1.1em" /> 프로젝트 연계 이슈
                 </button>
               </div>
             </div>
@@ -794,14 +795,14 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
                   className={`btn-stacking ${form.processType === 'stacking' ? 'active' : ''}`}
                   onClick={() => handleChange('processType', 'stacking')}
                 >
-                  🟦 스태킹 (Stacking)
+                   스태킹 (Stacking)
                 </button>
                 <button
                   type="button"
                   className={`btn-notching ${form.processType === 'notching' ? 'active' : ''}`}
                   onClick={() => handleChange('processType', 'notching')}
                 >
-                  🟧 노칭 (Notching)
+                   노칭 (Notching)
                 </button>
               </div>
             </div>
@@ -900,8 +901,8 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
                 value={form.severity}
                 onChange={e => handleChange('severity', e.target.value)}
               >
-                <option value="critical">🚨 긴급 (라인 정지 / 중대 품질 불량)</option>
-                <option value="high">⚠️ 높음 (반복 알람 / 수율 저하)</option>
+                <option value="critical"> 긴급 (라인 정지 / 중대 품질 불량)</option>
+                <option value="high"><Icon name="alert" size="1.1em" /> 높음 (반복 알람 / 수율 저하)</option>
                 <option value="medium">보통 (간헐적 발생 / 점검 요망)</option>
                 <option value="low">낮음 (단순 확인 / 경미)</option>
               </select>
@@ -955,7 +956,7 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
           {/* 🌟 조치 및 대응 이력 섹션 (완료 시 또는 진행 중 기재) */}
           <div className="form-collapsible-section">
             <div className="section-legend">
-              <span>🛠️ 대응 및 조치 이력 (완료 시 필수 기재)</span>
+              <span><Icon name="wrench" size="1.1em" /> 대응 및 조치 이력 (완료 시 필수 기재)</span>
               <div className="status-radio-group">
                 <label className={form.status === 'open' ? 'active' : ''}>
                   <input
@@ -1022,7 +1023,7 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
             </div>
 
             <div className="form-group">
-              <label>🌟 재발 방지 대책 (Preventive Action - 동일 이슈 방지)</label>
+              <label> 재발 방지 대책 (Preventive Action - 동일 이슈 방지)</label>
               <textarea
                 rows={2}
                 placeholder="향후 동일 문제 재발 방지를 위한 점검 주기 반영, 체크리스트 등록, 표준화 지침 등"
@@ -1093,16 +1094,16 @@ function IssueResolveModal({ issue, onSave, onClose }) {
       <div className="iic-modal-box modal-resolve-compact" onClick={e => e.stopPropagation()}>
         <div className="iic-modal-header resolve-header">
           <div>
-            <h3>⚡ 조치 결과 및 재발방지 기재</h3>
+            <h3><Icon name="refresh" size="1.1em" /> 조치 결과 및 재발방지 기재</h3>
             <p className="sub-title">[{issue.processType === 'stacking' ? '스태킹' : '노칭'}] {issue.title}</p>
           </div>
-          <button type="button" className="close-btn" onClick={onClose}>✕</button>
+          <button type="button" className="close-btn" onClick={onClose}><Icon name="x" size="1.1em" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="iic-modal-form">
           <div className="resolve-info-banner">
-            <div>📍 SITE: <b>{normalizeJVName(issue.siteName || '')}</b> {issue.lineName ? `(${issue.lineName})` : ''}</div>
-            <div>🚨 증상: {issue.symptom}</div>
+            <div> SITE: <b>{normalizeJVName(issue.siteName || '')}</b> {issue.lineName ? `(${issue.lineName})` : ''}</div>
+            <div> 증상: {issue.symptom}</div>
           </div>
 
           <div className="form-group">
@@ -1162,7 +1163,7 @@ function IssueResolveModal({ issue, onSave, onClose }) {
           <div className="iic-modal-actions">
             <button type="button" className="btn-cancel" onClick={onClose}>닫기</button>
             <button type="submit" className="btn-submit btn-resolve-complete">
-              🟢 조치 완료 및 지식베이스 반영
+              <span style={{ display: 'inline-block', width: '0.6em', height: '0.6em', borderRadius: '50%', background: 'var(--ok)', marginRight: '0.4em', verticalAlign: 'baseline' }} /> 조치 완료 및 지식베이스 반영
             </button>
           </div>
         </form>
@@ -1181,19 +1182,19 @@ function IssueDetailModal({ issue, onClose, onEdit, onResolve }) {
         <div className="iic-modal-header">
           <div className="detail-tags">
             <span className={`tag-proc ${issue.processType}`}>
-              {issue.processType === 'stacking' ? '🟦 스태킹' : '🟧 노칭'}
+              {issue.processType === 'stacking' ? '스태킹' : '노칭'}
             </span>
             <span className={`badge-status ${issue.status}`}>
-              {issue.status === 'resolved' ? '🟢 조치완료' : issue.status === 'in_progress' ? '🟡 조치중' : '🔴 접수'}
+              {issue.status === 'resolved' ? '조치완료' : issue.status === 'in_progress' ? '조치중' : '접수'}
             </span>
           </div>
-          <button type="button" className="close-btn" onClick={onClose}>✕</button>
+          <button type="button" className="close-btn" onClick={onClose}><Icon name="x" size="1.1em" /></button>
         </div>
 
         <div className="detail-content">
           <h2 className="detail-title">{issue.title}</h2>
           <div className="detail-meta-grid">
-            <div><span className="lbl">구분:</span> {issue.issueType === 'site' ? '🏭 사이트(양산)' : '📂 프로젝트'}</div>
+            <div><span className="lbl">구분:</span> {issue.issueType === 'site' ? '사이트(양산)' : '프로젝트'}</div>
             <div><span className="lbl">SITE:</span> <b>{normalizeJVName(issue.siteName || '')}</b></div>
             <div><span className="lbl">라인/호기:</span> {issue.lineName || '-'}</div>
             <div><span className="lbl">발생일자:</span> {issue.occurredDate}</div>
@@ -1202,32 +1203,32 @@ function IssueDetailModal({ issue, onClose, onEdit, onResolve }) {
           </div>
 
           <div className="detail-block">
-            <h4>🚨 현상 및 상세 증상</h4>
+            <h4> 현상 및 상세 증상</h4>
             <p>{issue.symptom || '상세 내용 없음'}</p>
           </div>
 
           {issue.rootCause && (
             <div className="detail-block">
-              <h4>🔍 원인 분석 (Root Cause)</h4>
+              <h4><Icon name="search" size="1.1em" /> 원인 분석 (Root Cause)</h4>
               <p>{issue.rootCause}</p>
             </div>
           )}
 
           {issue.interimAction && (
             <div className="detail-block">
-              <h4>⚡ 긴급/임시 조치</h4>
+              <h4><Icon name="refresh" size="1.1em" /> 긴급/임시 조치</h4>
               <p>{issue.interimAction}</p>
             </div>
           )}
 
           <div className="detail-block highlight-action">
-            <h4>✅ 최종 대응 및 해결 조치</h4>
+            <h4><Icon name="check" size="1.1em" /> 최종 대응 및 해결 조치</h4>
             <p>{issue.finalAction || (issue.status === 'resolved' ? '조치 완료' : '조치 진행 중입니다.')}</p>
           </div>
 
           {issue.preventiveAction && (
             <div className="detail-block highlight-prevent">
-              <h4>🛡️ 재발 방지 대책 (Preventive Action)</h4>
+              <h4> 재발 방지 대책 (Preventive Action)</h4>
               <p>{issue.preventiveAction}</p>
             </div>
           )}
@@ -1243,7 +1244,7 @@ function IssueDetailModal({ issue, onClose, onEdit, onResolve }) {
         <div className="iic-modal-actions">
           {issue.status !== 'resolved' && (
             <button type="button" className="btn-resolve-complete" onClick={onResolve}>
-              ⚡ 조치결과 기재
+              <Icon name="refresh" size="1.1em" /> 조치결과 기재
             </button>
           )}
           <button type="button" className="btn-card-action" onClick={onEdit}>수정</button>

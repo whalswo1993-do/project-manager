@@ -174,7 +174,7 @@ export default function Login() {
         onClick={toggleTheme}
         title={currentTheme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
       >
-        <span>{currentTheme === "dark" ? "☀️ 라이트 모드" : "🌙 다크 모드"}</span>
+        <span>{currentTheme === "dark" ? "라이트 모드" : "다크 모드"}</span>
       </button>
 
       <form className="login-card" onSubmit={submit}>
@@ -346,7 +346,7 @@ export default function Login() {
         )}
 
         <div className="login-footer-copy">
-          © (주)TW · 스마트 프로젝트 관리 시스템
+           (주)TW · 스마트 프로젝트 관리 시스템
         </div>
       </form>
     </main>

@@ -1,5 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import './PasteZone.css';
+import { Icon } from './icons';
+
+// 안내문 속 "Ctrl+V" 같은 단축키를 키캡 모양으로 바꿔서 보여준다
+function renderKeys(text) {
+  return String(text ?? '').split(/(Ctrl\s*\+\s*[A-Za-z])/g).map((part, i) => {
+    const m = /^Ctrl\s*\+\s*([A-Za-z])$/.exec(part);
+    return m ? (
+      <span key={i} className="pz-keys">
+        <kbd>Ctrl</kbd>
+        <kbd>{m[1].toUpperCase()}</kbd>
+      </span>
+    ) : (
+      part
+    );
+  });
+}
+
+// 예전 호출부가 넘기던 이모지도 받아서 선 아이콘으로 바꿔 준다
+const ICON_FROM_EMOJI = { '📋': 'clipboard', '👥': 'users', '📊': 'table' };
+const iconName = (icon) => ICON_FROM_EMOJI[icon] || (/^[a-z][A-Za-z]+$/.test(icon || '') ? icon : 'clipboard');
 
 // 엑셀 "표 붙여넣기" 칸 — 마스터 스케줄 / 공사일보 / 견적 / Vision SPC 가 같이 쓴다.
 // DRM 보안 때문에 파일 첨부가 안 되는 문서가 많아서 표 붙여넣기가 주된 입력 방법이다.
@@ -14,7 +34,7 @@ export function PasteZone({
   hint = '엑셀에서 표를 복사(Ctrl+C) → 여기를 클릭 → 붙여넣기(Ctrl+V)',
   readyHint = '지금 Ctrl+V 를 눌러 붙여넣으세요',
   accent = 'green', // 'green' | 'sky'
-  icon = '📋',
+  icon = 'clipboard',
   size = 'md', // 'md' | 'lg'
   disabled = false,
   disabledReason = '',
@@ -57,12 +77,12 @@ export function PasteZone({
     received && !busy && !disabled && 'pz-received',
   ].filter(Boolean).join(' ');
 
-  const shownLabel = busy ? busyLabel : received && !disabled ? '✓ 붙여넣기를 받았습니다' : label;
+  const shownLabel = busy ? busyLabel : received && !disabled ? '붙여넣기를 받았습니다' : label;
 
   return (
     <div className={cls} title={title}>
       <span className="pz-icon" aria-hidden="true">
-        {busy ? <span className="pz-spinner" /> : icon}
+        {busy ? <span className="pz-spinner" /> : <Icon name={received && !disabled ? 'check' : iconName(icon)} size={size === 'lg' ? 26 : 19} stroke={1.5} />}
       </span>
       <span className="pz-body" aria-hidden="true">
         <span className="pz-label">{shownLabel}</span>
@@ -72,8 +92,8 @@ export function PasteZone({
           <span className="pz-hint">잠시만 기다려 주세요</span>
         ) : (
           <>
-            <span className="pz-hint pz-hint-idle">{hint}</span>
-            <span className="pz-hint pz-hint-ready">{readyHint}</span>
+            <span className="pz-hint pz-hint-idle">{renderKeys(hint)}</span>
+            <span className="pz-hint pz-hint-ready">{renderKeys(readyHint)}</span>
           </>
         )}
       </span>
@@ -105,7 +125,7 @@ export function PasteEntry({ children, file, drmNote = false, direction = 'row',
           <>
             <span className="paste-entry-or" aria-hidden="true">또는</span>
             <button type="button" className="paste-entry-file" onClick={file.onClick} disabled={file.disabled} title={file.title}>
-              <span aria-hidden="true">{file.busy ? '⏳' : file.icon || '📎'}</span>
+              <Icon name={file.busy ? 'clock' : (/^[a-z][A-Za-z]+$/.test(file.icon || '') ? file.icon : 'paperclip')} size={16} />
               <span>{file.busy ? file.busyLabel || '처리 중...' : file.label}</span>
             </button>
           </>
@@ -113,7 +133,8 @@ export function PasteEntry({ children, file, drmNote = false, direction = 'row',
       </div>
       {drmNote && (
         <div className="paste-entry-note">
-          🔒 DRM 보안으로 파일 첨부가 안 되는 문서는 엑셀에서 표를 복사해 붙여넣으세요.
+          <Icon name="lock" size={13} />
+          <span>DRM 보안으로 파일 첨부가 안 되는 문서는 엑셀에서 표를 복사해 붙여넣으세요.</span>
         </div>
       )}
     </div>

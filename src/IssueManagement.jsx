@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { Icon } from './icons';
 import './IssueManagement.css';
 import { supabase } from './supabase';
 import { generateAIText, isAIConfigured } from './ai';
@@ -292,13 +293,13 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                 <div className="proj-filter-toolbar">
                     {/* 사이트 필터 */}
                     <div className="proj-filter-group">
-                        <span className="proj-filter-label">🏢 사이트:</span>
+                        <span className="proj-filter-label"><Icon name="building" size="1.1em" /> 사이트:</span>
                         <select
                             className="proj-filter-select"
                             value={projFilterSite}
                             onChange={(e) => setProjFilterSite(e.target.value)}
                         >
-                            <option value="ALL">🌐 전체 사이트 ({projects?.length || 0})</option>
+                            <option value="ALL"><Icon name="globe" size="1.1em" /> 전체 사이트 ({projects?.length || 0})</option>
                             {availableSites.map(s => {
                                 const count = (projects || []).filter(p => normalizeSite(p.site) === s).length;
                                 return (
@@ -310,7 +311,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
 
                     {/* 공정 필터 (스태킹, 노칭 2가지만 제공) */}
                     <div className="proj-filter-group">
-                        <span className="proj-filter-label">⚙️ 공정:</span>
+                        <span className="proj-filter-label"><Icon name="settings" size="1.1em" /> 공정:</span>
                         <select
                             className="proj-filter-select"
                             value={projFilterProcess}
@@ -324,7 +325,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
 
                     {/* 프로젝트 기간 년도 필터 */}
                     <div className="proj-filter-group">
-                        <span className="proj-filter-label">📅 년도:</span>
+                        <span className="proj-filter-label"><Icon name="calendar" size="1.1em" /> 년도:</span>
                         <select
                             className="proj-filter-select"
                             value={projFilterYear}
@@ -349,7 +350,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                             }}
                             title="모든 필터를 기본값으로 초기화합니다"
                         >
-                            ✕ 필터 초기화
+                            <Icon name="x" size="1.1em" /> 필터 초기화
                         </button>
                     )}
                 </div>
@@ -357,7 +358,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                 {/* 2단: 필터링된 프로젝트 드롭다운 */}
                 <div className="proj-select-main-row">
                     <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                        📁 {labelTitle}:
+                        <Icon name="folder" size="1.1em" /> {labelTitle}:
                     </span>
                     <select
                         className="proj-main-select"
@@ -393,16 +394,16 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                             </div>
                             <div className="proj-summary-badges">
                                 <span className="proj-pill-tag site">
-                                    🏢 {normalizeSite(curProj.site) || '사이트 미지정'}
+                                    <Icon name="building" size="1.1em" /> {normalizeSite(curProj.site) || '사이트 미지정'}
                                 </span>
                                 {proc && (
                                     <span className="proj-pill-tag process">
-                                        ⚙️ {proc}
+                                        <Icon name="settings" size="1.1em" /> {proc}
                                     </span>
                                 )}
                                 {(curProj.startDate || curProj.endDate) && (
                                     <span className="proj-pill-tag date">
-                                        📅 {curProj.startDate || '-'} ~ {curProj.endDate || '-'}
+                                        <Icon name="calendar" size="1.1em" /> {curProj.startDate || '-'} ~ {curProj.endDate || '-'}
                                     </span>
                                 )}
                                 {curProj.customer && (
@@ -672,7 +673,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                             manpowerMap: detectedManpowerMap
                         });
 
-                        setMsg(`📂 엑셀 파일 분석 완료: [${workSheetName}] 시트에서 ${workDates.length}일치의 작업내용을 감지했습니다. 반영할 프로젝트를 선택해주세요.`);
+                        setMsg(`엑셀 파일 분석 완료: [${workSheetName}] 시트에서 ${workDates.length}일치의 작업내용을 감지했습니다. 반영할 프로젝트를 선택해주세요.`);
                         setIsExtracting(false);
                         return;
                     }
@@ -689,7 +690,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                 const msgParts = [];
                 if (detectedWorkMap) msgParts.push(`작업내용(${Object.keys(detectedWorkMap).length}일치)`);
                 if (detectedManpowerMap) msgParts.push(`공수(${Object.keys(detectedManpowerMap).length}일치)`);
-                setMsg(`📂 엑셀 파일 정밀 분석 완료: ${msgParts.join(' 및 ')} 데이터를 직접입력 폼에 정상 반영했습니다.`);
+                setMsg(`엑셀 파일 정밀 분석 완료: ${msgParts.join(' 및 ')} 데이터를 직접입력 폼에 정상 반영했습니다.`);
                 setIsExtracting(false);
                 return;
             }
@@ -770,9 +771,9 @@ ${allText.substring(0, 100000)}
             }
 
             setMsg(
-                <span style={{ color: '#ef4444' }}>
+                <span style={{ color: 'var(--bad)' }}>
                     파일 분석 실패: {userFriendlyMsg}
-                    <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal', marginTop: '4px' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--brand)', fontWeight: 'normal', marginTop: '4px' }}>
                         원인파악용 기술 정보: {error.message}
                     </div>
                 </span>
@@ -807,7 +808,7 @@ ${allText.substring(0, 100000)}
         }]);
         setCollapsedSections(prev => ({ ...prev, inputForm: false }));
         setActiveReportSubTab('register');
-        setMsg(`✏️ ${report.report_date} 일보를 직접입력 폼에 불러왔습니다. 내용 수정 후 [공사일보 저장 완료]를 눌러 저장해주세요.`);
+        setMsg(`${report.report_date} 일보를 직접입력 폼에 불러왔습니다. 내용 수정 후 [공사일보 저장 완료]를 눌러 저장해주세요.`);
     };
 
     const saveReport = async () => {
@@ -955,7 +956,7 @@ ${allText.substring(0, 100000)}
         if (error) {
             setMsg('저장 실패: ' + error.message);
         } else {
-            setMsg(`✅ ${insertData.length}일치의 공사일보가 성공적으로 저장(최신 반영/병합)되었습니다.`);
+            setMsg(`${insertData.length}일치의 공사일보가 성공적으로 저장(최신 반영/병합)되었습니다.`);
             setExtractedReports([createEmptyReport()]);
             loadReports(targetId);
             setActiveReportSubTab('view');
@@ -1822,7 +1823,7 @@ ${allText.substring(0, 100000)}
 
         setCollapsedSections(prev => ({ ...prev, inputForm: false }));
         const label = targetProj === '__ALL__' ? '전체 내용' : `[${targetProj}]`;
-        setMsg(`📋 작업내용 시트 붙여넣기 완료: ${label} ${validDates.length}일치 데이터(${validDates[0]} ~ ${validDates[validDates.length - 1]})를 직접입력 폼에 반영했습니다.`);
+        setMsg(`작업내용 시트 붙여넣기 완료: ${label} ${validDates.length}일치 데이터(${validDates[0]} ~ ${validDates[validDates.length - 1]})를 직접입력 폼에 반영했습니다.`);
     };
 
     const parseTimeToHours = (val) => {
@@ -2312,7 +2313,7 @@ ${allText.substring(0, 100000)}
                     : (projects || []).find(p => p.id === selectedProject);
                 let defaultChoice = uniqueProjects[0];
                 const curProjDisp = targetType === 'site'
-                    ? `🏭 ${selectedSite} 사이트 일보`
+                    ? `${selectedSite} 사이트 일보`
                     : (curProjectObj ? (curProjectObj.manufacturingNo ? `[${curProjectObj.manufacturingNo}] ${curProjectObj.name}` : curProjectObj.name) : '선택된 프로젝트 없음');
 
                 if (curProjectObj && targetType !== 'site') {
@@ -2409,7 +2410,7 @@ ${allText.substring(0, 100000)}
 
             mergeManpowerIntoExtracted(mpMap);
             setCollapsedSections(prev => ({ ...prev, inputForm: false }));
-            setMsg(`👥 공수 시트 붙여넣기 완료: 유효 인원 데이터가 있는 ${dates.length}일치(${dates[0]} ~ ${dates[dates.length - 1]})를 직접입력 폼에 반영했습니다. (데이터 없는 일자는 자동 제외)`);
+            setMsg(`공수 시트 붙여넣기 완료: 유효 인원 데이터가 있는 ${dates.length}일치(${dates[0]} ~ ${dates[dates.length - 1]})를 직접입력 폼에 반영했습니다. (데이터 없는 일자는 자동 제외)`);
         }
     };
 
@@ -2459,7 +2460,7 @@ ${allText.substring(0, 100000)}
             const allIssues = await fetchRemoteIssues();
             setAnalyzeMsg('PPT 보고서를 생성 중입니다...');
             const { total } = await exportIssuesPpt({ issues: allIssues, startDate, endDate, siteFilter: analysisSite });
-            setAnalyzeMsg(`🎉 이슈 ${total}건 분석 PPT 생성이 완료되었습니다!`);
+            setAnalyzeMsg(`이슈 ${total}건 분석 PPT 생성이 완료되었습니다!`);
         } catch (error) {
             console.error(error);
             setAnalyzeMsg('오류 발생: ' + error.message);
@@ -2604,12 +2605,12 @@ ${compiledText.substring(0, 30000)}
 
             await pptx.writeFile({ fileName: `프로젝트_통합분석보고서_${endDate}.pptx` });
 
-            setAnalyzeMsg('🎉 분석 및 PPT 생성이 완료되었습니다!');
+            setAnalyzeMsg('분석 및 PPT 생성이 완료되었습니다!');
 
         } catch (error) {
             console.error(error);
             if (error.message.includes('429') || error.message.includes('quota') || error.message.toLowerCase().includes('too many requests') || error.message.includes('exceeded')) {
-                setAnalyzeMsg('🚨 무료 AI 사용량이 일시적으로 초과되었습니다. 1분 뒤에 다시 시도해주세요. (과금되지 않습니다)');
+                setAnalyzeMsg('무료 AI 사용량이 일시적으로 초과되었습니다. 1분 뒤에 다시 시도해주세요. (과금되지 않습니다)');
             } else {
                 setAnalyzeMsg('오류 발생: ' + error.message);
             }
@@ -2625,7 +2626,7 @@ ${compiledText.substring(0, 30000)}
                 <div className="system-header-row">
                     <div className="system-title-group">
                         <div className="system-logo-icon theme-reports">
-                            📝
+                            <Icon name="pencil" size="1.1em" />
                         </div>
                         <div className="system-title-text">
                             <h2>
@@ -2644,13 +2645,13 @@ ${compiledText.substring(0, 30000)}
                             title={!canRunAIAnalysis ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : "기간을 설정하여 공사일보 AI 종합분석 PPT를 다운로드합니다"}
                             style={{
                                 display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                padding: '7px 16px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-                                fontSize: '13px', fontWeight: 800, color: '#ffffff',
-                                background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-                                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)', whiteSpace: 'nowrap'
+                                padding: '7px 16px', borderRadius: 'var(--radius-lg)', border: 'none', cursor: 'pointer',
+                                fontSize: '13px', fontWeight: 800, color: 'var(--on-brand)',
+                                background: 'var(--teal)',
+                                boxShadow: 'none', whiteSpace: 'nowrap'
                             }}
                         >
-                            📊 공사일보 분석 PPT {!canRunAIAnalysis && "🔒"}
+                            <Icon name="barChart" size="1.1em" /> 공사일보 분석 PPT {!canRunAIAnalysis && ""}
                         </button>
                         <button
                             type="button"
@@ -2658,7 +2659,7 @@ ${compiledText.substring(0, 30000)}
                             className="system-toggle-all-btn"
                             title="공사일보 관리의 모든 소항목 펼치기"
                         >
-                            ▾ 전체 펼치기
+                            <Icon name="chevDown" size="1.1em" /> 전체 펼치기
                         </button>
                         <button
                             type="button"
@@ -2666,7 +2667,7 @@ ${compiledText.substring(0, 30000)}
                             className="system-toggle-all-btn"
                             title="공사일보 관리의 모든 소항목 접기"
                         >
-                            ▴ 전체 접기
+                            <Icon name="chevUp" size="1.1em" /> 전체 접기
                         </button>
                     </div>
                 </div>
@@ -2682,7 +2683,7 @@ ${compiledText.substring(0, 30000)}
                         className={`report-nav-pill-btn ${activeReportSubTab === 'register' ? 'active' : ''}`}
                         onClick={() => setActiveReportSubTab('register')}
                     >
-                        <span>✏️ 1. 신규 공사일보 등록</span>
+                        <span><Icon name="pencil" size="1.1em" /> 1. 신규 공사일보 등록</span>
                         <span className="pill-badge">
                             {extractedReports.some(r => r.work_details || r.special_notes || r.issues) ? `${extractedReports.length}일치 작성중` : '+ 새 일보'}
                         </span>
@@ -2692,7 +2693,7 @@ ${compiledText.substring(0, 30000)}
                         className={`report-nav-pill-btn ${activeReportSubTab === 'view' ? 'active' : ''}`}
                         onClick={() => setActiveReportSubTab('view')}
                     >
-                        <span>📋 2. 일보 조회 및 검색</span>
+                        <span><Icon name="list" size="1.1em" /> 2. 일보 조회 및 검색</span>
                         <span className="pill-badge">{projectReports.length}건</span>
                     </button>
                 </div>
@@ -2704,12 +2705,12 @@ ${compiledText.substring(0, 30000)}
                             onClick={() => setActiveReportSubTab('view')}
                             style={{
                                 display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                padding: '8px 16px', borderRadius: '10px',
+                                padding: '8px 16px', borderRadius: 'var(--radius-lg)',
                                 background: 'var(--bg-card-subtle)', border: '1px solid var(--border-medium)',
                                 color: 'var(--text-primary)', fontSize: '13px', fontWeight: 700, cursor: 'pointer'
                             }}
                         >
-                            📋 등록된 일보 목록 보기
+                            <Icon name="list" size="1.1em" /> 등록된 일보 목록 보기
                         </button>
                     ) : (
                         <button
@@ -2721,7 +2722,7 @@ ${compiledText.substring(0, 30000)}
                             }}
                             title="새 공사일보 등록 화면으로 바로 전환합니다"
                         >
-                            ✏️ + 새 일보 등록하기 {!canEditReport && "🔒"}
+                            <Icon name="pencil" size="1.1em" /> + 새 일보 등록하기 {!canEditReport && ""}
                         </button>
                     )}
                 </div>
@@ -2734,20 +2735,20 @@ ${compiledText.substring(0, 30000)}
                     {/* 1. 조회 대상 선택 및 검색 필터 바 (페이지 내에서 직관적으로 대상 선택 및 검색) */}
                     <div className="view-search-filter-card">
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
-                            <div style={{ display: 'inline-flex', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '3px', gap: '4px' }}>
+                            <div style={{ display: 'inline-flex', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '3px', gap: '4px' }}>
                                 <button
                                     type="button"
                                     className={`view-target-type-chip ${targetType === 'site' ? 'active' : ''}`}
                                     onClick={() => setTargetType('site')}
                                     style={{
                                         display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                        padding: '7px 14px', borderRadius: '8px', border: 'none',
-                                        background: targetType === 'site' ? '#0ea5e9' : 'transparent',
-                                        color: targetType === 'site' ? '#ffffff' : 'var(--text-secondary)',
+                                        padding: '7px 14px', borderRadius: 'var(--radius-md)', border: 'none',
+                                        background: targetType === 'site' ? 'var(--teal)' : 'transparent',
+                                        color: targetType === 'site' ? 'var(--on-brand)' : 'var(--text-secondary)',
                                         fontSize: '13px', fontWeight: 700, cursor: 'pointer'
                                     }}
                                 >
-                                    🏭 양산 사이트별 일보
+                                    <Icon name="building" size="1.1em" /> 양산 사이트별 일보
                                 </button>
                                 <button
                                     type="button"
@@ -2755,21 +2756,21 @@ ${compiledText.substring(0, 30000)}
                                     onClick={() => setTargetType('project')}
                                     style={{
                                         display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                        padding: '7px 14px', borderRadius: '8px', border: 'none',
-                                        background: targetType === 'project' ? '#6366f1' : 'transparent',
-                                        color: targetType === 'project' ? '#ffffff' : 'var(--text-secondary)',
+                                        padding: '7px 14px', borderRadius: 'var(--radius-md)', border: 'none',
+                                        background: targetType === 'project' ? 'var(--brand)' : 'transparent',
+                                        color: targetType === 'project' ? 'var(--on-brand)' : 'var(--text-secondary)',
                                         fontSize: '13px', fontWeight: 700, cursor: 'pointer'
                                     }}
                                 >
-                                    📁 개별 프로젝트별 일보
+                                    <Icon name="folder" size="1.1em" /> 개별 프로젝트별 일보
                                 </button>
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px' }}>
-                                <span style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
+                                <span style={{ padding: '5px 10px', borderRadius: 'var(--radius-md)', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}>
                                     현재 대상: <b style={{ color: 'var(--text-primary)' }}>{currentSelectedProject ? currentSelectedProject.name : '선택 없음'}</b>
                                 </span>
-                                <span style={{ padding: '5px 10px', borderRadius: '6px', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--accent)', fontWeight: 700 }}>
+                                <span style={{ padding: '5px 10px', borderRadius: 'var(--radius-md)', background: 'color-mix(in srgb, var(--brand) 10%, transparent)', color: 'var(--accent)', fontWeight: 700 }}>
                                     등록 일보 {projectReports.length}건
                                 </span>
                             </div>
@@ -2778,7 +2779,7 @@ ${compiledText.substring(0, 30000)}
                         {/* 사이트별 선택일 때: 한눈에 보이는 가로 칩 버튼 목록 */}
                         {targetType === 'site' ? (
                             <div className="site-chips-container" style={{ marginBottom: '14px' }}>
-                                <div className="site-chips-label">🏭 조회할 양산 사이트 선택 (클릭 시 즉시 변경):</div>
+                                <div className="site-chips-label"><Icon name="building" size="1.1em" /> 조회할 양산 사이트 선택 (클릭 시 즉시 변경):</div>
                                 <div className="site-chips-grid">
                                     {availableSites.map(site => (
                                         <button
@@ -2787,7 +2788,7 @@ ${compiledText.substring(0, 30000)}
                                             className={`site-chip-btn ${selectedSite === site ? 'active' : ''}`}
                                             onClick={() => setSelectedSite(site)}
                                         >
-                                            <span>🏢</span>
+                                            <span><Icon name="building" size="1.1em" /></span>
                                             <span>{site}</span>
                                         </button>
                                     ))}
@@ -2800,18 +2801,18 @@ ${compiledText.substring(0, 30000)}
                     </div>
 
                     {!currentTargetId ? (
-                        <div className="empty-state" style={{padding: '50px 20px', background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-subtle)'}}>
+                        <div className="empty-state" style={{padding: '50px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-subtle)'}}>
                             <div style={{ maxWidth: '480px', margin: '0 auto', textAlign: 'center' }}>
-                                <span style={{ fontSize: '3rem', display: 'block', marginBottom: '12px' }}>🏢</span>
+                                <span style={{ fontSize: '3rem', display: 'block', marginBottom: '12px' }}><Icon name="building" size="1.1em" /></span>
                                 <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)', fontSize: '18px' }}>
                                     {targetType === 'site' ? '양산 사이트를 위 버튼에서 선택해주세요' : '프로젝트를 위 목록에서 선택해주세요'}
                                 </h3>
                             </div>
                         </div>
                     ) : projectReports.length === 0 ? (
-                        <div className="empty-state" style={{padding: '50px 20px', background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-subtle)'}}>
+                        <div className="empty-state" style={{padding: '50px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-subtle)'}}>
                             <div style={{ maxWidth: '520px', margin: '0 auto', textAlign: 'center' }}>
-                                <span style={{ fontSize: '3.2rem', display: 'block', marginBottom: '12px' }}>📄</span>
+                                <span style={{ fontSize: '3.2rem', display: 'block', marginBottom: '12px' }}><Icon name="file" size="1.1em" /></span>
                                 <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)', fontSize: '19px' }}>
                                     선택한 {targetType === 'site' ? `${selectedSite} 사이트에` : '프로젝트에'} 등록된 일보가 없습니다
                                 </h3>
@@ -2827,16 +2828,16 @@ ${compiledText.substring(0, 30000)}
                                     className="quick-register-btn"
                                     style={{padding: '10px 20px', fontSize: '14px'}}
                                 >
-                                    ✏️ 이 {targetType === 'site' ? '사이트에' : '프로젝트에'} 새 일보 등록하기 {!canEditReport && "🔒"}
+                                    <Icon name="pencil" size="1.1em" /> 이 {targetType === 'site' ? '사이트에' : '프로젝트에'} 새 일보 등록하기 {!canEditReport && ""}
                                 </button>
                             </div>
                         </div>
                     ) : (
-                        <div className="dashboard-section" style={{background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border-subtle)', padding: '18px'}}>
+                        <div className="dashboard-section" style={{background: 'var(--bg-card)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-subtle)', padding: '18px'}}>
                             {/* 검색 및 제어 툴바 */}
                             <div className="report-search-toolbar" style={{marginBottom: '16px'}}>
                                 <div className="report-search-input-box">
-                                    <span style={{color: 'var(--text-muted)', fontSize: '14px'}}>🔍</span>
+                                    <span style={{color: 'var(--text-muted)', fontSize: '14px'}}><Icon name="search" size="1.1em" /></span>
                                     <input
                                         type="text"
                                         placeholder="일자, 작업(업무) 내용, 특이사항, 키워드 검색..."
@@ -2849,7 +2850,7 @@ ${compiledText.substring(0, 30000)}
                                             onClick={() => setReportSearchQuery('')}
                                             style={{background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px'}}
                                         >
-                                            ✕
+                                            <Icon name="x" size="1.1em" />
                                         </button>
                                     )}
                                 </div>
@@ -2869,10 +2870,10 @@ ${compiledText.substring(0, 30000)}
                                         style={{
                                             padding: '4px 10px', fontSize: '12px',
                                             background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
-                                            borderRadius: '6px', cursor: 'pointer', color: 'var(--text-primary)'
+                                            borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-primary)'
                                         }}
                                     >
-                                        ▾ 전체 펼치기
+                                        <Icon name="chevDown" size="1.1em" /> 전체 펼치기
                                     </button>
                                     <button
                                         type="button"
@@ -2880,10 +2881,10 @@ ${compiledText.substring(0, 30000)}
                                         style={{
                                             padding: '4px 10px', fontSize: '12px',
                                             background: 'var(--bg-card-subtle)', border: '1px solid var(--border-subtle)',
-                                            borderRadius: '6px', cursor: 'pointer', color: 'var(--text-primary)'
+                                            borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--text-primary)'
                                         }}
                                     >
-                                        ▴ 전체 접기
+                                        <Icon name="chevUp" size="1.1em" /> 전체 접기
                                     </button>
                                 </div>
                             </div>
@@ -2891,7 +2892,7 @@ ${compiledText.substring(0, 30000)}
                             {/* 일보 카드 리스트 */}
                             {filteredProjectReports.length === 0 ? (
                                 <div style={{textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)'}}>
-                                    🔍 '<b>{reportSearchQuery}</b>' 검색어와 일치하는 일보가 없습니다.
+                                    <Icon name="search" size="1.1em" /> '<b>{reportSearchQuery}</b>' 검색어와 일치하는 일보가 없습니다.
                                 </div>
                             ) : (
                                 <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
@@ -2903,27 +2904,27 @@ ${compiledText.substring(0, 30000)}
                                                         Object.values(report.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
 
                                         return (
-                                            <div key={report.id} className="issue-card" style={{borderLeftColor: '#f59e0b', borderRadius: '12px', padding: '14px 16px'}}>
+                                            <div key={report.id} className="issue-card" style={{borderLeftColor: 'var(--signal)', borderRadius: 'var(--radius-lg)', padding: '14px 16px'}}>
                                                 <div className="issue-meta" onClick={() => toggleReport(report.id)} style={{cursor: 'pointer'}}>
                                                     <span style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
                                                         <b style={{color: 'var(--text-primary)', fontSize: '15px', letterSpacing: '0.01em'}}>{report.report_date}</b> 
                                                         <span style={{color: 'var(--text-secondary)', fontWeight: 600, fontSize: '13px'}}>공사일보</span>
                                                         {totalMD > 0 && (
-                                                            <span style={{fontSize: '0.78rem', color: '#f59e0b', fontWeight: 700, background: 'rgba(245, 158, 11, 0.12)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.35)'}}>
-                                                                👥 투입 {totalMD}명
+                                                            <span style={{fontSize: '0.78rem', color: 'var(--signal)', fontWeight: 700, background: 'color-mix(in srgb, var(--signal) 12%, transparent)', padding: '2px 8px', borderRadius: 'var(--radius-md)', border: '1px solid color-mix(in srgb, var(--signal) 35%, transparent)'}}>
+                                                                <Icon name="users" size="1.1em" /> 투입 {totalMD}명
                                                             </span>
                                                         )}
                                                         {report.special_notes && (
-                                                            <span style={{fontSize: '0.75rem', background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7', padding: '2px 7px', borderRadius: '6px', fontWeight: 700}}>
-                                                                📌 특이사항
+                                                            <span style={{fontSize: '0.75rem', background: 'color-mix(in srgb, var(--teal) 12%, transparent)', color: 'var(--teal)', padding: '2px 7px', borderRadius: 'var(--radius-md)', fontWeight: 700}}>
+                                                                <Icon name="info" size="1.1em" /> 특이사항
                                                             </span>
                                                         )}
                                                         {report.issues && (
-                                                            <span style={{fontSize: '0.75rem', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '2px 7px', borderRadius: '6px', fontWeight: 800}}>
-                                                                🚨 설비이슈
+                                                            <span style={{fontSize: '0.75rem', background: 'color-mix(in srgb, var(--bad) 15%, transparent)', color: 'var(--bad)', padding: '2px 7px', borderRadius: 'var(--radius-md)', fontWeight: 800}}>
+                                                                 설비이슈
                                                             </span>
                                                         )}
-                                                        <span style={{fontSize:'0.85rem', color:'var(--text-secondary)', marginLeft: '2px'}}>{expandedReports[report.id] ? '▲' : '▼'}</span>
+                                                        <span style={{fontSize:'0.85rem', color:'var(--text-secondary)', marginLeft: '2px'}}>{expandedReports[report.id] ? '' : ''}</span>
                                                     </span>
                                                     <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
                                                         <button 
@@ -2942,7 +2943,7 @@ ${compiledText.substring(0, 30000)}
                                                             }} 
                                                             title={!canEditReport ? "수정 권한이 없습니다 (Grade 3 이상 가능)" : "이 일보를 수정 폼으로 불러와 편집합니다"}
                                                         >
-                                                            ✏️ 수정 {!canEditReport && "🔒"}
+                                                            <Icon name="pencil" size="1.1em" /> 수정 {!canEditReport && ""}
                                                         </button>
                                                         <button 
                                                             onClick={(e) => { 
@@ -2953,12 +2954,12 @@ ${compiledText.substring(0, 30000)}
                                                             style={{background:'transparent', border:'none', color:!canEditReport ? 'var(--text-muted)' : 'var(--danger)', cursor:'pointer', fontSize:'0.85rem', fontWeight: 600}} 
                                                             title={!canEditReport ? "삭제 권한이 없습니다 (Grade 3 이상 가능)" : ""}
                                                         >
-                                                            삭제 {!canEditReport && "🔒"}
+                                                            삭제 {!canEditReport && ""}
                                                         </button>
                                                     </div>
                                                 </div>
                                                 {expandedReports[report.id] && (
-                                                    <div className="issue-content" style={{background: 'var(--bg-color)', border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '10px', fontSize: '0.88rem', marginTop: '10px'}}>
+                                                    <div className="issue-content" style={{background: 'var(--bg-color)', border: '1px solid var(--border-color)', padding: '1rem', borderRadius: 'var(--radius-lg)', fontSize: '0.88rem', marginTop: '10px'}}>
                                                         <div style={{display: 'flex', flexDirection: 'column', gap: '0.8rem'}}>
                                                             <div>
                                                                 <div style={{fontWeight: 700, color: 'var(--primary)', marginBottom: '0.3rem'}}>작업(업무) 내용</div>
@@ -2972,9 +2973,9 @@ ${compiledText.substring(0, 30000)}
                                                                 <div style={{display: 'grid', gridTemplateColumns: report.special_notes && report.issues ? '1fr 1fr' : '1fr', gap: '10px'}}>
                                                                     {/* 1. 일반 특이사항 (검수Fail, 출입신청, 도비 등) */}
                                                                     {report.special_notes && (
-                                                                        <div style={{background: 'rgba(2, 132, 199, 0.05)', border: '1px solid rgba(2, 132, 199, 0.25)', borderRadius: '8px', padding: '10px 12px'}}>
-                                                                            <div style={{fontWeight: 700, color: '#0284c7', marginBottom: '0.3rem', fontSize: '12.5px'}}>
-                                                                                📌 일반 특이사항 (검수Fail, 출입신청, 도비 등)
+                                                                        <div style={{background: 'color-mix(in srgb, var(--teal) 5%, transparent)', border: '1px solid color-mix(in srgb, var(--teal) 25%, transparent)', borderRadius: 'var(--radius-md)', padding: '10px 12px'}}>
+                                                                            <div style={{fontWeight: 700, color: 'var(--teal)', marginBottom: '0.3rem', fontSize: '12.5px'}}>
+                                                                                <Icon name="info" size="1.1em" /> 일반 특이사항 (검수Fail, 출입신청, 도비 등)
                                                                             </div>
                                                                             <div style={{whiteSpace: 'pre-wrap', color: 'var(--text-color)', lineHeight: '1.5'}}>{report.special_notes}</div>
                                                                         </div>
@@ -2982,10 +2983,10 @@ ${compiledText.substring(0, 30000)}
 
                                                                     {/* 2. 설비 이슈사항 (설비 고장, 파손, 손상, 품질문제 등) */}
                                                                     {report.issues && (
-                                                                        <div style={{background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', padding: '10px 12px'}}>
+                                                                        <div style={{background: 'color-mix(in srgb, var(--bad) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--bad) 25%, transparent)', borderRadius: 'var(--radius-md)', padding: '10px 12px'}}>
                                                                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', flexWrap: 'wrap', gap: '6px'}}>
-                                                                                <div style={{fontWeight: 800, color: '#ef4444', fontSize: '12.5px'}}>
-                                                                                    🚨 설비 이슈사항 (설비 고장/파손/품질 등)
+                                                                                <div style={{fontWeight: 800, color: 'var(--bad)', fontSize: '12.5px'}}>
+                                                                                     설비 이슈사항 (설비 고장/파손/품질 등)
                                                                                 </div>
                                                                                 <button
                                                                                     type="button"
@@ -3008,19 +3009,19 @@ ${compiledText.substring(0, 30000)}
                                                                                         }
                                                                                     }}
                                                                                     style={{
-                                                                                        background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                                                                                        color: '#ffffff',
+                                                                                        background: 'var(--bad)',
+                                                                                        color: 'var(--on-brand)',
                                                                                         border: 'none',
-                                                                                        borderRadius: '6px',
+                                                                                        borderRadius: 'var(--radius-md)',
                                                                                         padding: '3px 9px',
                                                                                         fontSize: '11px',
                                                                                         fontWeight: 800,
                                                                                         cursor: 'pointer',
-                                                                                        boxShadow: '0 1px 3px rgba(239, 68, 68, 0.3)'
+                                                                                        boxShadow: 'none'
                                                                                     }}
                                                                                     title="이 설비 이슈사항을 스태킹/노칭 이슈 관리 센터의 정식 이슈로 등록합니다"
                                                                                 >
-                                                                                    👉 이슈 센터로 등록
+                                                                                     이슈 센터로 등록
                                                                                 </button>
                                                                             </div>
                                                                             <div style={{whiteSpace: 'pre-wrap', color: 'var(--text-color)', lineHeight: '1.5'}}>{report.issues}</div>
@@ -3032,20 +3033,20 @@ ${compiledText.substring(0, 30000)}
                                                                 <div style={{fontWeight: 700, color: 'var(--text-color)', marginBottom: '0.3rem'}}>
                                                                     투입 인원 실적 (총 {totalMD}명)
                                                                 </div>
-                                                                <div style={{display:'flex', gap:'8px', flexWrap:'wrap', fontSize:'0.78rem', background:'var(--panel-bg)', padding:'8px 10px', borderRadius:'6px', border:'1px solid var(--border-color)', color:'var(--text-color)'}}>
+                                                                <div style={{display:'flex', gap:'8px', flexWrap:'wrap', fontSize:'0.78rem', background:'var(--panel-bg)', padding:'8px 10px', borderRadius:'var(--radius-md)', border:'1px solid var(--border-color)', color:'var(--text-color)'}}>
                                                                     {report.pm_count > 0 && <span style={{fontWeight:600}}>소장: {report.pm_count}</span>}
                                                                     {report.design_count > 0 && <span>설계: {report.design_count}</span>}
-                                                                    {report.facility_count > 0 && <span style={{color:'#38bdf8', fontWeight:600}}>기구: {report.facility_count}</span>}
-                                                                    {report.facility_outsource > 0 && <span style={{color:'#fbbf24', fontWeight:600}}>기구외주: {report.facility_outsource}</span>}
-                                                                    {report.control_count > 0 && <span style={{color:'#10b981', fontWeight:600}}>제어: {report.control_count}</span>}
-                                                                    {report.control_outsource > 0 && <span style={{color:'#34d399', fontWeight:600}}>제어외주: {report.control_outsource}</span>}
-                                                                    {report.electrical_count > 0 && <span style={{color:'#f97316', fontWeight:600}}>전장: {report.electrical_count}</span>}
-                                                                    {report.electrical_outsource > 0 && <span style={{color:'#fb923c', fontWeight:600}}>전장외주: {report.electrical_outsource}</span>}
-                                                                    {report.vision_count > 0 && <span style={{color:'#a855f7', fontWeight:600}}>비전: {report.vision_count}</span>}
-                                                                    {report.vision_outsource > 0 && <span style={{color:'#c084fc', fontWeight:600}}>비전외주: {report.vision_outsource}</span>}
-                                                                    {report.personnel_count > 0 && <span style={{color:'#f43f5e', fontWeight:600}}>안전: {report.personnel_count}</span>}
+                                                                    {report.facility_count > 0 && <span style={{color:'var(--teal)', fontWeight:600}}>기구: {report.facility_count}</span>}
+                                                                    {report.facility_outsource > 0 && <span style={{color:'var(--warn)', fontWeight:600}}>기구외주: {report.facility_outsource}</span>}
+                                                                    {report.control_count > 0 && <span style={{color:'var(--ok)', fontWeight:600}}>제어: {report.control_count}</span>}
+                                                                    {report.control_outsource > 0 && <span style={{color:'var(--ok)', fontWeight:600}}>제어외주: {report.control_outsource}</span>}
+                                                                    {report.electrical_count > 0 && <span style={{color:'var(--signal)', fontWeight:600}}>전장: {report.electrical_count}</span>}
+                                                                    {report.electrical_outsource > 0 && <span style={{color:'var(--signal)', fontWeight:600}}>전장외주: {report.electrical_outsource}</span>}
+                                                                    {report.vision_count > 0 && <span style={{color:'var(--teal)', fontWeight:600}}>비전: {report.vision_count}</span>}
+                                                                    {report.vision_outsource > 0 && <span style={{color:'var(--teal)', fontWeight:600}}>비전외주: {report.vision_outsource}</span>}
+                                                                    {report.personnel_count > 0 && <span style={{color:'var(--bad)', fontWeight:600}}>안전: {report.personnel_count}</span>}
                                                                     {report.custom_depts && Object.entries(report.custom_depts).map(([k, v]) => Number(v) > 0 && (
-                                                                        <span key={k} style={{color:'#818cf8', fontWeight:600}}>{k}: {v}</span>
+                                                                        <span key={k} style={{color:'var(--brand)', fontWeight:600}}>{k}: {v}</span>
                                                                     ))}
                                                                     {totalMD === 0 && <span style={{color: 'var(--text-muted)'}}>투입 인원 없음</span>}
                                                                 </div>
@@ -3065,8 +3066,8 @@ ${compiledText.substring(0, 30000)}
                 /* --- 소항목 2: 신규 공사일보 등록 (초보자용 3-Step 가이드) --- */
                 <div className="report-register-wizard">
                     {!canEditReport && (
-                        <div style={{background: 'var(--warning-bg)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '12px', padding: '12px 16px', fontSize: '13px', color: 'var(--warning)', lineHeight: '1.5'}}>
-                            🔒 <b>{isGrade1 ? 'Grade 1 (조회 전용)' : 'Grade 2 (부서 담당자)'} 안내</b><br/>
+                        <div style={{background: 'var(--warning-bg)', border: '1px solid color-mix(in srgb, var(--signal) 30%, transparent)', borderRadius: 'var(--radius-lg)', padding: '12px 16px', fontSize: '13px', color: 'var(--warning)', lineHeight: '1.5'}}>
+                            <Icon name="lock" size="1.1em" /> <b>{isGrade1 ? 'Grade 1 (조회 전용)' : 'Grade 2 (부서 담당자)'} 안내</b><br/>
                             {isGrade1 
                                 ? '일보 조회만 가능하며 신규 등록 및 수정 권한이 제한됩니다.'
                                 : '신규 일보 등록 및 수정 권한은 Grade 3 이상 필요합니다.'}
@@ -3082,24 +3083,24 @@ ${compiledText.substring(0, 30000)}
                                     className={`reg-target-mode-btn ${targetType === 'site' ? 'active' : ''}`}
                                     onClick={() => setTargetType('site')}
                                 >
-                                    🏭 양산 사이트 일보 등록
+                                    <Icon name="building" size="1.1em" /> 양산 사이트 일보 등록
                                 </button>
                                 <button
                                     type="button"
                                     className={`reg-target-mode-btn ${targetType === 'project' ? 'active' : ''}`}
                                     onClick={() => setTargetType('project')}
                                 >
-                                    📁 개별 프로젝트 일보 등록
+                                    <Icon name="folder" size="1.1em" /> 개별 프로젝트 일보 등록
                                 </button>
                             </div>
 
                             <div className="reg-target-stats">
-                                <span style={{ padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-medium)', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                                <span style={{ padding: '6px 12px', borderRadius: 'var(--radius-md)', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-medium)', fontSize: '13px', color: 'var(--text-secondary)' }}>
                                     등록 대상: <b style={{ color: 'var(--text-primary)' }}>{currentSelectedProject ? currentSelectedProject.name : '미선택'}</b>
                                 </span>
                                 {targetType === 'site' && (
-                                    <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 700, background: 'rgba(16, 185, 129, 0.1)', padding: '5px 10px', borderRadius: '6px' }}>
-                                        ✓ 공장 양산 사이트 모드
+                                    <span style={{ fontSize: '12px', color: 'var(--ok)', fontWeight: 700, background: 'color-mix(in srgb, var(--ok) 10%, transparent)', padding: '5px 10px', borderRadius: 'var(--radius-md)' }}>
+                                        <Icon name="check" size="1.1em" /> 공장 양산 사이트 모드
                                     </span>
                                 )}
                             </div>
@@ -3108,7 +3109,7 @@ ${compiledText.substring(0, 30000)}
                         {/* 사이트별 등록일 때: 한눈에 보이는 가로 칩 버튼 목록 */}
                         {targetType === 'site' ? (
                             <div className="site-chips-container">
-                                <div className="site-chips-label">🏭 등록할 양산 사이트 선택 (버튼을 클릭하면 즉시 변경됩니다):</div>
+                                <div className="site-chips-label"><Icon name="building" size="1.1em" /> 등록할 양산 사이트 선택 (버튼을 클릭하면 즉시 변경됩니다):</div>
                                 <div className="site-chips-grid">
                                     {availableSites.map(site => (
                                         <button
@@ -3117,13 +3118,13 @@ ${compiledText.substring(0, 30000)}
                                             className={`site-chip-btn ${selectedSite === site ? 'active' : ''}`}
                                             onClick={() => setSelectedSite(site)}
                                         >
-                                            <span>🏢</span>
+                                            <span><Icon name="building" size="1.1em" /></span>
                                             <span>{site}</span>
                                         </button>
                                     ))}
                                 </div>
-                                <div style={{ marginTop: '10px', padding: '8px 12px', background: 'rgba(99, 102, 241, 0.08)', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.2)', fontSize: '12px', color: 'var(--text-primary)' }}>
-                                    💡 <b>스마트 셋업 분리:</b> 사이트 일보 내에 <b>HSBMA 5~8Line Set-up</b> 등 특정 셋업 프로젝트 데이터가 포함된 경우, 표 붙여넣기 시 해당 프로젝트 일보로 자동 분리 등록을 지원합니다.
+                                <div style={{ marginTop: '10px', padding: '8px 12px', background: 'color-mix(in srgb, var(--brand) 8%, transparent)', borderRadius: 'var(--radius-md)', border: '1px solid color-mix(in srgb, var(--brand) 25%, transparent)', fontSize: '12px', color: 'var(--text-primary)' }}>
+                                    <Icon name="info" size="1.1em" /> <b>스마트 셋업 분리:</b> 사이트 일보 내에 <b>HSBMA 5~8Line Set-up</b> 등 특정 셋업 프로젝트 데이터가 포함된 경우, 표 붙여넣기 시 해당 프로젝트 일보로 자동 분리 등록을 지원합니다.
                                 </div>
                             </div>
                         ) : (
@@ -3138,12 +3139,12 @@ ${compiledText.substring(0, 30000)}
                             {/* 표 붙여넣기(주)를 색이 있는 큰 칸으로, 파일 첨부(보조)는 옆 버튼으로 — DRM 문서는 붙여넣기만 가능하다 */}
                             <PasteEntry
                                 file={{
-                                    label: `엑셀 파일 첨부하기${!canEditReport ? ' 🔒' : ''}`,
+                                    label: `엑셀 파일 첨부하기${!canEditReport ? ' ' : ''}`,
                                     busy: isExtracting,
                                     busyLabel: 'AI 분석 중...',
                                     disabled: isExtracting || !selectedProject,
                                     title: '공사일보 엑셀 파일(.xlsx, .xls)을 첨부하여 자동 추출합니다',
-                                    icon: '📂',
+                                    icon: '',
                                     onClick: () => {
                                         if (!canEditReport) return notifyPermission('공사일보 파일 업로드');
                                         fileInputRef.current?.click();
@@ -3153,7 +3154,7 @@ ${compiledText.substring(0, 30000)}
                                 <PasteZone
                                     label="작업표 붙여넣기"
                                     hint="작업내용 표 복사 → 클릭 → Ctrl+V"
-                                    icon="📋"
+                                    icon=""
                                     accent="green"
                                     title="엑셀 작업내용 표를 복사(Ctrl+C)한 뒤 여기에 붙여넣기(Ctrl+V)하세요"
                                     disabled={!canEditReport || !selectedProject}
@@ -3163,7 +3164,7 @@ ${compiledText.substring(0, 30000)}
                                 <PasteZone
                                     label="공수표 붙여넣기"
                                     hint="투입공수 표 복사 → 클릭 → Ctrl+V"
-                                    icon="👥"
+                                    icon=""
                                     accent="sky"
                                     title="엑셀 투입공수 표를 복사(Ctrl+C)한 뒤 여기에 붙여넣기(Ctrl+V)하세요"
                                     disabled={!canEditReport || !selectedProject}
@@ -3183,7 +3184,7 @@ ${compiledText.substring(0, 30000)}
                                 }}
                                 disabled={!canEditReport || !selectedProject}
                             >
-                                ➕ 1일치 추가
+                                <Icon name="plus" size="1.1em" /> 1일치 추가
                             </button>
                             <button
                                 type="button"
@@ -3195,9 +3196,9 @@ ${compiledText.substring(0, 30000)}
                                     }
                                 }}
                                 disabled={!canEditReport || !selectedProject}
-                                style={{ color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                                style={{ color: 'var(--danger)', borderColor: 'color-mix(in srgb, var(--bad) 30%, transparent)' }}
                             >
-                                🔄 초기화
+                                <Icon name="refresh" size="1.1em" /> 초기화
                             </button>
                         </div>
                     </div>
@@ -3206,7 +3207,7 @@ ${compiledText.substring(0, 30000)}
                     <div className="wizard-step-card" style={{ marginTop: '0' }}>
                         <div className="wizard-step-header" style={{ marginBottom: '12px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '18px' }}>✏️</span>
+                                <span style={{ fontSize: '18px' }}><Icon name="pencil" size="1.1em" /></span>
                                 <div>
                                     <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>일보 작성 및 검토</h4>
                                     <p style={{ margin: '2px 0 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
@@ -3215,7 +3216,7 @@ ${compiledText.substring(0, 30000)}
                                 </div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--accent)', background: 'rgba(99, 102, 241, 0.1)', padding: '4px 10px', borderRadius: '6px' }}>
+                                <span style={{ fontSize: '12.5px', fontWeight: 800, color: 'var(--accent)', background: 'color-mix(in srgb, var(--brand) 10%, transparent)', padding: '4px 10px', borderRadius: 'var(--radius-md)' }}>
                                     총 {extractedReports.length}일치 작성 중
                                 </span>
                             </div>
@@ -3224,14 +3225,14 @@ ${compiledText.substring(0, 30000)}
                         {/* 입력 폼 리스트 */}
                         <div style={{display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '16px'}}>
                             {extractedReports.map((report, idx) => (
-                                <div key={idx} style={{background:'var(--bg-card-subtle)', padding:'14px', borderRadius:'12px', border:'1px solid var(--border-color)', position:'relative', color:'var(--text-color)'}}>
+                                <div key={idx} style={{background:'var(--bg-card-subtle)', padding:'14px', borderRadius:'var(--radius-lg)', border:'1px solid var(--border-color)', position:'relative', color:'var(--text-color)'}}>
                                     {extractedReports.length > 1 && (
                                         <button 
                                             onClick={() => setExtractedReports(extractedReports.filter((_, i) => i !== idx))} 
                                             style={{position:'absolute', right:'10px', top:'10px', background:'transparent', border:'none', color:'var(--danger)', cursor:'pointer', fontWeight:'bold', fontSize:'18px'}}
                                             title="이 일자 항목 삭제"
                                         >
-                                            ✕
+                                            <Icon name="x" size="1.1em" />
                                         </button>
                                     )}
                                     <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom:'8px'}}>
@@ -3256,7 +3257,7 @@ ${compiledText.substring(0, 30000)}
                                         {/* 1. 일반 특이사항 */}
                                         <div className="field-sub-box">
                                             <div className="field-sub-header">
-                                                <span className="field-sub-title">📌 일반 특이사항</span>
+                                                <span className="field-sub-title"><Icon name="info" size="1.1em" /> 일반 특이사항</span>
                                                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>검수Fail, 출입신청, 도비 등</span>
                                             </div>
                                             <textarea
@@ -3273,9 +3274,9 @@ ${compiledText.substring(0, 30000)}
                                         </div>
 
                                         {/* 2. 설비 이슈사항 */}
-                                        <div className="field-sub-box" style={{ borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+                                        <div className="field-sub-box" style={{ borderColor: 'color-mix(in srgb, var(--bad) 30%, transparent)' }}>
                                             <div className="field-sub-header">
-                                                <span className="field-sub-title issue-type">🚨 설비 이슈사항</span>
+                                                <span className="field-sub-title issue-type"> 설비 이슈사항</span>
                                                 <button
                                                     type="button"
                                                     className="btn-issue-center-link"
@@ -3302,12 +3303,12 @@ ${compiledText.substring(0, 30000)}
                                                     }}
                                                     title="입력된 설비 이슈사항을 스태킹/노칭 이슈 관리 센터의 정식 이슈로 즉시 등록합니다"
                                                 >
-                                                    👉 이슈센터로 바로 등록
+                                                     이슈센터로 바로 등록
                                                 </button>
                                             </div>
                                             <textarea
                                                 className="paste-textarea"
-                                                style={{ minHeight: '52px', marginBottom: 0, fontSize: '12px', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+                                                style={{ minHeight: '52px', marginBottom: 0, fontSize: '12px', border: '1px solid color-mix(in srgb, var(--bad) 30%, transparent)' }}
                                                 placeholder="설비 미가동, 부품 파손/손상, 품질 불량, 알람 등 실제 설비적 문제사항"
                                                 value={report.issues || ''}
                                                 onChange={(e) => {
@@ -3344,10 +3345,10 @@ ${compiledText.substring(0, 30000)}
                                                         style={{
                                                             fontSize: '11px',
                                                             padding: '2px 8px',
-                                                            background: '#eff6ff',
-                                                            border: '1px dashed #3b82f6',
-                                                            color: '#1d4ed8',
-                                                            borderRadius: '4px',
+                                                            background: 'var(--brand-wash)',
+                                                            border: '1px dashed var(--brand)',
+                                                            color: 'var(--brand)',
+                                                            borderRadius: 'var(--radius-md)',
                                                             cursor: 'pointer',
                                                             fontWeight: 600
                                                         }}
@@ -3358,37 +3359,37 @@ ${compiledText.substring(0, 30000)}
                                                 {/* 기본 및 자사 부서 그리드 */}
                                                 <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(75px, 1fr))', gap:'6px', marginBottom:'6px'}}>
                                                     <div style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px'}}>
-                                                        <span style={{color: '#475569', minWidth: '26px'}}>소장</span>
+                                                        <span style={{color: 'var(--brand)', minWidth: '26px'}}>소장</span>
                                                         <input type="number" step="0.5" value={report.pm_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].pm_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'42px', padding:'3px'}}/>
                                                     </div>
                                                     <div style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px'}}>
-                                                        <span style={{color: '#475569', minWidth: '26px'}}>설계</span>
+                                                        <span style={{color: 'var(--brand)', minWidth: '26px'}}>설계</span>
                                                         <input type="number" step="0.5" value={report.design_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].design_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'42px', padding:'3px'}}/>
                                                     </div>
                                                     <div style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px'}}>
-                                                        <span style={{color: '#0369a1', minWidth: '26px'}}>기구</span>
+                                                        <span style={{color: 'var(--teal)', minWidth: '26px'}}>기구</span>
                                                         <input type="number" step="0.5" value={report.facility_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].facility_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'42px', padding:'3px'}}/>
                                                     </div>
                                                     <div style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px'}}>
-                                                        <span style={{color: '#059669', minWidth: '26px'}}>제어</span>
+                                                        <span style={{color: 'var(--ok)', minWidth: '26px'}}>제어</span>
                                                         <input type="number" step="0.5" value={report.control_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].control_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'42px', padding:'3px'}}/>
                                                     </div>
                                                     <div style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px'}}>
-                                                        <span style={{color: '#d97706', minWidth: '26px'}}>전장</span>
+                                                        <span style={{color: 'var(--signal)', minWidth: '26px'}}>전장</span>
                                                         <input type="number" step="0.5" value={report.electrical_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].electrical_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'42px', padding:'3px'}}/>
                                                     </div>
                                                     <div style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px'}}>
-                                                        <span style={{color: '#7c3aed', minWidth: '26px'}}>비전</span>
+                                                        <span style={{color: 'var(--teal)', minWidth: '26px'}}>비전</span>
                                                         <input type="number" step="0.5" value={report.vision_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].vision_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'42px', padding:'3px'}}/>
                                                     </div>
                                                     <div style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px'}}>
-                                                        <span style={{color: '#e11d48', minWidth: '26px'}}>안전</span>
+                                                        <span style={{color: 'var(--bad)', minWidth: '26px'}}>안전</span>
                                                         <input type="number" step="0.5" value={report.personnel_count} onChange={e=>{const newR=[...extractedReports]; newR[idx].personnel_count=Number(e.target.value); setExtractedReports(newR);}} style={{width:'42px', padding:'3px'}}/>
                                                     </div>
                                                 </div>
 
                                                 {/* 외주 부서 그리드 */}
-                                                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(85px, 1fr))', gap:'6px', background:'var(--bg-card)', padding:'6px 8px', borderRadius:'6px', border:'1px solid var(--border-subtle)', marginBottom:'6px'}}>
+                                                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(85px, 1fr))', gap:'6px', background:'var(--bg-card)', padding:'6px 8px', borderRadius:'var(--radius-md)', border:'1px solid var(--border-subtle)', marginBottom:'6px'}}>
                                                     <div style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px'}}>
                                                         <span style={{color: 'var(--warning)', fontSize:'0.7rem'}}>기구외주</span>
                                                         <input type="number" step="0.5" value={report.facility_outsource} onChange={e=>{const newR=[...extractedReports]; newR[idx].facility_outsource=Number(e.target.value); setExtractedReports(newR);}} style={{width:'38px', padding:'2px'}}/>
@@ -3409,10 +3410,10 @@ ${compiledText.substring(0, 30000)}
 
                                                 {/* 동적 커스텀 부서 표시 */}
                                                 {report.custom_depts && Object.keys(report.custom_depts).length > 0 && (
-                                                    <div style={{display:'flex', gap:'6px', flexWrap:'wrap', background:'var(--bg-card)', padding:'6px', borderRadius:'6px', border:'1px solid var(--border-subtle)'}}>
+                                                    <div style={{display:'flex', gap:'6px', flexWrap:'wrap', background:'var(--bg-card)', padding:'6px', borderRadius:'var(--radius-md)', border:'1px solid var(--border-subtle)'}}>
                                                         {Object.entries(report.custom_depts).map(([deptName, cnt]) => (
-                                                            <div key={deptName} style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px', background:'var(--bg-card-subtle)', padding:'2px 6px', borderRadius:'4px', border:'1px solid var(--border-subtle)'}}>
-                                                                <span style={{color: '#6366f1', fontWeight: 600}}>{deptName}</span>
+                                                            <div key={deptName} style={{fontSize:'0.75rem', display:'flex', alignItems:'center', gap:'3px', background:'var(--bg-card-subtle)', padding:'2px 6px', borderRadius:'var(--radius-md)', border:'1px solid var(--border-subtle)'}}>
+                                                                <span style={{color: 'var(--brand)', fontWeight: 600}}>{deptName}</span>
                                                                 <input type="number" step="0.5" value={cnt} onChange={e => {
                                                                     const newR = [...extractedReports];
                                                                     newR[idx].custom_depts = { ...newR[idx].custom_depts, [deptName]: Number(e.target.value) };
@@ -3424,7 +3425,7 @@ ${compiledText.substring(0, 30000)}
                                                                     delete nextDepts[deptName];
                                                                     newR[idx].custom_depts = nextDepts;
                                                                     setExtractedReports(newR);
-                                                                }} style={{background:'transparent', border:'none', color:'#ef4444', cursor:'pointer', fontSize:'12px', padding:'0 2px'}}>✕</button>
+                                                                }} style={{background:'transparent', border:'none', color:'var(--bad)', cursor:'pointer', fontSize:'12px', padding:'0 2px'}}><Icon name="x" size="1.1em" /></button>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -3460,13 +3461,13 @@ ${compiledText.substring(0, 30000)}
                                     disabled={!selectedProject || isExtracting || !hasValidReportsToSave}
                                     title={!selectedProject ? '상단에서 프로젝트를 먼저 선택해주세요' : !hasValidReportsToSave ? '저장할 일보 내용이나 공수가 입력되어야 합니다' : ''}
                                 >
-                                    {isExtracting ? '⏳ AI 추출 및 처리 중...' : `💾 공사일보 저장 완료 (${extractedReports.length}일치 최신 반영)` + (!canEditReport ? ' 🔒' : '')}
+                                    {isExtracting ? 'AI 추출 및 처리 중...' : `공사일보 저장 완료 (${extractedReports.length}일치 최신 반영)` + (!canEditReport ? ' ' : '')}
                                 </button>
                             );
                         })()}
 
                         {msg && (
-                            <div style={{marginTop: '12px', padding: '10px 14px', borderRadius: '8px', backgroundColor: msg.includes('실패') ? 'var(--danger-bg)' : 'var(--accent-bg)', color: msg.includes('실패') ? 'var(--danger)' : 'var(--accent)', fontSize: '13px', fontWeight: 600}}>
+                            <div style={{marginTop: '12px', padding: '10px 14px', borderRadius: 'var(--radius-md)', backgroundColor: msg.includes('실패') ? 'var(--danger-bg)' : 'var(--accent-bg)', color: msg.includes('실패') ? 'var(--danger)' : 'var(--accent)', fontSize: '13px', fontWeight: 600}}>
                                 {msg}
                             </div>
                         )}
@@ -3480,7 +3481,7 @@ ${compiledText.substring(0, 30000)}
                     <div className="aim-modal" onClick={e => e.stopPropagation()}>
                         <div className="aim-header">
                             <div className="aim-title-group">
-                                <span className="aim-title-icon">📊</span>
+                                <span className="aim-title-icon"><Icon name="barChart" size="1.1em" /></span>
                                 <div>
                                     <h3 className="aim-title">이슈 통합분석 PPT 보고서 다운로드</h3>
                                     <p className="aim-subtitle">분석 대상(이슈 또는 프로젝트 공사일보)과 기간을 선택하여 PPT를 생성합니다.</p>
@@ -3493,7 +3494,7 @@ ${compiledText.substring(0, 30000)}
                                 disabled={isAnalyzing}
                                 title="닫기"
                             >
-                                ✕
+                                <Icon name="x" size="1.1em" />
                             </button>
                         </div>
 
@@ -3507,7 +3508,7 @@ ${compiledText.substring(0, 30000)}
                                         className={`aim-mode-card ${analysisMode === 'issues' ? 'selected' : ''}`}
                                         onClick={() => { setAnalysisMode('issues'); setAnalyzeMsg(''); }}
                                     >
-                                        <div className="aim-mode-badge issues">🚨 이슈 분석</div>
+                                        <div className="aim-mode-badge issues"> 이슈 분석</div>
                                         <div className="aim-mode-name">스태킹 · 노칭 공정 이슈 종합 분석</div>
                                         <div className="aim-mode-desc">
                                             스태킹/노칭 공정별 조치 현황, 완료율, 미결 이슈 현황 및 전체 조치 이력 카드 슬라이드
@@ -3519,7 +3520,7 @@ ${compiledText.substring(0, 30000)}
                                         className={`aim-mode-card ${analysisMode === 'reports' ? 'selected' : ''}`}
                                         onClick={() => { setAnalysisMode('reports'); setAnalyzeMsg(''); }}
                                     >
-                                        <div className="aim-mode-badge reports">📝 공사일보 분석</div>
+                                        <div className="aim-mode-badge reports"><Icon name="pencil" size="1.1em" /> 공사일보 분석</div>
                                         <div className="aim-mode-name">프로젝트 공사일보 AI 종합 분석</div>
                                         <div className="aim-mode-desc">
                                             수집된 공사일보 데이터를 Gemini AI가 종합 1페이지 요약 및 프로젝트별 이슈로 자동 분석
@@ -3538,7 +3539,7 @@ ${compiledText.substring(0, 30000)}
                                             value={analysisSite}
                                             onChange={e => setAnalysisSite(e.target.value)}
                                         >
-                                            <option value="all">🌐 전체 사이트 (모든 등록 SITE 대상)</option>
+                                            <option value="all"><Icon name="globe" size="1.1em" /> 전체 사이트 (모든 등록 SITE 대상)</option>
                                             {registeredSiteNames.map(s => (
                                                 <option key={s} value={s}>{s}</option>
                                             ))}
@@ -3589,7 +3590,7 @@ ${compiledText.substring(0, 30000)}
 
                             {/* 안내 정보 박스 */}
                             <div className="aim-guide-box">
-                                <span style={{ fontSize: '15px' }}>💡</span>
+                                <span style={{ fontSize: '15px' }}><Icon name="info" size="1.1em" /></span>
                                 <div>
                                     {analysisMode === 'issues' ? (
                                         <span>
@@ -3606,7 +3607,7 @@ ${compiledText.substring(0, 30000)}
                             {/* 진행 메시지 및 상태 */}
                             {analyzeMsg && (
                                 <div className={`aim-msg-box ${analyzeMsg.includes('오류') || analyzeMsg.includes('초과') ? 'error' : analyzeMsg.includes('완료') ? 'success' : 'loading'}`}>
-                                    {isAnalyzing && <span className="aim-spinner">⏳</span>}
+                                    {isAnalyzing && <span className="aim-spinner"><Icon name="clock" size="1.1em" /></span>}
                                     <span>{analyzeMsg}</span>
                                 </div>
                             )}
@@ -3627,9 +3628,9 @@ ${compiledText.substring(0, 30000)}
                                 onClick={handleGenerateAnalysis}
                                 disabled={isAnalyzing}
                             >
-                                📊 {isAnalyzing 
+                                <Icon name="barChart" size="1.1em" /> {isAnalyzing 
                                     ? (analysisMode === 'issues' ? '이슈 PPT 생성 중...' : 'AI 일보 분석 및 PPT 생성 중...') 
-                                    : (analysisMode === 'issues' ? '이슈 분석 PPT 다운로드 📥' : '프로젝트 공사일보 분석 PPT 다운로드 📥')}
+                                    : (analysisMode === 'issues' ? '이슈 분석 PPT 다운로드 ' : '프로젝트 공사일보 분석 PPT 다운로드 ')}
                             </button>
                         </div>
                     </div>
@@ -3642,7 +3643,7 @@ ${compiledText.substring(0, 30000)}
                     <div className="spm-modal" onClick={e => e.stopPropagation()}>
                         <div className="spm-header">
                             <div className="spm-header-title">
-                                <span style={{ fontSize: '1.25rem' }}>📑</span>
+                                <span style={{ fontSize: '1.25rem' }}><Icon name="file" size="1.1em" /></span>
                                 <span>다중 프로젝트 일보 분류 선택</span>
                             </div>
                             <button
@@ -3650,14 +3651,14 @@ ${compiledText.substring(0, 30000)}
                                 className="spm-close-btn"
                                 onClick={() => setSplitProjectModal(prev => ({ ...prev, isOpen: false }))}
                             >
-                                ✕
+                                <Icon name="x" size="1.1em" />
                             </button>
                         </div>
                         
                         <div className="spm-body">
                             <div className="spm-info-box">
                                 <div style={{ fontWeight: 600, color: 'var(--text-color)', marginBottom: '4px' }}>
-                                    🏢 현재 선택된 앱 프로젝트: <span style={{ color: 'var(--primary)' }}>{splitProjectModal.currentProjectName}</span>
+                                    <Icon name="building" size="1.1em" /> 현재 선택된 앱 프로젝트: <span style={{ color: 'var(--primary)' }}>{splitProjectModal.currentProjectName}</span>
                                 </div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                                     붙여넣은 일보에서 <b>{splitProjectModal.uniqueProjects.length}개</b>의 프로젝트 작업내용이 함께 감지되었습니다.<br/>
@@ -3690,7 +3691,7 @@ ${compiledText.substring(0, 30000)}
                                                 <div className="spm-title-area">
                                                     <span className="spm-project-title">[{pName}]</span>
                                                     <span className="spm-badge-count">{count}일치 감지</span>
-                                                    {isCurProj && <span className="spm-badge-recommend">⭐ 현재 프로젝트 추천</span>}
+                                                    {isCurProj && <span className="spm-badge-recommend"><Icon name="star" size="1.1em" /> 현재 프로젝트 추천</span>}
                                                 </div>
                                             </div>
 
@@ -3720,11 +3721,11 @@ ${compiledText.substring(0, 30000)}
                                         />
                                         <div className="spm-title-area">
                                             <span className="spm-project-title">
-                                                🌐 일보상 내용 전체 등록 (분리하지 않고 원본 전체 저장)
+                                                <Icon name="globe" size="1.1em" /> 일보상 내용 전체 등록 (분리하지 않고 원본 전체 저장)
                                             </span>
                                         </div>
                                     </div>
-                                    <div style={{ fontSize: '12px', color: '#64748b', marginLeft: '30px' }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--brand)', marginLeft: '30px' }}>
                                         감지된 모든 프로젝트 작업내용을 구분 없이 통째로 일보 폼에 반영합니다.
                                     </div>
                                 </label>
@@ -3762,14 +3763,14 @@ ${compiledText.substring(0, 30000)}
                                         if (matchedProj) {
                                             setTargetType('project');
                                             setSelectedProject(matchedProj.id);
-                                            setMsg(`🎯 [${matchedProj.name}] 프로젝트로 등록 대상이 자동 전환되었으며, 해당 프로젝트 작업내용만 발췌하여 폼에 반영했습니다.`);
+                                            setMsg(`[${matchedProj.name}] 프로젝트로 등록 대상이 자동 전환되었으며, 해당 프로젝트 작업내용만 발췌하여 폼에 반영했습니다.`);
                                         }
                                     }
 
                                     setSplitProjectModal(prev => ({ ...prev, isOpen: false }));
                                 }}
                             >
-                                ✓ 선택한 프로젝트 내용으로 폼에 반영
+                                <Icon name="check" size="1.1em" /> 선택한 프로젝트 내용으로 폼에 반영
                             </button>
                         </div>
                     </div>

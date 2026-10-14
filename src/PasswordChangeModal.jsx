@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon } from './icons';
 import { updateUserPassword } from "./authService";
 
 export default function PasswordChangeModal({
@@ -62,8 +63,8 @@ export default function PasswordChangeModal({
       className="back"
       style={{
         zIndex: 9999,
-        background: "rgba(15, 23, 42, 0.65)",
-        backdropFilter: "blur(4px)",
+        background: "color-mix(in srgb, var(--brand) 30%, transparent)",
+        backdropFilter: "none",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget && mode !== "recovery") {
@@ -77,8 +78,8 @@ export default function PasswordChangeModal({
           maxWidth: "440px",
           width: "92vw",
           padding: "28px 24px",
-          borderRadius: "16px",
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          borderRadius: "var(--radius-xl)",
+          boxShadow: "none",
           background: "var(--bg-card)",
           border: "1px solid var(--border-faint)",
         }}
@@ -90,7 +91,7 @@ export default function PasswordChangeModal({
             style={{
               top: "16px",
               right: "16px",
-              color: "#64748b",
+              color: "var(--brand)",
               lineHeight: 1,
               cursor: "pointer",
             }}
@@ -105,7 +106,7 @@ export default function PasswordChangeModal({
               width: "48px",
               height: "48px",
               margin: "0 auto 12px",
-              background: mode === "recovery" ? "#eff6ff" : "#f0fdf4",
+              background: mode === "recovery" ? "var(--brand-wash)" : "var(--ok-wash)",
               borderRadius: "50%",
               display: "flex",
               alignItems: "center",
@@ -113,7 +114,7 @@ export default function PasswordChangeModal({
               fontSize: "24px",
             }}
           >
-            {mode === "recovery" ? "🔄" : "🔑"}
+            {mode === "recovery" ? "" : ""}
           </div>
           <h2 style={{ margin: "0 0 6px", fontSize: "20px", color: "var(--text-primary)", fontWeight: 700 }}>
             {mode === "recovery" ? "비밀번호 재설정" : "비밀번호 변경"}
@@ -143,8 +144,8 @@ export default function PasswordChangeModal({
                 style={{
                   paddingRight: "40px",
                   fontSize: "14px",
-                  borderRadius: "8px",
-                  borderColor: newPassword && !isLengthValid ? "#f87171" : "var(--border-subtle)",
+                  borderRadius: "var(--radius-md)",
+                  borderColor: newPassword && !isLengthValid ? "var(--bad)" : "var(--border-subtle)",
                 }}
               />
               <button
@@ -165,7 +166,7 @@ export default function PasswordChangeModal({
               </button>
             </div>
             <div style={{ marginTop: "4px", fontSize: "11px", color: isLengthValid ? "var(--success)" : "var(--text-muted)" }}>
-              {isLengthValid ? "✓ 6자리 이상 충족" : "• 최소 6자 이상 필요"}
+              {isLengthValid ? "6자리 이상 충족" : "• 최소 6자 이상 필요"}
             </div>
           </div>
 
@@ -182,15 +183,15 @@ export default function PasswordChangeModal({
               required
               style={{
                 fontSize: "14px",
-                borderRadius: "8px",
-                borderColor: confirmPassword && !isMatch ? "#f87171" : "var(--border-subtle)",
+                borderRadius: "var(--radius-md)",
+                borderColor: confirmPassword && !isMatch ? "var(--bad)" : "var(--border-subtle)",
               }}
             />
-            <div style={{ marginTop: "4px", fontSize: "11px", color: isMatch ? "#16a34a" : confirmPassword ? "#dc2626" : "#94a3b8" }}>
+            <div style={{ marginTop: "4px", fontSize: "11px", color: isMatch ? "var(--ok)" : confirmPassword ? "var(--bad)" : "var(--brand)" }}>
               {isMatch
-                ? "✓ 비밀번호가 일치합니다."
+                ? "비밀번호가 일치합니다."
                 : confirmPassword
-                ? "✕ 비밀번호가 일치하지 않습니다."
+                ? "비밀번호가 일치하지 않습니다."
                 : "• 동일한 비밀번호를 다시 입력하세요."}
             </div>
           </div>
@@ -199,10 +200,10 @@ export default function PasswordChangeModal({
             <div
               style={{
                 padding: "10px 14px",
-                borderRadius: "8px",
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
-                color: "#dc2626",
+                borderRadius: "var(--radius-md)",
+                background: "var(--bad-wash)",
+                border: "1px solid color-mix(in srgb, var(--bad) 40%, transparent)",
+                color: "var(--bad)",
                 fontSize: "12px",
                 lineHeight: 1.4,
                 textAlign: "center",
@@ -216,17 +217,17 @@ export default function PasswordChangeModal({
             <div
               style={{
                 padding: "10px 14px",
-                borderRadius: "8px",
-                background: "#f0fdf4",
-                border: "1px solid #bbf7d0",
-                color: "#16a34a",
+                borderRadius: "var(--radius-md)",
+                background: "var(--ok-wash)",
+                border: "1px solid color-mix(in srgb, var(--ok) 40%, transparent)",
+                color: "var(--ok)",
                 fontSize: "12px",
                 lineHeight: 1.4,
                 textAlign: "center",
                 fontWeight: 600,
               }}
             >
-              ✓ {successMsg}
+              <Icon name="check" size="1.1em" /> {successMsg}
             </div>
           )}
 
@@ -243,7 +244,7 @@ export default function PasswordChangeModal({
                   fontWeight: 600,
                   fontSize: "14px",
                   height: "42px",
-                  borderRadius: "8px",
+                  borderRadius: "var(--radius-md)",
                 }}
               >
                 취소
@@ -258,7 +259,7 @@ export default function PasswordChangeModal({
                 height: "42px",
                 fontSize: "14px",
                 fontWeight: 600,
-                borderRadius: "8px",
+                borderRadius: "var(--radius-md)",
                 opacity: canSubmit ? 1 : 0.6,
                 cursor: canSubmit ? "pointer" : "not-allowed",
               }}

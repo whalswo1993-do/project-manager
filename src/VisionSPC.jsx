@@ -10,7 +10,6 @@ ChartJS.register(CategoryScale, LinearScale, BarController, LineController, BarE
 
 
 export default function VisionSPC({ currentCustomer = "SK on" }) {
-    const [isDragging, setIsDragging] = useState(false);
     const [items, setItems] = useState([]); // [{ name, data: [], specs: { target, usl, lsl, subgroup }, stats: {} }]
     const [activeItemIndex, setActiveItemIndex] = useState(null);
     const [sigmaMethod, setSigmaMethod] = useState('moving_range');
@@ -213,22 +212,6 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
             if (parsedItems.length > 0) setActiveItemIndex(0);
         };
         reader.readAsArrayBuffer(file);
-    };
-
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
-
-    const handleDragLeave = () => {
-        setIsDragging(false);
-    };
-
-    const handleDrop = (e) => {
-        e.preventDefault();
-        setIsDragging(false);
-        const file = e.dataTransfer.files[0];
-        handleFileUpload(file);
     };
 
     const handleSpecChange = (field, value) => {

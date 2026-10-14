@@ -17,6 +17,10 @@ npm run lint      # eslint — 현재 오류 0건, 경고 44건(미사용 변수
 npm test          # vitest — 분석 함수/마스터플랜 파서/AI 라우팅/서버 API 회귀 테스트(68개). 리팩터링 전후로 반드시 실행
 npm run preview   # 빌드 결과 미리보기
 ```
+**리팩터링 검증 순서:** `npm run lint`(오류 0 필수, 특히 `no-undef`) → `npm test` → `npm run build` → 필요하면 화면 확인.
+빌드와 테스트는 "정의되지 않은 변수"를 잡지 못한다(함수가 호출될 때만 터짐). 변수/state를 지울 때는 그 setter·참조가 다른 곳에서 쓰이는지 린트의 `no-undef`로 반드시 확인한다.
+화면 확인은 Claude Code 앱의 `vite-dev` 프리뷰(`.claude/launch.json`)로 하고, 로컬 개발 서버에서만 `DEFAULT_TEST_ACCOUNTS`(authService.js)의 테스트 계정으로 로그인한다. 이 계정은 서버 세션이 없어 DB 데이터는 비어 보이고 401이 두 건 찍히는 것이 정상이다.
+
 빌드 시 PowerShell에서 `NativeCommandError`가 보여도 Vite 경고(stderr)일 뿐이다. 마지막에 `✓ built` 가 나오면 성공.
 
 ## 환경변수 (`.env.local`, git 제외)

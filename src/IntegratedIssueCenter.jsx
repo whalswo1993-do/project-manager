@@ -20,7 +20,7 @@ export default function IntegratedIssueCenter({
   onClearExternalData = null
 }) {
   const [issues, setIssues] = useState(() => getLocalIssues());
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
 
   // 뷰 모드: 'all' | 'site' | 'project' | 'knowledge'

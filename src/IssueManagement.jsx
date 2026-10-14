@@ -7,7 +7,7 @@ import pptxgen from 'pptxgenjs';
 import { exportIssuesPpt } from './exportIssuePpt';
 import { fetchRemoteIssues, getRegisteredSiteNames } from './issueService';
 
-export default function IssueManagement({ projects, sites = [], role, onPermissionDenied, selectedYears, currentCustomer, onNavigateToIssueCenter }) {
+export default function IssueManagement({ projects, sites = [], role, onPermissionDenied, currentCustomer, onNavigateToIssueCenter }) {
     const isGrade1 = role === 'grade1';
     const canEditReport = ['admin', 'grade3'].includes(role);
     const canRunAIAnalysis = ['admin', 'grade3', 'grade2'].includes(role);
@@ -84,7 +84,6 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
 
     const [extractedReports, setExtractedReports] = useState([createEmptyReport()]);
     const [isExtracting, setIsExtracting] = useState(false);
-    const [isDragging, setIsDragging] = useState(false);
     const [msg, setMsg] = useState('');
     const [projectReports, setProjectReports] = useState([]);
     const [expandedReports, setExpandedReports] = useState({});
@@ -261,10 +260,6 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
 
     const fileInputRef = useRef(null);
 
-    const projectOptions = useMemo(() => {
-        return (projects || []).sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
-    }, [projects]);
-
     // 현재 대상 식별자 (프로젝트 ID 또는 'site_사이트명')
     const currentTargetId = useMemo(() => {
         if (targetType === 'site') {
@@ -422,18 +417,6 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
         );
     };
 
-    // 현재 선택된 대상의 총 누적 투입 공수
-    const totalCumulativeMD = useMemo(() => {
-        return (projectReports || []).reduce((acc, r) => {
-            const md = (r.pm_count || 0) + (r.design_count || 0) + (r.facility_count || 0) +
-                       (r.facility_outsource || 0) + (r.control_count || 0) + (r.control_outsource || 0) +
-                       (r.electrical_count || 0) + (r.electrical_outsource || 0) +
-                       (r.vision_count || 0) + (r.vision_outsource || 0) + (r.personnel_count || 0) +
-                       Object.values(r.custom_depts || {}).reduce((a, b) => a + (Number(b) || 0), 0);
-            return acc + md;
-        }, 0);
-    }, [projectReports]);
-
     // 조회 탭 검색어로 필터링된 일보 목록
     const filteredProjectReports = useMemo(() => {
         if (!reportSearchQuery.trim()) return projectReports;
@@ -497,26 +480,6 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
         });
         setProjectReports(parsed);
     }
-
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
-
-    const handleDragLeave = () => {
-        setIsDragging(false);
-    };
-
-    const handleDrop = async (e) => {
-        e.preventDefault();
-        setIsDragging(false);
-        if (!canEditReport) {
-            notifyPermission('공사일보 파일 업로드');
-            return;
-        }
-        const file = e.dataTransfer.files[0];
-        if (file) await handleFileUpload(file);
-    };
 
     // 공수 맵 데이터를 직접입력 폼(extractedReports)에 병합 반영하는 공통 유틸
     const mergeManpowerIntoExtracted = (mpMap) => {
@@ -609,7 +572,6 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
             let detectedWorkMap = null;
             let detectedManpowerMap = null;
             let workSheetName = '';
-            let manpowerSheetName = '';
 
             for (const sheetName of workbook.SheetNames) {
                 // 간트차트, 설치현황 등 순수 일정 시트는 제외 (단, 일보/보고/인원/공수/출역/근태 키워드 시트는 유지)
@@ -645,7 +607,6 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                     const curMCount = detectedManpowerMap ? Object.keys(detectedManpowerMap).length : 0;
                     if (mCount > curMCount) {
                         detectedManpowerMap = mTree;
-                        manpowerSheetName = sheetName;
                     }
                 }
             }
@@ -1613,7 +1574,6 @@ ${allText.substring(0, 100000)}
             let manpowerSectionStarted = false;
 
             // 가로형 헤더 구조(HSBMA Report 양식: Today vs Tomorrow vs Remark) 사전 분석
-            let hTodayCol = -1;
             let hFutureCol = -1;
             let hRemarkCol = -1;
 
@@ -1628,7 +1588,6 @@ ${allText.substring(0, 100000)}
                     if (/Remark|특이사항|비고|이슈/i.test(s) && rCol === -1) rCol = c;
                 });
                 if (tCol !== -1 && fCol !== -1) {
-                    hTodayCol = tCol;
                     hFutureCol = fCol;
                     hRemarkCol = rCol !== -1 ? rCol : 12;
                     break;
@@ -2453,7 +2412,8 @@ ${allText.substring(0, 100000)}
         }
     };
 
-    const [collapsedSections, setCollapsedSections] = useState(() => {
+    // 접기 상태 값은 현재 화면에서 읽지 않지만, 여러 핸들러가 setCollapsedSections 로 갱신한다(값은 버리고 setter만 사용).
+    const [, setCollapsedSections] = useState(() => {
         try {
             const saved = localStorage.getItem('pm_issue_collapsed_sections');
             if (saved) {
@@ -2465,16 +2425,6 @@ ${allText.substring(0, 100000)}
         }
         return { upload: false, inputForm: true, reportList: false };
     });
-
-    const toggleSection = (key) => {
-        setCollapsedSections(prev => {
-            const next = { ...prev, [key]: !prev[key] };
-            try {
-                localStorage.setItem('pm_issue_collapsed_sections', JSON.stringify(next));
-            } catch (e) {}
-            return next;
-        });
-    };
 
     const toggleReport = (id) => {
         setExpandedReports(prev => ({ ...prev, [id]: !prev[id] }));
@@ -3041,7 +2991,6 @@ ${compiledText.substring(0, 30000)}
                                                                                     onClick={(e) => {
                                                                                         e.stopPropagation();
                                                                                         const note = report.issues || report.special_notes || '';
-                                                                                        const currentProj = (projects || []).find(p => String(p.id) === String(selectedProject));
                                                                                         const payload = {
                                                                                             issueType: targetType === 'site' ? 'site' : 'project',
                                                                                             projectId: selectedProject,

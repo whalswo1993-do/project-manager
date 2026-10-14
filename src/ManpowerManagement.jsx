@@ -398,14 +398,10 @@ export default function ManpowerManagement({
   allProjects = [],
   sites = [],
   onSelectProject,
-  selectedYears = ['ALL'],
   availableYears = [],
-  onToggleYear,
-  onPresetYears,
   role = 'grade1',
   onPermissionDenied
 }) {
-  const isGrade1 = role === 'grade1';
   const canViewDetail = ['admin', 'grade3', 'grade2'].includes(role);
   const canExportPPT = ['admin', 'grade3', 'grade2'].includes(role);
 
@@ -533,7 +529,6 @@ export default function ManpowerManagement({
   const [compYearFilter, setCompYearFilter] = useState("ALL");
   const [onlyReported, setOnlyReported] = useState(true);
   const [compSort, setCompSort] = useState("diffDesc");
-  const [expandedDailyDetails, setExpandedDailyDetails] = useState({});
   // 일자별 실투입 내역에서 작업내용 개별 접기/펼치기 상태 (기본값: 모두 접힘)
   const [expandedCompReports, setExpandedCompReports] = useState({});
 
@@ -1967,30 +1962,6 @@ export default function ManpowerManagement({
     }
     return allComparisonData.find(item => item.projectId === selectedCompProject) || allComparisonData[0] || null;
   }, [allComparisonData, selectedCompProject]);
-
-  // 6. 요약 지표 (선택된 프로젝트 기준)
-  const activeCompSummary = useMemo(() => {
-    if (selectedProjectComp) {
-      return {
-        title: `${selectedProjectComp.projectName} 공수 분석`,
-        planTotal: selectedProjectComp.planTotal,
-        actualTotal: selectedProjectComp.actualTotal,
-        totalDiff: selectedProjectComp.totalDiff,
-        totalRate: selectedProjectComp.totalRate,
-        reportCount: selectedProjectComp.reportCount,
-        deptList: selectedProjectComp.deptList
-      };
-    }
-    return {
-      title: "",
-      planTotal: 0,
-      actualTotal: 0,
-      totalDiff: 0,
-      totalRate: 0,
-      reportCount: 0,
-      deptList: []
-    };
-  }, [selectedProjectComp]);
 
   // 7. 엑셀 다운로드 함수
   const exportComparisonExcel = async () => {

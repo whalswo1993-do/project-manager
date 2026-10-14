@@ -45,3 +45,6 @@ scratch/
 !public/*.xls
 !*master-schedule-template.xlsx
 !*Master Schedule 양식.xlsx
+.vercel
+.env*
+!.env.example

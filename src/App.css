@@ -172,6 +172,35 @@ button.nav-tab-btn.active { background: transparent; color: var(--ink); border-c
 }
 .theme-toggle-btn:hover { background: var(--bg-hover); color: var(--ink); }
 
+/* 업데이트가 있으면 업데이트될 때까지 테마 버튼 옆에 계속 보이는 버튼 */
+.header-update-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-brand);
+  background: var(--brand);
+  border: 1px solid var(--brand);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  animation: headerUpdatePulse 2s ease-in-out infinite;
+}
+.header-update-btn:hover { filter: brightness(1.08); }
+@keyframes headerUpdatePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .72; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .header-update-btn { animation: none; }
+}
+@media (max-width: 640px) {
+  .header-update-label { display: none; }
+  .header-update-btn { padding: 0 9px; }
+}
+
 /* ── 사용자 메뉴 ── */
 .user-menu { position: relative; }
 

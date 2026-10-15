@@ -1995,6 +1995,17 @@ JSON 출력 예시:
           </nav>
 
           <div className="system-user-and-tools">
+            {hasUpdate && (
+              <button
+                type="button"
+                onClick={handlePerformUpdate}
+                className="header-update-btn"
+                title="새 버전이 배포되었습니다. 눌러서 새로고침하면 최신 화면으로 바뀝니다"
+              >
+                <Icon name="refresh" size={15} />
+                <span className="header-update-label">업데이트</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={toggleTheme}

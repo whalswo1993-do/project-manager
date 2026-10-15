@@ -3,6 +3,7 @@ import "./App.css";
 import { supabase } from "./supabase";
 import Login from "./Login";
 import { confirmDialog } from "./confirmService";
+import { exportProjectList } from "./exportProjectList";
 import { exportComprehensiveReport } from "./reportExports";
 import IntegratedExportModal from "./IntegratedExportModal";
 import VisionSPC from "./VisionSPC";
@@ -3453,6 +3454,33 @@ JSON 출력 예시:
                   }}
                 >
                   <FoldLabel collapsed={collapsedSections.list} />
+                </button>
+                <button
+                  type="button"
+                  disabled={view.length === 0}
+                  onClick={() => {
+                    const rows = selectedProjects.size > 0 ? view.filter(p => selectedProjects.has(p.id)) : view;
+                    exportProjectList(rows, {
+                      customer: currentCustomer,
+                      label: selectedProjects.size > 0 ? `선택${rows.length}건` : (isAllYears ? "전체" : selectedYearsLabel),
+                    });
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    background: 'var(--bg-card-subtle)',
+                    color: 'var(--ink-2)',
+                    border: '1px solid var(--line-2)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    cursor: view.length === 0 ? 'not-allowed' : 'pointer'
+                  }}
+                  title={selectedProjects.size > 0 ? "선택한 프로젝트만 엑셀로 다운로드" : "현재 목록(검색·필터 적용)을 엑셀로 다운로드"}
+                >
+                  <Icon name="download" size={12} />
+                  {selectedProjects.size > 0 ? `선택 ${selectedProjects.size}건 엑셀` : "엑셀 다운로드"}
                 </button>
               </div>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="제조번호, Site, Line, 프로젝트, 담당자 검색" />

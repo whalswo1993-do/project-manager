@@ -349,7 +349,7 @@ export default function App() {
     return localStorage.getItem("pm_show_daily_dept_matrix") !== "false"; // 기본값: 펼침
   });
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("전체");
+  const [filter, setFilter] = useState("진행중");
   const [siteFilter, setSiteFilter] = useState("전체");
   const [personFilter, setPersonFilter] = useState("전체");
   

@@ -3457,6 +3457,7 @@ JSON 출력 예시:
                 </button>
                 <button
                   type="button"
+                  className="ppt-btn"
                   disabled={view.length === 0}
                   onClick={() => {
                     const rows = selectedProjects.size > 0 ? view.filter(p => selectedProjects.has(p.id)) : view;
@@ -3465,21 +3466,9 @@ JSON 출력 예시:
                       label: selectedProjects.size > 0 ? `선택${rows.length}건` : (isAllYears ? "전체" : selectedYearsLabel),
                     });
                   }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    background: 'var(--bg-card-subtle)',
-                    color: 'var(--ink-2)',
-                    border: '1px solid var(--line-2)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '2px 8px',
-                    fontSize: '11px',
-                    cursor: view.length === 0 ? 'not-allowed' : 'pointer'
-                  }}
                   title={selectedProjects.size > 0 ? "선택한 프로젝트만 엑셀로 다운로드" : "현재 목록(검색·필터 적용)을 엑셀로 다운로드"}
                 >
-                  <Icon name="download" size={12} />
+                  <Icon name="download" size={15} />
                   {selectedProjects.size > 0 ? `선택 ${selectedProjects.size}건 엑셀` : "엑셀 다운로드"}
                 </button>
               </div>

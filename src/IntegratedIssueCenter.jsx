@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Icon } from './icons';
+import { confirmDialog } from "./confirmService";
 import './IntegratedIssueCenter.css';
 import {
   getLocalIssues,
@@ -236,7 +237,12 @@ export default function IntegratedIssueCenter({
 
   // 삭제 핸들러
   const handleDeleteIssue = async (issueId) => {
-    if (!window.confirm('정말 이 이슈 항목을 삭제하시겠습니까? (삭제 후 복구할 수 없습니다)')) return;
+    const ok = await confirmDialog({
+      title: '이슈 삭제',
+      message: '정말 이 이슈 항목을 삭제하시겠습니까?',
+      detail: '삭제하면 복구할 수 없습니다.',
+    });
+    if (!ok) return;
     const updated = await deleteIssue(issueId);
     setIssues(updated);
     showNotice('이슈 항목이 삭제되었습니다.');

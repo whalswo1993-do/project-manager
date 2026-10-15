@@ -5,6 +5,7 @@ import { supabase } from './supabase';
 import * as XLSX from 'xlsx';
 import { analyzeWorkbook, analyzePastedText, buildQuotations } from './quotationParser';
 import { PasteZone, PasteEntry } from './PasteZone';
+import { confirmDialog } from "./confirmService";
 
 // 품목 구분 (견적 라인 대분류 + 상세 리스트 품목 구분). 화면 필터 순서이기도 하다.
 const CATEGORY_ORDER = ['가공품', '시장품', '잡자재', '기구 SET', '인건비', '경비', '프로그램', '차감', '기타'];
@@ -548,7 +549,12 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
     };
 
     const handleDeleteQuotation = async (id) => {
-        if (!window.confirm('이 견적서와 모든 세부 품목 데이터를 삭제하시겠습니까?')) return;
+        const ok = await confirmDialog({
+            title: '견적서 삭제',
+            message: '이 견적서와 모든 세부 품목 데이터를 삭제하시겠습니까?',
+            detail: '삭제하면 복구할 수 없습니다.',
+        });
+        if (!ok) return;
         try {
             const { error: iErr } = await supabase.from('quotation_items').delete().eq('quotation_id', id);
             if (iErr) throw iErr;
@@ -565,7 +571,12 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
 
     const handleDeleteProjectQuotations = async (e, group) => {
         e.stopPropagation();
-        if (!window.confirm(`'${group.name}' 프로젝트의 모든 견적서와 세부 품목 데이터를 삭제하시겠습니까?`)) return;
+        const ok = await confirmDialog({
+            title: '프로젝트 견적 전체 삭제',
+            message: `'${group.name}' 프로젝트의 모든 견적서와 세부 품목 데이터를 삭제하시겠습니까?`,
+            detail: `견적서 ${group.quotations.length}건이 함께 삭제되며 복구할 수 없습니다.`,
+        });
+        if (!ok) return;
         
         try {
             const quotationIds = group.quotations.map(q => q.id);

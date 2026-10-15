@@ -7,6 +7,7 @@ import './VisionSPC.css';
 import { calculateStats, exportResultsToExcelWithExcelJS } from './exportSPC';
 import { supabase } from './supabase';
 import { PasteZone, PasteEntry } from './PasteZone';
+import { confirmDialog } from "./confirmService";
 
 ChartJS.register(CategoryScale, LinearScale, BarController, LineController, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -300,7 +301,12 @@ export default function VisionSPC({ currentCustomer = "SK on" }) {
         if (!presetSelect || presetSelect.startsWith("builtin_")) return;
         const cleanName = presetSelect.replace("custom_", "");
         const dbKey = `[${currentCustomer}] ${cleanName}`;
-        if (window.confirm(`'${cleanName}' 모델 스펙 프리셋을 삭제하시겠습니까?`)) {
+        const ok = await confirmDialog({
+            title: '프리셋 삭제',
+            message: `'${cleanName}' 모델 스펙 프리셋을 삭제하시겠습니까?`,
+            detail: '삭제하면 복구할 수 없습니다.',
+        });
+        if (ok) {
             try {
                 const { error } = await supabase
                     .from('spc_presets')

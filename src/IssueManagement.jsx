@@ -8,6 +8,7 @@ import pptxgen from 'pptxgenjs';
 import { exportIssuesPpt } from './exportIssuePpt';
 import { fetchRemoteIssues, getRegisteredSiteNames } from './issueService';
 import { PasteZone, PasteEntry } from './PasteZone';
+import { confirmDialog } from "./confirmService";
 
 export default function IssueManagement({ projects, sites = [], role, onPermissionDenied, currentCustomer, onNavigateToIssueCenter }) {
     const isGrade1 = role === 'grade1';
@@ -962,7 +963,12 @@ ${allText.substring(0, 100000)}
 
     const removeReport = async (id) => {
         if (!canEditReport) return notifyPermission('일보 삭제');
-        if (confirm('이 일보를 삭제하시겠습니까?')) {
+        const ok = await confirmDialog({
+            title: '일보 삭제',
+            message: '이 일보를 삭제하시겠습니까?',
+            detail: '삭제하면 복구할 수 없습니다.',
+        });
+        if (ok) {
             await supabase.from('daily_reports').delete().eq('id', id);
             loadReports(currentTargetId);
         }

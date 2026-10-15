@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
 import Login from "./Login";
+import { confirmDialog } from "./confirmService";
 import { exportComprehensiveReport } from "./reportExports";
 import IntegratedExportModal from "./IntegratedExportModal";
 import VisionSPC from "./VisionSPC";
@@ -1300,7 +1301,14 @@ export default function App() {
   }
 
   async function remove(id) {
-    if (del && confirm("삭제할까요?")) {
+    if (!del) return;
+    const target = projects.find(x => x.id === id);
+    const ok = await confirmDialog({
+      title: '프로젝트 삭제',
+      message: target?.name ? `'${target.name}' 프로젝트를 삭제할까요?` : '이 프로젝트를 삭제할까요?',
+      detail: '삭제하면 복구할 수 없습니다.',
+    });
+    if (ok) {
       await supabase.from("projects").delete().eq("id", id);
       load("projects");
       setSelectedProjects(new Set(Array.from(selectedProjects).filter(x => x !== id)));
@@ -1308,7 +1316,13 @@ export default function App() {
   }
 
   async function removeSelected() {
-    if (del && selectedProjects.size > 0 && confirm(`선택한 ${selectedProjects.size}개의 프로젝트를 삭제할까요?`)) {
+    if (!del || selectedProjects.size === 0) return;
+    const ok = await confirmDialog({
+      title: '프로젝트 일괄 삭제',
+      message: `선택한 ${selectedProjects.size}개의 프로젝트를 삭제할까요?`,
+      detail: '삭제하면 복구할 수 없습니다.',
+    });
+    if (ok) {
       await supabase.from("projects").delete().in("id", Array.from(selectedProjects));
       setSelectedProjects(new Set());
       load("projects");
@@ -1365,7 +1379,12 @@ export default function App() {
       return alert("현재 로그인된 본인 계정은 삭제할 수 없습니다.");
     }
 
-    if (!confirm(`'${email}' 사용자를 영구 삭제하시겠습니까?\n\n※ 삭제 시 계정 목록에서 제거되며 해당 계정으로는 다시 로그인할 수 없습니다.`)) {
+    const okDelete = await confirmDialog({
+      title: '사용자 영구 삭제',
+      message: `'${email}' 사용자를 영구 삭제하시겠습니까?`,
+      detail: '삭제 시 계정 목록에서 제거되며 해당 계정으로는 다시 로그인할 수 없습니다.',
+    });
+    if (!okDelete) {
       return;
     }
 
@@ -1403,7 +1422,12 @@ export default function App() {
   }
 
   async function trash(t, r) {
-    if (confirm(`${r.name} 삭제?`)){
+    const ok = await confirmDialog({
+      title: '삭제 확인',
+      message: `'${r.name}' 항목을 삭제할까요?`,
+      detail: '삭제하면 복구할 수 없습니다.',
+    });
+    if (ok) {
       await supabase.from(t).delete().eq("id", r.id);
       load(t);
     }

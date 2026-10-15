@@ -3438,7 +3438,7 @@ JSON 출력 예시:
             <div className="tools">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <h2>
-                  {isAllYears ? "전체 프로젝트 목록" : `${selectedYearsLabel} 프로젝트 목록`} ({view.length}건)
+                  {isAllYears ? "프로젝트 목록" : `${selectedYearsLabel} 프로젝트 목록`} ({view.length}건)
                 </h2>
                 <button
                   type="button"

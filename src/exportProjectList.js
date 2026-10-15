@@ -59,6 +59,52 @@ export function summarizeManpower(project) {
   };
 }
 
+// ── 공사 시작일 판단 ──────────────────────────────────────────
+// 공수가 처음 잡힌 날을 그대로 공사 시작으로 보면 틀린다. 사전 현장 방문·자재 수령·본사 검수로 1~3명이 먼저 잡히기 때문이다.
+//  - J/C(형교환) 프로젝트: 해체 작업 또는 J/C 일정부터가 공사 시작. (자재 수령·"형교환 툴 부칙"·본사 조립은 공사 전 준비)
+//  - 신규 장비 현지 셋업: 장비 도착 전 라인마킹·하역·반입부터 소수 인원으로 시작해 점점 늘어난다.
+//  - 일정에서 근거를 못 찾으면 공수가 처음 투입된 날로 잡고 근거 칸에 그렇게 적는다.
+const JC_PROJECT = /(^|[^a-z])j\/?c([^a-z]|$)|형교환|해체|job\s*change/i;
+const JC_START = /해체|(^|[^a-z])j\/?c([^a-z]|$)|job\s*change|형교환/i;
+const NOT_WORK = /툴|부칙|자재|발송|준비|설계|발주|dr\b|fob|본사|하네스/i;
+const SETUP_START = /라인\s*마킹|마킹|하역|반입|설치|set-?up|셋업|셋팅|세팅/i;
+
+function isJcProject(project) {
+  const texts = [project.name, ...(project.milestones || []).map((m) => m?.name)];
+  return texts.some((t) => JC_PROJECT.test(String(t || '')));
+}
+
+export function detectWorkStart(project, summary) {
+  const dates = Object.keys(summary.daily).sort();
+  const firstManpower = dates[0] || '';
+  const milestones = (project.milestones || []).filter((m) => m && m.name && m.startDate && m.endDate);
+
+  // 일정 하나의 기간 안에서 공수가 처음 잡힌 날. 공수 데이터가 아예 없으면 일정 시작일.
+  const startInside = (m) => {
+    if (dates.length === 0) return m.startDate;
+    return dates.find((d) => d >= m.startDate && d <= m.endDate) || '';
+  };
+  const pick = (re, basisLabel) => {
+    const found = milestones
+      .filter((m) => re.test(m.name) && !NOT_WORK.test(m.name))
+      .map((m) => ({ m, date: startInside(m) }))
+      .filter((x) => x.date)
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+    return found ? { date: found.date, basis: `${basisLabel}: '${found.m.name}'` } : null;
+  };
+
+  if (isJcProject(project)) {
+    // 해체/J/C 일정. 단 "고객사 형교환 툴 부칙" 같은 자재 준비 일정은 NOT_WORK로 제외된다.
+    const jc = pick(JC_START, 'J/C 공사 시작');
+    if (jc) return jc;
+  } else {
+    const setup = pick(SETUP_START, '신규 셋업 공사 시작');
+    if (setup) return setup;
+  }
+  if (firstManpower) return { date: firstManpower, basis: '공수 최초 투입일(일정에서 근거를 찾지 못함)' };
+  return { date: '', basis: '' };
+}
+
 // 부서 열 순서: 기본 순서 먼저, 그 밖의 부서는 뒤에 붙인다
 function orderDepts(keys) {
   const set = new Set(keys);
@@ -78,7 +124,9 @@ export function buildProjectListWorkbook(projects) {
   const summaries = projects.map((p) => summarizeManpower(p));
   const deptKeys = orderDepts([...new Set(summaries.flatMap((s) => Object.keys(s.depts)))]);
 
-  const head = ['고객사', '제조번호', 'Site', 'Line', '프로젝트', '프로젝트 시작일', '프로젝트 종료일', '상태', '공사 시작일', '공사 종료일'];
+  const starts = projects.map((p, i) => detectWorkStart(p, summaries[i]));
+
+  const head = ['고객사', '제조번호', 'Site', 'Line', '프로젝트', '프로젝트 시작일', '프로젝트 종료일', '상태', '공사 시작일', '공사 종료일', '공사 시작일 판단 근거'];
   deptKeys.forEach((k) => head.push(`${deptLabel(k)} Total(M/D)`, `${deptLabel(k)} Peak(명)`));
   head.push('전체 Total(M/D)', '전체 Peak(명)');
 
@@ -87,7 +135,7 @@ export function buildProjectListWorkbook(projects) {
     const s = summaries[i];
     const row = [
       p.customer || '', stripHash(p.manufacturingNo), p.site || '', p.line || '', p.name || '',
-      p.startDate || '', p.endDate || '', p.status || '', s.workStart, s.workEnd,
+      p.startDate || '', p.endDate || '', p.status || '', starts[i].date, s.workEnd, starts[i].basis,
     ];
     deptKeys.forEach((k) => {
       const d = s.depts[k];
@@ -100,7 +148,7 @@ export function buildProjectListWorkbook(projects) {
   // 상세 공수: 마일스톤 기간 안의 일자별 인원을 부서마다 모아 Peak 인원과 M/D를 구한다
   const detailHead = ['제조번호', '프로젝트', '액티비티', '시작일', '종료일'];
   deptKeys.forEach((k) => detailHead.push(`${deptLabel(k)} 인원(명)`));
-  detailHead.push('투입 M/D 합계', '일 최대 인원(명)');
+  detailHead.push('투입 M/D 합계', '일 최대 인원(명)', '구분');
   const detailRows = [detailHead];
 
   const windowStats = (s, from, to) => {
@@ -125,11 +173,16 @@ export function buildProjectListWorkbook(projects) {
       .filter((m) => m && m.startDate && m.endDate)
       .sort((a, b) => a.startDate.localeCompare(b.startDate) || a.endDate.localeCompare(b.endDate));
     const covered = new Set();
+    const workStart = starts[i].date;
     const push = (name, from, to, st) => {
+      // 공사 시작일 앞의 투입(자재 수령·사전 방문 등)은 "공사 전 준비", 시작일이 든 일정은 "공사 시작"으로 표시
+      let flag = '';
+      if (workStart && to < workStart) flag = '공사 전 준비';
+      else if (workStart && from <= workStart && workStart <= to) flag = '공사 시작';
       detailRows.push([
         stripHash(p.manufacturingNo), p.name || '', name, from, to,
         ...deptKeys.map((k) => st.byDept[k] || ''),
-        st.md || '', st.peak || '',
+        st.md || '', st.peak || '', flag,
       ]);
     };
     milestones.forEach((m) => {
@@ -161,12 +214,12 @@ export function buildProjectListWorkbook(projects) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(
     wb,
-    sheetFrom(listRows, [14, 16, 14, 8, 34, 14, 14, 10, 12, 12, ...deptKeys.flatMap(() => [14, 14]), 14, 14]),
+    sheetFrom(listRows, [14, 16, 14, 8, 34, 14, 14, 10, 12, 12, 40, ...deptKeys.flatMap(() => [14, 14]), 14, 14]),
     '프로젝트 목록',
   );
   XLSX.utils.book_append_sheet(
     wb,
-    sheetFrom(detailRows, [16, 34, 34, 12, 12, ...deptKeys.map(() => 12), 14, 14]),
+    sheetFrom(detailRows, [16, 34, 34, 12, 12, ...deptKeys.map(() => 12), 14, 14, 14]),
     '상세 공수',
   );
   return wb;

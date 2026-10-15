@@ -1,6 +1,92 @@
 import { describe, it, expect } from 'vitest';
 import * as XLSX from 'xlsx';
-import { buildProjectListWorkbook, summarizeManpower } from '../src/exportProjectList.js';
+import { buildProjectListWorkbook, summarizeManpower, detectWorkStart } from '../src/exportProjectList.js';
+
+const days = (obj) => obj; // 가독성용: { '날짜': 인원 }
+const withMp = (extra) => ({
+  name: '', milestones: [], ...extra,
+  manpower: { departments: { 기구: { total: 1, peak: 1, daily: days(extra.daily) } } },
+});
+
+describe('공사 시작일 판단', () => {
+  it('J/C: 자재 수령(현장 반입) 인원이 먼저 잡혀도 J/C 일정부터가 공사 시작', () => {
+    const p = withMp({
+      name: 'SKOH2 - 9Line - E1127 J/C Stacker (9대)',
+      milestones: [
+        { name: '현장 반입', startDate: '2026-06-29', endDate: '2026-06-29' },
+        { name: 'J/C', startDate: '2026-07-06', endDate: '2026-07-26' },
+      ],
+      daily: { '2026-06-29': 3, '2026-07-06': 9, '2026-07-07': 9 },
+    });
+    const r = detectWorkStart(p, summarizeManpower(p));
+    expect(r.date).toBe('2026-07-06');
+    expect(r.basis).toContain('J/C');
+  });
+
+  it('J/C: "고객사 형교환 툴 부칙"은 준비 일정이라 공사 시작으로 보지 않는다', () => {
+    const p = withMp({
+      name: 'SKOH2 - 9Line - E1127 J/C Notcher (6대)',
+      milestones: [
+        { name: '현장 반입', startDate: '2026-07-06', endDate: '2026-07-08' },
+        { name: '고객사 형교환 툴 부칙', startDate: '2026-07-06', endDate: '2026-07-11' },
+        { name: 'J/C', startDate: '2026-07-15', endDate: '2026-07-26' },
+      ],
+      daily: { '2026-07-06': 1, '2026-07-07': 1, '2026-07-13': 3, '2026-07-15': 5, '2026-07-16': 5 },
+    });
+    expect(detectWorkStart(p, summarizeManpower(p)).date).toBe('2026-07-15');
+  });
+
+  it('J/C: 해체 작업이 있으면 해체 첫 투입일부터', () => {
+    const p = withMp({
+      name: 'SKOY - 12Line - E1540 J/C Stacker(11대)',
+      milestones: [
+        { name: '해체(OY 내재화 시 검수)', startDate: '2026-04-28', endDate: '2026-05-13' },
+        { name: '현장 반입', startDate: '2026-05-15', endDate: '2026-05-17' },
+        { name: '기구세팅+공정세팅', startDate: '2026-06-05', endDate: '2026-06-19' },
+      ],
+      daily: { '2026-04-28': 1, '2026-04-29': 1, '2026-05-21': 2, '2026-06-05': 10 },
+    });
+    expect(detectWorkStart(p, summarizeManpower(p)).date).toBe('2026-04-28');
+  });
+
+  it('신규 셋업: 장비 도착 전 라인마킹·하역의 소수 인원부터가 공사 시작', () => {
+    const p = withMp({
+      name: 'SKBA - 5Line - 신규 Stacker(20대)',
+      milestones: [
+        { name: '사전 현장 방문', startDate: '2026-08-01', endDate: '2026-08-03' },
+        { name: '라인마킹', startDate: '2026-08-10', endDate: '2026-08-12' },
+        { name: '하역/반입', startDate: '2026-08-13', endDate: '2026-08-15' },
+        { name: '기구세팅', startDate: '2026-08-17', endDate: '2026-09-10' },
+      ],
+      daily: { '2026-08-01': 1, '2026-08-11': 2, '2026-08-13': 4, '2026-08-17': 12 },
+    });
+    const r = detectWorkStart(p, summarizeManpower(p));
+    expect(r.date).toBe('2026-08-11'); // 사전 방문(8/1)은 제외
+    expect(r.basis).toContain('라인마킹');
+  });
+
+  it('일정에서 근거를 못 찾으면 공수 최초 투입일, 근거 칸에 그 사실을 적는다', () => {
+    const p = withMp({ name: '기타', milestones: [{ name: '검토', startDate: '2026-01-01', endDate: '2026-01-05' }], daily: { '2026-01-03': 2 } });
+    const r = detectWorkStart(p, summarizeManpower(p));
+    expect(r.date).toBe('2026-01-03');
+    expect(r.basis).toContain('찾지 못함');
+  });
+
+  it('상세 공수에 "공사 전 준비"/"공사 시작" 구분이 표시된다', () => {
+    const p = withMp({
+      name: 'X J/C Stacker',
+      milestones: [
+        { name: '현장 반입', startDate: '2026-06-29', endDate: '2026-06-29' },
+        { name: 'J/C', startDate: '2026-07-06', endDate: '2026-07-26' },
+      ],
+      daily: { '2026-06-29': 3, '2026-07-06': 9 },
+    });
+    const rows = XLSX.utils.sheet_to_json(buildProjectListWorkbook([p]).Sheets['상세 공수'], { header: 1 });
+    const flagCol = rows[0].indexOf('구분');
+    expect(rows[1][flagCol]).toBe('공사 전 준비');
+    expect(rows[2][flagCol]).toBe('공사 시작');
+  });
+});
 
 // 가짜 데이터로 프로젝트 목록 엑셀의 열 구성과 공수 계산을 확인한다.
 const project = {

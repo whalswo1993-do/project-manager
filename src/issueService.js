@@ -127,8 +127,9 @@ export const CORE_REGISTERED_SITES = [
   'HSBMA'
 ];
 
-// 사용자가 [Site 관리] 및 프로젝트에 등록한 SITE 이름 목록 (LGE, 삼성SDI, 현대 등 미등록 사이트는 완전 배제)
-export function getRegisteredSiteNames(sites = [], projects = []) {
+// 사용자가 [Site 관리] 및 프로젝트에 등록한 SITE 이름 목록.
+// 호출부가 현재 고객사의 sites·projects만 넘긴다. customer는 기본 사이트 목록을 SK on에만 쓰기 위한 값.
+export function getRegisteredSiteNames(sites = [], projects = [], customer = 'SK on') {
   const seen = new Set();
   const names = [];
 
@@ -136,8 +137,7 @@ export function getRegisteredSiteNames(sites = [], projects = []) {
     const name = normalizeJVName(String(raw || '')).trim();
     if (!name) return;
     const key = name.toLowerCase();
-    // LGE, SAMSUNG, 현대 등 사용자가 등록하지 않은 사이트는 완전 배제
-    if (key.includes('lge') || key.includes('sdi') || key.includes('현대') || key.includes('hyundai')) return;
+    if (key.includes('lge')) return;
     if (seen.has(key)) return;
     seen.add(key);
     names.push(name);
@@ -146,8 +146,8 @@ export function getRegisteredSiteNames(sites = [], projects = []) {
   (sites || []).forEach(s => add(s?.name ?? s));
   (projects || []).forEach(p => add(p?.site));
 
-  // 등록된 사이트가 없거나 초기 로딩 시 기본 사용자 등록 사이트 제공
-  if (names.length === 0) {
+  // 등록된 사이트가 없거나 초기 로딩 시 기본 사용자 등록 사이트 제공 (SK on 전용)
+  if (names.length === 0 && customer === 'SK on') {
     CORE_REGISTERED_SITES.forEach(add);
   }
 

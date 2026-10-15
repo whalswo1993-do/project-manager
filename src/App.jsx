@@ -17,6 +17,7 @@ import { Icon } from "./icons";
 import { generateAIText } from "./ai";
 import * as XLSX from "xlsx";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { filterSitesByCustomer } from "./siteCustomers";
 import { normalizeJVName, getConstructionPeriod, getMonthDailyDeptMatrix, getDailyDepartmentManpower } from "./utils";
 import { SkOnLogo, SamsungSdiLogo, HyundaiLogo } from "./CustomerLogos";
 import {
@@ -324,6 +325,9 @@ export default function App() {
   const currentCustomerProjects = useMemo(() => {
     return (projects || []).filter(p => (p.customer || "SK on") === currentCustomer);
   }, [projects, currentCustomer]);
+
+  // 현재 고객사의 Site만 (목록·필터·선택 상자에 쓴다)
+  const currentCustomerSites = useMemo(() => filterSitesByCustomer(sites, currentCustomer), [sites, currentCustomer]);
 
   const [editing, setEditing] = useState(null);
   const [milestones, setMilestones] = useState(newMs());
@@ -1382,7 +1386,13 @@ export default function App() {
   async function add(t) {
     if (t === "sites") {
       if (!newSite.trim()) return;
-      await supabase.from(t).insert({ name: normalizeJVName(newSite.trim()), created_by: session.user.id });
+      const row = { name: normalizeJVName(newSite.trim()), created_by: session.user.id, customer: currentCustomer };
+      const { error } = await supabase.from(t).insert(row);
+      // DB에 sites.customer 컬럼이 아직 없으면 이름 규칙으로 분류되도록 컬럼 없이 다시 저장
+      if (error && String(error.message || "").toLowerCase().includes("customer")) {
+        delete row.customer;
+        await supabase.from(t).insert(row);
+      }
       setNewSite("");
     } else {
       if (!newPerson.trim()) return;
@@ -1416,8 +1426,8 @@ export default function App() {
 
       let siteVal = targetP.site || form.site || curP.site;
       const projName = normalizeJVName(targetP.projectName || form.name || curP.name);
-      if (!siteVal && projName && sites.length) {
-        const matchedSite = sites.find(s => projName.toLowerCase().includes(s.name.toLowerCase()));
+      if (!siteVal && projName && currentCustomerSites.length) {
+        const matchedSite = currentCustomerSites.find(s => projName.toLowerCase().includes(s.name.toLowerCase()));
         if (matchedSite) siteVal = matchedSite.name;
       }
 
@@ -1460,8 +1470,8 @@ export default function App() {
     for (const p of directProjects) {
       let siteVal = p.site || form.site;
       const projName = normalizeJVName(p.projectName);
-      if (!siteVal && projName && sites.length) {
-        const matchedSite = sites.find(s => projName.toLowerCase().includes(s.name.toLowerCase()));
+      if (!siteVal && projName && currentCustomerSites.length) {
+        const matchedSite = currentCustomerSites.find(s => projName.toLowerCase().includes(s.name.toLowerCase()));
         if (matchedSite) siteVal = matchedSite.name;
       }
 
@@ -2032,6 +2042,7 @@ JSON 출력 예시:
                   type="button"
                   onClick={() => {
                     setCurrentCustomer(cust.id);
+                    setSiteFilter("전체");
                     setForm(f => ({ ...f, customer: cust.id }));
                   }}
                   className={`customer-tab-btn ${cust.cls} ${isSelected ? 'active' : ''}`}
@@ -2221,7 +2232,7 @@ JSON 출력 예시:
         <ErrorBoundary>
           <IntegratedIssueCenter
             projects={currentCustomerProjects}
-            sites={sites}
+            sites={currentCustomerSites}
             role={role}
             currentCustomer={currentCustomer}
             onPermissionDenied={showPermissionModal}
@@ -2233,7 +2244,7 @@ JSON 출력 예시:
         <ErrorBoundary>
           <IssueManagement
             projects={currentCustomerProjects}
-            sites={sites}
+            sites={currentCustomerSites}
             role={role}
             onPermissionDenied={showPermissionModal}
             selectedYears={selectedYears}
@@ -2250,7 +2261,7 @@ JSON 출력 예시:
         <ManpowerManagement
           projects={view}
           allProjects={currentCustomerProjects}
-          sites={sites}
+          sites={currentCustomerSites}
           onSelectProject={(p) => {
             if (!canViewManpowerDetail) return showPermissionModal("공수 상세 조회");
             setSelectedManpowerProject(p);
@@ -2530,7 +2541,7 @@ JSON 출력 예시:
                     <label>Site *
                       <select value={form.site} disabled={role === "grade2"} onChange={e => setForm({ ...form, site: e.target.value })}>
                         <option value="">선택</option>
-                        {sites.map(s => <option key={s.id}>{s.name}</option>)}
+                        {filterSitesByCustomer(sites, form.customer || currentCustomer).map(s => <option key={s.id}>{s.name}</option>)}
                       </select>
                     </label>
                     <label>Line<input value={form.line} disabled={role === "grade2"} onChange={e => setForm({ ...form, line: e.target.value })} /></label>
@@ -2752,7 +2763,7 @@ JSON 출력 예시:
                 </select>
                 <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
                   <option>전체</option>
-                  {sites.map(s => <option key={s.id}>{s.name}</option>)}
+                  {currentCustomerSites.map(s => <option key={s.id}>{s.name}</option>)}
                 </select>
                 <select value={personFilter} onChange={e => setPersonFilter(e.target.value)}>
                   <option>전체</option>
@@ -3901,7 +3912,7 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
               </div>
             )}
             {modal === "sites" && (
-              <Manage title="Site" rows={sites} value={newSite} setValue={setNewSite} add={() => add("sites")} trash={r => trash("sites", r)} />
+              <Manage title={`Site (${currentCustomer})`} rows={currentCustomerSites}value={newSite} setValue={setNewSite} add={() => add("sites")} trash={r => trash("sites", r)} />
             )}
             {modal === "personnel" && (
               <>

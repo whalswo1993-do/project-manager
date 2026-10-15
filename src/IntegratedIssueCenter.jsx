@@ -87,7 +87,7 @@ export default function IntegratedIssueCenter({
   }, [currentCustomer]);
 
   // 사이트 목록: [Site 관리] 및 프로젝트에 등록된 SITE 표시 (임의/비등록 사이트 제외)
-  const availableSites = useMemo(() => getRegisteredSiteNames(sites, projects), [sites, projects]);
+  const availableSites = useMemo(() => getRegisteredSiteNames(sites, projects, currentCustomer), [sites, projects, currentCustomer]);
 
   // 통계 계산
   const stats = useMemo(() => {

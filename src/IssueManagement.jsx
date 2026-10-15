@@ -157,7 +157,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
     const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analyzeMsg, setAnalyzeMsg] = useState('');
-    const registeredSiteNames = useMemo(() => getRegisteredSiteNames(sites, projects), [sites, projects]);
+    const registeredSiteNames = useMemo(() => getRegisteredSiteNames(sites, projects, currentCustomer), [sites, projects, currentCustomer]);
 
     // 사이트 이름 정규화 (SK_DAEJEON -> SKO 대전 통일)
     const normalizeSite = (raw) => {
@@ -168,17 +168,14 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
         return s;
     };
 
-    // 미등록/제외 사이트 판별 (SDI, 현대차 아산 등 삭제 요청 반영)
-    const isExcludedSite = (raw) => {
-        const k = String(raw || '').toLowerCase().trim();
-        return k.includes('sdi') || k.includes('현대') || k.includes('hyundai') || k.includes('lge');
-    };
+    // 제외 사이트 판별 (LGE). SDI·현대는 해당 고객사 시스템에서 보이므로 제외하지 않는다.
+    const isExcludedSite = (raw) => String(raw || '').toLowerCase().includes('lge');
 
-    // 전체 양산 사이트 목록 (SDI, 현대차 아산 제외, SK_DAEJEON은 SKO 대전으로 통일)
+    // 현재 고객사의 사이트 목록 (SK_DAEJEON은 SKO 대전으로 통일). sites·projects는 이미 고객사별로 걸러져 들어온다.
     const availableSites = useMemo(() => {
         const siteSet = new Set();
-        // 1. 기본 등록 양산 사이트
-        ['HSBMA', 'SKBA', 'SKOH2', 'SKOJ', 'SKOY', 'SKBM', 'SKO 대전', 'SKO 서산', 'SKOH', 'SKOT (TN1)'].forEach(s => {
+        // 1. 기본 등록 양산 사이트 (SK on 전용)
+        (currentCustomer === 'SK on' ? ['HSBMA', 'SKBA', 'SKOH2', 'SKOJ', 'SKOY', 'SKBM', 'SKO 대전', 'SKO 서산', 'SKOH', 'SKOT (TN1)'] : []).forEach(s => {
             const clean = normalizeSite(s);
             if (clean && !isExcludedSite(clean)) siteSet.add(clean);
         });
@@ -193,7 +190,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
             if (clean && !isExcludedSite(clean)) siteSet.add(clean);
         });
         return Array.from(siteSet);
-    }, [registeredSiteNames, projects]);
+    }, [registeredSiteNames, projects, currentCustomer]);
 
     // 개별 프로젝트 다단계 필터링 상태 (사이트, 공정, 연도)
     const [projFilterSite, setProjFilterSite] = useState('ALL');

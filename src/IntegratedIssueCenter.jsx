@@ -999,8 +999,8 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
 
             <div className="form-group">
               <label>근본 원인 분석 (Root Cause)</label>
-              <input
-                type="text"
+              <textarea
+                rows={2}
                 placeholder="예: 진공 패드 실리콘 마모 및 필터 내 분진 퇴적, 나이프 클리어런스 벌어짐 등"
                 value={form.rootCause}
                 onChange={e => handleChange('rootCause', e.target.value)}

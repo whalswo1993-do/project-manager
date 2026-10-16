@@ -3590,6 +3590,12 @@ export function ProjectManpowerModal({ project, onClose }) {
 
     const activeDays = mpDateSet.size;
 
+    // 타임라인은 프로젝트 시작일이 아니라 계획 공수가 처음 투입되는 날부터 보여준다
+    if (activeDays > 0) {
+      const firstInput = Array.from(mpDateSet).sort()[0];
+      if (firstInput && (!start || firstInput > start)) start = firstInput;
+    }
+
     if (!start || !end) {
       const dates = Array.from(mpDateSet).sort();
       return { fullDates: dates, activeDaysCount: activeDays };

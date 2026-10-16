@@ -1364,15 +1364,15 @@
 .report-nav-pill-btn {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  height: 56px;
-  padding: 0 28px;
+  gap: 8px;
+  height: 46px;
+  padding: 0 20px;
   border: 0;
   border-left: 1px solid var(--line-2);
   border-radius: 0;
   background: transparent;
   color: var(--ink-2);
-  font-size: 15.5px;
+  font-size: 14px;
   font-weight: 650;
   cursor: pointer;
   transition: color 0.15s ease, background 0.15s ease;
@@ -1392,8 +1392,8 @@
 }
 
 .report-nav-pill-btn .pill-badge {
-  font: 600 12px var(--font-mono);
-  padding: 2px 8px;
+  font: 600 11px var(--font-mono);
+  padding: 1px 7px;
   border-radius: var(--radius-xs);
   background: var(--brand-wash);
   color: var(--brand);

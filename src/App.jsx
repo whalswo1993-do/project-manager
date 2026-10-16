@@ -2092,6 +2092,97 @@ JSON 출력 예시:
             })}
           </div>
         </div>
+        {/* ========================================================
+            PINTEL / PREVAX FLOATING YEAR SELECTOR TOOLBAR
+            ======================================================== */}
+        <div className="prevax-year-toolbar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'nowrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)', marginRight: '2px', whiteSpace: 'nowrap' }}>
+              <Icon name="calendar" size={15} />
+              <span>조회 연도:</span>
+            </div>
+
+            {/* 1. 빠른 프리셋 캡슐 버튼 */}
+            <div className="prevax-year-pill-group" style={{ flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => handlePresetYears('current')}
+                className={`prevax-year-pill-btn ${(!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? 'active' : ''}`}
+                title="현재 진행 중인 당해 연도 프로젝트만 조회합니다"
+              >
+                당해년도 ({currentYearStr})
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePresetYears('2years')}
+                className={`prevax-year-pill-btn ${(!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? 'active' : ''}`}
+                title="최근 2년간(작년+올해)의 프로젝트를 묶어서 조회합니다"
+              >
+                최근 2개년
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePresetYears('3years')}
+                className={`prevax-year-pill-btn ${(!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? 'active' : ''}`}
+                title="최근 3년간의 프로젝트를 묶어서 조회합니다"
+              >
+                최근 3개년
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePresetYears('all')}
+                className={`prevax-year-pill-btn ${isAllYears ? 'active' : ''}`}
+                title="전체 연도의 모든 프로젝트를 조회합니다"
+              >
+                전체 연도
+              </button>
+            </div>
+
+            <span style={{ color: 'var(--border-medium)', margin: '0 2px' }}>|</span>
+
+            {/* 2. 개별 연도 복수 토글 알약 태그 */}
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'nowrap', alignItems: 'center', flexShrink: 0 }}>
+              {availableYears.map(yr => {
+                const isSelected = !isAllYears && selectedYears.includes(yr);
+                const isCurrent = (yr === currentYearStr);
+                return (
+                  <button
+                    key={yr}
+                    type="button"
+                    onClick={() => handleToggleYear(yr)}
+                    className={`prevax-tag-btn ${isSelected ? 'active' : ''}`}
+                    title={`클릭하여 ${yr}년도를 다중 선택/해제합니다`}
+                  >
+                    <span>{yr}년</span>
+                    {isSelected && <Icon name="check" size={12} stroke={2.2} />}
+                    {isCurrent && !isSelected && (
+                      <span style={{ fontSize: '9px', background: 'color-mix(in srgb, var(--teal) 15%, transparent)', color: 'var(--neon-cyan)', padding: '0 4px', borderRadius: 'var(--radius-md)' }}>
+                        당해
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 현재 조회 범위 칩 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+            <span style={{ color: 'var(--text-muted)' }}>현재 범위:</span>
+            <span style={{ 
+              background: 'var(--bg-card-subtle)', 
+              border: '1px solid var(--border-medium)', 
+              padding: '3px 10px', 
+              borderRadius: 'var(--radius-md)', 
+              fontWeight: 700, 
+              color: 'var(--text-primary)',
+              fontSize: '11.5px'
+            }}>
+              {isAllYears ? "전체 연도" : selectedYears.length === 1 ? `${selectedYears[0]}년` : `${selectedYears.slice().sort().join(', ')}년 (${selectedYears.length}개년)`}
+              <span style={{ color: 'var(--neon-cyan)', marginLeft: '6px' }}>({yearStats.total}건)</span>
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* 시스템별 머리말 배경 장식 (화면 맨 뒤에 깔리는 순수 장식) */}
@@ -2169,98 +2260,6 @@ JSON 출력 예시:
           </div>
         </div>
       )}
-
-      {/* ========================================================
-          PINTEL / PREVAX FLOATING YEAR SELECTOR TOOLBAR
-          ======================================================== */}
-      <div className="prevax-year-toolbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'nowrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)', marginRight: '2px', whiteSpace: 'nowrap' }}>
-            <Icon name="calendar" size={15} />
-            <span>조회 연도:</span>
-          </div>
-
-          {/* 1. 빠른 프리셋 캡슐 버튼 */}
-          <div className="prevax-year-pill-group" style={{ flexShrink: 0 }}>
-            <button
-              type="button"
-              onClick={() => handlePresetYears('current')}
-              className={`prevax-year-pill-btn ${(!isAllYears && selectedYears.length === 1 && selectedYears[0] === currentYearStr) ? 'active' : ''}`}
-              title="현재 진행 중인 당해 연도 프로젝트만 조회합니다"
-            >
-              당해년도 ({currentYearStr})
-            </button>
-            <button
-              type="button"
-              onClick={() => handlePresetYears('2years')}
-              className={`prevax-year-pill-btn ${(!isAllYears && selectedYears.length === 2 && selectedYears.includes(currentYearStr)) ? 'active' : ''}`}
-              title="최근 2년간(작년+올해)의 프로젝트를 묶어서 조회합니다"
-            >
-              최근 2개년
-            </button>
-            <button
-              type="button"
-              onClick={() => handlePresetYears('3years')}
-              className={`prevax-year-pill-btn ${(!isAllYears && selectedYears.length === 3 && selectedYears.includes(currentYearStr)) ? 'active' : ''}`}
-              title="최근 3년간의 프로젝트를 묶어서 조회합니다"
-            >
-              최근 3개년
-            </button>
-            <button
-              type="button"
-              onClick={() => handlePresetYears('all')}
-              className={`prevax-year-pill-btn ${isAllYears ? 'active' : ''}`}
-              title="전체 연도의 모든 프로젝트를 조회합니다"
-            >
-              전체 연도
-            </button>
-          </div>
-
-          <span style={{ color: 'var(--border-medium)', margin: '0 2px' }}>|</span>
-
-          {/* 2. 개별 연도 복수 토글 알약 태그 */}
-          <div style={{ display: 'flex', gap: '5px', flexWrap: 'nowrap', alignItems: 'center', flexShrink: 0 }}>
-            {availableYears.map(yr => {
-              const isSelected = !isAllYears && selectedYears.includes(yr);
-              const isCurrent = (yr === currentYearStr);
-              return (
-                <button
-                  key={yr}
-                  type="button"
-                  onClick={() => handleToggleYear(yr)}
-                  className={`prevax-tag-btn ${isSelected ? 'active' : ''}`}
-                  title={`클릭하여 ${yr}년도를 다중 선택/해제합니다`}
-                >
-                  <span>{yr}년</span>
-                  {isSelected && <Icon name="check" size={12} stroke={2.2} />}
-                  {isCurrent && !isSelected && (
-                    <span style={{ fontSize: '9px', background: 'color-mix(in srgb, var(--teal) 15%, transparent)', color: 'var(--neon-cyan)', padding: '0 4px', borderRadius: 'var(--radius-md)' }}>
-                      당해
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 현재 조회 범위 칩 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-          <span style={{ color: 'var(--text-muted)' }}>현재 범위:</span>
-          <span style={{ 
-            background: 'var(--bg-card-subtle)', 
-            border: '1px solid var(--border-medium)', 
-            padding: '3px 10px', 
-            borderRadius: 'var(--radius-md)', 
-            fontWeight: 700, 
-            color: 'var(--text-primary)',
-            fontSize: '11.5px'
-          }}>
-            {isAllYears ? "전체 연도" : selectedYears.length === 1 ? `${selectedYears[0]}년` : `${selectedYears.slice().sort().join(', ')}년 (${selectedYears.length}개년)`}
-            <span style={{ color: 'var(--neon-cyan)', marginLeft: '6px' }}>({yearStats.total}건)</span>
-          </span>
-        </div>
-      </div>
 
       {currentView === "vision-spc" ? (
         <ErrorBoundary><VisionSPC currentCustomer={currentCustomer} /></ErrorBoundary>

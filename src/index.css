@@ -283,7 +283,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   transition: background-color var(--dur-base) var(--ease-in-out), color var(--dur-base) var(--ease-in-out);
-  overflow-x: auto;
+  /* body에 overflow를 주면 body가 스크롤 상자가 되어 position: sticky(상단 틀고정)가 깨진다. 가로 스크롤은 html이 맡는다 */
   -webkit-overflow-scrolling: touch;
 }
 

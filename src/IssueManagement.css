@@ -1341,75 +1341,73 @@
    최상단 메인 탭 네비게이션 & 분리된 등록/조회 UI 전용 스타일
    ========================================================================= */
 
-/* 1. 최상단 메인 소항목 탭 바 */
+/* 1. 최상단 메인 소항목 탭 바 — 눈에 잘 띄도록 큰 구분 탭(활성은 색 채움) */
 .report-top-nav-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
-  border-bottom: 2px solid var(--border-subtle);
-  padding-bottom: 12px;
+  margin: 18px 0;
   gap: 16px;
   flex-wrap: wrap;
 }
 
 .report-nav-pill-group {
   display: inline-flex;
-  align-items: flex-end;
-  gap: 2px;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
+  align-items: stretch;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
   padding: 0;
-  box-shadow: none;
+  overflow: hidden;
 }
 
 .report-nav-pill-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 46px;
-  margin-bottom: -1px;
-  padding: 0 20px;
+  gap: 10px;
+  height: 56px;
+  padding: 0 28px;
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-left: 1px solid var(--line-2);
   border-radius: 0;
   background: transparent;
-  color: var(--ink-3);
-  font-size: 14px;
-  font-weight: 550;
+  color: var(--ink-2);
+  font-size: 15.5px;
+  font-weight: 650;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease;
   white-space: nowrap;
 }
+.report-nav-pill-btn:first-child { border-left: 0; }
 
 .report-nav-pill-btn:hover {
   color: var(--ink);
-  background: transparent;
+  background: var(--bg-hover);
 }
 
 .report-nav-pill-btn.active {
-  background: transparent;
-  color: var(--ink);
-  border-bottom-color: var(--brand);
-  font-weight: 650;
-  box-shadow: none;
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+  font-weight: 700;
 }
 
 .report-nav-pill-btn .pill-badge {
-  font: 500 11px var(--font-mono);
-  padding: 1px 7px;
+  font: 600 12px var(--font-mono);
+  padding: 2px 8px;
   border-radius: var(--radius-xs);
   background: var(--brand-wash);
   color: var(--brand);
+}
+
+.report-nav-pill-btn.active .pill-badge {
+  background: color-mix(in srgb, var(--btn-ink) 18%, transparent);
+  color: var(--btn-ink);
 }
 
 .report-nav-pill-btn:not(.active) .pill-badge {
   background: var(--bg-hover);
   color: var(--ink-3);
 }
-
 /* 2. 등록 화면: 컴팩트한 등록 대상 카드 */
 .reg-target-card {
   background: var(--bg-card);

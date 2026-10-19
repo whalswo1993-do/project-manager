@@ -66,7 +66,7 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
   // 2. 부제목 및 조회 조건 (Row 2)
   ws.mergeCells(2, 1, 2, lastColIdx);
   const subCell = ws.getCell(2, 1);
-  const subText = `기준일: ${today()} | SITE 필터: ${filterInfo.site || '전체'} | 공정: ${filterInfo.process || '전체(스태킹/노칭)'} | 상태: ${filterInfo.status || '전체'} | 검색: ${filterInfo.query || '없음'} (총 ${issues.length}건)`;
+  const subText = `기준일: ${today()} | 연도: ${filterInfo.year || '전체'} | SITE 필터: ${filterInfo.site || '전체'} | 공정: ${filterInfo.process || '전체(스태킹/노칭)'} | 상태: ${filterInfo.status || '전체'} | 검색: ${filterInfo.query || '없음'} (총 ${issues.length}건)`;
   subCell.value = subText;
   subCell.font = { name: '맑은 고딕', size: 9, bold: true, color: { argb: 'FF475569' } };
   subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };

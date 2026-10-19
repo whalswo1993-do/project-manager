@@ -7,7 +7,9 @@ import {
   fetchRemoteIssues,
   upsertIssue,
   deleteIssue,
-  getRegisteredSiteNames
+  getRegisteredSiteNames,
+  getIssueYear,
+  ISSUE_START_YEAR
 } from './issueService';
 import { exportIssuesExcelReport } from './exportIssueReport';
 import { normalizeJVName } from './utils';
@@ -38,6 +40,7 @@ export default function IntegratedIssueCenter({
   const [selectedProcess, setSelectedProcess] = useState('all'); // 'all' | 'stacking' | 'notching'
   const [selectedStatus, setSelectedStatus] = useState('all'); // 'all' | 'open' | 'in_progress' | 'resolved'
   const [selectedSiteFilter, setSelectedSiteFilter] = useState('all');
+  const [selectedYear, setSelectedYear] = useState('all'); // 'all' | '2026' ...
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomerFilter, setSelectedCustomerFilter] = useState(currentCustomer === 'All' ? 'all' : currentCustomer);
 
@@ -90,11 +93,28 @@ export default function IntegratedIssueCenter({
   // 사이트 목록: [Site 관리] 및 프로젝트에 등록된 SITE 표시 (임의/비등록 사이트 제외)
   const availableSites = useMemo(() => getRegisteredSiteNames(sites, projects, currentCustomer), [sites, projects, currentCustomer]);
 
-  // 선택한 고객사의 이슈만 (고객사 값이 없는 예전 이슈는 앱 전체 규칙대로 SK on)
+  // 조회 연도 목록: 올해(시작 연도)부터 현재 연도까지. 해가 바뀌면 자동으로 늘어난다.
+  // 데이터에 더 이전 연도가 있으면 그 연도도 포함해 숨겨지지 않게 한다.
+  const yearOptions = useMemo(() => {
+    const thisYear = new Date().getFullYear();
+    let first = Math.min(ISSUE_START_YEAR, thisYear);
+    issues.forEach(i => {
+      const y = getIssueYear(i);
+      if (y && y < first) first = y;
+    });
+    const list = [];
+    for (let y = thisYear; y >= first; y--) list.push(y);
+    return list;
+  }, [issues]);
+
+  // 선택한 고객사·연도의 이슈만 (고객사 값이 없는 예전 이슈는 앱 전체 규칙대로 SK on)
   const customerIssues = useMemo(() => {
-    if (selectedCustomerFilter === 'all') return issues;
-    return issues.filter(i => (i.customer || 'SK on') === selectedCustomerFilter);
-  }, [issues, selectedCustomerFilter]);
+    return issues.filter(i => {
+      if (selectedCustomerFilter !== 'all' && (i.customer || 'SK on') !== selectedCustomerFilter) return false;
+      if (selectedYear !== 'all' && getIssueYear(i) !== Number(selectedYear)) return false;
+      return true;
+    });
+  }, [issues, selectedCustomerFilter, selectedYear]);
 
   // 통계 계산 (고객사별)
   const stats = useMemo(() => {
@@ -265,6 +285,7 @@ export default function IntegratedIssueCenter({
     try {
       const filterInfo = {
         site: selectedSiteFilter === 'all' ? '전체' : selectedSiteFilter,
+        year: selectedYear === 'all' ? '전체' : `${selectedYear}년`,
         process: selectedProcess === 'stacking' ? '스태킹 (Stacking)' : selectedProcess === 'notching' ? '노칭 (Notching)' : '전체',
         status: selectedStatus === 'resolved' ? '조치완료' : selectedStatus === 'in_progress' ? '조치진행중' : selectedStatus === 'open' ? '발생/접수' : '전체',
         query: searchQuery.trim() || '없음'
@@ -460,6 +481,22 @@ export default function IntegratedIssueCenter({
             )}
           </div>
 
+          {/* 연도 필터 (발생일 기준) */}
+          <div className="iic-filter-group">
+            <span className="filter-label"><Icon name="calendar" size="1.1em" /> 연도:</span>
+            <select
+              className="iic-select"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              title="이슈 발생일 기준 연도별 조회"
+            >
+              <option value="all">전체 연도</option>
+              {yearOptions.map(y => (
+                <option key={y} value={String(y)}>{y}년</option>
+              ))}
+            </select>
+          </div>
+
           {/* 2. 공정 선택 토글 (스태킹 / 노칭) */}
           <div className="iic-filter-group process-filter-group">
             <span className="filter-label">공정:</span>
@@ -532,15 +569,16 @@ export default function IntegratedIssueCenter({
             <div className="empty-icon"><Icon name="folder" size="1.1em" /></div>
             <h4>조회된 이슈 내역이 없습니다</h4>
             <p>
-              {searchQuery || selectedProcess !== 'all' || selectedStatus !== 'all' || selectedSiteFilter !== 'all'
-                ? '선택된 필터 조건(SITE, 공정, 상태 등)에 해당하는 이슈가 없습니다. 필터를 초기화해 보세요.'
+              {searchQuery || selectedProcess !== 'all' || selectedStatus !== 'all' || selectedSiteFilter !== 'all' || selectedYear !== 'all'
+                ? '선택된 필터 조건(연도, SITE, 공정, 상태 등)에 해당하는 이슈가 없습니다. 필터를 초기화해 보세요.'
                 : '아직 등록된 이슈가 없습니다. 상단의 [+ 신규 이슈 등록] 버튼을 눌러 첫 이슈를 기록해보세요.'}
             </p>
-            {(searchQuery || selectedProcess !== 'all' || selectedStatus !== 'all' || selectedSiteFilter !== 'all') && (
+            {(searchQuery || selectedProcess !== 'all' || selectedStatus !== 'all' || selectedSiteFilter !== 'all' || selectedYear !== 'all') && (
               <button
                 type="button"
                 className="iic-btn iic-btn-subtle"
                 onClick={() => {
+                  setSelectedYear('all');
                   setSelectedProcess('all');
                   setSelectedStatus('all');
                   setSelectedSiteFilter('all');

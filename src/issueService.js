@@ -115,6 +115,15 @@ export async function deleteIssue(issueId) {
   return filtered;
 }
 
+// 이슈 연도별 조회의 시작 연도. 이후 연도는 현재 연도까지 자동으로 늘어난다.
+export const ISSUE_START_YEAR = 2026;
+
+// 이슈가 속한 연도(발생일 기준, 없으면 등록일). 알 수 없으면 null.
+export function getIssueYear(issue) {
+  const m = String(issue?.occurredDate || issue?.createdAt || '').match(/^(\d{4})/);
+  return m ? Number(m[1]) : null;
+}
+
 // 사용자가 등록한 기본 핵심 SITE 목록 (사용자가 직접 명시한 표준 사이트)
 export const CORE_REGISTERED_SITES = [
   'SKOJ',

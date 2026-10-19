@@ -29,6 +29,7 @@ import {
   getUserDisplayName,
   getUserTeam,
   recordUserAccess,
+  getLastAccessIso,
   formatLastAccessTime,
 } from "./authService";
 import {
@@ -1003,6 +1004,25 @@ export default function App() {
       if (bootingRef.current === bootKey) bootingRef.current = null;
     }
   }
+
+  // 화면을 계속 열어 둔 사용자도 활동 시각이 갱신되도록, 보이는 동안 10분마다/다시 돌아왔을 때 기록한다
+  const hasProfile = Boolean(profile);
+  useEffect(() => {
+    if (!hasProfile) return undefined;
+    let last = Date.now();
+    const ping = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - last < 5 * 60 * 1000) return;
+      last = Date.now();
+      recordUserAccess(false);
+    };
+    const timer = setInterval(ping, 10 * 60 * 1000);
+    document.addEventListener("visibilitychange", ping);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", ping);
+    };
+  }, [hasProfile]);
 
   useEffect(() => {
     // URL 해시에서 복구 모드 감지 (#access_token=...&type=recovery)
@@ -3701,7 +3721,7 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
                       <span>전체 <b>{users.length}</b>명</span>
                       <span style={{ color: "var(--border-medium)" }}>•</span>
                       <span style={{ color: "var(--ok)", fontWeight: "600" }}>
-                        <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--ok)', marginRight: 6 }} />활동 중 <b>{users.filter(u => formatLastAccessTime(u.last_sign_in_at || u.last_active_at).isOnline || session?.user?.email?.toLowerCase() === u.email?.toLowerCase()).length}</b>명
+                        <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--ok)', marginRight: 6 }} />활동 중 <b>{users.filter(u => formatLastAccessTime(getLastAccessIso(u)).isOnline || session?.user?.email?.toLowerCase() === u.email?.toLowerCase()).length}</b>명
                       </span>
                     </div>
                     <button
@@ -3752,7 +3772,7 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
                     const isEditing = editingUserId === u.id;
                     const displayName = getUserDisplayName(u.email, u);
                     const userTeam = getUserTeam(u.email, u);
-                    const accessInfo = formatLastAccessTime(u.last_sign_in_at || u.last_active_at);
+                    const accessInfo = formatLastAccessTime(getLastAccessIso(u));
 
                     return (
                       <div

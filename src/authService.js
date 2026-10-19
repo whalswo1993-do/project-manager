@@ -51,6 +51,16 @@ export async function recordUserAccess(signedIn = false) {
   }
 }
 
+/** 로그인 시각과 활동 시각 중 더 늦은 쪽이 "마지막 접속"이다. (세션이 유지되면 로그인 시각은 오래된 채로 남는다) */
+export function getLastAccessIso(user) {
+  const times = [user?.last_sign_in_at, user?.last_active_at]
+    .filter(Boolean)
+    .map((v) => ({ v, t: new Date(v).getTime() }))
+    .filter((x) => !isNaN(x.t));
+  if (times.length === 0) return null;
+  return times.reduce((a, b) => (b.t > a.t ? b : a)).v;
+}
+
 // 마지막 접속 시간 포맷팅 함수 (UI 표시용)
 export function formatLastAccessTime(isoString) {
   if (!isoString) {

@@ -90,21 +90,28 @@ export default function IntegratedIssueCenter({
   // 사이트 목록: [Site 관리] 및 프로젝트에 등록된 SITE 표시 (임의/비등록 사이트 제외)
   const availableSites = useMemo(() => getRegisteredSiteNames(sites, projects, currentCustomer), [sites, projects, currentCustomer]);
 
-  // 통계 계산
-  const stats = useMemo(() => {
-    const total = issues.length;
-    const resolved = issues.filter(i => i.status === 'resolved').length;
-    const open = issues.filter(i => i.status === 'open').length;
-    const inProgress = issues.filter(i => i.status === 'in_progress').length;
+  // 선택한 고객사의 이슈만 (고객사 값이 없는 예전 이슈는 앱 전체 규칙대로 SK on)
+  const customerIssues = useMemo(() => {
+    if (selectedCustomerFilter === 'all') return issues;
+    return issues.filter(i => (i.customer || 'SK on') === selectedCustomerFilter);
+  }, [issues, selectedCustomerFilter]);
 
-    const stacking = issues.filter(i => i.processType === 'stacking');
+  // 통계 계산 (고객사별)
+  const stats = useMemo(() => {
+    const scoped = customerIssues;
+    const total = scoped.length;
+    const resolved = scoped.filter(i => i.status === 'resolved').length;
+    const open = scoped.filter(i => i.status === 'open').length;
+    const inProgress = scoped.filter(i => i.status === 'in_progress').length;
+
+    const stacking = scoped.filter(i => i.processType === 'stacking');
     const stackingResolved = stacking.filter(i => i.status === 'resolved').length;
 
-    const notching = issues.filter(i => i.processType === 'notching');
+    const notching = scoped.filter(i => i.processType === 'notching');
     const notchingResolved = notching.filter(i => i.status === 'resolved').length;
 
-    const siteIssues = issues.filter(i => i.issueType === 'site').length;
-    const projectIssues = issues.filter(i => i.issueType === 'project').length;
+    const siteIssues = scoped.filter(i => i.issueType === 'site').length;
+    const projectIssues = scoped.filter(i => i.issueType === 'project').length;
 
     const resolvedRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
     const stackingRate = stacking.length > 0 ? Math.round((stackingResolved / stacking.length) * 100) : 0;
@@ -125,11 +132,11 @@ export default function IntegratedIssueCenter({
       siteIssues,
       projectIssues
     };
-  }, [issues]);
+  }, [customerIssues]);
 
   // 필터링된 이슈 목록
   const filteredIssues = useMemo(() => {
-    return issues.filter(item => {
+    return customerIssues.filter(item => {
       // 뷰 모드 필터
       if (viewMode === 'site' && item.issueType !== 'site') return false;
       if (viewMode === 'project' && item.issueType !== 'project') return false;
@@ -146,11 +153,6 @@ export default function IntegratedIssueCenter({
         const itemSiteNorm = normalizeJVName(item.siteName || '').trim().toUpperCase();
         const targetNorm = normalizeJVName(selectedSiteFilter).trim().toUpperCase();
         if (itemSiteNorm !== targetNorm) return false;
-      }
-
-      // 고객사 필터
-      if (selectedCustomerFilter !== 'all' && item.customer && item.customer !== selectedCustomerFilter) {
-        return false;
       }
 
       // 검색어 필터
@@ -176,7 +178,7 @@ export default function IntegratedIssueCenter({
 
       return true;
     }).sort((a, b) => new Date(b.occurredDate || b.createdAt) - new Date(a.occurredDate || a.createdAt));
-  }, [issues, viewMode, selectedProcess, selectedStatus, selectedSiteFilter, selectedCustomerFilter, searchQuery]);
+  }, [customerIssues, viewMode, selectedProcess, selectedStatus, selectedSiteFilter, searchQuery]);
 
   // 신규 모달 열기
   const openCreateModal = (initialData = {}) => {

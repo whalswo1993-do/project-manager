@@ -792,6 +792,7 @@ ${allText.substring(0, 100000)}
             try { extra = JSON.parse(report.content); } catch (e) {}
         }
         setExtractedReports([{
+            fromEdit: true, // 수정으로 불러온 일보: 폼이 최종본이므로 비운 칸을 기존 DB 값으로 되살리지 않는다
             date: report.report_date,
             work_details: report.work_details || (typeof report.content === 'string' && !report.content.trim().startsWith('{') ? report.content : ''),
             special_notes: report.special_notes || '',
@@ -868,7 +869,8 @@ ${allText.substring(0, 100000)}
 
         // 2. 기존 일보가 있으면 최신 내용으로 추가/병합, 없으면 신규 생성
         const insertData = validReports.map(r => {
-            const existing = existingMap[r.date];
+            // 수정 모드면 기존 DB 값과 병합하지 않고 폼 내용 그대로 저장(지운 칸이 되살아나는 문제 방지)
+            const existing = r.fromEdit ? undefined : existingMap[r.date];
             const rWork = (r.work_details || '').trim();
             const rNotes = (r.special_notes || '').trim();
             const rIssues = (r.issues || '').trim();

@@ -208,6 +208,21 @@ describe('POST /api/claude 핸들러', () => {
     expect(res.headers['Cache-Control']).toBe('no-store')
   })
 
+  it('AI 를 쓸 수 있는 역할은 admin / grade3 / grade2_5, 그 외(grade2·grade1)는 403 ai_not_allowed 이고 Claude 는 호출되지 않는다', async () => {
+    for (const role of ['admin', 'grade3', 'grade2_5']) {
+      vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => role })))
+      expect((await call({ headers: { authorization: 'Bearer jwt' }, body: { parts: ['hi'] } })).statusCode).toBe(200)
+    }
+    sdk.state.lastRequest = null
+    for (const role of ['grade2', 'grade1']) {
+      vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => role })))
+      const res = await call({ headers: { authorization: 'Bearer jwt' }, body: { parts: ['hi'] } })
+      expect(res.statusCode).toBe(403)
+      expect(res.payload.error.code).toBe('ai_not_allowed')
+    }
+    expect(sdk.state.lastRequest).toBeNull()
+  })
+
   it('잘못된 입력은 400/413', async () => {
     const auth = { authorization: 'Bearer jwt' }
     expect((await call({ headers: auth, body: {} })).statusCode).toBe(400)

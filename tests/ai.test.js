@@ -191,6 +191,32 @@ describe('auto: Gemini → Claude', () => {
   })
 })
 
+describe('역할 때문에 막힌 경우 (403 ai_not_allowed)', () => {
+  const NOT_ALLOWED = [403, { error: { code: 'ai_not_allowed', message: 'AI 분석은 Grade 2.5 이상 계정만 사용할 수 있습니다.' } }]
+
+  it('auto: 브라우저 Gemini 키로 직접 호출하지 않고 Claude 로도 전환하지 않으며, 서버 안내 문구를 그대로 보여준다', async () => {
+    stubServers({ gemini: NOT_ALLOWED, claude: NOT_ALLOWED })
+    const err = await generateAIText('p', { notConfiguredMessage: '키 없음 안내' }).catch((e) => e)
+    expect(err.code).toBe('ai_not_allowed')
+    expect(err.message).toBe('AI 분석은 Grade 2.5 이상 계정만 사용할 수 있습니다.')
+    expect(geminiGenerate).not.toHaveBeenCalled()
+    expect(urlsCalled()).toEqual(['/api/gemini'])
+  })
+
+  it('gemini 고정: 브라우저 키가 있어도 직접 호출하지 않는다', async () => {
+    vi.stubEnv('VITE_AI_PROVIDER', 'gemini')
+    stubServers({ gemini: NOT_ALLOWED })
+    await expect(generateAIText('p')).rejects.toMatchObject({ code: 'ai_not_allowed' })
+    expect(geminiGenerate).not.toHaveBeenCalled()
+  })
+
+  it('claude 고정: 안내 문구를 그대로 보여준다', async () => {
+    vi.stubEnv('VITE_AI_PROVIDER', 'claude')
+    stubServers({ claude: NOT_ALLOWED })
+    await expect(generateAIText('p')).rejects.toMatchObject({ code: 'ai_not_allowed', message: expect.stringContaining('Grade 2.5') })
+  })
+})
+
 describe('gemini / claude 고정', () => {
   it('gemini 고정: 실패해도 Claude 로 가지 않는다', async () => {
     vi.stubEnv('VITE_AI_PROVIDER', 'gemini')

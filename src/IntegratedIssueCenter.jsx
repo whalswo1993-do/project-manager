@@ -51,7 +51,7 @@ export default function IntegratedIssueCenter({
   const [viewDetailModalIssue, setViewDetailModalIssue] = useState(null);
 
   // 권한
-  const canEdit = ['admin', 'grade3', 'grade2'].includes(role);
+  const canEdit = ['admin', 'grade3', 'grade2_5', 'grade2'].includes(role);
 
   useEffect(() => {
     try {

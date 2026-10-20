@@ -338,8 +338,8 @@ export default function ManpowerManagement({
   role = 'grade1',
   onPermissionDenied
 }) {
-  const canViewDetail = ['admin', 'grade3', 'grade2'].includes(role);
-  const canExportPPT = ['admin', 'grade3', 'grade2'].includes(role);
+  const canViewDetail = ['admin', 'grade3', 'grade2_5', 'grade2'].includes(role);
+  const canExportPPT = ['admin', 'grade3', 'grade2_5', 'grade2'].includes(role);
 
   const notifyPermission = (feature) => {
     if (onPermissionDenied) {

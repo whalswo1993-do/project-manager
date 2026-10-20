@@ -267,8 +267,10 @@ export default function App() {
   const edit = ["admin", "grade3"].includes(role);
   const del = ["admin", "grade3"].includes(role);
   const canAccessQuotations = ["admin", "grade3"].includes(role);
-  const canExportAnalysis = ["admin", "grade3", "grade2"].includes(role);
-  const canViewManpowerDetail = ["admin", "grade3", "grade2"].includes(role);
+  // grade2_5(팀장)는 grade2 와 같은 화면 권한이고, AI(API) 호출만 grade2 에게 막혀 있다 (api/_lib/handler.js 의 AI_ALLOWED_ROLES)
+  const isGrade2Tier = role === "grade2" || role === "grade2_5";
+  const canExportAnalysis = ["admin", "grade3", "grade2_5", "grade2"].includes(role);
+  const canViewManpowerDetail = ["admin", "grade3", "grade2_5", "grade2"].includes(role);
   const [theme, setTheme] = useState(() => {
     try {
       return localStorage.getItem('pm_theme_mode') || 'dark';
@@ -1238,7 +1240,7 @@ export default function App() {
     if (form.manpower) finalMilestones.push({ id: '__manpower_meta__', manpower: form.manpower });
 
     let error;
-    if (editing && role === "grade2") {
+    if (editing && isGrade2Tier) {
       ({ error } = await supabase.from("projects").update({
         status: calculatedStatus,
         progress: +form.progress || 0,
@@ -2038,7 +2040,7 @@ JSON 출력 예시:
             </button>
             <HeaderUserMenu
               name={getUserDisplayName(session?.user?.email, profile || session?.user?.user_metadata)}
-              roleLabel={role === "admin" ? "최고 관리자" : (role || 'GRADE 1').toUpperCase()}
+              roleLabel={role === "admin" ? "최고 관리자" : role === "grade2_5" ? "GRADE 2.5" : (role || 'GRADE 1').toUpperCase()}
               hasUpdate={hasUpdate}
               isAdmin={role === "admin"}
               newUserCount={newRegisteredUsers.length}
@@ -2588,21 +2590,21 @@ JSON 출력 예시:
                 <>
                   <div className="grid">
                     <label>고객사 *
-                      <select value={form.customer || currentCustomer} disabled={role === "grade2"} onChange={e => setForm({ ...form, customer: e.target.value })}>
+                      <select value={form.customer || currentCustomer} disabled={isGrade2Tier} onChange={e => setForm({ ...form, customer: e.target.value })}>
                         {CUSTOMERS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                       </select>
                     </label>
-                    <label>제조번호<input value={form.manufacturingNo} disabled={role === "grade2"} onChange={e => setForm({ ...form, manufacturingNo: e.target.value })} /></label>
+                    <label>제조번호<input value={form.manufacturingNo} disabled={isGrade2Tier} onChange={e => setForm({ ...form, manufacturingNo: e.target.value })} /></label>
                     <label>Site *
-                      <select value={form.site} disabled={role === "grade2"} onChange={e => setForm({ ...form, site: e.target.value })}>
+                      <select value={form.site} disabled={isGrade2Tier} onChange={e => setForm({ ...form, site: e.target.value })}>
                         <option value="">선택</option>
                         {filterSitesByCustomer(sites, form.customer || currentCustomer).map(s => <option key={s.id}>{s.name}</option>)}
                       </select>
                     </label>
-                    <label>Line<input value={form.line} disabled={role === "grade2"} onChange={e => setForm({ ...form, line: e.target.value })} /></label>
-                    <label className="wide">프로젝트명 *<input value={form.name} disabled={role === "grade2"} onChange={e => setForm({ ...form, name: e.target.value })} /></label>
-                    <label>시작일<input type="date" value={form.startDate} disabled={role === "grade2"} onChange={e => setForm({ ...form, startDate: e.target.value })} /></label>
-                    <label>종료일<input type="date" value={form.endDate} disabled={role === "grade2"} onChange={e => setForm({ ...form, endDate: e.target.value })} /></label>
+                    <label>Line<input value={form.line} disabled={isGrade2Tier} onChange={e => setForm({ ...form, line: e.target.value })} /></label>
+                    <label className="wide">프로젝트명 *<input value={form.name} disabled={isGrade2Tier} onChange={e => setForm({ ...form, name: e.target.value })} /></label>
+                    <label>시작일<input type="date" value={form.startDate} disabled={isGrade2Tier} onChange={e => setForm({ ...form, startDate: e.target.value })} /></label>
+                    <label>종료일<input type="date" value={form.endDate} disabled={isGrade2Tier} onChange={e => setForm({ ...form, endDate: e.target.value })} /></label>
                     <label>상태
                       <select value={form.status} onChange={e => handleStatusChange(e.target.value)}>
                         {STATUSES.map(s => <option key={s} value={s}>{s}{s === "PO대기중" ? " (수동 전용)" : ""}</option>)}
@@ -2611,11 +2613,11 @@ JSON 출력 예시:
                   </div>
 
                   <div className="people">
-                    <PersonField label="소장(Manager) 담당자" value={form.pm} disabled={role === "grade2"} onChange={v => setForm({ ...form, pm: v })} dept="소장" people={people} />
-                    <PersonField label="설계 담당자" value={form.design} disabled={role === "grade2"} onChange={v => setForm({ ...form, design: v })} dept="설계" people={people} />
-                    <PersonField label="설비기술 담당자" value={form.facilityTechnology} disabled={role === "grade2"} onChange={v => setForm({ ...form, facilityTechnology: v })} dept="설비기술" people={people} />
-                    <PersonField label="제어 담당자" value={form.control} disabled={role === "grade2"} onChange={v => setForm({ ...form, control: v })} dept="제어" people={people} />
-                    <PersonField label="비전 담당자" value={form.vision} disabled={role === "grade2"} onChange={v => setForm({ ...form, vision: v })} dept="비전" people={people} />
+                    <PersonField label="소장(Manager) 담당자" value={form.pm} disabled={isGrade2Tier} onChange={v => setForm({ ...form, pm: v })} dept="소장" people={people} />
+                    <PersonField label="설계 담당자" value={form.design} disabled={isGrade2Tier} onChange={v => setForm({ ...form, design: v })} dept="설계" people={people} />
+                    <PersonField label="설비기술 담당자" value={form.facilityTechnology} disabled={isGrade2Tier} onChange={v => setForm({ ...form, facilityTechnology: v })} dept="설비기술" people={people} />
+                    <PersonField label="제어 담당자" value={form.control} disabled={isGrade2Tier} onChange={v => setForm({ ...form, control: v })} dept="제어" people={people} />
+                    <PersonField label="비전 담당자" value={form.vision} disabled={isGrade2Tier} onChange={v => setForm({ ...form, vision: v })} dept="비전" people={people} />
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center', margin: '10px 0 6px' }}>
@@ -3930,7 +3932,8 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
                         >
                           <option value="admin">관리자</option>
                           <option value="grade3">Grade3 (PM)</option>
-                          <option value="grade2">Grade2 (각 부서 담당자)</option>
+                          <option value="grade2_5">Grade2.5 (각 부서 팀장, AI 사용 가능)</option>
+                          <option value="grade2">Grade2 (각 부서 담당자, AI 사용 불가)</option>
                           <option value="grade1">Grade1 (일반)</option>
                         </select>
 

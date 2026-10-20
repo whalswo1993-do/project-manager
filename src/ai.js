@@ -144,6 +144,8 @@ export async function generateAIText(input, options = {}) {
     return await callGemini(parts);
   } catch (e) {
     geminiError = e;
+    // 역할 때문에 막힌 것은 Claude 서버도 똑같이 막으므로 전환하지 않고 안내 문구를 그대로 보여준다
+    if (e.code === "ai_not_allowed") throw e;
     if (e.code !== "not_configured") console.warn("[AI] Gemini 실패, Claude로 전환을 시도합니다:", e?.message);
   }
 

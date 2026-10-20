@@ -13,7 +13,10 @@ import { confirmDialog } from "./confirmService";
 export default function IssueManagement({ projects, sites = [], role, onPermissionDenied, currentCustomer, onNavigateToIssueCenter }) {
     const isGrade1 = role === 'grade1';
     const canEditReport = ['admin', 'grade3'].includes(role);
-    const canRunAIAnalysis = ['admin', 'grade3', 'grade2'].includes(role);
+    // 분석 창(이슈 분석 PPT는 AI 호출 없음)은 grade2 도 쓴다. AI 를 호출하는 공사일보 분석만 grade2_5 이상.
+    const canOpenAnalysis = ['admin', 'grade3', 'grade2_5', 'grade2'].includes(role);
+    const canRunAIAnalysis = ['admin', 'grade3', 'grade2_5'].includes(role);
+    const AI_ANALYSIS_FEATURE = '공사일보 AI 종합분석 PPT (Grade 2.5 이상)';
     const notifyPermission = (feature) => {
         if (onPermissionDenied) {
             onPermissionDenied(feature);
@@ -2454,7 +2457,7 @@ ${allText.substring(0, 100000)}
 
     // 이슈 분석: 이슈 통합 관리에 등록된 이슈/조치 이력을 기간·SITE로 모아 PPT 생성 (AI 호출 없음)
     const generateIssuesPPT = async () => {
-        if (!canRunAIAnalysis) return notifyPermission('이슈 통합분석 PPT');
+        if (!canOpenAnalysis) return notifyPermission('이슈 통합분석 PPT');
         if (startDate > endDate) return setAnalyzeMsg('오류: 시작일이 종료일보다 클 수 없습니다.');
 
         setIsAnalyzing(true);
@@ -2485,13 +2488,13 @@ ${allText.substring(0, 100000)}
     };
 
     const openAnalysisModal = () => {
-        if (!canRunAIAnalysis) return notifyPermission('이슈 통합분석 PPT');
+        if (!canOpenAnalysis) return notifyPermission('이슈 통합분석 PPT');
         setAnalyzeMsg('');
         setIsAnalysisModalOpen(true);
     };
 
     const generateReportsPPT = async () => {
-        if (!canRunAIAnalysis) return notifyPermission('이슈 통합분석 PPT');
+        if (!canRunAIAnalysis) return notifyPermission(AI_ANALYSIS_FEATURE);
         if (startDate > endDate) return setAnalyzeMsg('시작일이 종료일보다 클 수 없습니다.');
         
         if (!isAIConfigured()) return setAnalyzeMsg('AI API 키(Gemini 또는 Claude)가 설정되지 않았습니다.');
@@ -2645,10 +2648,10 @@ ${compiledText.substring(0, 30000)}
                         <button
                             type="button"
                             onClick={openAnalysisModal}
-                            title={!canRunAIAnalysis ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : "기간을 설정하여 공사일보 AI 종합분석 PPT를 다운로드합니다"}
+                            title={!canOpenAnalysis ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : "기간을 설정하여 이슈 분석 PPT 또는 공사일보 AI 종합분석 PPT를 다운로드합니다"}
                             className="ppt-btn"
                         >
-                            <Icon name="barChart" size="1.1em" /> 공사일보 분석 PPT {!canRunAIAnalysis && <Icon name="lock" size={12} />}
+                            <Icon name="barChart" size="1.1em" /> 공사일보 분석 PPT {!canOpenAnalysis && <Icon name="lock" size={12} />}
                         </button>
                         <button
                             type="button"
@@ -3064,7 +3067,7 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                 <div className="report-register-wizard">
                     {!canEditReport && (
                         <div style={{background: 'var(--warning-bg)', border: '1px solid color-mix(in srgb, var(--signal) 30%, transparent)', borderRadius: 'var(--radius-md)', padding: '12px 16px', fontSize: '13px', color: 'var(--warning)', lineHeight: '1.5'}}>
-                            <Icon name="lock" size="1.1em" /> <b>{isGrade1 ? 'Grade 1 (조회 전용)' : 'Grade 2 (부서 담당자)'} 안내</b><br/>
+                            <Icon name="lock" size="1.1em" /> <b>{isGrade1 ? 'Grade 1 (조회 전용)' : role === 'grade2_5' ? 'Grade 2.5 (부서 팀장)' : 'Grade 2 (부서 담당자)'} 안내</b><br/>
                             {isGrade1 
                                 ? '일보 조회만 가능하며 신규 등록 및 수정 권한이 제한됩니다.'
                                 : '신규 일보 등록 및 수정 권한은 Grade 3 이상 필요합니다.'}
@@ -3515,9 +3518,13 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                                     <button
                                         type="button"
                                         className={`aim-mode-card ${analysisMode === 'reports' ? 'selected' : ''}`}
-                                        onClick={() => { setAnalysisMode('reports'); setAnalyzeMsg(''); }}
+                                        onClick={() => {
+                                            if (!canRunAIAnalysis) return notifyPermission(AI_ANALYSIS_FEATURE);
+                                            setAnalysisMode('reports'); setAnalyzeMsg('');
+                                        }}
+                                        title={!canRunAIAnalysis ? "AI 분석은 Grade 2.5 이상 계정만 사용할 수 있습니다" : undefined}
                                     >
-                                        <div className="aim-mode-badge reports"><Icon name="pencil" size="1.1em" /> 공사일보 분석</div>
+                                        <div className="aim-mode-badge reports"><Icon name="pencil" size="1.1em" /> 공사일보 분석 {!canRunAIAnalysis && <Icon name="lock" size={12} />}</div>
                                         <div className="aim-mode-name">프로젝트 공사일보 AI 종합 분석</div>
                                         <div className="aim-mode-desc">
                                             수집된 공사일보 데이터를 Gemini AI가 종합 1페이지 요약 및 프로젝트별 이슈로 자동 분석

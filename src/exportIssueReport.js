@@ -9,8 +9,8 @@ const C = {
   borderLight: 'D0D0D0',
   textMain: '000000',
   textMuted: '000000',
-  stackingBg: 'E7E5E4',
-  stackingText: '44403C',
+  stackingBg: 'EFF6FF',
+  stackingText: '1D4ED8',
   notchingBg: 'FFF7ED',
   notchingText: 'EA580C',
   resolvedBg: 'E8F5E9',
@@ -63,15 +63,8 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
   titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
   ws.getRow(1).height = 36;
 
-  // 2. 부제목 및 조회 조건 (Row 2)
-  ws.mergeCells(2, 1, 2, lastColIdx);
-  const subCell = ws.getCell(2, 1);
-  const subText = `기준일: ${today()} | 연도: ${filterInfo.year || '전체'} | SITE 필터: ${filterInfo.site || '전체'} | 공정: ${filterInfo.process || '전체(스태킹/노칭)'} | 상태: ${filterInfo.status || '전체'} | 검색: ${filterInfo.query || '없음'} (총 ${issues.length}건)`;
-  subCell.value = subText;
-  subCell.font = { name: '맑은 고딕', size: 9, bold: true, color: { argb: 'FF000000' } };
-  subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
-  subCell.alignment = { vertical: 'middle', horizontal: 'center' };
-  ws.getRow(2).height = 22;
+  // 2. 간격 행 (Row 2~3)
+  ws.getRow(2).height = 8;
 
   // 3. 통계 요약 카드 블록 (Row 4~5)
   const totalCount = issues.length;

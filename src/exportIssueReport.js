@@ -92,7 +92,7 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
   ws.getCell('D4').value = '스태킹 (Stacking) 공정';
   ws.getCell('D4').font = { name: '맑은 고딕', size: 9, color: { argb: 'FF000000' }, bold: true };
   ws.getCell('D4').alignment = { horizontal: 'center', vertical: 'middle' };
-  ws.getCell('D4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+  ws.getCell('D4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${C.stackingBg}` } };
 
   ws.mergeCells('D5:G5');
   ws.getCell('D5').value = `총 ${stackingCount}건 | 완료 ${stackingResolved}건 (${stackingCount > 0 ? Math.round((stackingResolved/stackingCount)*100) : 0}%)`;
@@ -103,7 +103,7 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
   ws.getCell('H4').value = '노칭 (Notching) 공정';
   ws.getCell('H4').font = { name: '맑은 고딕', size: 9, color: { argb: 'FF000000' }, bold: true };
   ws.getCell('H4').alignment = { horizontal: 'center', vertical: 'middle' };
-  ws.getCell('H4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+  ws.getCell('H4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${C.notchingBg}` } };
 
   ws.mergeCells('H5:K5');
   ws.getCell('H5').value = `총 ${notchingCount}건 | 완료 ${notchingResolved}건 (${notchingCount > 0 ? Math.round((notchingResolved/notchingCount)*100) : 0}%)`;
@@ -114,7 +114,7 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
   ws.getCell('L4').value = '전체 조치 완료율 (Resolution Rate)';
   ws.getCell('L4').font = { name: '맑은 고딕', size: 9, color: { argb: 'FF000000' }, bold: true };
   ws.getCell('L4').alignment = { horizontal: 'center', vertical: 'middle' };
-  ws.getCell('L4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+  ws.getCell('L4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${C.resolvedBg}` } };
 
   ws.mergeCells('L5:R5');
   ws.getCell('L5').value = `${resolvedRate}% (목표 대비 정상 트래킹)`;

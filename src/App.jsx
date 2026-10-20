@@ -309,6 +309,18 @@ export default function App() {
   }, [currentCustomer]);
 
   const [users, setUsers] = useState([]);
+  // 사용자 권한 관리: 등급 필터 + 이름/팀/이메일 검색 (사용자가 늘어도 빨리 찾도록)
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const userRoleOf = (u) => u.role || "grade1";
+  const userRoleCounts = users.reduce((acc, u) => ({ ...acc, [userRoleOf(u)]: (acc[userRoleOf(u)] || 0) + 1 }), {});
+  const filteredUsers = users.filter(u => {
+    if (userRoleFilter !== "all" && userRoleOf(u) !== userRoleFilter) return false;
+    const q = userSearch.trim().toLowerCase();
+    if (!q) return true;
+    return [getUserDisplayName(u.email, u), getUserTeam(u.email, u), u.email]
+      .some(v => String(v || "").toLowerCase().includes(q));
+  });
   const [newRegisteredUsers, setNewRegisteredUsers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
@@ -3766,8 +3778,69 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
                   • <b>사용자 삭제</b>: 계정을 영구 제거하며, <b>해당 계정으로는 다시 로그인할 수 없습니다.</b>
                 </div>
 
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
+                  <input
+                    type="search"
+                    value={userSearch}
+                    onChange={e => setUserSearch(e.target.value)}
+                    placeholder="이름, 소속팀, 이메일로 검색"
+                    aria-label="사용자 검색"
+                    style={{ width: "100%", boxSizing: "border-box" }}
+                  />
+                  <div style={{ display: "flex", flexWrap: "wrap", border: "1px solid var(--line)", borderRadius: "var(--radius-md)", overflow: "hidden", alignSelf: "flex-start" }}>
+                    {[
+                      ["all", "전체", users.length],
+                      ["admin", "관리자", userRoleCounts.admin || 0],
+                      ["grade3", "Grade3", userRoleCounts.grade3 || 0],
+                      ["grade2_5", "Grade2.5", userRoleCounts.grade2_5 || 0],
+                      ["grade2", "Grade2", userRoleCounts.grade2 || 0],
+                      ["grade1", "Grade1", userRoleCounts.grade1 || 0],
+                    ].map(([value, label, count], i) => {
+                      const active = userRoleFilter === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setUserRoleFilter(value)}
+                          aria-pressed={active}
+                          style={{
+                            padding: "6px 12px",
+                            fontSize: "12px",
+                            fontWeight: active ? 700 : 500,
+                            border: "none",
+                            borderLeft: i === 0 ? "none" : "1px solid var(--line)",
+                            borderRadius: 0,
+                            cursor: "pointer",
+                            background: active ? "var(--btn-bg)" : "transparent",
+                            color: active ? "var(--btn-ink)" : "var(--text-secondary)",
+                          }}
+                        >
+                          {label} <span style={{ fontFamily: "var(--font-mono)", opacity: active ? 0.85 : 0.7 }}>{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {(userSearch.trim() || userRoleFilter !== "all") && (
+                    <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                      {filteredUsers.length}명 표시 중 (전체 {users.length}명)
+                      <button
+                        type="button"
+                        onClick={() => { setUserSearch(""); setUserRoleFilter("all"); }}
+                        style={{ marginLeft: "8px", background: "none", border: "none", color: "var(--brand)", cursor: "pointer", fontSize: "12px", padding: 0, textDecoration: "underline" }}
+                      >
+                        필터 초기화
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                  {users.map(u => {
+                  {filteredUsers.length === 0 && (
+                    <div style={{ padding: "24px", textAlign: "center", color: "var(--text-muted)", fontSize: "13px", border: "1px dashed var(--line)", borderRadius: "var(--radius-md)" }}>
+                      조건에 맞는 사용자가 없습니다.
+                    </div>
+                  )}
+                  {filteredUsers.map(u => {
                     const isSuperAdmin = u.email === "cmj1012@twgroup.co.kr";
                     const isSelf = session?.user?.email?.toLowerCase() === u.email?.toLowerCase();
                     const cannotDelete = isSuperAdmin || isSelf;

@@ -48,13 +48,15 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
         const issueList = [];
 
         // 1) 일반 특이사항 강제 키워드: 검수 Fail, 출입신청, 도비, 안전교육, 일정, 인원, 보안 등
-        const generalSpecialRegex = /(검수\s*Fail|출입\s*신청|출입|도비|입실|퇴실|보안|교육|안전\s*교육|건강|식사|숙소|차량|렌트|항공|비자|미팅|회의|협의|구매|발주|일정\s*조율|일정\s*변경|공지|전달사항|준비사항)/i;
+        const generalSpecialRegex = /(검수\s*Fail|출입\s*신청|출입|도비|입실|퇴실|보안|교육|안전\s*교육|건강|식사|숙소|차량|렌트|항공|비자|미팅|회의|협의|구매|발주|일정\s*조율|일정\s*변경|공지|전달사항|준비사항|귀국|출국|입국|출장|파견|철수|휴가|교대|한국\s*복귀|국내\s*복귀)/i;
+        // 사람(직책)의 복귀·귀국·교대 등은 '설비 기술' 같은 직무명에 '설비'가 들어 있어도 설비 문제가 아니다
+        const personnelMoveRegex = /(책임|선임|수석|사원|대리|과장|차장|부장|팀장|소장|엔지니어|인원).*(복귀|귀국|출국|입국|철수|휴가)|(복귀|귀국|출국|입국|철수).*(책임|선임|수석|사원|대리|과장|차장|부장|팀장|소장)/i;
 
         // 2) 설비 이슈사항 키워드: 설비, 장비, 모터, 센서, PLC, 실린더, 로봇, 비전, 서보 등 하드웨어/소프트웨어 및 고장, 파손, 손상, 에러, 알람, 불량, 품질문제 등
         const equipIssueRegex = /(설비|장비|모터|센서|PLC|실린더|로봇|비전|카메라|피더|배선|통신|서보|헤드|스테이션|유닛|노즐|지그|진공|누유|누수|파손|손상|크랙|단선|오동작|에러|Error|Alarm|알람|불량|품질|간섭|충돌|낙하|이탈|틀어짐|트러블|미동작|정지|다운|Trouble|Defect|Damage|Broken|Interlock|쇼트|누전|과열|오버히트|스태킹|노칭|형교환|J\/?C|셋업불량|기구부|제어부|전장부|비전부)/i;
 
         lines.forEach(line => {
-            if (generalSpecialRegex.test(line)) {
+            if (generalSpecialRegex.test(line) || personnelMoveRegex.test(line)) {
                 specialList.push(line);
             } else if (equipIssueRegex.test(line)) {
                 issueList.push(line);

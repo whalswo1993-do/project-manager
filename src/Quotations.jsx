@@ -4,6 +4,7 @@ import './Quotations.css';
 import { supabase } from './supabase';
 import * as XLSX from 'xlsx';
 import { analyzeWorkbook, analyzePastedText, buildQuotations } from './quotationParser';
+import { detectQuotationSite, SITE_UNASSIGNED } from './quotationSite';
 import { PasteZone, PasteEntry } from './PasteZone';
 import { confirmDialog } from "./confirmService";
 
@@ -92,7 +93,8 @@ function QuotationsAccessDenied() {
 }
 
 // 저장 전 미리보기: 분석된 품목·단가와 정합성 검증 결과를 보여주고, 제목을 고친 뒤 저장한다
-function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, previewOpen, setPreviewOpen, projects, quotations, onRemoveSource, onSave, onReset, busy, canManage }) {
+function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, previewOpen, setPreviewOpen, projects, quotations, onRemoveSource, onSave, onReset, busy, canManage, siteFor, siteOptions, onSiteChange }) {
+    const missingSite = preview.quotations.some((q, qi) => !siteFor(q, qi, (titleOverrides[qi] ?? q.title).trim() || q.title).site);
     const chip = (text, tone = 'neutral') => {
         const tones = {
             neutral: { background: 'var(--bg-card-subtle)', color: 'var(--text-secondary)' },
@@ -126,8 +128,8 @@ function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, p
                     <button type="button" onClick={onReset} disabled={busy} style={{ padding: '7px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', background: 'var(--bg-card-subtle)', color: 'var(--text-primary)', cursor: 'pointer' }}>
                         <Icon name="x" size="1.1em" /> 취소
                     </button>
-                    <button type="button" onClick={onSave} disabled={busy || !canManage} style={{ padding: '7px 14px', borderRadius: 'var(--radius-md)', border: 'none', background: busy ? 'var(--ink-4)' : 'var(--btn-bg)', color: busy ? 'var(--on-brand)' : 'var(--btn-ink)', fontWeight: 700, cursor: 'pointer' }}>
-                        {busy ? '저장 중...' : `${preview.quotations.length}건 저장`}
+                    <button type="button" onClick={onSave} disabled={busy || !canManage || missingSite} title={missingSite ? '사이트를 선택해야 저장할 수 있습니다' : undefined} style={{ padding: '7px 14px', borderRadius: 'var(--radius-md)', border: 'none', background: busy || missingSite ? 'var(--ink-4)' : 'var(--btn-bg)', color: busy || missingSite ? 'var(--on-brand)' : 'var(--btn-ink)', fontWeight: 700, cursor: busy || missingSite ? 'not-allowed' : 'pointer' }}>
+                        {busy ? '저장 중...' : missingSite ? '사이트 선택 필요' : `${preview.quotations.length}건 저장`}
                     </button>
                 </div>
             </div>
@@ -147,6 +149,7 @@ function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, p
                         : chip('새 견적으로 등록');
                 const catCounts = {};
                 q.items.forEach(it => { const c = normalizeCategory(it.item_category); catCounts[c] = (catCounts[c] || 0) + 1; });
+                const siteInfo = siteFor(q, qi, effectiveTitle);
                 return (
                     <div key={qi} style={{ borderTop: qi ? '1px dashed var(--border-subtle)' : 'none', paddingTop: qi ? '12px' : 0, marginTop: qi ? '12px' : 0 }}>
                         <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
@@ -158,6 +161,21 @@ function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, p
                             onChange={e => setTitleOverrides(prev => ({ ...prev, [qi]: e.target.value }))}
                             style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', fontSize: '14px', fontWeight: 700 }}
                         />
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>사이트</label>
+                            <select
+                                className="quote-select"
+                                value={siteInfo.site}
+                                onChange={e => onSiteChange(qi, e.target.value)}
+                                style={{ minWidth: '160px', borderColor: siteInfo.site ? undefined : 'var(--bad)' }}
+                            >
+                                <option value="">사이트 선택 (필수)</option>
+                                {siteOptions.map(n => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                            {siteInfo.site
+                                ? chip(siteInfo.reason, siteInfo.fromUser ? 'neutral' : 'ok')
+                                : chip('사이트를 알 수 없어 직접 선택해야 합니다 (임의로 배정하지 않습니다)', 'error')}
+                        </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
                             {saveMode}
                             {proj.linkedLabel ? chip(`등록 프로젝트 연결: ${proj.linkedLabel}`, 'ok') : chip(`프로젝트: ${effectiveTitle}`)}
@@ -232,7 +250,7 @@ function QuotationPreview({ draft, preview, titleOverrides, setTitleOverrides, p
     );
 }
 
-function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer = "SK on" }) {
+function QuotationsManager({ projects, sites = [], role, onPermissionDenied, currentCustomer = "SK on" }) {
     const canManage = ['admin', 'grade3'].includes(role);
     const notifyPermission = (feature) => {
         if (onPermissionDenied) {
@@ -246,6 +264,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
     // 저장 전 미리보기: 파일 1개의 시트들 또는 시트별 붙여넣기 결과를 모은다 (원본 파일은 보관하지 않는다)
     const [draft, setDraft] = useState(null); // { fileName, analyses: [...] }
     const [titleOverrides, setTitleOverrides] = useState({});
+    const [siteOverrides, setSiteOverrides] = useState({}); // 미리보기에서 사용자가 고른 사이트 { 견적 순번: 사이트명 }
     const [previewOpen, setPreviewOpen] = useState({});
     const [quotations, setQuotations] = useState([]);
     const [quotationItems, setQuotationItems] = useState([]);
@@ -256,6 +275,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
     
     // 다차원 연동 필터 상태 (공정, 프로젝트, 구분, 품목명, 유닛명)
     const [filterProcess, setFilterProcess] = useState('전체'); // '전체' | 'Notching' | 'Stacking'
+    const [filterSite, setFilterSite] = useState('전체'); // '전체' | 사이트명 | SITE_UNASSIGNED
     const [filterProject, setFilterProject] = useState('전체'); // '전체' | projectKey
     const [filterCategory, setFilterCategory] = useState('전체'); // '전체' | '가공품' | '시장품' | '기타'
     const [filterItemName, setFilterItemName] = useState('전체'); // '전체' | itemName
@@ -377,9 +397,27 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
         return merged;
     }, [draft, quotations, quotationItems]);
 
+    // 고를 수 있는 사이트: 현재 고객사의 사이트 목록(+ 이미 견적에 저장돼 있는 사이트)
+    const siteOptions = useMemo(() => {
+        const names = (sites || []).map(s => (typeof s === 'string' ? s : s.name)).filter(Boolean);
+        quotations.forEach(q => { if (q.site && !names.includes(q.site)) names.push(q.site); });
+        return names;
+    }, [sites, quotations]);
+
+    // 등록 미리보기의 사이트: 사용자가 고른 값 > 이미 등록된 같은 견적의 사이트 > 이름·견적번호 단서. 단서가 없으면 빈 값(직접 선택)
+    const siteFor = (q, qi, title) => {
+        const picked = siteOverrides[qi];
+        if (picked !== undefined) return picked ? { site: picked, reason: '직접 선택', fromUser: true } : { site: '', reason: '' };
+        const existing = q.appendTo || findExistingQuotation(q, title, quotations);
+        if (existing?.site) return { site: existing.site, reason: '등록된 같은 견적의 사이트' };
+        const found = detectQuotationSite({ title, quoteNo: q.quote_no, fileName: draft?.fileName }, siteOptions);
+        return found ? { site: found.site, reason: found.reason } : { site: '', reason: '' };
+    };
+
     const resetDraft = () => {
         setDraft(null);
         setTitleOverrides({});
+        setSiteOverrides({});
         setPreviewOpen({});
         if (fileInputRef.current) fileInputRef.current.value = "";
     };
@@ -433,7 +471,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
 
     // 저장: 새 견적 등록 / 같은 견적(같은 리비전) 갱신 / 기존 견적에 상세 리스트 추가
     // 갱신할 때는 이번에 들어온 부분만 바꾼다 (견적 라인이 있으면 견적 라인, 상세 리스트는 같은 종류의 상세만)
-    const saveOneQuotation = async (q, title, projectId, projectName) => {
+    const saveOneQuotation = async (q, title, projectId, projectName, site) => {
         const target = q.appendTo || findExistingQuotation(q, title, quotations);
         const appendOnly = !!q.appendTo;
         const newItems = appendOnly ? q.items.filter(it => it.source === 'detail') : q.items;
@@ -442,6 +480,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
             project_id: projectId,
             project_name: projectName,
             title,
+            site,
             total_amount: q.total_amount || 0,
             quote_no: q.quote_no || null,
             revision: q.revision || null,
@@ -471,7 +510,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
             lineOffset = hasLines ? 0 : kept.reduce((m, it) => Math.max(m, it.line_no || 0), 0);
             // 머리 정보는 이번 데이터에 있는 값만 덮어쓴다 (상세만 붙여넣었으면 견적번호·총액 등은 그대로)
             const patch = appendOnly
-                ? { sheet_names: [...new Set([...(target.sheet_names || []), ...q.sheet_names])] }
+                ? { sheet_names: [...new Set([...(target.sheet_names || []), ...q.sheet_names])], site }
                 : Object.fromEntries(Object.entries(header).filter(([, v]) => v !== null && v !== '' && !(Array.isArray(v) && !v.length)));
             const { error: upErr } = await supabase.from('quotations').update(patch).eq('id', quotationId);
             if (upErr) throw upErr;
@@ -527,7 +566,9 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                 const title = (titleOverrides[i] ?? q.title).trim() || q.title;
                 // 프로젝트는 견적서 내용의 프로젝트명으로 정한다 (같은 이름의 등록 프로젝트가 있으면 그 프로젝트에 연결)
                 const { projectId, projectName } = resolveQuotationProject(title, projects);
-                results.push({ title, ...(await saveOneQuotation(q, title, projectId, projectName)) });
+                const { site } = siteFor(q, i, title);
+                if (!site) throw new Error(`'${title}'의 사이트를 선택해 주세요.`);
+                results.push({ title, ...(await saveOneQuotation(q, title, projectId, projectName, site)) });
             }
             const modeLabel = { new: '새로 등록', update: '기존 견적 갱신', append: '기존 견적에 상세 추가' };
             setMsg(`저장 완료 — ${results.map(r => `${r.title} (${modeLabel[r.mode]}, 품목 ${r.count}개)`).join(' / ')}. 원본 파일은 보관하지 않습니다.`);
@@ -546,6 +587,17 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
         } finally {
             setIsExtracting(false);
         }
+    };
+
+    // 이미 저장된 견적의 사이트 지정/변경 (빈 값 = 미확인으로 되돌림)
+    const handleChangeSite = async (quotationId, site) => {
+        if (!canManage) return notifyPermission('견적 사이트 지정');
+        const { error } = await supabase.from('quotations').update({ site: site || null }).eq('id', quotationId);
+        if (error) {
+            setMsg(<span style={{ color: 'var(--bad)' }}>사이트 저장 실패: {error.message}</span>);
+            return;
+        }
+        setQuotations(prev => prev.map(q => (q.id === quotationId ? { ...q, site: site || null } : q)));
     };
 
     const handleDeleteQuotation = async (id) => {
@@ -662,6 +714,8 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                     quotationTitle: q?.title || '견적서',
                     quoteLabel: [q?.quote_no, q?.revision].filter(Boolean).join(' '),
                     quoteDate: q?.quote_date || null,
+                    quotationId: q?.id || null,
+                    site: q?.site || SITE_UNASSIGNED,
                     isLine: item.source === 'quotation',
                     processType,
                     normCategory,
@@ -685,7 +739,22 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
         quotation: enrichedItems.filter(i => i.isLine).length,
     }), [enrichedItems]);
 
-    // 2. [공정 필터]에 따른 유효 프로젝트 목록
+    // 1-2. [공정 필터]에 따른 사이트 목록 (사이트를 모르는 견적은 '미확인'으로 따로 모은다)
+    const availableSites = useMemo(() => {
+        const counts = {};
+        scopedItems.forEach(item => {
+            if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
+            if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
+            counts[item.site] = (counts[item.site] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => (a.name === SITE_UNASSIGNED) - (b.name === SITE_UNASSIGNED) || a.name.localeCompare(b.name));
+    }, [scopedItems, filterProcess]);
+    const effectiveSite = (filterSite !== '전체' && availableSites.some(s => s.name === filterSite)) ? filterSite : '전체';
+    const unassignedQuotations = customerQuotations.filter(q => !q.site);
+
+    // 2. [공정 + 사이트 필터]에 따른 유효 프로젝트 목록
     const availableProjects = useMemo(() => {
         const counts = {};
         scopedItems.forEach(item => {
@@ -693,12 +762,13 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
             }
+            if (effectiveSite !== '전체' && item.site !== effectiveSite) return;
             counts[item.projectKey] = (counts[item.projectKey] || 0) + 1;
         });
         return Object.entries(counts)
             .map(([name, count]) => ({ name, count }))
             .sort((a, b) => a.name.localeCompare(b.name));
-    }, [scopedItems, filterProcess]);
+    }, [scopedItems, filterProcess, effectiveSite]);
 
     // 유효한 선택 프로젝트 결정 (파생 상태)
     const effectiveProject = (filterProject !== '전체' && availableProjects.some(p => p.name === filterProject)) ? filterProject : '전체';
@@ -711,12 +781,13 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
             }
+            if (effectiveSite !== '전체' && item.site !== effectiveSite) return;
             if (effectiveProject !== '전체' && item.projectKey !== effectiveProject) return;
             if (counts[item.normCategory] !== undefined) counts[item.normCategory]++;
             else counts['기타']++;
         });
         return counts;
-    }, [scopedItems, filterProcess, effectiveProject]);
+    }, [scopedItems, filterProcess, effectiveSite, effectiveProject]);
 
     // 4. [공정 + 프로젝트 + 구분] 복합 조건에 따른 유효 품목 목록 (핵심 연동!)
     const availableItemNames = useMemo(() => {
@@ -726,6 +797,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
             }
+            if (effectiveSite !== '전체' && item.site !== effectiveSite) return;
             if (effectiveProject !== '전체' && item.projectKey !== effectiveProject) return;
             if (filterCategory !== '전체' && item.normCategory !== filterCategory) return;
 
@@ -740,7 +812,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
         return Object.entries(itemMap)
             .map(([name, info]) => ({ name, ...info }))
             .sort((a, b) => a.name.localeCompare(b.name));
-    }, [scopedItems, filterProcess, effectiveProject, filterCategory]);
+    }, [scopedItems, filterProcess, effectiveSite, effectiveProject, filterCategory]);
 
     // 유효한 선택 품목명 결정 (파생 상태)
     const effectiveItemName = (filterItemName !== '전체' && availableItemNames.some(i => i.name === filterItemName)) ? filterItemName : '전체';
@@ -753,6 +825,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
             }
+            if (effectiveSite !== '전체' && item.site !== effectiveSite) return;
             if (effectiveProject !== '전체' && item.projectKey !== effectiveProject) return;
             if (filterCategory !== '전체' && item.normCategory !== filterCategory) return;
             if (effectiveItemName !== '전체' && item.item_name !== effectiveItemName) return;
@@ -761,7 +834,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
             if (item.unit_name) unitSet.add(item.unit_name);
         });
         return [...unitSet].sort();
-    }, [scopedItems, filterProcess, effectiveProject, filterCategory, effectiveItemName, searchQuery]);
+    }, [scopedItems, filterProcess, effectiveSite, effectiveProject, filterCategory, effectiveItemName, searchQuery]);
 
     // 유효한 선택 유닛명 결정 (파생 상태)
     const effectiveUnitName = (filterUnitName !== '전체' && availableUnitNames.includes(filterUnitName)) ? filterUnitName : '전체';
@@ -780,6 +853,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return false;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return false;
             }
+            if (effectiveSite !== '전체' && item.site !== effectiveSite) return false;
             if (effectiveProject !== '전체' && item.projectKey !== effectiveProject) return false;
             if (filterCategory !== '전체' && item.normCategory !== filterCategory) return false;
             if (effectiveItemName !== '전체' && item.item_name !== effectiveItemName) return false;
@@ -801,7 +875,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
         else list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         return list;
-    }, [scopedItems, filterProcess, effectiveProject, filterCategory, effectiveItemName, effectiveUnitName, searchQuery, sortOrder]);
+    }, [scopedItems, filterProcess, effectiveSite, effectiveProject, filterCategory, effectiveItemName, effectiveUnitName, searchQuery, sortOrder]);
 
     // 단가 통계 계산
     const { statMinPrice, statMaxPrice, statAvgPrice, statTotalPrice } = useMemo(() => {
@@ -816,6 +890,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
 
     const handleResetFilters = () => {
         setFilterProcess('전체');
+        setFilterSite('전체');
         setFilterProject('전체');
         setFilterCategory('전체');
         setFilterItemName('전체');
@@ -827,6 +902,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
 
     const groupedQuotations = {};
     customerQuotations.forEach(q => {
+        if (effectiveSite !== '전체' && (q.site || SITE_UNASSIGNED) !== effectiveSite) return;
         let key = "미지정 프로젝트";
         if (q.project_id) {
             const p = projects.find(proj => proj.id === q.project_id);
@@ -1022,6 +1098,9 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                 setPreviewOpen={setPreviewOpen}
                                 projects={projects}
                                 quotations={quotations}
+                                siteFor={siteFor}
+                                siteOptions={siteOptions}
+                                onSiteChange={(qi, value) => setSiteOverrides(prev => ({ ...prev, [qi]: value }))}
                                 onRemoveSource={removeDraftSource}
                                 onSave={handleSaveDraft}
                                 onReset={() => { resetDraft(); setMsg(''); }}
@@ -1095,6 +1174,15 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                 {!collapsedSections.itemSearch ? (
                     <>
 
+                {unassignedQuotations.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', padding: '10px 14px', marginBottom: '10px', border: '1px solid var(--bad)', borderRadius: 'var(--radius-md)', background: 'var(--bad-wash)', fontSize: '13px', color: 'var(--bad)' }}>
+                        <span><Icon name="alert" size="1.1em" /> 사이트를 알 수 없는 견적이 <b>{unassignedQuotations.length}건</b> 있습니다. 어느 사이트의 견적인지 확인해 지정해 주세요.</span>
+                        <button type="button" className="filter-reset-btn" onClick={() => { setFilterSite(SITE_UNASSIGNED); handleSelectQuoteSection('projectSummary'); }}>
+                            미확인 견적 보러 가기
+                        </button>
+                    </div>
+                )}
+
                 {/* 다차원 연동 필터 카드 */}
                 <div className="quote-filter-card">
                     {/* 행 0: 자료 구분 — 부품 단가(상세 리스트)와 견적 항목(SET·인건비·경비)을 나눠 본다 */}
@@ -1147,7 +1235,27 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                             </div>
                         </div>
 
-                        {/* 2. 프로젝트 필터 (공정에 맞춰 연동) */}
+                        {/* 1-2. 사이트 필터 (공정에 맞춰 연동, 사이트를 모르는 견적은 '미확인') */}
+                        <div className="quote-filter-group" style={{ flex: '0 1 220px' }}>
+                            <label className="quote-filter-label">
+                                <Icon name="building" size="1.1em" /> 사이트 선택 ({availableSites.length}곳)
+                            </label>
+                            <select
+                                className="quote-select"
+                                style={{ width: '100%' }}
+                                value={effectiveSite}
+                                onChange={e => setFilterSite(e.target.value)}
+                            >
+                                <option value="전체">모든 사이트 ({scopedItems.length}건)</option>
+                                {availableSites.map(s => (
+                                    <option key={s.name} value={s.name}>
+                                        {s.name === SITE_UNASSIGNED ? `사이트 미확인 (${s.count}건)` : `${s.name} (${s.count}건)`}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* 2. 프로젝트 필터 (공정·사이트에 맞춰 연동) */}
                         <div className="quote-filter-group" style={{ flex: '1 1 240px' }}>
                             <label className="quote-filter-label">
                                 <Icon name="folder" size="1.1em" /> 프로젝트 선택 ({availableProjects.length}개 프로젝트)
@@ -1359,6 +1467,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                 <thead>
                                     <tr>
                                         <th style={{ width: '80px', textAlign: 'center' }}>공정</th>
+                                        <th style={{ width: '90px', textAlign: 'center' }}>사이트</th>
                                         <th style={{ width: '90px', textAlign: 'center' }}>구분</th>
                                         <th>프로젝트명</th>
                                         <th>유닛명</th>
@@ -1383,6 +1492,9 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                                         <span className={`badge-process ${procBadgeClass}`}>
                                                             {procBadgeText}
                                                         </span>
+                                                    </td>
+                                                    <td style={{ textAlign: 'center', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap', color: item.site === SITE_UNASSIGNED ? 'var(--bad)' : 'var(--text-primary)' }}>
+                                                        {item.site}
                                                     </td>
                                                     <td style={{ textAlign: 'center' }}>
                                                         <span className={`badge-category cat-${catClass}`}>
@@ -1429,7 +1541,7 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan="10" style={{ textAlign: 'center', color: 'var(--ink-3)', padding: '36px 20px' }}>
+                                            <td colSpan="11" style={{ textAlign: 'center', color: 'var(--ink-3)', padding: '36px 20px' }}>
                                                 <div style={{ fontSize: '24px', marginBottom: '8px' }}><Icon name="search" size="1.1em" /></div>
                                                 <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>선택하신 조건에 해당하는 견적 품목이 없습니다.</div>
                                                 <div style={{ fontSize: '12px', color: 'var(--ink-4)', marginTop: '4px' }}>공정, 프로젝트 또는 구분 조건을 변경하거나 초기화해 보세요.</div>
@@ -1508,7 +1620,18 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                         </span>
                     </div>
                     {!collapsedSections.projectSummary && (
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <select
+                                className="quote-select"
+                                value={effectiveSite}
+                                onChange={e => setFilterSite(e.target.value)}
+                                title="사이트별로 모아 봅니다 (품목 조회의 사이트 선택과 같이 움직입니다)"
+                            >
+                                <option value="전체">모든 사이트</option>
+                                {availableSites.map(s => (
+                                    <option key={s.name} value={s.name}>{s.name === SITE_UNASSIGNED ? '사이트 미확인' : s.name}</option>
+                                ))}
+                            </select>
                             <button
                                 type="button"
                                 onClick={() => toggleAllProjects(true)}
@@ -1608,7 +1731,18 @@ function QuotationsManager({ projects, role, onPermissionDenied, currentCustomer
                                                                 <span style={{ marginLeft: '6px', fontSize: '11px', color: 'var(--bad)' }}><Icon name="alert" size="1.1em" /> 검증 오류 {quotation.parse_summary.errors}건</span>
                                                             )}
                                                         </span>
-                                                        <button 
+                                                        <select
+                                                            className="quote-select"
+                                                            value={quotation.site || ''}
+                                                            onChange={e => handleChangeSite(quotation.id, e.target.value)}
+                                                            onClick={e => e.stopPropagation()}
+                                                            title="이 견적이 어느 사이트의 것인지 지정합니다"
+                                                            style={{ fontSize: '12px', borderColor: quotation.site ? undefined : 'var(--bad)', color: quotation.site ? undefined : 'var(--bad)' }}
+                                                        >
+                                                            <option value="">사이트 미확인 (선택)</option>
+                                                            {siteOptions.map(n => <option key={n} value={n}>{n}</option>)}
+                                                        </select>
+                                                        <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 if (!canManage) return notifyPermission('견적 삭제');

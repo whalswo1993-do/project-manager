@@ -2325,7 +2325,7 @@ JSON 출력 예시:
           />
         </ErrorBoundary>
       ) : currentView === "quotations" ? (
-        <Quotations projects={currentCustomerProjects} session={session} role={role} onPermissionDenied={showPermissionModal} currentCustomer={currentCustomer} />
+        <Quotations projects={currentCustomerProjects} sites={currentCustomerSites} session={session} role={role} onPermissionDenied={showPermissionModal} currentCustomer={currentCustomer} />
       ) : currentView === "manpower" ? (
         <ManpowerManagement
           projects={view}

@@ -2,15 +2,15 @@ import ExcelJS from 'exceljs';
 import { normalizeJVName } from './utils.js';
 
 const C = {
-  navyDark: '0F172A',
-  navyHeader: '1E3A8A',
-  navyLight: 'F1F5F9',
-  borderGray: 'CBD5E1',
-  borderLight: 'E2E8F0',
-  textMain: '0F172A',
-  textMuted: '64748B',
-  stackingBg: 'EFF6FF',
-  stackingText: '1D4ED8',
+  navyDark: '262626',
+  navyHeader: 'E5E5E5',
+  navyLight: 'F2F2F2',
+  borderGray: 'BFBFBF',
+  borderLight: 'D0D0D0',
+  textMain: '000000',
+  textMuted: '000000',
+  stackingBg: 'E7E5E4',
+  stackingText: '44403C',
   notchingBg: 'FFF7ED',
   notchingText: 'EA580C',
   resolvedBg: 'E8F5E9',
@@ -68,9 +68,9 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
   const subCell = ws.getCell(2, 1);
   const subText = `기준일: ${today()} | 연도: ${filterInfo.year || '전체'} | SITE 필터: ${filterInfo.site || '전체'} | 공정: ${filterInfo.process || '전체(스태킹/노칭)'} | 상태: ${filterInfo.status || '전체'} | 검색: ${filterInfo.query || '없음'} (총 ${issues.length}건)`;
   subCell.value = subText;
-  subCell.font = { name: '맑은 고딕', size: 9, bold: true, color: { argb: 'FF475569' } };
-  subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
-  subCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  subCell.font = { name: '맑은 고딕', size: 9, bold: true, color: { argb: 'FF000000' } };
+  subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+  subCell.alignment = { vertical: 'middle', horizontal: 'center' };
   ws.getRow(2).height = 22;
 
   // 3. 통계 요약 카드 블록 (Row 4~5)
@@ -86,46 +86,46 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
 
   ws.mergeCells('A4:C4');
   ws.getCell('A4').value = '전체 등록 이슈';
-  ws.getCell('A4').font = { name: '맑은 고딕', size: 9, color: { argb: 'FF64748B' }, bold: true };
+  ws.getCell('A4').font = { name: '맑은 고딕', size: 9, color: { argb: 'FF000000' }, bold: true };
   ws.getCell('A4').alignment = { horizontal: 'center', vertical: 'middle' };
-  ws.getCell('A4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+  ws.getCell('A4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
 
   ws.mergeCells('A5:C5');
   ws.getCell('A5').value = `${totalCount}건 (완료 ${resolvedCount} · 조치중 ${inProgressCount} · 발생 ${openCount})`;
-  ws.getCell('A5').font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+  ws.getCell('A5').font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: 'FF000000' } };
   ws.getCell('A5').alignment = { horizontal: 'center', vertical: 'middle' };
 
   ws.mergeCells('D4:G4');
   ws.getCell('D4').value = '스태킹 (Stacking) 공정';
-  ws.getCell('D4').font = { name: '맑은 고딕', size: 9, color: { argb: `FF${C.stackingText}` }, bold: true };
+  ws.getCell('D4').font = { name: '맑은 고딕', size: 9, color: { argb: 'FF000000' }, bold: true };
   ws.getCell('D4').alignment = { horizontal: 'center', vertical: 'middle' };
-  ws.getCell('D4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${C.stackingBg}` } };
+  ws.getCell('D4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
 
   ws.mergeCells('D5:G5');
   ws.getCell('D5').value = `총 ${stackingCount}건 | 완료 ${stackingResolved}건 (${stackingCount > 0 ? Math.round((stackingResolved/stackingCount)*100) : 0}%)`;
-  ws.getCell('D5').font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: `FF${C.stackingText}` } };
+  ws.getCell('D5').font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: 'FF000000' } };
   ws.getCell('D5').alignment = { horizontal: 'center', vertical: 'middle' };
 
   ws.mergeCells('H4:K4');
   ws.getCell('H4').value = '노칭 (Notching) 공정';
-  ws.getCell('H4').font = { name: '맑은 고딕', size: 9, color: { argb: `FF${C.notchingText}` }, bold: true };
+  ws.getCell('H4').font = { name: '맑은 고딕', size: 9, color: { argb: 'FF000000' }, bold: true };
   ws.getCell('H4').alignment = { horizontal: 'center', vertical: 'middle' };
-  ws.getCell('H4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${C.notchingBg}` } };
+  ws.getCell('H4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
 
   ws.mergeCells('H5:K5');
   ws.getCell('H5').value = `총 ${notchingCount}건 | 완료 ${notchingResolved}건 (${notchingCount > 0 ? Math.round((notchingResolved/notchingCount)*100) : 0}%)`;
-  ws.getCell('H5').font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: `FF${C.notchingText}` } };
+  ws.getCell('H5').font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: 'FF000000' } };
   ws.getCell('H5').alignment = { horizontal: 'center', vertical: 'middle' };
 
   ws.mergeCells('L4:R4');
   ws.getCell('L4').value = '전체 조치 완료율 (Resolution Rate)';
-  ws.getCell('L4').font = { name: '맑은 고딕', size: 9, color: { argb: 'FF166534' }, bold: true };
+  ws.getCell('L4').font = { name: '맑은 고딕', size: 9, color: { argb: 'FF000000' }, bold: true };
   ws.getCell('L4').alignment = { horizontal: 'center', vertical: 'middle' };
-  ws.getCell('L4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } };
+  ws.getCell('L4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
 
   ws.mergeCells('L5:R5');
   ws.getCell('L5').value = `${resolvedRate}% (목표 대비 정상 트래킹)`;
-  ws.getCell('L5').font = { name: '맑은 고딕', size: 12, bold: true, color: { argb: 'FF166534' } };
+  ws.getCell('L5').font = { name: '맑은 고딕', size: 12, bold: true, color: { argb: 'FF000000' } };
   ws.getCell('L5').alignment = { horizontal: 'center', vertical: 'middle' };
 
   ws.getRow(4).height = 18;
@@ -135,10 +135,10 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
   for (let r = 4; r <= 5; r++) {
     for (let c = 1; c <= lastColIdx; c++) {
       ws.getCell(r, c).border = {
-        top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-        bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+        top: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+        bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+        left: { style: 'thin', color: { argb: 'FFBFBFBF' } },
+        right: { style: 'thin', color: { argb: 'FFBFBFBF' } }
       };
     }
   }
@@ -162,7 +162,7 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
     { label: '근본 원인 분석 (Root Cause)', width: 38, key: 'rootCause' },
     { label: '긴급 / 임시 조치', width: 32, key: 'interimAction' },
     { label: '최종 대응 및 조치 내용 (How solved)', width: 44, key: 'finalAction' },
-    { label: '🌟 재발 방지 대책 (Preventive)', width: 40, key: 'preventiveAction' },
+    { label: '재발 방지 대책 (Preventive)', width: 40, key: 'preventiveAction' },
     { label: '등록자', width: 14, key: 'reporter' },
     { label: '담당자', width: 16, key: 'assignee' },
     { label: '조치 완료자 / 완료일', width: 22, key: 'resolver' }
@@ -174,14 +174,14 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
     const colIdx = idx + 1;
     const cell = headerRow.getCell(colIdx);
     cell.value = h.label;
-    cell.font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF000000' } };
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${C.navyHeader}` } };
     cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     cell.border = {
-      top: { style: 'medium', color: { argb: `FF${C.navyDark}` } },
-      bottom: { style: 'medium', color: { argb: `FF${C.navyDark}` } },
-      left: { style: 'thin', color: { argb: 'FF3B82F6' } },
-      right: { style: 'thin', color: { argb: 'FF3B82F6' } }
+      top: { style: 'medium', color: { argb: 'FF595959' } },
+      bottom: { style: 'medium', color: { argb: 'FF595959' } },
+      left: { style: 'thin', color: { argb: 'FF8C8C8C' } },
+      right: { style: 'thin', color: { argb: 'FF8C8C8C' } }
     };
     ws.getColumn(colIdx).width = h.width;
   });
@@ -191,10 +191,10 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
     const rowIdx = 8 + index;
     const row = ws.getRow(rowIdx);
 
-    const procText = item.processType === 'stacking' ? '🟦 스태킹' : item.processType === 'notching' ? '🟧 노칭' : '기타/공통';
-    const statusText = item.status === 'resolved' ? '🟢 조치완료' : item.status === 'in_progress' ? '🟡 조치중' : '🔴 발생/접수';
-    const typeText = item.issueType === 'site' ? '🏭 사이트(양산)' : '📂 프로젝트';
-    const sevText = item.severity === 'critical' ? '🚨 긴급' : item.severity === 'high' ? '⚠️ 높음' : '보통';
+    const procText = item.processType === 'stacking' ? '스태킹' : item.processType === 'notching' ? '노칭' : '기타/공통';
+    const statusText = item.status === 'resolved' ? '조치완료' : item.status === 'in_progress' ? '조치중' : '발생/접수';
+    const typeText = item.issueType === 'site' ? '사이트(양산)' : '프로젝트';
+    const sevText = item.severity === 'critical' ? '긴급' : item.severity === 'high' ? '높음' : '보통';
     const resolverText = item.status === 'resolved'
       ? `${item.resolver || item.assignee || '담당자'} (${item.resolvedDate || '완료'})`
       : '-';
@@ -233,8 +233,8 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
       const cell = row.getCell(c);
       cell.font = { name: '맑은 고딕', size: 9, color: { argb: `FF${C.textMain}` } };
       cell.alignment = {
-        vertical: 'top',
-        horizontal: [1, 5, 7, 8, 9, 16, 17, 18].includes(c) ? 'center' : 'left',
+        vertical: 'middle',
+        horizontal: 'center',
         wrapText: true
       };
 
@@ -248,7 +248,7 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
 
       // 지브라 배경색
       if (index % 2 === 1) {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F5F5' } };
       }
     }
 
@@ -277,7 +277,7 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
 
     // 재발방지대책 열 (15열) 볼드 하이라이트
     if (item.preventiveAction && item.preventiveAction !== '-') {
-      row.getCell(15).font = { name: '맑은 고딕', size: 9, color: { argb: 'FF166534' }, bold: true };
+      row.getCell(15).font = { name: '맑은 고딕', size: 9, color: { argb: 'FF000000' }, bold: true };
     }
   });
 

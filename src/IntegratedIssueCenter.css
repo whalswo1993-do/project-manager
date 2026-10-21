@@ -242,6 +242,19 @@
   filter: none;
 }
 
+/* 고객사별 종합본 보고서 다운로드 (녹색 강조) */
+.iic-btn-summary-excel {
+  background: var(--ok);
+  color: var(--on-brand);
+  border-color: var(--ok);
+  box-shadow: none;
+}
+
+.iic-btn-summary-excel:hover {
+  background: var(--ok);
+  filter: brightness(1.08);
+}
+
 .iic-btn-new-prominent {
   background: var(--btn-bg);
   color: var(--btn-ink);

@@ -21,6 +21,9 @@ const C = {
   openText: 'B91C1C'
 };
 
+// 요약 함수가 세는 표의 마지막 행 (다운로드 후 직접 추가하는 행을 위한 여유 포함)
+const DATA_END_ROW = 1000;
+
 const today = () => new Date().toISOString().slice(0, 10);
 
 function saveFile(buffer, fileName) {
@@ -86,7 +89,22 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}, { su
   ws.getCell('A4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
 
   ws.mergeCells('A5:C5');
-  ws.getCell('A5').value = `${totalCount}건 (완료 ${resolvedCount} · 조치중 ${inProgressCount} · 발생 ${openCount})`;
+  // 요약 칸은 표(상태 H열·공정 E열)를 세는 함수라, 다운로드 후 행을 추가·수정하면 자동 반영된다
+  const rng = col => `${col}$8:${col}$${DATA_END_ROW}`;
+  const statusRng = rng('$H');
+  const procRng = rng('$E');
+  const pct = (num, den) => `IF(${den}=0,0,ROUND(${num}/${den}*100,0))`;
+  const totalF = `COUNTA(${statusRng})`;
+  const resolvedF = `COUNTIF(${statusRng},"조치완료")`;
+  const stackingF = `COUNTIF(${procRng},"스태킹")`;
+  const stackingResolvedF = `COUNTIFS(${procRng},"스태킹",${statusRng},"조치완료")`;
+  const notchingF = `COUNTIF(${procRng},"노칭")`;
+  const notchingResolvedF = `COUNTIFS(${procRng},"노칭",${statusRng},"조치완료")`;
+
+  ws.getCell('A5').value = {
+    formula: `${totalF}&"건 (완료 "&${resolvedF}&" · 조치중 "&COUNTIF(${statusRng},"조치중")&" · 발생 "&COUNTIF(${statusRng},"발생/접수")&")"`,
+    result: `${totalCount}건 (완료 ${resolvedCount} · 조치중 ${inProgressCount} · 발생 ${openCount})`
+  };
   ws.getCell('A5').font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: 'FF000000' } };
   ws.getCell('A5').alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -97,7 +115,10 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}, { su
   ws.getCell('D4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${C.stackingBg}` } };
 
   ws.mergeCells('D5:G5');
-  ws.getCell('D5').value = `총 ${stackingCount}건 | 완료 ${stackingResolved}건 (${stackingCount > 0 ? Math.round((stackingResolved/stackingCount)*100) : 0}%)`;
+  ws.getCell('D5').value = {
+    formula: `"총 "&${stackingF}&"건 | 완료 "&${stackingResolvedF}&"건 ("&${pct(stackingResolvedF, stackingF)}&"%)"`,
+    result: `총 ${stackingCount}건 | 완료 ${stackingResolved}건 (${stackingCount > 0 ? Math.round((stackingResolved/stackingCount)*100) : 0}%)`
+  };
   ws.getCell('D5').font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: 'FF000000' } };
   ws.getCell('D5').alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -108,7 +129,10 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}, { su
   ws.getCell('H4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${C.notchingBg}` } };
 
   ws.mergeCells('H5:K5');
-  ws.getCell('H5').value = `총 ${notchingCount}건 | 완료 ${notchingResolved}건 (${notchingCount > 0 ? Math.round((notchingResolved/notchingCount)*100) : 0}%)`;
+  ws.getCell('H5').value = {
+    formula: `"총 "&${notchingF}&"건 | 완료 "&${notchingResolvedF}&"건 ("&${pct(notchingResolvedF, notchingF)}&"%)"`,
+    result: `총 ${notchingCount}건 | 완료 ${notchingResolved}건 (${notchingCount > 0 ? Math.round((notchingResolved/notchingCount)*100) : 0}%)`
+  };
   ws.getCell('H5').font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: 'FF000000' } };
   ws.getCell('H5').alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -119,7 +143,10 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}, { su
   ws.getCell('L4').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${C.resolvedBg}` } };
 
   ws.mergeCells('L5:R5');
-  ws.getCell('L5').value = `${resolvedRate}% (목표 대비 정상 트래킹)`;
+  ws.getCell('L5').value = {
+    formula: `${pct(resolvedF, totalF)}&"% (목표 대비 정상 트래킹)"`,
+    result: `${resolvedRate}% (목표 대비 정상 트래킹)`
+  };
   ws.getCell('L5').font = { name: '맑은 고딕', size: 12, bold: true, color: { argb: 'FF000000' } };
   ws.getCell('L5').alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -281,6 +308,20 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}, { su
     from: { row: 7, column: 1 },
     to: { row: ws.rowCount, column: lastColIdx }
   };
+
+  // 직접 추가하는 행도 요약 함수가 세도록 공정(E)·상태(H)는 목록에서 고르게 한다
+  const listRule = items => ({
+    type: 'list',
+    allowBlank: true,
+    formulae: [`"${items.join(',')}"`],
+    showErrorMessage: true,
+    errorTitle: '입력 오류',
+    error: '목록에서 선택해 주세요. (요약 칸이 이 값으로 집계됩니다)'
+  });
+  for (let r = 8; r <= DATA_END_ROW; r++) {
+    ws.getCell(r, 5).dataValidation = listRule(['스태킹', '노칭', '기타/공통']);
+    ws.getCell(r, 8).dataValidation = listRule(['조치완료', '조치중', '발생/접수']);
+  }
 
   // 7. 다운로드 실행
   const buffer = await wb.xlsx.writeBuffer();

@@ -336,12 +336,12 @@ export default function IntegratedIssueCenter({
           <div className="system-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               type="button"
-              className="iic-btn iic-btn-excel-prominent"
+              className="iic-btn iic-btn-summary-excel"
               onClick={handleExportSummaryExcel}
               style={{ padding: '7px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}
               title="전체 고객사의 모든 이슈를 종합본 엑셀 보고서로 다운로드합니다 (화면 필터와 무관)"
             >
-              <Icon name="barChart" size="1.1em" /> 종합본 보고서 다운로드
+              <Icon name="barChart" size="1.1em" /> 고객사별 종합본 보고서 다운로드
             </button>
           </div>
         </div>

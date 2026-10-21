@@ -38,7 +38,7 @@ function saveFile(buffer, fileName) {
 /**
  * 기업 보고서 양식의 고품질 이슈 통합 관리 ExcelJS 내보내기
  */
-export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
+export async function exportIssuesExcelReport(issues = [], filterInfo = {}, { summary = false } = {}) {
   if (!issues || issues.length === 0) {
     throw new Error('내보낼 이슈 데이터가 없습니다.');
   }
@@ -57,7 +57,9 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
   // 1. 대제목 헤더 (Row 1)
   ws.mergeCells(1, 1, 1, lastColIdx);
   const titleCell = ws.getCell(1, 1);
-  titleCell.value = 'TW — 스태킹 · 노칭 공정 및 사이트별 이슈 통합 관리 보고서';
+  titleCell.value = summary
+    ? 'TW — 전체 고객사 종합본 · 스태킹 · 노칭 공정 및 사이트별 이슈 통합 관리 보고서'
+    : 'TW — 스태킹 · 노칭 공정 및 사이트별 이슈 통합 관리 보고서';
   titleCell.font = { name: '맑은 고딕', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
   titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${C.navyDark}` } };
   titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
@@ -283,5 +285,5 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}) {
   // 7. 다운로드 실행
   const buffer = await wb.xlsx.writeBuffer();
   const fileDate = today();
-  saveFile(buffer, `TW_이슈통합관리_스태킹_노칭_조치이력보고서_${fileDate}.xlsx`);
+  saveFile(buffer, `TW_이슈통합관리_${summary ? '전체고객사_종합본_' : ''}스태킹_노칭_조치이력보고서_${fileDate}.xlsx`);
 }

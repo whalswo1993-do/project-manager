@@ -298,6 +298,22 @@ export default function IntegratedIssueCenter({
     }
   };
 
+  // 전체 고객사 종합본: 고객사·사이트·상태 등 화면 필터와 상관없이 모든 이슈를 같은 양식으로 내보낸다
+  const handleExportSummaryExcel = async () => {
+    if (issues.length === 0) {
+      alert('내보낼 이슈 데이터가 없습니다.');
+      return;
+    }
+    try {
+      const filterInfo = { site: '전체', year: '전체', process: '전체', status: '전체', query: '없음' };
+      await exportIssuesExcelReport(issues, filterInfo, { summary: true });
+      showNotice('전체 고객사 종합본 엑셀 보고서가 다운로드되었습니다.');
+    } catch (e) {
+      console.error('Excel summary export error:', e);
+      alert('엑셀 다운로드 중 오류가 발생했습니다: ' + e.message);
+    }
+  };
+
   return (
     <div className="integrated-issue-center">
       {/* 이슈 통합 관리 시스템 메인 헤더 카드 (틀고정) */}
@@ -321,27 +337,11 @@ export default function IntegratedIssueCenter({
             <button
               type="button"
               className="iic-btn iic-btn-excel-prominent"
-              onClick={handleExportExcel}
+              onClick={handleExportSummaryExcel}
               style={{ padding: '7px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}
-              title="현재 필터링된 이슈 목록 및 상세 조치 이력을 고품질 서식 엑셀 보고서로 다운로드합니다"
+              title="전체 고객사의 모든 이슈를 종합본 엑셀 보고서로 다운로드합니다 (화면 필터와 무관)"
             >
-              <Icon name="barChart" size="1.1em" /> 엑셀 보고서 다운로드
-            </button>
-            <button
-              type="button"
-              className="iic-btn iic-btn-new-prominent"
-              onClick={() => {
-                if (!canEdit) {
-                  if (onPermissionDenied) onPermissionDenied('이슈 등록');
-                  else alert('등록 권한이 없습니다.');
-                  return;
-                }
-                openCreateModal();
-              }}
-              style={{ padding: '7px 16px', borderRadius: 'var(--radius-md)', fontSize: '13px', fontWeight: 700, whiteSpace: 'nowrap' }}
-              title={canEdit ? "신규 이슈를 등록합니다" : "Grade 2 이상 권한이 필요합니다"}
-            >
-              <Icon name="plus" size="1.1em" /> 새 이슈 등록 {!canEdit && <Icon name="lock" size={12} />}
+              <Icon name="barChart" size="1.1em" /> 종합본 보고서 다운로드
             </button>
           </div>
         </div>

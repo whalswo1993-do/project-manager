@@ -214,6 +214,15 @@ export default function IntegratedIssueCenter({
     }).sort((a, b) => new Date(b.occurredDate || b.createdAt) - new Date(a.occurredDate || a.createdAt));
   }, [customerIssues, viewMode, selectedProcess, selectedStatuses, selectedSiteFilter, searchQuery]);
 
+  // 카드 내용 펼침: 1년치처럼 건수가 많아도 훑어볼 수 있게 기본은 접어 둔다
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
+  const allExpanded = filteredIssues.length > 0 && filteredIssues.every(i => expandedIds.has(i.id));
+  const toggleExpanded = (id) => setExpandedIds(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
   // 신규 모달 열기
   const openCreateModal = (initialData = {}) => {
     const defaultSite = availableSites[0] || '';
@@ -614,8 +623,21 @@ export default function IntegratedIssueCenter({
             )}
           </div>
         ) : (
+          <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+            <span className="filter-label">{filteredIssues.length}건 · 내용은 카드의 [펼치기]로 봅니다</span>
+            <button
+              type="button"
+              className="iic-btn iic-btn-subtle"
+              onClick={() => setExpandedIds(allExpanded ? new Set() : new Set(filteredIssues.map(i => i.id)))}
+            >
+              {allExpanded ? '전체 접기' : '전체 펼치기'}
+            </button>
+          </div>
           <div className="iic-issues-grid">
-            {filteredIssues.map((issue) => (
+            {filteredIssues.map((issue) => {
+              const expanded = expandedIds.has(issue.id);
+              return (
               <div
                 key={issue.id}
                 className={`iic-issue-card ${issue.status === 'resolved' ? 'is-resolved' : ''} proc-${issue.processType}`}
@@ -663,13 +685,15 @@ export default function IntegratedIssueCenter({
                   </div>
 
                   {/* 증상 요약 */}
+                  {expanded && (
                   <div className="card-section symptom-section">
                     <div className="section-title"> 현상 / 증상</div>
                     <div className="section-text">{issue.symptom || '기재된 상세 증상 없음'}</div>
                   </div>
+                  )}
 
                   {/* 조치 내용 하이라이트 (조치완료된 경우) */}
-                  {issue.status === 'resolved' ? (
+                  {!expanded ? null : issue.status === 'resolved' ? (
                     <div className="card-section resolved-summary-section">
                       <div className="resolved-summary-header">
                         <span><Icon name="check" size="1.1em" /> <b>대응 완료 내용</b> ({issue.resolver ? `${issue.resolver} · ` : ''}{issue.resolvedDate || '완료'})</span>
@@ -712,6 +736,14 @@ export default function IntegratedIssueCenter({
                   </div>
 
                   <div className="footer-actions">
+                    <button
+                      type="button"
+                      className="btn-card-action"
+                      onClick={() => toggleExpanded(issue.id)}
+                      title={expanded ? '증상·원인·조치 내용 접기' : '증상·원인·조치 내용 펼치기'}
+                    >
+                      {expanded ? '접기' : '펼치기'}
+                    </button>
                     {/* 미완료 시 원클릭 조치 결과 기재 버튼 (핵심!) */}
                     {issue.status !== 'resolved' && (
                       <button
@@ -754,8 +786,10 @@ export default function IntegratedIssueCenter({
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
+          </>
         )}
       </div>
 

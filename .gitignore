@@ -54,3 +54,4 @@ scratch/
 
 .vercel
 .env*
+!.env.example

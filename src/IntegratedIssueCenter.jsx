@@ -183,6 +183,7 @@ export default function IntegratedIssueCenter({
           item.symptom,
           item.rootCause,
           item.interimAction,
+          item.testHistory,
           item.finalAction,
           item.preventiveAction,
           item.lineName,
@@ -221,6 +222,7 @@ export default function IntegratedIssueCenter({
       assignee: initialData.assignee || '',
       rootCause: initialData.rootCause || '',
       interimAction: initialData.interimAction || '',
+      testHistory: initialData.testHistory || '',
       finalAction: initialData.finalAction || '',
       preventiveAction: initialData.preventiveAction || '',
       resolvedDate: initialData.resolvedDate || '',
@@ -1047,25 +1049,34 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
               />
             </div>
 
-            <div className="form-row-2">
-              <div className="form-group">
-                <label>긴급 / 임시 조치 사항</label>
-                <textarea
-                  rows={2}
-                  placeholder="현장에서 즉시 취한 응급 조치 내용"
-                  value={form.interimAction}
-                  onChange={e => handleChange('interimAction', e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label>최종 대응 및 조치 내용 (어떻게 대응했는지 상세) *</label>
-                <textarea
-                  rows={2}
-                  placeholder="부품 교체, 파라미터 재세팅, 갭 조정, 프로그램 수정 등 실제 해결 방법"
-                  value={form.finalAction}
-                  onChange={e => handleChange('finalAction', e.target.value)}
-                />
-              </div>
+            <div className="form-group">
+              <label>긴급 / 임시 조치 사항</label>
+              <textarea
+                rows={2}
+                placeholder="현장에서 즉시 취한 응급 조치 내용"
+                value={form.interimAction}
+                onChange={e => handleChange('interimAction', e.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>테스트 내역</label>
+              <textarea
+                rows={2}
+                placeholder="원인 확인·검증을 위해 진행한 테스트 내용과 결과"
+                value={form.testHistory}
+                onChange={e => handleChange('testHistory', e.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>최종 대응 및 조치 내용 (어떻게 대응했는지 상세) *</label>
+              <textarea
+                rows={2}
+                placeholder="부품 교체, 파라미터 재세팅, 갭 조정, 프로그램 수정 등 실제 해결 방법"
+                value={form.finalAction}
+                onChange={e => handleChange('finalAction', e.target.value)}
+              />
             </div>
 
             <div className="form-group">
@@ -1264,6 +1275,13 @@ function IssueDetailModal({ issue, onClose, onEdit, onResolve }) {
             <div className="detail-block">
               <h4><Icon name="refresh" size="1.1em" /> 긴급/임시 조치</h4>
               <p>{issue.interimAction}</p>
+            </div>
+          )}
+
+          {issue.testHistory && (
+            <div className="detail-block">
+              <h4><Icon name="search" size="1.1em" /> 테스트 내역</h4>
+              <p>{issue.testHistory}</p>
             </div>
           )}
 

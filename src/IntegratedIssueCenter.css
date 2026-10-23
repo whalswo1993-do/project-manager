@@ -770,6 +770,22 @@
   cursor: pointer;
 }
 
+/* 상세 보기: 카드에서 가장 눈에 띄는 버튼 */
+.btn-card-detail {
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+  border: 1px solid var(--btn-bg);
+  border-radius: var(--radius-md);
+  padding: 3px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-card-detail:hover {
+  filter: brightness(1.12);
+}
+
 .btn-card-action:hover {
   background: var(--bg-hover);
   color: var(--text-primary);

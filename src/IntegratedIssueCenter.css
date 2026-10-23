@@ -463,11 +463,23 @@
 
 .iic-issues-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 1500px) {
+  .iic-issues-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1180px) {
+  .iic-issues-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 860px) {
+  .iic-issues-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
   .iic-issues-grid {
     grid-template-columns: 1fr;
   }
@@ -508,15 +520,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px 8px 16px;
+  padding: 7px 10px 6px 10px;
   border-bottom: 1px solid var(--border-subtle);
-  gap: 8px;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .card-tags {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
@@ -580,9 +593,9 @@
 }
 
 .badge-status {
-  font-size: 0.73rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 2px 6px;
   border-radius: var(--radius-md);
 }
 
@@ -605,19 +618,24 @@
 }
 
 .card-body {
-  padding: 14px 16px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   flex-grow: 1;
 }
 
 .card-title {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-primary);
-  line-height: 1.35;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
   cursor: pointer;
   transition: color 0.15s ease;
 }
@@ -629,8 +647,8 @@
 .card-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 0.78rem;
+  gap: 2px 8px;
+  font-size: 0.72rem;
   color: var(--text-muted);
   flex-wrap: wrap;
 }
@@ -641,10 +659,10 @@
 }
 
 .card-section {
-  font-size: 0.82rem;
-  line-height: 1.45;
+  font-size: 0.78rem;
+  line-height: 1.4;
   border-radius: var(--radius-md);
-  padding: 8px 10px;
+  padding: 5px 8px;
 }
 
 .symptom-section {
@@ -707,17 +725,20 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
+  padding: 5px 10px;
+  gap: 4px 6px;
+  flex-wrap: wrap;
   border-top: 1px solid var(--border-subtle);
   background: var(--bg-card-subtle);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
 }
 
 .footer-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .btn-quick-resolve {
@@ -725,9 +746,9 @@
   color: var(--ok);
   border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent);
   border-radius: var(--radius-md);
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  padding: 4px 10px;
+  padding: 2px 7px;
   cursor: pointer;
   transition: background 0.15s ease;
   box-shadow: none;
@@ -742,8 +763,8 @@
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 4px 8px;
-  font-size: 0.76rem;
+  padding: 2px 6px;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;

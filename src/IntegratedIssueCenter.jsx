@@ -15,6 +15,11 @@ import { exportIssuesExcelReport } from './exportIssueReport';
 import { normalizeJVName } from './utils';
 
 const CHRONIC_ALL_SITES = '전체 사이트 공통';
+const STATUS_FILTER_OPTIONS = [
+  { key: 'open', label: '발생/접수', exportLabel: '발생/접수' },
+  { key: 'in_progress', label: '조치 진행중', exportLabel: '조치진행중' },
+  { key: 'resolved', label: '조치 완료', exportLabel: '조치완료' }
+];
 
 export default function IntegratedIssueCenter({
   projects = [],
@@ -40,7 +45,7 @@ export default function IntegratedIssueCenter({
 
   // 필터 상태
   const [selectedProcess, setSelectedProcess] = useState('all'); // 'all' | 'stacking' | 'notching'
-  const [selectedStatus, setSelectedStatus] = useState('all'); // 'all' | 'open' | 'in_progress' | 'resolved'
+  const [selectedStatuses, setSelectedStatuses] = useState([]); // 비어 있으면 전체, 아니면 'open' | 'in_progress' | 'resolved' 중 선택한 것만
   const [selectedSiteFilter, setSelectedSiteFilter] = useState('all');
   const [selectedYear, setSelectedYear] = useState('all'); // 'all' | '2026' ...
   const [searchQuery, setSearchQuery] = useState('');
@@ -168,7 +173,7 @@ export default function IntegratedIssueCenter({
       if (selectedProcess !== 'all' && item.processType !== selectedProcess) return false;
 
       // 상태 필터
-      if (selectedStatus !== 'all' && item.status !== selectedStatus) return false;
+      if (selectedStatuses.length && !selectedStatuses.includes(item.status)) return false;
 
       // 사이트 필터 (등록된 SITE명 정확 일치 — SKOH와 SKOH2가 섞이지 않도록)
       if (selectedSiteFilter !== 'all') {
@@ -207,7 +212,7 @@ export default function IntegratedIssueCenter({
 
       return true;
     }).sort((a, b) => new Date(b.occurredDate || b.createdAt) - new Date(a.occurredDate || a.createdAt));
-  }, [customerIssues, viewMode, selectedProcess, selectedStatus, selectedSiteFilter, searchQuery]);
+  }, [customerIssues, viewMode, selectedProcess, selectedStatuses, selectedSiteFilter, searchQuery]);
 
   // 신규 모달 열기
   const openCreateModal = (initialData = {}) => {
@@ -299,7 +304,7 @@ export default function IntegratedIssueCenter({
         site: selectedSiteFilter === 'all' ? '전체' : selectedSiteFilter,
         year: selectedYear === 'all' ? '전체' : `${selectedYear}년`,
         process: selectedProcess === 'stacking' ? '스태킹 (Stacking)' : selectedProcess === 'notching' ? '노칭 (Notching)' : '전체',
-        status: selectedStatus === 'resolved' ? '조치완료' : selectedStatus === 'in_progress' ? '조치진행중' : selectedStatus === 'open' ? '발생/접수' : '전체',
+        status: selectedStatuses.length ? selectedStatuses.map(k => STATUS_FILTER_OPTIONS.find(o => o.key === k)?.exportLabel).join(', ') : '전체',
         query: searchQuery.trim() || '없음'
       };
       await exportIssuesExcelReport(filteredIssues, filterInfo);
@@ -539,16 +544,23 @@ export default function IntegratedIssueCenter({
           {viewMode !== 'knowledge' && (
             <div className="iic-filter-group">
               <span className="filter-label">상태:</span>
-              <select
-                className="iic-select"
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
+              <button
+                type="button"
+                className={`chip-btn ${selectedStatuses.length === 0 ? 'active' : ''}`}
+                onClick={() => setSelectedStatuses([])}
               >
-                <option value="all">전체 상태</option>
-                <option value="open">발생/접수</option>
-                <option value="in_progress">조치 진행중</option>
-                <option value="resolved">조치 완료</option>
-              </select>
+                전체
+              </button>
+              {STATUS_FILTER_OPTIONS.map(o => (
+                <button
+                  key={o.key}
+                  type="button"
+                  className={`chip-btn ${selectedStatuses.includes(o.key) ? 'active' : ''}`}
+                  onClick={() => setSelectedStatuses(prev => (prev.includes(o.key) ? prev.filter(k => k !== o.key) : [...prev, o.key]))}
+                >
+                  {o.label}
+                </button>
+              ))}
             </div>
           )}
 
@@ -581,18 +593,18 @@ export default function IntegratedIssueCenter({
             <div className="empty-icon"><Icon name="folder" size="1.1em" /></div>
             <h4>조회된 이슈 내역이 없습니다</h4>
             <p>
-              {searchQuery || selectedProcess !== 'all' || selectedStatus !== 'all' || selectedSiteFilter !== 'all' || selectedYear !== 'all'
+              {searchQuery || selectedProcess !== 'all' || selectedStatuses.length > 0 || selectedSiteFilter !== 'all' || selectedYear !== 'all'
                 ? '선택된 필터 조건(연도, SITE, 공정, 상태 등)에 해당하는 이슈가 없습니다. 필터를 초기화해 보세요.'
                 : '아직 등록된 이슈가 없습니다. 상단의 [+ 신규 이슈 등록] 버튼을 눌러 첫 이슈를 기록해보세요.'}
             </p>
-            {(searchQuery || selectedProcess !== 'all' || selectedStatus !== 'all' || selectedSiteFilter !== 'all' || selectedYear !== 'all') && (
+            {(searchQuery || selectedProcess !== 'all' || selectedStatuses.length > 0 || selectedSiteFilter !== 'all' || selectedYear !== 'all') && (
               <button
                 type="button"
                 className="iic-btn iic-btn-subtle"
                 onClick={() => {
                   setSelectedYear('all');
                   setSelectedProcess('all');
-                  setSelectedStatus('all');
+                  setSelectedStatuses([]);
                   setSelectedSiteFilter('all');
                   setSearchQuery('');
                 }}

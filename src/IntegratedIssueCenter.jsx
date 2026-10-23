@@ -14,6 +14,8 @@ import {
 import { exportIssuesExcelReport } from './exportIssueReport';
 import { normalizeJVName } from './utils';
 
+const CHRONIC_ALL_SITES = '전체 사이트 공통';
+
 export default function IntegratedIssueCenter({
   projects = [],
   sites = [],
@@ -170,9 +172,15 @@ export default function IntegratedIssueCenter({
 
       // 사이트 필터 (등록된 SITE명 정확 일치 — SKOH와 SKOH2가 섞이지 않도록)
       if (selectedSiteFilter !== 'all') {
-        const itemSiteNorm = normalizeJVName(item.siteName || '').trim().toUpperCase();
         const targetNorm = normalizeJVName(selectedSiteFilter).trim().toUpperCase();
-        if (itemSiteNorm !== targetNorm) return false;
+        if (item.chronic) {
+          // 고질 이슈: 선택한 사이트 중 하나라도 맞거나, 선택이 없으면(전체 공통) 모든 사이트에 보인다
+          const names = item.siteNames || [];
+          if (names.length && !names.some(s => normalizeJVName(s).trim().toUpperCase() === targetNorm)) return false;
+        } else {
+          const itemSiteNorm = normalizeJVName(item.siteName || '').trim().toUpperCase();
+          if (itemSiteNorm !== targetNorm) return false;
+        }
       }
 
       // 검색어 필터
@@ -208,6 +216,8 @@ export default function IntegratedIssueCenter({
       id: '',
       issueType: initialData.issueType || 'site',
       siteName: initialData.siteName || defaultSite,
+      chronic: false,
+      siteNames: [],
       projectId: initialData.projectId || '',
       projectName: initialData.projectName || '양산 라인 (Mass Production)',
       customer: initialData.customer || (currentCustomer !== 'All' ? currentCustomer : 'SK on'),
@@ -788,6 +798,23 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
     setForm(prev => ({ ...prev, [field]: val }));
   };
 
+  // 고질 이슈: 사이트를 여러 개(또는 전체 공통) 지정. siteName은 표시·내보내기용 합친 글자로 함께 유지한다.
+  const chronicSiteName = (names) => (names.length ? names.join(', ') : CHRONIC_ALL_SITES);
+  const toggleChronic = (on) => {
+    setForm(prev => {
+      if (!on) return { ...prev, chronic: false, siteNames: [], siteName: '' };
+      const names = prev.siteName && availableSites.includes(prev.siteName) ? [prev.siteName] : [];
+      return { ...prev, chronic: true, siteNames: names, siteName: chronicSiteName(names) };
+    });
+  };
+  const toggleChronicSite = (site) => {
+    setForm(prev => {
+      const cur = prev.siteNames || [];
+      const names = cur.includes(site) ? cur.filter(s => s !== site) : [...cur, site];
+      return { ...prev, siteNames: names, siteName: chronicSiteName(names) };
+    });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.title.trim()) {
@@ -860,34 +887,60 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
           <div className="form-row-2">
             <div className="form-group">
               <label>SITE / 법인 선택 *</label>
-              <select
-                value={form.siteName}
-                onChange={e => handleChange('siteName', e.target.value)}
-                required
-                className="modal-site-select"
-              >
-                <option value="">-- SITE 선택 --</option>
-                {/* 과거에 등록된 이슈의 SITE가 현재 목록에 없더라도 수정 시 값이 사라지지 않도록 유지 */}
-                {form.siteName && !availableSites.includes(form.siteName) && (
-                  <option value={form.siteName}>{form.siteName}</option>
-                )}
-                {availableSites.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-              {/* 빠른 선택 칩 */}
-              <div className="site-quick-chips">
-                {availableSites.slice(0, 10).map(s => (
-                  <button
-                    key={s}
-                    type="button"
-                    className={`chip-btn ${form.siteName === s ? 'active' : ''}`}
-                    onClick={() => handleChange('siteName', s)}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 'normal', marginBottom: 6 }}>
+                <input
+                  type="checkbox"
+                  style={{ width: 'auto' }}
+                  checked={!!form.chronic}
+                  onChange={e => toggleChronic(e.target.checked)}
+                />
+                고질 이슈 (여러 사이트에 해당 · 선택 안 하면 전체 공통)
+              </label>
+              {form.chronic ? (
+                <div className="site-quick-chips">
+                  {availableSites.map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`chip-btn ${(form.siteNames || []).includes(s) ? 'active' : ''}`}
+                      onClick={() => toggleChronicSite(s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <select
+                    value={form.siteName}
+                    onChange={e => handleChange('siteName', e.target.value)}
+                    required
+                    className="modal-site-select"
                   >
-                    {s}
-                  </button>
-                ))}
-              </div>
+                    <option value="">-- SITE 선택 --</option>
+                    {/* 과거에 등록된 이슈의 SITE가 현재 목록에 없더라도 수정 시 값이 사라지지 않도록 유지 */}
+                    {form.siteName && !availableSites.includes(form.siteName) && (
+                      <option value={form.siteName}>{form.siteName}</option>
+                    )}
+                    {availableSites.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  {/* 빠른 선택 칩 */}
+                  <div className="site-quick-chips">
+                    {availableSites.slice(0, 10).map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        className={`chip-btn ${form.siteName === s ? 'active' : ''}`}
+                        onClick={() => handleChange('siteName', s)}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="form-group">
@@ -901,7 +954,7 @@ function IssueEditModal({ issue, projects, availableSites, onSave, onClose }) {
                     handleChange('projectId', selId);
                     if (p) {
                       handleChange('projectName', p.name);
-                      if (p.site) handleChange('siteName', normalizeJVName(p.site));
+                      if (p.site) setForm(prev => ({ ...prev, chronic: false, siteNames: [], siteName: normalizeJVName(p.site) }));
                       if (p.customer) handleChange('customer', p.customer);
                     }
                   }}

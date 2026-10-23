@@ -55,7 +55,7 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}, { su
     pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
   });
 
-  const lastColIdx = 18; // A to R
+  const lastColIdx = 19; // A to S
 
   // 1. 대제목 헤더 (Row 1)
   ws.mergeCells(1, 1, 1, lastColIdx);
@@ -183,6 +183,7 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}, { su
     { label: '상세 증상 및 현상 (Symptom)', width: 42, key: 'symptom' },
     { label: '근본 원인 분석 (Root Cause)', width: 38, key: 'rootCause' },
     { label: '긴급 / 임시 조치', width: 32, key: 'interimAction' },
+    { label: '테스트 내역', width: 36, key: 'testHistory' },
     { label: '최종 대응 및 조치 내용 (How solved)', width: 44, key: 'finalAction' },
     { label: '재발 방지 대책 (Preventive)', width: 40, key: 'preventiveAction' },
     { label: '등록자', width: 14, key: 'reporter' },
@@ -235,6 +236,7 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}, { su
       item.symptom || '',
       item.rootCause || '-',
       item.interimAction || '-',
+      item.testHistory || '-',
       item.finalAction || (item.status === 'resolved' ? '조치 완료' : '조치 진행 중'),
       item.preventiveAction || '-',
       item.reporter || '-',
@@ -297,9 +299,9 @@ export async function exportIssuesExcelReport(issues = [], filterInfo = {}, { su
       statusCell.font = { name: '맑은 고딕', size: 9, bold: true, color: { argb: `FF${C.openText}` } };
     }
 
-    // 재발방지대책 열 (15열) 볼드 하이라이트
+    // 재발방지대책 열 (16열) 볼드 하이라이트
     if (item.preventiveAction && item.preventiveAction !== '-') {
-      row.getCell(15).font = { name: '맑은 고딕', size: 9, color: { argb: 'FF000000' }, bold: true };
+      row.getCell(16).font = { name: '맑은 고딕', size: 9, color: { argb: 'FF000000' }, bold: true };
     }
   });
 

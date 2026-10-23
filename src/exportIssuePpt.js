@@ -212,7 +212,7 @@ export async function exportIssuesPpt({ issues = [], startDate, endDate, siteFil
     };
     box('현상 / 증상', i.symptom, 0.45, 1.95, C.red);
     box('근본 원인 분석', i.rootCause, 6.75, 1.95, C.amber);
-    box('최종 대응 및 조치 내용', i.finalAction || i.interimAction, 0.45, 4.5, C.green);
+    box('최종 대응 및 조치 내용', [i.finalAction || i.interimAction, i.testHistory && `[테스트 내역] ${i.testHistory}`].filter(Boolean).join('\n'), 0.45, 4.5, C.green);
     box('재발 방지 대책', i.preventiveAction, 6.75, 4.5, C.blue);
 
     if (i.status === 'resolved') {

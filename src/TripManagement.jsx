@@ -156,8 +156,8 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
     deleteAssignment: async (id) => ((await guard([assignments.find((x) => x.id === id)?.dept], "출장자 배정")) ? run(deleteAssignment(id), "배정을 삭제했습니다.") : cancelled),
     saveMember: async (id, m) => ((await guard([m.dept, id ? deptOfMember(id) : null], "인원")) ? run(id ? updateMember(id, m) : createMember(m), id ? "인원 정보를 저장했습니다." : "인원을 추가했습니다.") : cancelled),
     deleteMember: async (id) => ((await guard([deptOfMember(id)], "인원")) ? run(deleteMember(id), "인원을 삭제했습니다.") : cancelled),
-    addAbsence: async (a) => ((await guard([deptOfMember(a.member_id)], "인원")) ? run(createAbsence(a), "프로젝트 외 일정을 추가했습니다.", { close: false }) : cancelled),
-    // 여러 명에게 같은 프로젝트 외 일정(CS 대응·고객사 대응·테스트 등)을 한 번에 등록한다
+    addAbsence: async (a) => ((await guard([deptOfMember(a.member_id)], "인원")) ? run(createAbsence(a), "미등록 프로젝트 대응 일정을 추가했습니다.", { close: false }) : cancelled),
+    // 여러 명에게 같은 미등록 프로젝트 대응 일정(CS 대응·고객사 대응·테스트 등)을 한 번에 등록한다
     addAbsences: async (list) => {
       if (!(await guard(list.map((a) => deptOfMember(a.member_id)), "인원"))) return cancelled;
       for (let i = 0; i < list.length; i += 1) {
@@ -168,11 +168,11 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
         }
       }
       await reload();
-      flash("ok", `${list.length}명의 프로젝트 외 일정을 등록했습니다.`);
+      flash("ok", `${list.length}명의 미등록 프로젝트 대응 일정을 등록했습니다.`);
       setModal(null);
       return {};
     },
-    deleteAbsence: async (id) => ((await guard([deptOfMember(absences.find((x) => x.id === id)?.member_id)], "인원")) ? run(deleteAbsence(id), "프로젝트 외 일정을 삭제했습니다.", { close: false }) : cancelled),
+    deleteAbsence: async (id) => ((await guard([deptOfMember(absences.find((x) => x.id === id)?.member_id)], "인원")) ? run(deleteAbsence(id), "미등록 프로젝트 대응 일정을 삭제했습니다.", { close: false }) : cancelled),
     saveNote: async (n) => ((await guard([n.dept], "특이사항")) ? run(saveDeptNote(n), "", { close: false }) : cancelled),
   };
 
@@ -904,7 +904,7 @@ function Roster({ members, demands, defaultDept, ctx, planIndex, today, viewMode
           <span><i className="sw free" /> 가용</span>
           <span><i className="sw asg" /> 프로젝트 배정 (칸에 마우스를 올리면 프로젝트 이름)</span>
           <span><i className="sw bad" /> 충돌 (!)</span>
-          <span><i className="sw away" /> 프로젝트 외 출장 (CS · 고=고객사 · T=테스트 · 출=기타 출장) — 칸에 마우스를 올리면 장소</span>
+          <span><i className="sw away" /> 미등록 프로젝트 대응 (CS · 고=고객사 · T=테스트 · 출=기타 출장) — 칸에 마우스를 올리면 장소</span>
           <span><i className="sw absent" /> 부재 (휴=휴직 · 교=교육)</span>
         </div>
       </div>
@@ -983,7 +983,7 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
         })}
         {away.length > 0 && (
           <div className="tr-lane away">
-            <div className="tr-lane-head"><strong>프로젝트 외 출장</strong><b>{away.length}</b></div>
+            <div className="tr-lane-head"><strong>미등록 프로젝트 대응</strong><b>{away.length}</b></div>
             <div className="tr-lane-body">
               {away.map(({ m, ab }) => card(m, `${absenceText(ab)} · ${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? ` · ${ab.note}` : ""}`))}
             </div>
@@ -1169,7 +1169,7 @@ function Members({ members, ctx, today, editableDepts, defaultDept, myDept, setM
         {pickedRows.length > 0 && (
           <div className="tr-bulkbar" role="region" aria-label="선택한 인원 일괄 처리">
             <strong>{pickedRows.length}명 선택</strong>
-            <button type="button" className="tr-btn small" disabled={busy} onClick={() => setModal({ type: "outing", members: pickedRows.filter((m) => m.active) })}><Icon name="calendar" size={13} /> 프로젝트 외 일정</button>
+            <button type="button" className="tr-btn small" disabled={busy} onClick={() => setModal({ type: "outing", members: pickedRows.filter((m) => m.active) })}><Icon name="calendar" size={13} /> 미등록 프로젝트 대응 일정</button>
             <button type="button" className="tr-btn small" disabled={busy} onClick={() => setActive(pickedRows.filter((m) => m.active), false)}>퇴사 처리</button>
             <button type="button" className="tr-btn small" disabled={busy} onClick={() => setActive(pickedRows.filter((m) => !m.active), true)}>복귀 처리</button>
             <button type="button" className="tr-btn small danger" disabled={busy} onClick={() => remove(pickedRows)}><Icon name="trash" size={13} /> 삭제</button>
@@ -1210,7 +1210,7 @@ function Members({ members, ctx, today, editableDepts, defaultDept, myDept, setM
                       <td className="act">
                         {editable ? (
                           <span className="tr-row-btns">
-                            {m.active && <button type="button" className="tr-icon-btn" onClick={() => setModal({ type: "outing", members: [m] })} aria-label={`${m.name} 프로젝트 외 일정 등록`} title="프로젝트 외 일정 (CS·고객사 대응·테스트 등 어디에 가 있는지)"><Icon name="calendar" size={14} /></button>}
+                            {m.active && <button type="button" className="tr-icon-btn" onClick={() => setModal({ type: "outing", members: [m] })} aria-label={`${m.name} 미등록 프로젝트 대응 일정 등록`} title="미등록 프로젝트 대응 일정 (CS·고객사 대응·테스트 등 어디에 가 있는지)"><Icon name="calendar" size={14} /></button>}
                             <button type="button" className="tr-icon-btn" onClick={() => setModal({ type: "member", member: m })} aria-label={`${m.name} 수정`} title="수정"><Icon name="pencil" size={14} /></button>
                             <button type="button" className="tr-btn tiny" disabled={busy} onClick={() => setActive([m], !m.active)}>{m.active ? "퇴사" : "복귀"}</button>
                             <button type="button" className="tr-icon-btn danger" disabled={busy} onClick={() => remove([m])} aria-label={`${m.name} 삭제`} title="삭제"><Icon name="trash" size={14} /></button>

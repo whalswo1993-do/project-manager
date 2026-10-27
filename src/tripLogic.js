@@ -17,7 +17,7 @@ export function isUsSite(site) {
   return US_SITES.some((name) => new RegExp(`(^|[^A-Z0-9])${name}([^A-Z0-9]|$)`).test(text));
 }
 
-// 프로젝트 배정이 아닌 일정. out = 본사를 떠나 어딘가에 가 있는 "프로젝트 외 출장"(어디에 가 있는지 location 을 적는다)
+// 프로젝트 배정이 아닌 일정. out = 본사를 떠나 어딘가에 가 있는 "미등록 프로젝트 대응"(어디에 가 있는지 location 을 적는다)
 export const ABSENCE_KINDS = [
   { key: "cs", label: "CS 대응", out: true },
   { key: "customer", label: "고객사 대응", out: true },
@@ -365,7 +365,7 @@ export function memberWeekState(member, week, ctx) {
   return { state, assigned, absence };
 }
 
-/** 부서별 한 주 현황: 활동 인원·B1 보유·프로젝트 출장(assigned)·프로젝트 외 출장(away)·휴직 등 부재(absent)·본사 가용(free) */
+/** 부서별 한 주 현황: 활동 인원·B1 보유·프로젝트 출장(assigned)·미등록 프로젝트 대응(away)·휴직 등 부재(absent)·본사 가용(free) */
 export function deptWeekStats(members, week, ctx) {
   const active = members.filter((m) => m.active);
   let assigned = 0;

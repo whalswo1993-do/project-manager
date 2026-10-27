@@ -310,7 +310,7 @@ describe("마일스톤 줄 나누기", () => {
   });
 });
 
-describe("프로젝트 외 출장 (CS·고객사 대응·테스트)", () => {
+describe("미등록 프로젝트 대응 (CS·고객사 대응·테스트)", () => {
   const members2 = [
     { id: "m1", name: "갑", dept: "mechanical", team: "t", active: true, b1_visa: false },
     { id: "m2", name: "을", dept: "mechanical", team: "t", active: true, b1_visa: false },
@@ -320,7 +320,7 @@ describe("프로젝트 외 출장 (CS·고객사 대응·테스트)", () => {
   const week = { start: "2026-11-02", end: "2026-11-08" };
   const ctx2 = (absences, assignments = []) => ({ assignments, absences, members: members2, plans: [] });
 
-  it("프로젝트 외 출장 종류를 가른다", () => {
+  it("미등록 프로젝트 대응 종류를 가른다", () => {
     ["cs", "customer", "test", "trip"].forEach((k) => expect(isOutTrip(k)).toBe(true));
     ["leave", "training", "other"].forEach((k) => expect(isOutTrip(k)).toBe(false));
     expect(absenceText({ kind: "cs", location: "SKO 서산" })).toBe("CS 대응 · SKO 서산");

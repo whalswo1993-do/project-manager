@@ -98,7 +98,7 @@ describe("fetchTripData", () => {
   });
 });
 
-describe("프로젝트 외 일정", () => {
+describe("미등록 프로젝트 대응 일정", () => {
   it("장소(location)를 저장하고 비우면 null 로 보낸다", async () => {
     nextResult = { data: [{ id: "ab" }], error: null };
     await svc.createAbsence({ member_id: "m", kind: "cs", location: " SKO 서산 ", start_date: "2026-11-02", end_date: "" });

@@ -399,7 +399,7 @@ export function MemberModal({ member, defaultDept, editableDepts, absences, onSa
       {editing && (
         <div className="tr-absences">
           <div className="tr-phases-head">
-            <strong>프로젝트 외 일정</strong>
+            <strong>미등록 프로젝트 대응 일정</strong>
             <span>CS·고객사 대응, 테스트 같은 프로젝트 배정이 아닌 출장이나 교육·휴직. 이 기간에는 본사 대기가 아니라 적어 둔 곳에 가 있는 것으로 보이고, 프로젝트에 배정하면 경고가 뜹니다.</span>
           </div>
           {mine.length === 0 && <p className="tr-empty-line">등록된 일정이 없습니다.</p>}
@@ -590,7 +590,7 @@ export function ImportModal({ existing, editableDepts, defaultDept, onImport, on
   );
 }
 
-// ───────── 프로젝트 외 일정 등록 (여러 명 한 번에) ─────────
+// ───────── 미등록 프로젝트 대응 일정 등록 (여러 명 한 번에) ─────────
 
 export function OutingModal({ members, ctx, onSave, onClose }) {
   const [kind, setKind] = useState("cs");
@@ -634,7 +634,7 @@ export function OutingModal({ members, ctx, onSave, onClose }) {
   }
 
   return (
-    <Modal dept={depts.length === 1 ? depts[0] : undefined} title={`프로젝트 외 일정 등록 (${members.length}명)`} onClose={onClose} wide
+    <Modal dept={depts.length === 1 ? depts[0] : undefined} title={`미등록 프로젝트 대응 일정 등록 (${members.length}명)`} onClose={onClose} wide
       subtitle={members.map((m) => m.name).join(", ")}
       footer={
         <>

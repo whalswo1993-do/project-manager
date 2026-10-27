@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  isUsSite, phaseColors,
+  isUsSite, phaseColors, phaseRows,
   addDays, mondayOf, buildWeeks, overlaps, weeksBetween, isValidISO, monthSpans, todayISO,
   needForWeek, haveForWeek, planCoverage, shortageRuns, checkAssignment, analyzeAssignments, worstLevel,
   memberWeekState, deptWeekStats, parseMemberPaste, guessDept, memberKey,
@@ -281,5 +281,31 @@ describe("미국 사이트 B1 확인 · 마일스톤 색", () => {
     expect(colors.every((c) => c >= 0 && c < 8)).toBe(true);
     expect(phaseColors([{ label: "J/C" }])).toEqual([colors[0]]);
     expect(phaseColors([])).toEqual([]);
+  });
+});
+
+describe("마일스톤 줄 나누기", () => {
+  const cols = buildWeeks("2027-01-04", 4); // 1/4 1/11 1/18 1/25
+  const colors = [0, 1, 2];
+  it("일정이 겹치는 마일스톤은 서로 다른 줄에 모두 놓는다", () => {
+    const phases = [
+      { label: "FOB", start: "2027-01-11", end: "2027-01-24" },
+      { label: "2라인 이설", start: "2027-01-18", end: "2027-01-24" },
+      { label: "발송 준비", start: "2027-01-04", end: "2027-01-10" },
+    ];
+    const rows = phaseRows(cols, phases, colors);
+    expect(rows.length).toBe(2);
+    const all = rows.flat().map((x) => x.label).sort();
+    expect(all).toEqual(["2라인 이설", "FOB", "발송 준비"]); // 하나도 빠지지 않는다
+    // 같은 줄 안에서는 칸이 겹치지 않는다
+    rows.forEach((r) => r.forEach((x, i) => { if (i) expect(x.from).toBeGreaterThan(r[i - 1].to); }));
+    expect(rows[0].map((x) => x.label)).toEqual(["발송 준비", "FOB"]);
+    expect(rows[1].map((x) => x.label)).toEqual(["2라인 이설"]);
+  });
+  it("겹치지 않으면 한 줄, 보이는 칸 밖의 마일스톤은 뺀다", () => {
+    const rows = phaseRows(cols, [{ label: "A", start: "2027-01-04", end: "2027-01-10" }, { label: "B", start: "2027-01-11", end: "2027-01-17" }, { label: "먼 훗날", start: "2027-06-01", end: "2027-06-10" }], colors);
+    expect(rows.length).toBe(1);
+    expect(rows[0].map((x) => x.label)).toEqual(["A", "B"]);
+    expect(phaseRows(cols, [], [])).toEqual([]);
   });
 });

@@ -8,10 +8,10 @@ import {
 } from "./tripService";
 import {
   TRIP_DEPTS, TRIP_DEPT_LABEL, ABSENCE_KIND_LABEL, DOW_LABEL,
-  buildColumns, mondayOf, todayISO, addDays, overlaps, weeksBetween, monthSpans, shortDate, rangeLabel,
+  buildColumns, mondayOf, todayISO, addDays, weeksBetween, monthSpans, shortDate, rangeLabel,
   needForWeek, haveForWeek, planCoverage, shortageRuns, analyzeAssignments, worstLevel,
   memberWeekState, deptWeekStats, projectsToPlans, buildDemands, assignmentState, isPastProject, guessDept,
-  peakNeed, layoutLanes, laneCellState, laneGapRange, phaseColors,
+  peakNeed, layoutLanes, laneCellState, laneGapRange, phaseColors, phaseRows,
 } from "./tripLogic";
 import { normalizeDeptKey } from "./manpowerDepts";
 import { confirmDialog } from "./confirmService";
@@ -327,19 +327,8 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
 
 function TimeHead({ cols, today, phases, phaseIdx = [], leftHead, extraLeft = [], mode }) {
   const spans = monthSpans(cols);
-  const phaseCells = [];
-  if (phases?.length) {
-    const idxOf = (c) => phases.findIndex((p) => overlaps(p.start, p.end, c.start, c.end));
-    let i = 0;
-    while (i < cols.length) {
-      const idx = idxOf(cols[i]);
-      let j = i + 1;
-      while (j < cols.length && idxOf(cols[j]) === idx) j += 1;
-      phaseCells.push({ span: j - i, label: idx >= 0 ? phases[idx].label : "", color: idx >= 0 ? phaseIdx[idx] : -1 });
-      i = j;
-    }
-  }
-  const rowSpan = (mode === "day" ? 3 : 2) + (phases?.length ? 1 : 0);
+  const lanes = phases?.length ? phaseRows(cols, phases, phaseIdx) : [];
+  const rowSpan = (mode === "day" ? 3 : 2) + lanes.length;
   return (
     <thead>
       <tr>
@@ -367,11 +356,23 @@ function TimeHead({ cols, today, phases, phaseIdx = [], leftHead, extraLeft = []
           ))}
         </tr>
       )}
-      {phases?.length > 0 && (
-        <tr>
-          {phaseCells.map((c, i) => <th key={i} colSpan={c.span} className={`phase ${c.label ? `has ms-${c.color}` : ""}`} title={c.label}>{c.label}</th>)}
-        </tr>
-      )}
+      {lanes.map((lane, li) => {
+        const cells = [];
+        let k = 0;
+        lane.forEach((it) => {
+          if (it.from > k) cells.push({ span: it.from - k, empty: true });
+          cells.push({ span: it.to - it.from + 1, label: it.label, color: it.color });
+          k = it.to + 1;
+        });
+        if (k < cols.length) cells.push({ span: cols.length - k, empty: true });
+        return (
+          <tr key={`phase-${li}`}>
+            {cells.map((c, i) => (c.empty
+              ? <th key={i} colSpan={c.span} className="phase" />
+              : <th key={i} colSpan={c.span} className={`phase has ms-${c.color}`} title={c.label}>{c.label}</th>))}
+          </tr>
+        );
+      })}
     </thead>
   );
 }

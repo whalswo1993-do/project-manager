@@ -171,6 +171,10 @@
 .tr-grid thead tr:nth-child(2) th { top: 26px; }
 .tr-grid thead tr:nth-child(3) th { top: 52px; }
 .tr-grid thead tr:nth-child(4) th { top: 78px; }
+.tr-grid thead tr:nth-child(5) th { top: 104px; }
+.tr-grid thead tr:nth-child(6) th { top: 130px; }
+.tr-grid thead tr:nth-child(7) th { top: 156px; }
+.tr-grid thead tr:nth-child(8) th { top: 182px; }
 .tr-grid th.month { font-size: 11.5px; text-align: left; padding-left: 8px; }
 .tr-grid th.wk { min-width: 56px; width: 56px; font-weight: 500; font-size: 11.5px; }
 .tr-grid th.wk.now, .tr-grid th.dy.now, .tr-grid th.dw.now { background: var(--brand-wash); color: var(--brand); font-weight: 700; }

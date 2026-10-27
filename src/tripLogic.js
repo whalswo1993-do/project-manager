@@ -663,3 +663,25 @@ export function phaseColors(phases) {
     return idx;
   });
 }
+
+// 마일스톤을 줄(행)로 나눈다. 일정이 겹치는 단계는 서로 다른 줄에 모두 보여서, 어느 때 어떤 작업이 동시에 진행되는지 알 수 있게 한다.
+// 같은 줄에는 시간 칸이 겹치지 않는 단계만 놓는다. → 줄마다 [{ from, to, label, color }] (from·to 는 칸 번호)
+export function phaseRows(cols, phases, phaseIdx) {
+  const items = [];
+  (phases || []).forEach((ph, i) => {
+    let from = -1;
+    let to = -1;
+    cols.forEach((c, k) => {
+      if (overlaps(ph.start, ph.end, c.start, c.end)) { if (from < 0) from = k; to = k; }
+    });
+    if (from >= 0) items.push({ from, to, label: ph.label, color: phaseIdx[i] ?? i % 8, start: ph.start });
+  });
+  items.sort((x, y) => x.from - y.from || x.start.localeCompare(y.start) || y.to - x.to);
+  const rows = [];
+  items.forEach((it) => {
+    const row = rows.find((r) => r[r.length - 1].to < it.from);
+    if (row) row.push(it);
+    else rows.push([it]);
+  });
+  return rows;
+}

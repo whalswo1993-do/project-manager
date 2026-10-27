@@ -223,7 +223,40 @@ function SpcArt() {
   );
 }
 
+// 출장자: 사람 카드가 칸(본사·프로젝트)에 나뉘어 놓인 배치판. 빈 칸(점선)과 교대 화살표가 있다.
+// 일정(가로 막대)과 겹쳐 보이지 않도록 막대·눈금 대신 카드 모양만 쓰고, 제목이 있는 왼쪽은 비워 둔다.
+function TripsArt() {
+  const lanes = [
+    { x: 430, name: "HQ", cards: [0, 1, 2, 3], accent: false },
+    { x: 530, name: "PJT A", cards: [0, 1, 2], slot: 3, accent: true },
+    { x: 630, name: "PJT B", cards: [0, 1], slot: 2, accent: true },
+    { x: 730, name: "OFF", cards: [0], accent: false },
+  ];
+  const w = 88;
+  return (
+    <svg viewBox={VB} focusable="false">
+      {lanes.map((l) => (
+        <g key={l.name}>
+          <text className="tx" x={l.x} y="30">{l.name}</text>
+          <line className="ln-s" x1={l.x} y1="38" x2={l.x + w} y2="38" />
+          {l.cards.map((i) => (
+            <g key={i}>
+              <rect className="card" x={l.x} y={46 + i * 26} width={w} height="20" />
+              <rect className={l.accent ? "accent" : "fl-2"} x={l.x} y={46 + i * 26} width="3" height="20" />
+              <rect className="fl-2" x={l.x + 12} y={53 + i * 26} width={34 + ((i * 17 + l.x) % 26)} height="4" />
+            </g>
+          ))}
+          {l.slot !== undefined && <rect className="slot" x={l.x} y={46 + l.slot * 26} width={w} height="20" />}
+        </g>
+      ))}
+      <path className="ln-s" d="M520 56 H530 M526 52 l4 4 -4 4" />
+      <path className="ln-s" d="M720 82 H730 M726 78 l4 4 -4 4" />
+    </svg>
+  );
+}
+
 const ARTS = {
+  trips: TripsArt,
   projects: ScheduleArt,
   manpower: ManpowerArt,
   issues: IssuesArt,

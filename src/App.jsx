@@ -10,6 +10,7 @@ import VisionSPC from "./VisionSPC";
 import IssueManagement from "./IssueManagement";
 import IntegratedIssueCenter from "./IntegratedIssueCenter";
 import Quotations from "./Quotations";
+import TripManagement from "./TripManagement";
 import { PasteZone, PasteEntry } from "./PasteZone";
 import ManpowerManagement, { ProjectManpowerModal } from "./ManpowerManagement";
 import PasswordChangeModal from "./PasswordChangeModal";
@@ -267,6 +268,8 @@ export default function App() {
   const edit = ["admin", "grade3"].includes(role);
   const del = ["admin", "grade3"].includes(role);
   const canAccessQuotations = ["admin", "grade3"].includes(role);
+  // 출장자 관리: 인사 정보(비자 등)가 있어 PM(grade3)·관리자·팀장(grade2_5)만 본다. 팀장은 모든 부서를 수정할 수 있고, 다른 부서를 고칠 때의 확인은 출장자 화면이 한다.
+  const canAccessTrips = ["admin", "grade3", "grade2_5"].includes(role);
   // grade2_5(팀장)는 grade2 와 같은 화면 권한이고, AI(API) 호출만 grade2 에게 막혀 있다 (api/_lib/handler.js 의 AI_ALLOWED_ROLES)
   const isGrade2Tier = role === "grade2" || role === "grade2_5";
   const canExportAnalysis = ["admin", "grade3", "grade2_5", "grade2"].includes(role);
@@ -535,7 +538,7 @@ export default function App() {
   const [newSite, setNewSite] = useState("");
   const [newPerson, setNewPerson] = useState("");
   const [newDept, setNewDept] = useState("소장");
-  const VALID_VIEWS = ["projects", "manpower", "issues", "daily-reports", "quotations", "vision-spc"];
+  const VALID_VIEWS = ["projects", "manpower", "issues", "daily-reports", "quotations", "trips", "vision-spc"];
   const [externalNewIssueData, setExternalNewIssueData] = useState(null);
 
   const [currentView, setCurrentView] = useState(() => {
@@ -2020,6 +2023,19 @@ JSON 출력 예시:
             </button>
             <button
               type="button"
+              className={`nav-tab-btn tab-trips ${currentView === "trips" ? "active" : ""} ${!canAccessTrips ? "restricted" : ""}`}
+              onClick={() => {
+                if (!canAccessTrips) return showPermissionModal("출장자 관리");
+                switchView("trips");
+              }}
+              title={!canAccessTrips ? "출장자 관리는 Grade 3(PM) 또는 팀장(Grade 2.5) 이상만 이용할 수 있습니다 (클릭 시 권한 안내)" : ""}
+            >
+              <Icon name="briefcase" size={16} />
+              <span className="nav-tab-label">출장자 관리</span>
+              {!canAccessTrips && <Icon name="lock" size={13} className="nav-tab-lock" />}
+            </button>
+            <button
+              type="button"
               className={`nav-tab-btn tab-vision-spc ${currentView === "vision-spc" ? "active" : ""}`}
               onClick={() => switchView("vision-spc")}
               title="Cp·Cpk 분석"
@@ -2326,6 +2342,10 @@ JSON 출력 예시:
         </ErrorBoundary>
       ) : currentView === "quotations" ? (
         <Quotations projects={currentCustomerProjects} sites={currentCustomerSites} session={session} role={role} onPermissionDenied={showPermissionModal} currentCustomer={currentCustomer} />
+      ) : currentView === "trips" ? (
+        <ErrorBoundary>
+          <TripManagement role={role} myTeam={profile?.team} projects={projects} onPermissionDenied={showPermissionModal} />
+        </ErrorBoundary>
       ) : currentView === "manpower" ? (
         <ManpowerManagement
           projects={view}

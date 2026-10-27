@@ -96,9 +96,19 @@ body.theme-dark .sys-backdrop {
 /* 견적: 표 머리줄 */
 .sys-art .head { fill: color-mix(in srgb, var(--brand) 9%, transparent); }
 
+/* 출장자: 사람 카드 · 빈 칸 */
+.sys-art .card { fill: var(--bd-1); stroke: var(--bd-2); stroke-width: 1; }
+.sys-art .accent { fill: color-mix(in srgb, var(--brand) 45%, transparent); }
+.sys-art .slot { fill: none; stroke: color-mix(in srgb, var(--bad) 55%, transparent); stroke-width: 1.2; stroke-dasharray: 3 3; }
+
 /* SPC: 분포 곡선과 규격 한계 */
 .sys-art .curve { fill: none; stroke: color-mix(in srgb, var(--brand) 55%, transparent); stroke-width: 1.4; stroke-linejoin: round; }
 .sys-art .limit { stroke: color-mix(in srgb, var(--brand) 50%, transparent); stroke-width: 1.2; }
+
+/* 출장자 그림은 탭 글자 가까이까지 오므로 좁은 화면에서는 아예 숨긴다 (글자가 겹치지 않게) */
+@media (max-width: 1400px) {
+  .sys-trips .sys-art { display: none; }
+}
 
 /* 좁은 화면에서는 그림을 줄인다 */
 @media (max-width: 1500px) {

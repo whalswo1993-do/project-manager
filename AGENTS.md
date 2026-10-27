@@ -21,7 +21,7 @@ TW 프로젝트 관리 웹앱. **Claude Code**(`CLAUDE.md`)와 **Antigravity/Gem
 ## 명령어
 ```
 npm run dev       # 개발 서버 (vite). 서버 함수(api/)는 동작하지 않는다 — 시험은 `vercel dev`
-npm run lint      # eslint — 오류 0건 유지(경고 19건: React 훅 권고)
+npm run lint      # eslint — 오류 0건 유지(경고 20건: React 훅 권고)
 npm test          # vitest — 분석 함수/마스터플랜 파서/AI 라우팅/서버 API 회귀 테스트
 npm run build     # 프로덕션 빌드 → dist/
 ```
@@ -83,6 +83,25 @@ npm run build     # 프로덕션 빌드 → dist/
 - `src/authService.js`, `Login.jsx` — 인증/권한. `issueService.js`, `masterPlanParser.js`, `reportExports.js`, `export*.js` — 서비스/파서/내보내기
 - `src/ai.js` — AI 단일 진입점. `api/` — Vercel 서버 함수. `tests/` — 회귀 테스트. `supabase/` — 연결 설정과 마이그레이션
 - 권한별 기능 가이드 pptx는 `generate_permissions_presentation.js`로 생성
+
+## 출장자 관리 (`src/TripManagement.jsx` 외, 2026-10-27 추가)
+- 프로젝트 일정에 등록된 프로젝트를 **그대로 가져와서**(별도 PJT 등록 없음) 부서 팀장이 출장자를 배정하고, 부서 인원 상황판과 부족·충돌 경고를 보는 화면. 엑셀 "동시 여러 PJT 발생 시 대응 방안" 관리장표를 대체한다.
+- 계획 공수 = 프로젝트의 마스터 플랜 공수(`manpower.departments[부서].daily`)를 주 단위로 바꾼 값(`tripLogic.autoDemands`)이고 **화면에서 고치지 않는다**(공수 조정·수동 공수 기능은 2026-10-27에 뺐다). 기구·비전·제어·전장·소장만 쓰고 외주·안전·SV는 제외한다.
+- **B1 비자 확인은 미국 사이트만**: 프로젝트의 Site가 `HSBMA`·`SKBA`·`SKOT`이면(`tripLogic.isUsSite`, 영문·숫자 경계로 비교) 출장자의 B1 보유를 확인해 경고한다. 다른 해외 사이트는 해당 없고, 프로젝트별 "해외 표시" 설정은 없다. 미국 사이트가 늘면 `US_SITES`에 추가한다.
+- 완료 시점(`endDate`)이 오늘보다 앞선 프로젝트는 기본으로 숨기고 "지난 프로젝트도 보기"로만 본다. 아무도 배정 안 된 프로젝트는 배정 화면 맨 위 붉은 띠에 띄운다(`assignmentState`).
+- **배정 방식(2026-10-27 개편)**: 부서마다 계획 공수의 최대 인원만큼 **칸(줄)**을 만들고, 빈 칸(점선)을 눌러 그 기간에 출장 가능한 사람(가용/비자 없음/충돌 표시)을 고른다. 칸 위치는 DB에 저장하지 않고 배정들을 `layoutLanes`가 계산한다(시작일 → 등록순으로 앞칸부터 채움, 교대 인원은 같은 칸 뒤에 이어짐). 교대는 칸 옆 교대 버튼, 막대 수정창의 "이 출장자 교대", 부서 머리의 "출장자 +"에서 한다(`rotate`: 새 사람 먼저 넣고 나가는 사람 종료일을 줄이며, 실패하면 되돌린다).
+- **프로젝트 전체 일 단위**: 일 단위 보기의 "표시"에서 "프로젝트 전체"를 고르면(기본) 일별 칸을 아주 좁혀(`.tr-compact`) 프로젝트 전체를 옆으로 넘겨 본다. 열 때 오늘 칸으로 자동 이동하고 "오늘로 이동" 버튼이 있다. 2~12주 단위 창으로도 볼 수 있다. **마일스톤**은 단계마다 꽉 찬 색(`phaseColors`, 8색, 라이트·다크 별도)으로 머리글에 띠로 나오고 표 위에 범례가 있다.
+- **일/주 단위**: 배정은 날짜(일) 단위로 저장하고, 화면 오른쪽 위의 "일 단위/주 단위" 전환이 모든 탭(배정·인원 현황·종합)의 칸을 바꾼다(`buildColumns`). 주 단위의 필요·배정 인원은 그 주에서 하루 기준 가장 큰 값이라(`needForWeek`/`haveForWeek`) 교대로 이어진 두 사람은 1명으로 센다.
+- **팀원 관리 탭**: 부서·팀·상태(재직/퇴사) 필터, 오늘 상황, 한 명씩 수정·퇴사/복귀·삭제와 일괄 처리. 배정 기록이 있는 사람은 삭제가 막히므로 퇴사(`active=false`)를 쓴다.
+- **엑셀 양식(`tripTemplate.js`)**: "빈 양식 내려받기"와 "현재 명단 내려받기"(같은 양식, 고쳐서 다시 붙여넣기용). 머리글이 첫 줄(부서(분야)·소속 팀·이름·직위·등급·B1 비자·상태·비고), 부서/B1/상태는 목록 선택, "(예시)"로 시작하는 이름은 붙여넣을 때 건너뛴다. 붙여넣기는 `planMemberSync`가 기존 명단과 비교해 새로 추가·갱신·팀 이동·퇴사 처리를 미리보기로 보여 주고(표에 없는 재직 인원은 퇴사 후보로만 제시, 기본 체크 해제), 표에 열이 없으면 기존 값을 지키고 열이 있는데 비면 비운다.
+- 파일: `TripManagement.jsx`(화면·탭 4개·다른 부서 수정 경고), `TripProjectPicker.jsx`(검색·Site·상태 드롭다운), `TripModals.jsx`(배정·교대·인원·붙여넣기), `tripLogic.js`(주/일 칸·칸 배치·충돌·프로젝트 연동·명단 비교 — 순수 함수, `tests/tripLogic.test.js`·`tests/tripSlots.test.js`), `tripTemplate.js`(엑셀 양식), `tripService.js`(DB 접근·오류 문구, `tests/tripService.test.js`), `TripManagement.css`.
+- **부서 시그니처 색**(`TripManagement.css` 맨 아래): `--dept-mechanical|vision|control|electrical|manager` 토큰(라이트/다크 따로)을 `data-dept="키"` 속성으로 `--dc`에 연결한다. 부서를 알아보는 표식(점·띠·이름·요약 띠)에만 쓰고, 충돌·부족 같은 상태는 의미색(`--bad|warn|ok`)을 그대로 쓴다. 새 부서 표시는 `data-dept`만 달면 된다.
+- 알려진 한계: 앱 머리말(`.system-header-row`)은 최소 너비 1216px(App.css)이라 좁은 화면에서는 모든 시스템이 가로로 스크롤된다. 출장자 화면만의 문제가 아니다.
+- **CSS 주의**: 이 화면의 클래스는 `tr-` 접두사를 붙인다. `board`·`grid`·`day`처럼 흔한 이름을 그대로 쓰면 다른 화면의 전역 CSS(`display:grid` 등)와 겹쳐 표가 깨진다(실제로 겪음). 글자가 있는 영역은 불투명한 면(`--surface`)을 깔아 머리말 배경 그림과 겹치지 않게 한다. 출장자 배경 그림(`TripsArt`)은 1400px 이하에서 숨긴다.
+- DB: `trip_members`·`trip_assignments`·`trip_project_notes`·`trip_absences` 4개. 프로젝트와는 `project_id text → projects(id) on delete cascade`로 잇는다(프로젝트를 지우면 배정도 지워진다). **조회·수정 모두 admin·grade3·grade2_5**(`trip_can_view()` 하나로 판정). 팀장(grade2_5)은 모든 부서를 볼 수 있고 DB에서도 부서 제한이 없다(예전의 "팀장 지정"·"해외 표시"·"수동 공수" 테이블은 없앴다). 부서 키는 `mechanical|vision|control|electrical|manager`.
+- **다른 부서 수정 경고**: 화면의 `guard()`가 팀장(grade2_5)이 "내 부서"가 아닌 부서의 배정·공수·인원·특이사항·퇴사·삭제·교대·붙여넣기를 저장하려 할 때 "내 부서가 아닙니다" 확인을 띄우고, 취소하면 저장하지 않는다(`{ cancelled: true }`). 내 부서 = 화면 위 "내 부서" 선택값(브라우저 저장), 없으면 계정 소속 팀 이름에서 추정(`guessDept(profile.team)`). PM·관리자는 경고 없이 전부 수정한다. 보는 것에는 제한이 없다.
+- 앱 코드가 이 테이블들에 의존하므로 **마이그레이션을 앱 배포보다 먼저 적용**한다. 적용 전에는 화면이 "DB가 아직 준비되지 않았습니다"를 보여 준다(앱의 다른 기능은 영향 없음).
+- 로컬 점검: 저장소에 올리지 않는 `ui-demo/`(가짜 Supabase + 가짜 프로젝트로 이 화면만 띄움). `node node_modules/vite/bin/vite.js --config ui-demo/vite.config.js` → `http://localhost:5199/?role=grade3|grade2_5|grade2&theme=dark`. SQL/RLS는 운영 DB가 아니라 PGlite(`@electric-sql/pglite`)로 로컬 검증했다.
 
 ## 배포 (GitHub `main` push → Vercel 자동 배포)
 - 작업이 끝나고 검증이 통과하면 커밋 후 `main`에 push한다(사용자가 "로컬로만"이라고 하지 않는 한). 배포 후 Vercel 배포 상태와 URL을 함께 보고한다.

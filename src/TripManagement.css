@@ -525,3 +525,13 @@
 .tr-lane.away .tr-card { border-left-color: var(--teal); }
 .tr-now.away { background: color-mix(in srgb, var(--teal) 14%, var(--surface)); color: var(--teal); }
 .tr-chip.out { background: color-mix(in srgb, var(--teal) 14%, var(--surface)); color: var(--teal); }
+
+/* 미등록 프로젝트 대응 일정: 눌러서 수정 */
+.tr-mcell.click, .tr-now.click { cursor: pointer; }
+.tr-mcell.click:hover { filter: brightness(0.96); }
+button.tr-now { border: 0; font-family: inherit; }
+button.tr-now:hover { text-decoration: underline; }
+.tr-absence-actions { margin-left: auto; display: inline-flex; gap: 2px; }
+.tr-absence-item.editing { background: var(--brand-wash); border-radius: var(--radius-sm); padding: 2px 6px; }
+.tr-edit-note { display: flex; align-items: center; gap: 6px; margin: 4px 0 0; font-size: 12px; color: var(--brand); }
+.tr-absence-actions .tr-icon-btn { margin-left: 0; }

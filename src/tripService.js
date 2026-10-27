@@ -1,4 +1,5 @@
 import { supabase } from "./supabase.js";
+import { normalizeKind } from "./tripLogic.js";
 
 // 출장자 관리 DB 접근. 화면은 이 파일의 함수만 부른다.
 // 모든 함수는 { data, error } 형태로 돌려주고, error 는 사람이 읽을 수 있는 글(string)이다.
@@ -145,7 +146,7 @@ export const deleteAssignment = (id) => write(TABLES.assignments, "delete", { id
 // ── 부재 ──
 const absenceRow = (a) => ({
   member_id: a.member_id,
-  kind: a.kind || "other",
+  kind: normalizeKind(a.kind || "other"),
   location: blankToNull(a.location),
   start_date: a.start_date,
   end_date: blankToNull(a.end_date),

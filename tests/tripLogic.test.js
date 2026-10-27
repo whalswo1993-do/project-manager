@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  isUsSite, phaseColors, phaseRows, isOutTrip, absenceText,
+  isUsSite, phaseColors, phaseRows, isOutTrip, absenceText, normalizeKind, ABSENCE_KINDS,
   addDays, mondayOf, buildWeeks, overlaps, weeksBetween, isValidISO, monthSpans, todayISO,
   needForWeek, haveForWeek, planCoverage, shortageRuns, checkAssignment, analyzeAssignments, worstLevel,
   memberWeekState, deptWeekStats, parseMemberPaste, guessDept, memberKey,
@@ -321,9 +321,12 @@ describe("미등록 프로젝트 대응 (CS·고객사 대응·테스트)", () =
   const ctx2 = (absences, assignments = []) => ({ assignments, absences, members: members2, plans: [] });
 
   it("미등록 프로젝트 대응 종류를 가른다", () => {
-    ["cs", "customer", "test", "trip"].forEach((k) => expect(isOutTrip(k)).toBe(true));
+    ["cs", "customer", "test", "trip"].forEach((k) => expect(isOutTrip(k)).toBe(true)); // cs 는 예전 값(고객사 대응으로 본다)
     ["leave", "training", "other"].forEach((k) => expect(isOutTrip(k)).toBe(false));
-    expect(absenceText({ kind: "cs", location: "SKO 서산" })).toBe("CS 대응 · SKO 서산");
+    expect(absenceText({ kind: "customer", location: "SKO 서산" })).toBe("고객사 대응 · SKO 서산");
+    expect(absenceText({ kind: "cs", location: "SKO 서산" })).toBe("고객사 대응 · SKO 서산"); // 예전 CS 대응은 고객사 대응으로 합쳐 보인다
+    expect(normalizeKind("cs")).toBe("customer");
+    expect(ABSENCE_KINDS.map((k) => k.key)).not.toContain("cs");
     expect(absenceText({ kind: "leave" })).toBe("휴직·휴가");
   });
   it("부서 통계에서 외부 출장(away)과 휴직 등 부재(absent)를 따로 센다", () => {
@@ -339,6 +342,6 @@ describe("미등록 프로젝트 대응 (CS·고객사 대응·테스트)", () =
     const a = { id: "x", member_id: "m1", project_id: "p1", dept: "mechanical", start_date: "2026-11-03", end_date: "2026-11-05" };
     const issues = checkAssignment(a, { assignments: [a], absences: [ab("a1", "m1", "cs", "SKO 서산")], members: members2, plans: [plan] });
     expect(issues.map((i) => i.type)).toContain("absent");
-    expect(issues.find((i) => i.type === "absent").message).toContain("CS 대응 · SKO 서산");
+    expect(issues.find((i) => i.type === "absent").message).toContain("고객사 대응 · SKO 서산");
   });
 });

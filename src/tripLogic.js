@@ -17,21 +17,24 @@ export function isUsSite(site) {
   return US_SITES.some((name) => new RegExp(`(^|[^A-Z0-9])${name}([^A-Z0-9]|$)`).test(text));
 }
 
-// 프로젝트 배정이 아닌 일정. out = 본사를 떠나 어딘가에 가 있는 "미등록 프로젝트 대응"(어디에 가 있는지 location 을 적는다)
+// 프로젝트로 등록되지 않은 대응 일정(고객사 대응·테스트 등)과 교육·휴직.
+// out = 본사를 떠나 어딘가에 가 있는 일정(어디에 가 있는지 location 을 적는다). CS 대응은 고객사 대응에 합쳤다.
 export const ABSENCE_KINDS = [
-  { key: "cs", label: "CS 대응", out: true },
-  { key: "customer", label: "고객사 대응", out: true },
+  { key: "customer", label: "고객사 대응", optionLabel: "고객사 대응 (CS 포함)", out: true },
   { key: "test", label: "테스트", out: true },
   { key: "trip", label: "기타 출장", out: true },
   { key: "training", label: "교육", out: false },
   { key: "leave", label: "휴직·휴가", out: false },
   { key: "other", label: "기타", out: false },
 ];
-export const ABSENCE_KIND_LABEL = Object.fromEntries(ABSENCE_KINDS.map((k) => [k.key, k.label]));
+// 예전에 "CS 대응"(cs)으로 저장된 일정은 고객사 대응으로 본다 (DB 값은 그대로 두고 화면에서 합친다)
+const LEGACY_KIND = { cs: "customer" };
+export const normalizeKind = (kind) => LEGACY_KIND[kind] || kind;
+export const ABSENCE_KIND_LABEL = { ...Object.fromEntries(ABSENCE_KINDS.map((k) => [k.key, k.label])), cs: "고객사 대응" };
 const OUT_KINDS = new Set(ABSENCE_KINDS.filter((k) => k.out).map((k) => k.key));
-/** 프로젝트에 배정된 것은 아니지만 본사 밖(CS·고객사·테스트 등)에 나가 있는 일정인가 */
-export const isOutTrip = (kind) => OUT_KINDS.has(kind);
-/** "CS 대응 · SKO 서산" 처럼 종류와 장소를 한 줄로 */
+/** 프로젝트에 배정된 것은 아니지만 본사 밖(고객사 대응·테스트 등)에 나가 있는 일정인가 */
+export const isOutTrip = (kind) => OUT_KINDS.has(normalizeKind(kind));
+/** "고객사 대응 · SKO 서산" 처럼 종류와 장소를 한 줄로 */
 export const absenceText = (ab) => `${ABSENCE_KIND_LABEL[ab?.kind] || "부재"}${ab?.location ? ` · ${ab.location}` : ""}`;
 
 export const PLAN_STATUS = [

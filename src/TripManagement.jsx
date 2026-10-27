@@ -3,7 +3,7 @@ import { Icon } from "./icons";
 import "./TripManagement.css";
 import {
   fetchTripData, createMember, updateMember, deleteMember, insertMembers,
-  createAssignment, updateAssignment, deleteAssignment, createAbsence, deleteAbsence,
+  createAssignment, updateAssignment, deleteAssignment, createAbsence, updateAbsence, deleteAbsence,
   saveDeptNote,
 } from "./tripService";
 import {
@@ -28,7 +28,7 @@ const TABS = [
 const MAX_BOARD_WEEKS = 78;
 const WEEK_COUNTS = [12, 16, 26, 40]; // 주 단위 보기에서 보여 줄 주 수
 const DAY_WEEKS = [12, 16, 26, 40]; // 일 단위 보기에서 보여 줄 주 수 (칸 수는 ×7)
-const ABSENCE_MARK = { cs: "CS", customer: "고", test: "T", trip: "출", leave: "휴", training: "교", other: "기" };
+const ABSENCE_MARK = { cs: "고", customer: "고", test: "T", trip: "출", leave: "휴", training: "교", other: "기" };
 
 const safeGet = (key, fallback) => {
   try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
@@ -172,6 +172,10 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
       setModal(null);
       return {};
     },
+    updateAbsence: async (id, a) => ((await guard([deptOfMember(a.member_id)], "인원")) ? run(updateAbsence(id, a), "일정을 수정했습니다.", { close: false }) : cancelled),
+    // 표·카드에서 바로 연 수정 창용: 저장하면 창을 닫는다
+    saveAbsenceEdit: async (id, a) => ((await guard([deptOfMember(a.member_id)], "인원")) ? run(updateAbsence(id, a), "일정을 수정했습니다.") : cancelled),
+    removeAbsence: async (id) => ((await guard([deptOfMember(absences.find((x) => x.id === id)?.member_id)], "인원")) ? run(deleteAbsence(id), "일정을 삭제했습니다.") : cancelled),
     deleteAbsence: async (id) => ((await guard([deptOfMember(absences.find((x) => x.id === id)?.member_id)], "인원")) ? run(deleteAbsence(id), "미등록 프로젝트 대응 일정을 삭제했습니다.", { close: false }) : cancelled),
     saveNote: async (n) => ((await guard([n.dept], "특이사항")) ? run(saveDeptNote(n), "", { close: false }) : cancelled),
   };
@@ -329,10 +333,10 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
       {modal?.type === "member" && (
         <MemberModal member={modal.member} defaultDept={modal.defaultDept || myDept} editableDepts={editableDepts} absences={absences}
           onSave={actions.saveMember} onDelete={actions.deleteMember}
-          onAddAbsence={actions.addAbsence} onDeleteAbsence={actions.deleteAbsence} onClose={() => setModal(null)} />
+          onAddAbsence={actions.addAbsence} onUpdateAbsence={actions.updateAbsence} onDeleteAbsence={actions.deleteAbsence} onClose={() => setModal(null)} />
       )}
       {modal?.type === "outing" && (
-        <OutingModal members={modal.members} ctx={ctx} onSave={actions.addAbsences} onClose={() => setModal(null)} />
+        <OutingModal members={modal.members} ctx={ctx} absence={modal.absence} onSave={actions.addAbsences} onUpdate={actions.saveAbsenceEdit} onDelete={actions.removeAbsence} onClose={() => setModal(null)} />
       )}
       {modal?.type === "import" && (
         <ImportModal existing={members} editableDepts={editableDepts} defaultDept={myDept} onImport={importMembers} onClose={() => setModal(null)} />
@@ -882,7 +886,7 @@ function Roster({ members, demands, defaultDept, ctx, planIndex, today, viewMode
                     if (stt.state === "free") return <td key={c.key} className={`tr-mcell free ${cls}`} />;
                     if (stt.state === "absent") {
                       const out = isOutTrip(stt.absence.kind);
-                      return <td key={c.key} className={`tr-mcell ${out ? "away" : "absent"} ${cls}`} title={`${absenceText(stt.absence)} (${rangeLabel(stt.absence.start_date, stt.absence.end_date)})${stt.absence.note ? ` · ${stt.absence.note}` : ""}`}>{c.day ? "" : ABSENCE_MARK[stt.absence.kind]}</td>;
+                      return <td key={c.key} className={`tr-mcell ${out ? "away" : "absent"} click ${cls}`} onClick={() => setModal({ type: "outing", members: [m], absence: stt.absence })} title={`${absenceText(stt.absence)} (${rangeLabel(stt.absence.start_date, stt.absence.end_date)})${stt.absence.note ? ` · ${stt.absence.note}` : ""} — 눌러서 수정`}>{c.day ? "" : ABSENCE_MARK[stt.absence.kind]}</td>;
                     }
                     const names = stt.assigned.map((x) => x.plan?.name).filter(Boolean).join(" + ");
                     const first = stt.assigned[0]?.plan;
@@ -945,8 +949,8 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
     .sort((a, b) => (planIndex.get(a.id) ?? 99) - (planIndex.get(b.id) ?? 99));
 
   const open = (m) => setModal({ type: "member", member: m });
-  const card = (m, meta, cls = "", badge = null) => (
-    <button type="button" key={`${m.id}-${cls}`} className={`tr-card ${cls}`} onClick={() => open(m)} title={`${m.name} · 눌러서 정보 보기`}>
+  const card = (m, meta, cls = "", badge = null, ab = null) => (
+    <button type="button" key={`${m.id}-${cls}${ab ? `-${ab.id}` : ""}`} className={`tr-card ${cls}`} onClick={() => (ab ? setModal({ type: "outing", members: [m], absence: ab }) : open(m))} title={ab ? `${m.name} · ${absenceText(ab)} — 눌러서 일정 수정` : `${m.name} · 눌러서 정보 보기`}>
       <span className="top"><span className="nm">{m.name}</span>{m.b1_visa && <span className="tr-b1 small">B1</span>}{badge}</span>
       <span className="sub">{[m.team, m.rank].filter(Boolean).join(" · ") || "-"}</span>
       {meta && <span className="meta">{meta}</span>}
@@ -985,7 +989,7 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
           <div className="tr-lane away">
             <div className="tr-lane-head"><strong>미등록 프로젝트 대응</strong><b>{away.length}</b></div>
             <div className="tr-lane-body">
-              {away.map(({ m, ab }) => card(m, `${absenceText(ab)} · ${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? ` · ${ab.note}` : ""}`))}
+              {away.map(({ m, ab }) => card(m, `${absenceText(ab)} · ${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? ` · ${ab.note}` : ""}`, "", null, ab))}
             </div>
           </div>
         )}
@@ -993,7 +997,7 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
           <div className="tr-lane absent">
             <div className="tr-lane-head"><strong>부재</strong><b>{absent.length}</b></div>
             <div className="tr-lane-body">
-              {absent.map(({ m, ab }) => card(m, `${absenceText(ab)} ${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? ` · ${ab.note}` : ""}`))}
+              {absent.map(({ m, ab }) => card(m, `${absenceText(ab)} ${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? ` · ${ab.note}` : ""}`, "", null, ab))}
             </div>
           </div>
         )}
@@ -1041,7 +1045,7 @@ function Members({ members, ctx, today, editableDepts, defaultDept, myDept, setM
     if (!m.active) return { text: "퇴사·제외", cls: "off" };
     const s = memberWeekState(m, today1, ctx);
     if (s.state === "free") return { text: "본사 대기", cls: "home" };
-    if (s.state === "absent") return isOutTrip(s.absence.kind) ? { text: `외부 · ${absenceText(s.absence)}`, cls: "away" } : { text: absenceText(s.absence), cls: "abs" };
+    if (s.state === "absent") return isOutTrip(s.absence.kind) ? { text: `외부 · ${absenceText(s.absence)}`, cls: "away", ab: s.absence } : { text: absenceText(s.absence), cls: "abs", ab: s.absence };
     return { text: `출장 · ${s.assigned.map((x) => x.plan?.name).filter(Boolean).join(" + ") || "배정"}`, cls: s.state === "assigned" ? "trip" : "bad" };
   };
 
@@ -1205,7 +1209,9 @@ function Members({ members, ctx, today, editableDepts, defaultDept, myDept, setM
                       <td>{m.rank || <span className="tr-muted">-</span>}</td>
                       <td>{m.grade || <span className="tr-muted">-</span>}</td>
                       <td>{m.b1_visa ? <span className="tr-b1">O</span> : <span className="tr-muted">-</span>}</td>
-                      <td><span className={`tr-now ${now.cls}`}>{now.text}</span></td>
+                      <td>{now.ab && editable
+                        ? <button type="button" className={`tr-now ${now.cls} click`} onClick={() => setModal({ type: "outing", members: [m], absence: now.ab })} title="눌러서 일정 수정">{now.text}</button>
+                        : <span className={`tr-now ${now.cls}`}>{now.text}</span>}</td>
                       <td className="note">{m.note || <span className="tr-muted">-</span>}</td>
                       <td className="act">
                         {editable ? (

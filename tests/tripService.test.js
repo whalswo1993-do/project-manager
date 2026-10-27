@@ -105,7 +105,7 @@ describe("미등록 프로젝트 대응 일정", () => {
     await svc.createAbsence({ member_id: "m", kind: "leave", location: " ", start_date: "2026-11-02", end_date: "2026-11-03" });
     const first = calls[calls.length - 2].ops.find((o) => o[0] === "insert")[1];
     const second = calls[calls.length - 1].ops.find((o) => o[0] === "insert")[1];
-    expect(first).toMatchObject({ kind: "cs", location: "SKO 서산", end_date: null });
+    expect(first).toMatchObject({ kind: "customer", location: "SKO 서산", end_date: null }); // 예전 cs 는 고객사 대응으로 저장
     expect(second).toMatchObject({ kind: "leave", location: null });
   });
 });

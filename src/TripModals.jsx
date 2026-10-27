@@ -5,7 +5,7 @@ import { confirmDialog } from "./confirmService";
 import {
   TRIP_DEPTS, TRIP_DEPT_LABEL, ABSENCE_KINDS, isOutTrip, absenceText, overlaps, normalizeKind, assignableDepts,
   checkAssignment, worstLevel, isValidISO, rangeLabel, parseMemberPaste, memberKey, planMemberSync,
-  addDays, dayCount, todayISO, shortDate,
+  addDays, dayCount, todayISO, shortDate, mondayOf,
 } from "./tripLogic";
 
 // ───────── 공통 ─────────
@@ -693,6 +693,55 @@ export function OutingModal({ members, ctx, absence, onSave, onUpdate, onDelete,
         <Field label="메모 (선택)" wide><input type="text" value={note} onChange={(e) => setNote(e.target.value)} maxLength={60} /></Field>
       </div>
       <IssueList issues={clashes.map((message) => ({ level: "warn", message }))} />
+      <ErrorLine error={error} />
+    </Modal>
+  );
+}
+
+/** 종합 엑셀 내려받기: 시작 주·기간·옵션을 고른다 */
+export function ExportModal({ pastCount, onExport, onClose }) {
+  const [start, setStart] = useState(() => mondayOf(todayISO()));
+  const [weeks, setWeeks] = useState("auto");
+  const [includePast, setIncludePast] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit() {
+    if (!isValidISO(start)) { setError("시작일을 올바르게 입력해 주세요."); return; }
+    setBusy(true);
+    setError("");
+    const res = await onExport({ startWeek: mondayOf(start), weeks: weeks === "auto" ? undefined : Number(weeks), includePast, collapsed });
+    setBusy(false);
+    if (res?.error) setError(res.error);
+  }
+
+  return (
+    <Modal title="출장자 종합 엑셀 내려받기" subtitle="PJT 출장자 시트 양식 · 수식으로 자동 취합" onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="tr-btn" onClick={onClose} disabled={busy}>닫기</button>
+          <button type="button" className="tr-btn primary" onClick={submit} disabled={busy}><Icon name="download" size={14} /> {busy ? "만드는 중..." : "엑셀 내려받기"}</button>
+        </>
+      }>
+      <p className="tr-readonly-note"><Icon name="info" size={13} /> 프로젝트별 출장자 표, 부서별 종합 현황, 인원별 현황이 한 파일에 들어갑니다. 파일에서 이름을 바꾸거나 칸을 추가하면 TOTAL·취합 공수·종합 현황이 수식으로 함께 바뀝니다. 파일에서 고친 내용은 시스템에 자동 반영되지 않습니다.</p>
+      <div className="tr-form-grid">
+        <Field label="시작 주" hint="월요일 기준으로 맞춰집니다."><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
+        <Field label="기간">
+          <select value={weeks} onChange={(e) => setWeeks(e.target.value)}>
+            <option value="auto">자동 (가장 늦은 프로젝트까지)</option>
+            <option value="12">12주</option>
+            <option value="20">20주</option>
+            <option value="26">26주</option>
+            <option value="40">40주</option>
+            <option value="52">52주</option>
+          </select>
+        </Field>
+        <Field label="옵션" wide>
+          <span className="tr-check"><input type="checkbox" checked={collapsed} onChange={(e) => setCollapsed(e.target.checked)} /> 프로젝트를 접은 상태로 시작 (+ 버튼으로 펼치기)</span>
+          <span className="tr-check"><input type="checkbox" checked={includePast} onChange={(e) => setIncludePast(e.target.checked)} /> 지난 프로젝트도 포함{pastCount > 0 ? ` (${pastCount}건)` : ""}</span>
+        </Field>
+      </div>
       <ErrorLine error={error} />
     </Modal>
   );

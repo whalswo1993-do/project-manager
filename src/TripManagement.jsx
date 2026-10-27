@@ -17,7 +17,7 @@ import { normalizeDeptKey } from "./manpowerDepts";
 import { confirmDialog } from "./confirmService";
 import { downloadMemberTemplate, downloadMemberRoster } from "./tripTemplate";
 import ProjectPicker from "./TripProjectPicker";
-import { AssignmentModal, MemberModal, ImportModal, OutingModal } from "./TripModals";
+import { AssignmentModal, MemberModal, ImportModal, OutingModal, ExportModal } from "./TripModals";
 
 const TABS = [
   { id: "board", label: "프로젝트 출장자 배정", icon: "calendar" },
@@ -198,6 +198,19 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
     return {};
   }
 
+  // 종합 엑셀: 화면이 쓰는 데이터를 그대로 넘겨 PJT 출장자 양식(수식·접기/펼치기 포함)으로 만든다. 엑셀 모듈은 누를 때만 읽는다.
+  async function exportWorkbook(options) {
+    try {
+      const { downloadTripWorkbook } = await import("./tripWorkbook");
+      await downloadTripWorkbook({ plans, demands, assignments, members, absences, notes }, { ...options, today });
+      setModal(null);
+      flash("ok", "종합 엑셀을 내려받았습니다.");
+      return null;
+    } catch (e) {
+      return { error: `엑셀을 만들지 못했습니다. ${e?.message || ""}`.trim() };
+    }
+  }
+
   async function importMembers({ create, update, deactivate }) {
     if (!(await guard([...create.map((r) => r.dept), ...update.map((u) => u.base.dept), ...deactivate.map((x) => x.base.dept)], "인원"))) return cancelled;
     if (create.length) {
@@ -259,6 +272,9 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
               <button type="button" className={viewMode === "day" ? "on" : ""} onClick={() => setViewMode("day")}>일 단위</button>
               <button type="button" className={viewMode === "week" ? "on" : ""} onClick={() => setViewMode("week")}>주 단위</button>
             </div>
+            <button type="button" className="system-toggle-all-btn" onClick={() => setModal({ type: "export" })} disabled={!data} title="프로젝트별 출장자 표 양식으로 종합 엑셀을 내려받습니다 (수식·접기/펼치기 포함)">
+              <Icon name="download" size="1.1em" /> 종합 엑셀
+            </button>
             <button type="button" className="system-toggle-all-btn" onClick={refresh} title="최신 내용으로 다시 불러오기">
               <Icon name="refresh" size="1.1em" /> 새로고침
             </button>
@@ -338,6 +354,9 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
       )}
       {modal?.type === "outing" && (
         <OutingModal members={modal.members} ctx={ctx} absence={modal.absence} onSave={actions.addAbsences} onUpdate={actions.saveAbsenceEdit} onDelete={actions.removeAbsence} onClose={() => setModal(null)} />
+      )}
+      {modal?.type === "export" && (
+        <ExportModal pastCount={pastCount} onExport={exportWorkbook} onClose={() => setModal(null)} />
       )}
       {modal?.type === "import" && (
         <ImportModal existing={members} editableDepts={editableDepts} defaultDept={myDept} onImport={importMembers} onClose={() => setModal(null)} />

@@ -42,8 +42,9 @@ const EXPORT_TESTERS = ["cmj1012@twgroup.co.kr"];
 
 export default function TripManagement({ role, email = "", myTeam = "", projects = [], onPermissionDenied }) {
   // 조회·수정은 PM 이상과 모든 부서 팀장(grade2_5)이 할 수 있다. 자기 부서가 아닌 것을 고칠 때는 확인만 받는다.
-  const canView = ["admin", "grade3", "grade2_5"].includes(role);
-  const canWrite = canView;
+  // grade2 는 보기만 한다 (DB 정책 trip_can_view / trip_can_edit 와 같은 구분)
+  const canView = ["admin", "grade3", "grade2_5", "grade2"].includes(role);
+  const canWrite = ["admin", "grade3", "grade2_5"].includes(role);
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(canView);
@@ -56,7 +57,12 @@ export default function TripManagement({ role, email = "", myTeam = "", projects
   const [winCount, setWinCount] = useState(12);
   const [dayWeeks, setDayWeeks] = useState(12);
   const [myDeptSaved, setMyDeptSaved] = useState(() => safeGet("pm_trip_mydept", ""));
-  const [modal, setModal] = useState(null);
+  const [modal, setModalRaw] = useState(null);
+  // 보기 전용 계정은 일정 등록·붙여넣기·내려받기 창을 열 수 없다 (인원·배정 창은 읽기 전용으로 열린다)
+  const setModal = useCallback((m) => {
+    if (!canWrite && m && !["assignment", "member"].includes(m.type)) return;
+    setModalRaw(m);
+  }, [canWrite]);
   const [notice, setNotice] = useState(null);
   const noticeTimer = useRef(null);
   const loadedAt = useRef(0);
@@ -242,7 +248,7 @@ export default function TripManagement({ role, email = "", myTeam = "", projects
     return (
       <div className="tr-gate">
         <Icon name="lock" size={28} />
-        <h3>출장자 관리는 PM(Grade 3) 이상 또는 팀장(Grade 2.5)만 이용할 수 있습니다</h3>
+        <h3>출장자 관리는 Grade 2 이상만 이용할 수 있습니다</h3>
         <p>인사 정보(비자 등)가 포함되어 있어 조회 권한을 제한합니다.</p>
         <button type="button" className="tr-btn" onClick={() => onPermissionDenied?.("출장자 관리")}>권한 안내 보기</button>
       </div>
@@ -303,6 +309,7 @@ export default function TripManagement({ role, email = "", myTeam = "", projects
       </div>
 
       <div className="tr-root">
+        {!canWrite && <div className="tr-notice info" role="status">보기 전용입니다. 출장자 배정·인원·일정은 PM 이상과 팀장(Grade 2.5)만 수정할 수 있습니다.</div>}
         {notice && <div className={`tr-notice ${notice.type}`} role="status">{notice.text}</div>}
 
         {loading && !data && <div className="tr-loading">출장자 데이터를 불러오는 중...</div>}

@@ -2349,7 +2349,7 @@ JSON 출력 예시:
         <Quotations projects={currentCustomerProjects} sites={currentCustomerSites} session={session} role={role} onPermissionDenied={showPermissionModal} currentCustomer={currentCustomer} />
       ) : currentView === "trips" ? (
         <ErrorBoundary>
-          <TripManagement role={role} myTeam={profile?.team} projects={projects} onPermissionDenied={showPermissionModal} />
+          <TripManagement role={role} email={session?.user?.email || profile?.email || ""} myTeam={profile?.team} projects={projects} onPermissionDenied={showPermissionModal} />
         </ErrorBoundary>
       ) : currentView === "manpower" ? (
         <ManpowerManagement

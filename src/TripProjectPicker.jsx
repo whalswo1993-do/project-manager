@@ -9,6 +9,7 @@ export default function ProjectPicker({ plans, states, selectedId, onSelect, sho
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [site, setSite] = useState("all");
+  const [customer, setCustomer] = useState("all");
   const [stateFilter, setStateFilter] = useState("all");
   const boxRef = useRef(null);
   const inputRef = useRef(null);
@@ -24,17 +25,19 @@ export default function ProjectPicker({ plans, states, selectedId, onSelect, sho
   }, [open]);
 
   const sites = useMemo(() => [...new Set(plans.map((p) => p.site).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko")), [plans]);
+  const customers = useMemo(() => [...new Set(plans.map((p) => p.customer).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko")), [plans]);
   const selected = plans.find((p) => p.id === selectedId);
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     return plans.filter((p) => {
+      if (customer !== "all" && p.customer !== customer) return false;
       if (site !== "all" && p.site !== site) return false;
       if (stateFilter !== "all" && states.get(p.id)?.state !== stateFilter) return false;
       if (!q) return true;
       return [p.name, p.site, p.line, p.manufacturingNo, p.customer].some((v) => String(v || "").toLowerCase().includes(q));
     });
-  }, [plans, states, query, site, stateFilter]);
+  }, [plans, states, query, customer, site, stateFilter]);
 
   return (
     <div className="tr-picker" ref={boxRef}>
@@ -47,6 +50,10 @@ export default function ProjectPicker({ plans, states, selectedId, onSelect, sho
         <div className="tr-picker-panel" role="listbox" aria-label="프로젝트 목록">
           <div className="tr-picker-filters">
             <input ref={inputRef} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="프로젝트 이름, Site, 라인 검색" aria-label="프로젝트 검색" />
+            <select value={customer} onChange={(e) => setCustomer(e.target.value)} aria-label="고객사 필터">
+              <option value="all">모든 고객사</option>
+              {customers.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
             <select value={site} onChange={(e) => setSite(e.target.value)} aria-label="Site 필터">
               <option value="all">모든 Site</option>
               {sites.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -72,7 +79,7 @@ export default function ProjectPicker({ plans, states, selectedId, onSelect, sho
                   <button type="button" role="option" aria-selected={p.id === selectedId} className={`tr-picker-item ${p.id === selectedId ? "on" : ""}`} onClick={() => { onSelect(p.id); setOpen(false); }}>
                     <span className="main">
                       <b>{p.name}</b>
-                      <span className="sub">{[p.site, p.line, rangeLabel(p.start_date, p.end_date)].filter(Boolean).join(" · ")}</span>
+                      <span className="sub">{[p.customer, p.site, p.line, rangeLabel(p.start_date, p.end_date)].filter(Boolean).join(" · ")}</span>
                     </span>
                     <span className={`tr-state ${st}`}>{STATE_LABEL[st]}</span>
                   </button>

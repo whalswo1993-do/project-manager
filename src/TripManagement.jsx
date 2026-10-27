@@ -231,7 +231,7 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
             <div className="system-title-text">
               <span className="eyebrow">Business Trip</span>
               <h2>출장자 관리 시스템</h2>
-              <p>프로젝트 계획 공수에 맞춘 출장자 배정과 부서 인원 현황</p>
+              <p>모든 고객사 프로젝트의 계획 공수에 맞춘 출장자 배정과 부서 인원 현황</p>
             </div>
           </div>
           <div className="system-header-actions tr-header-actions">
@@ -478,7 +478,7 @@ function Board(props) {
 
       <div className="tr-panel tr-plan-bar">
         <ProjectPicker plans={visiblePlans} states={planStates} selectedId={plan?.id} onSelect={setPlanId} showPast={showPast} setShowPast={setShowPast} pastCount={pastCount} />
-        <span className="tr-muted">{visiblePlans.length}개 프로젝트{pastCount && !showPast ? ` · 완료 시점이 지난 ${pastCount}개는 숨김` : ""}</span>
+        <span className="tr-muted">전체 고객사 {visiblePlans.length}개 프로젝트{pastCount && !showPast ? ` · 완료 시점이 지난 ${pastCount}개는 숨김` : ""}</span>
       </div>
 
       {plan ? <PlanBoard key={plan.id} {...props} /> : <p className="tr-empty-line">표시할 프로젝트가 없습니다.</p>}

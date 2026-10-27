@@ -476,7 +476,7 @@ function DeptNote({ value, editable, onSave }) {
 
 function Board(props) {
   const { plans, visiblePlans, plan, planStates, showPast, setShowPast, pastCount, setPlanId, today } = props;
-  const [showAllNeed, setShowAllNeed] = useState(false);
+  const [needOpen, setNeedOpen] = useState(false); // 배정 필요 목록은 기본으로 접어 둔다
   // 배정이 필요한 프로젝트: 지나지 않은 것 중 아무도 배정 안 된 것(앞), 일부 부족한 것(뒤)
   const needList = useMemo(() => {
     const open = plans.filter((p) => !isPastProject(p, today));
@@ -498,25 +498,27 @@ function Board(props) {
   return (
     <div className="tr-board">
       {needList.length > 0 && (
-        <div className="tr-need" role="region" aria-label="배정이 필요한 프로젝트">
-          <div className="tr-need-head">
-            <Icon name="alert" size={16} />
+        <div className={`tr-need ${needOpen ? "open" : ""}`} role="region" aria-label="배정이 필요한 프로젝트">
+          <button type="button" className="tr-need-head" onClick={() => setNeedOpen((v) => !v)} aria-expanded={needOpen}>
+            <Icon name="alert" size={14} />
             <strong>출장자 배정이 필요한 프로젝트 {noneCount}건</strong>
             {shortCount > 0 && <span className="tr-muted">· 인원 부족 {shortCount}건</span>}
-          </div>
-          <div className="tr-need-list">
-            {(showAllNeed ? needList : needList.slice(0, 6)).map((p) => {
-              const st = planStates.get(p.id);
-              return (
-                <button key={p.id} type="button" className={`tr-need-item ${st.state} ${plan?.id === p.id ? "on" : ""}`} onClick={() => setPlanId(p.id)}>
-                  <span className={`tr-state ${st.state}`}>{st.state === "none" ? "미배정" : `${st.shortDepts.map((d) => TRIP_DEPT_LABEL[d]).join("·")} 부족`}</span>
-                  <b>{p.name}</b>
-                  <span className="sub">{[p.site, rangeLabel(p.start_date, p.end_date)].filter(Boolean).join(" · ")}</span>
-                </button>
-              );
-            })}
-            {needList.length > 6 && <button type="button" className="tr-btn small" onClick={() => setShowAllNeed((v) => !v)}>{showAllNeed ? "접기" : `${needList.length - 6}건 더 보기`}</button>}
-          </div>
+            <span className="tr-need-toggle">{needOpen ? "접기" : "펼쳐서 보기"} <Icon name={needOpen ? "chevUp" : "chevDown"} size={14} /></span>
+          </button>
+          {needOpen && (
+            <div className="tr-need-list">
+              {needList.map((p) => {
+                const st = planStates.get(p.id);
+                return (
+                  <button key={p.id} type="button" className={`tr-need-item ${st.state} ${plan?.id === p.id ? "on" : ""}`} onClick={() => setPlanId(p.id)} title={p.name}>
+                    <span className={`tr-state ${st.state}`}>{st.state === "none" ? "미배정" : `${st.shortDepts.map((d) => TRIP_DEPT_LABEL[d]).join("·")} 부족`}</span>
+                    <b>{p.name}</b>
+                    <span className="sub">{[p.site, rangeLabel(p.start_date, p.end_date)].filter(Boolean).join(" · ")}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

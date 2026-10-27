@@ -528,3 +528,16 @@ button.tr-now:hover { text-decoration: underline; }
 .tr-absence-item.editing { background: var(--brand-wash); border-radius: var(--radius-sm); padding: 2px 6px; }
 .tr-edit-note { display: flex; align-items: center; gap: 6px; margin: 4px 0 0; font-size: 12px; color: var(--brand); }
 .tr-absence-actions .tr-icon-btn { margin-left: 0; }
+
+/* 배정 필요 프로젝트 띠: 한 줄로 접어 두고(기본), 펼치면 작은 칩 목록 */
+.tr-need { padding: 0; gap: 0; }
+.tr-need-head { display: flex; align-items: center; gap: 8px; width: 100%; height: 34px; padding: 0 12px; background: transparent; border: 0; cursor: pointer; font-size: 12.5px; color: var(--bad); text-align: left; }
+.tr-need-head strong { font-weight: 700; }
+.tr-need-head:hover { background: color-mix(in srgb, var(--bad) 6%, transparent); }
+.tr-need-toggle { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.tr-need.open .tr-need-head { border-bottom: 1px solid color-mix(in srgb, var(--bad) 25%, var(--line)); }
+.tr-need-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 10px; max-height: 168px; overflow-y: auto; }
+.tr-need-item { gap: 6px; padding: 3px 8px; font-size: 12px; }
+.tr-need-item b { max-width: 300px; font-weight: 650; }
+.tr-need-item .sub { font-size: 11px; }
+.tr-need-item .tr-state { height: 18px; padding: 0 6px; font-size: 10.5px; }

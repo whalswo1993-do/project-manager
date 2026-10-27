@@ -154,19 +154,27 @@ describe("팀원 엑셀 양식", () => {
     await again.xlsx.load(buffer);
     expect(again.getWorksheet("팀원 명단").getRow(1).getCell(3).value).toBe("이름");
   });
-  it("현재 명단을 내려받아 그대로 붙여넣으면 아무것도 바뀌지 않는다 (왕복)", () => {
+  it("현재 명단은 부서별 시트로 나뉘고, 시트마다 그대로 붙여넣으면 아무것도 바뀌지 않는다 (왕복)", () => {
     const members = [
       { id: "m1", name: "갑", dept: "vision", team: "비전 1팀", rank: "선임", grade: "QS", b1_visa: true, active: true, note: "일병행" },
       { id: "m2", name: "을", dept: "mechanical", team: "", rank: "", grade: "", b1_visa: false, active: false, note: "" },
+      { id: "m3", name: "병", dept: "mechanical", team: "설비기술 1팀", rank: "책임", grade: "", b1_visa: true, active: true, note: "" },
     ];
     const wb = buildMemberWorkbook(ExcelJS, members);
-    const ws = wb.getWorksheet("팀원 명단");
-    const lines = [1, 2, 3].map((r) => TEMPLATE_HEADERS.map((_, c) => String(ws.getRow(r).getCell(c + 1).value ?? "")).join("\t"));
-    const parsed = parseMemberPaste(lines.join("\n"));
-    expect(parsed.rows).toHaveLength(2);
-    const { items } = planMemberSync(parsed.rows, members);
-    expect(items.map((i) => i.kind)).toEqual(["same", "same"]);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(["기구", "비전", "작성 안내"]); // 인원이 없는 부서 시트는 만들지 않는다
+    const sheetText = (name, count) => {
+      const ws = wb.getWorksheet(name);
+      return Array.from({ length: count + 1 }, (_, r) => TEMPLATE_HEADERS.map((_h, c) => String(ws.getRow(r + 1).getCell(c + 1).value ?? "")).join("\t")).join("\n");
+    };
+    const mech = parseMemberPaste(sheetText("기구", 2));
+    expect(mech.rows.map((r) => r.name)).toEqual(["을", "병"]); // 팀 이름순(팀 없음이 앞)
+    const vis = parseMemberPaste(sheetText("비전", 1));
+    const rows = [...mech.rows, ...vis.rows];
+    const { items } = planMemberSync(rows, members);
+    expect(items.map((i) => i.kind)).toEqual(["same", "same", "same"]);
     expect(memberToRow(members[1])[6]).toBe("퇴사");
+    // 보여 줄 부서를 정하면 그 부서 시트만
+    expect(buildMemberWorkbook(ExcelJS, members, ["vision"]).worksheets.map((w) => w.name)).toEqual(["비전", "작성 안내"]);
   });
   it("팀장용 양식은 담당 부서만 고르게 하고 예시 줄도 그 부서로 채운다", () => {
     const ws = buildMemberWorkbook(ExcelJS, null, ["vision"]).getWorksheet("팀원 명단");

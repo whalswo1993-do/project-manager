@@ -52,7 +52,7 @@ function guideSheet(wb) {
     "2.  부서(분야)·B1 비자·상태 칸은 칸을 누르면 나오는 목록에서 고릅니다.",
     "3.  머리글 줄부터 입력한 곳까지 드래그해서 복사(Ctrl+C)합니다.",
     "4.  출장자 관리 → 팀원 관리 → '표 붙여넣기로 최신화'에서 붙여넣기(Ctrl+V)하고 미리보기를 확인한 뒤 저장합니다.",
-    "5.  인사 변동이 있을 때마다 '현재 명단 내려받기'로 받은 파일을 고쳐서 같은 방법으로 붙여넣으면 됩니다.",
+    "5.  인사 변동이 있을 때마다 '현재 명단 내려받기'(부서별 시트로 나뉘어 있음)로 받은 파일을 고쳐서, 부서 시트별로 같은 방법으로 붙여넣으면 됩니다.",
   ];
   steps.forEach((t, i) => {
     const c = ws.getCell(`B${6 + i}`);
@@ -94,14 +94,11 @@ function guideSheet(wb) {
  * 양식 통합문서를 만든다. members 가 있으면 그 명단을 채워 넣고(수정용), 없으면 예시 두 줄만 넣는다.
  * ExcelJS 모듈은 부르는 쪽에서 넘긴다(화면은 필요할 때만 불러온다).
  */
-export function buildMemberWorkbook(ExcelJS, members = null, depts = null) {
-  const deptKeys = depts?.length ? depts : TRIP_DEPTS.map((d) => d.key);
-  const deptLabels = deptKeys.map((k) => TRIP_DEPT_LABEL[k]);
-  const wb = new ExcelJS.Workbook();
-  wb.creator = "TW Project Manager";
-  wb.created = new Date();
+const TAB_COLOR = { mechanical: "FF2563A8", vision: "FF7048C2", control: "FF0F8A80", electrical: "FFB83A76", manager: "FF566478" };
 
-  const ws = wb.addWorksheet("팀원 명단", { views: [{ state: "frozen", ySplit: 1 }] });
+// 명단 시트 하나: 머리글 + 줄 + 목록 선택. examples = 안내용 예시 줄(회색 이탤릭)인지
+function addMemberSheet(wb, name, rows, { deptLabels, examples = false, tabColor }) {
+  const ws = wb.addWorksheet(name, { views: [{ state: "frozen", ySplit: 1 }], properties: tabColor ? { tabColor: { argb: tabColor } } : undefined });
   ws.columns = TEMPLATE_HEADERS.map((h, i) => ({ header: h, width: WIDTHS[i] }));
 
   const headRow = ws.getRow(1);
@@ -114,17 +111,17 @@ export function buildMemberWorkbook(ExcelJS, members = null, depts = null) {
     c.border = box;
   });
 
-  const rows = members ? members.map(memberToRow) : EXAMPLE_ROWS.map((r, i) => [deptLabels[i % deptLabels.length], ...r.slice(1)]);
   const total = Math.max(DATA_ROWS, rows.length + 50);
   for (let i = 0; i < total; i += 1) {
     const row = ws.getRow(i + 2);
     const values = rows[i];
+    const sample = examples && i < rows.length;
     TEMPLATE_HEADERS.forEach((h, j) => {
       const c = row.getCell(j + 1);
       if (values) c.value = values[j];
       c.border = box;
       c.alignment = { vertical: "middle", horizontal: j >= 3 && j <= 6 ? "center" : "left" };
-      c.font = { name: "맑은 고딕", size: 10.5, italic: !members && i < rows.length, color: { argb: !members && i < rows.length ? MUTED : INK } };
+      c.font = { name: "맑은 고딕", size: 10.5, italic: sample, color: { argb: sample ? MUTED : INK } };
       if (i % 2 === 1) c.fill = solid(ZEBRA);
     });
     row.height = 20;
@@ -133,6 +130,35 @@ export function buildMemberWorkbook(ExcelJS, members = null, depts = null) {
     ws.getCell(`G${i + 2}`).dataValidation = { type: "list", allowBlank: true, formulae: ['"재직,퇴사"'], showErrorMessage: true, errorTitle: "상태", error: "재직 또는 퇴사 중에서 고르세요." };
   }
   ws.autoFilter = { from: "A1", to: `${String.fromCharCode(64 + TEMPLATE_HEADERS.length)}1` };
+  return ws;
+}
+
+const byTeamName = (a, b) => String(a.team || "").localeCompare(String(b.team || ""), "ko") || String(a.name).localeCompare(String(b.name), "ko");
+
+/**
+ * 양식 통합문서를 만든다.
+ *  - members 가 없으면: "팀원 명단" 시트 하나에 예시 두 줄(빈 양식).
+ *  - members 가 있으면: 부서마다 시트를 나눠(기구·비전·제어·전장·소장) 그 부서 인원을 같은 양식으로 채운다(수정해서 다시 붙여넣기용).
+ * depts = 보여 줄 부서 키(없으면 전체). ExcelJS 모듈은 부르는 쪽에서 넘긴다(화면은 필요할 때만 불러온다).
+ */
+export function buildMemberWorkbook(ExcelJS, members = null, depts = null) {
+  const deptKeys = depts?.length ? depts : TRIP_DEPTS.map((d) => d.key);
+  const deptLabels = deptKeys.map((k) => TRIP_DEPT_LABEL[k]);
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "TW Project Manager";
+  wb.created = new Date();
+
+  if (!members) {
+    const rows = EXAMPLE_ROWS.map((r, i) => [deptLabels[i % deptLabels.length], ...r.slice(1)]);
+    addMemberSheet(wb, "팀원 명단", rows, { deptLabels, examples: true });
+  } else {
+    const sheets = deptKeys.filter((k) => members.some((m) => m.dept === k));
+    if (sheets.length === 0) addMemberSheet(wb, "팀원 명단", [], { deptLabels });
+    sheets.forEach((k) => {
+      const rows = members.filter((m) => m.dept === k).sort(byTeamName).map(memberToRow);
+      addMemberSheet(wb, TRIP_DEPT_LABEL[k], rows, { deptLabels, tabColor: TAB_COLOR[k] });
+    });
+  }
 
   guideSheet(wb);
   return wb;
@@ -155,11 +181,9 @@ export async function downloadMemberTemplate(depts = null) {
   saveBuffer(await wb.xlsx.writeBuffer(), "TW_출장자_팀원명단_양식.xlsx");
 }
 
-/** 지금 등록된 명단을 같은 양식으로 내려받기 (고쳐서 다시 붙여넣으면 최신화) */
+/** 지금 등록된 명단을 부서별 시트로 내려받기 (같은 양식이라 고쳐서 시트별로 다시 붙여넣으면 최신화) */
 export async function downloadMemberRoster(members, depts = null) {
   const ExcelJS = (await import("exceljs")).default;
-  const sorted = [...members].sort((a, b) => TRIP_DEPTS.findIndex((d) => d.key === a.dept) - TRIP_DEPTS.findIndex((d) => d.key === b.dept)
-    || String(a.team || "").localeCompare(String(b.team || ""), "ko") || a.name.localeCompare(b.name, "ko"));
-  const wb = buildMemberWorkbook(ExcelJS, sorted, depts);
+  const wb = buildMemberWorkbook(ExcelJS, members, depts);
   saveBuffer(await wb.xlsx.writeBuffer(), `TW_출장자_팀원명단_${todayISO().replaceAll("-", "")}.xlsx`);
 }

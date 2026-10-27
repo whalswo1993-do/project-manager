@@ -34,6 +34,8 @@ export const ABSENCE_KIND_LABEL = { ...Object.fromEntries(ABSENCE_KINDS.map((k) 
 const OUT_KINDS = new Set(ABSENCE_KINDS.filter((k) => k.out).map((k) => k.key));
 /** 프로젝트에 배정된 것은 아니지만 본사 밖(고객사 대응·테스트 등)에 나가 있는 일정인가 */
 export const isOutTrip = (kind) => OUT_KINDS.has(normalizeKind(kind));
+/** 어디에 가 있는지: 적어 둔 장소, 없으면 종류 이름 */
+export const awayPlace = (ab) => String(ab?.location || "").trim() || ABSENCE_KIND_LABEL[ab?.kind] || "기타";
 /** "고객사 대응 · SKO 서산" 처럼 종류와 장소를 한 줄로 */
 export const absenceText = (ab) => `${ABSENCE_KIND_LABEL[ab?.kind] || "부재"}${ab?.location ? ` · ${ab.location}` : ""}`;
 

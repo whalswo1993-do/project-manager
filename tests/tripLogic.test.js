@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  isUsSite, phaseColors, phaseRows, isOutTrip, absenceText, normalizeKind, ABSENCE_KINDS,
+  isUsSite, phaseColors, phaseRows, isOutTrip, absenceText, normalizeKind, ABSENCE_KINDS, awayPlace,
   addDays, mondayOf, buildWeeks, overlaps, weeksBetween, isValidISO, monthSpans, todayISO,
   needForWeek, haveForWeek, planCoverage, shortageRuns, checkAssignment, analyzeAssignments, worstLevel,
   memberWeekState, deptWeekStats, parseMemberPaste, guessDept, memberKey,
@@ -326,6 +326,8 @@ describe("미등록 프로젝트 대응 (CS·고객사 대응·테스트)", () =
     expect(absenceText({ kind: "customer", location: "SKO 서산" })).toBe("고객사 대응 · SKO 서산");
     expect(absenceText({ kind: "cs", location: "SKO 서산" })).toBe("고객사 대응 · SKO 서산"); // 예전 CS 대응은 고객사 대응으로 합쳐 보인다
     expect(normalizeKind("cs")).toBe("customer");
+    expect(awayPlace({ kind: "customer", location: " 현대 인성 " })).toBe("현대 인성"); // 간 곳이 칸 이름
+    expect(awayPlace({ kind: "test", location: "" })).toBe("테스트"); // 장소가 없으면 종류 이름
     expect(ABSENCE_KINDS.map((k) => k.key)).not.toContain("cs");
     expect(absenceText({ kind: "leave" })).toBe("휴직·휴가");
   });

@@ -7,7 +7,7 @@ import {
   saveDeptNote,
 } from "./tripService";
 import {
-  TRIP_DEPTS, TRIP_DEPT_LABEL, DOW_LABEL, isOutTrip, absenceText,
+  TRIP_DEPTS, TRIP_DEPT_LABEL, ABSENCE_KIND_LABEL, DOW_LABEL, isOutTrip, absenceText, awayPlace,
   buildColumns, mondayOf, todayISO, addDays, weeksBetween, monthSpans, shortDate, rangeLabel,
   needForWeek, haveForWeek, planCoverage, shortageRuns, analyzeAssignments, worstLevel,
   memberWeekState, deptWeekStats, projectsToPlans, buildDemands, assignmentState, isPastProject, guessDept,
@@ -886,7 +886,7 @@ function Roster({ members, demands, defaultDept, ctx, planIndex, today, viewMode
                     if (stt.state === "free") return <td key={c.key} className={`tr-mcell free ${cls}`} />;
                     if (stt.state === "absent") {
                       const out = isOutTrip(stt.absence.kind);
-                      return <td key={c.key} className={`tr-mcell ${out ? "away" : "absent"} click ${cls}`} onClick={() => setModal({ type: "outing", members: [m], absence: stt.absence })} title={`${absenceText(stt.absence)} (${rangeLabel(stt.absence.start_date, stt.absence.end_date)})${stt.absence.note ? ` · ${stt.absence.note}` : ""} — 눌러서 수정`}>{c.day ? "" : ABSENCE_MARK[stt.absence.kind]}</td>;
+                      return <td key={c.key} className={`tr-mcell ${out ? "away" : "absent"} click ${cls}`} onClick={() => setModal({ type: "outing", members: [m], absence: stt.absence })} title={`${out ? `${awayPlace(stt.absence)} (${ABSENCE_KIND_LABEL[stt.absence.kind] || "일정"})` : absenceText(stt.absence)} · ${rangeLabel(stt.absence.start_date, stt.absence.end_date)}${stt.absence.note ? ` · ${stt.absence.note}` : ""} — 눌러서 수정`}>{c.day ? "" : ABSENCE_MARK[stt.absence.kind]}</td>;
                     }
                     const names = stt.assigned.map((x) => x.plan?.name).filter(Boolean).join(" + ");
                     const first = stt.assigned[0]?.plan;
@@ -908,7 +908,7 @@ function Roster({ members, demands, defaultDept, ctx, planIndex, today, viewMode
           <span><i className="sw free" /> 가용</span>
           <span><i className="sw asg" /> 프로젝트 배정 (칸에 마우스를 올리면 프로젝트 이름)</span>
           <span><i className="sw bad" /> 충돌 (!)</span>
-          <span><i className="sw away" /> 미등록 프로젝트 대응 (CS · 고=고객사 · T=테스트 · 출=기타 출장) — 칸에 마우스를 올리면 장소</span>
+          <span><i className="sw away" /> 본사 밖 일정 — 간 곳은 칸에 마우스를 올리면 보임 (고=고객사 대응 · T=테스트 · 출=기타 출장)</span>
           <span><i className="sw absent" /> 부재 (휴=휴직 · 교=교육)</span>
         </div>
       </div>
@@ -948,6 +948,14 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
     .map(([id, cards]) => ({ id, plan: ctx.plans.find((p) => p.id === id), cards }))
     .sort((a, b) => (planIndex.get(a.id) ?? 99) - (planIndex.get(b.id) ?? 99));
 
+  // 미등록 프로젝트 대응으로 본사 밖에 나가 있는 인원은 "어디에 갔는지"(장소)별로 칸을 나눈다. 장소를 안 적었으면 종류 이름으로 묶는다.
+  const awayPlaces = [...away.reduce((map, it) => {
+    const place = awayPlace(it.ab);
+    if (!map.has(place)) map.set(place, []);
+    map.get(place).push(it);
+    return map;
+  }, new Map())].map(([place, list]) => ({ place, list })).sort((x, y) => y.list.length - x.list.length || x.place.localeCompare(y.place, "ko"));
+
   const open = (m) => setModal({ type: "member", member: m });
   const card = (m, meta, cls = "", badge = null, ab = null) => (
     <button type="button" key={`${m.id}-${cls}${ab ? `-${ab.id}` : ""}`} className={`tr-card ${cls}`} onClick={() => (ab ? setModal({ type: "outing", members: [m], absence: ab }) : open(m))} title={ab ? `${m.name} · ${absenceText(ab)} — 눌러서 일정 수정` : `${m.name} · 눌러서 정보 보기`}>
@@ -985,14 +993,14 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
             </div>
           );
         })}
-        {away.length > 0 && (
-          <div className="tr-lane away">
-            <div className="tr-lane-head"><strong>미등록 프로젝트 대응</strong><b>{away.length}</b></div>
+        {awayPlaces.map(({ place, list }) => (
+          <div className="tr-lane away" key={`away-${place}`}>
+            <div className="tr-lane-head"><strong title={place}>{place}</strong><b>{list.length}</b></div>
             <div className="tr-lane-body">
-              {away.map(({ m, ab }) => card(m, `${absenceText(ab)} · ${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? ` · ${ab.note}` : ""}`, "", null, ab))}
+              {list.map(({ m, ab }) => card(m, `${ABSENCE_KIND_LABEL[ab.kind] || "일정"} · ${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? ` · ${ab.note}` : ""}`, "", null, ab))}
             </div>
           </div>
-        )}
+        ))}
         {absent.length > 0 && (
           <div className="tr-lane absent">
             <div className="tr-lane-head"><strong>부재</strong><b>{absent.length}</b></div>
@@ -1045,7 +1053,7 @@ function Members({ members, ctx, today, editableDepts, defaultDept, myDept, setM
     if (!m.active) return { text: "퇴사·제외", cls: "off" };
     const s = memberWeekState(m, today1, ctx);
     if (s.state === "free") return { text: "본사 대기", cls: "home" };
-    if (s.state === "absent") return isOutTrip(s.absence.kind) ? { text: `외부 · ${absenceText(s.absence)}`, cls: "away", ab: s.absence } : { text: absenceText(s.absence), cls: "abs", ab: s.absence };
+    if (s.state === "absent") return isOutTrip(s.absence.kind) ? { text: `${awayPlace(s.absence)} · ${ABSENCE_KIND_LABEL[s.absence.kind] || "일정"}`, cls: "away", ab: s.absence } : { text: absenceText(s.absence), cls: "abs", ab: s.absence };
     return { text: `출장 · ${s.assigned.map((x) => x.plan?.name).filter(Boolean).join(" + ") || "배정"}`, cls: s.state === "assigned" ? "trip" : "bad" };
   };
 

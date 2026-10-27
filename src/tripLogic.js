@@ -10,6 +10,12 @@ export const TRIP_DEPTS = [
 ];
 export const TRIP_DEPT_LABEL = Object.fromEntries(TRIP_DEPTS.map((d) => [d.key, d.label]));
 
+// 한 부서 자리에 다른 부서 인원도 넣을 수 있는 경우: PM(manager) 자리에는 PM 인원과 기구 인원을 모두 넣는다.
+// (DB 의 trip_assignment_check 트리거도 같은 규칙이다)
+const EXTRA_ASSIGNABLE = { manager: ["mechanical"] };
+/** 이 부서 자리에 배정할 수 있는 인원의 부서들 (자기 부서가 맨 앞) */
+export const assignableDepts = (dept) => [dept, ...(EXTRA_ASSIGNABLE[dept] || [])];
+
 // B1 비자가 필요한 미국 사이트. 프로젝트의 Site 가 이 중 하나면 출장자의 B1 보유를 확인한다(다른 해외 사이트는 해당 없음).
 export const US_SITES = ["HSBMA", "SKBA", "SKOT"];
 export function isUsSite(site) {

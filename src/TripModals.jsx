@@ -3,7 +3,7 @@ import { Icon } from "./icons";
 import { PasteZone } from "./PasteZone";
 import { confirmDialog } from "./confirmService";
 import {
-  TRIP_DEPTS, TRIP_DEPT_LABEL, ABSENCE_KINDS, isOutTrip, absenceText, overlaps, normalizeKind,
+  TRIP_DEPTS, TRIP_DEPT_LABEL, ABSENCE_KINDS, isOutTrip, absenceText, overlaps, normalizeKind, assignableDepts,
   checkAssignment, worstLevel, isValidISO, rangeLabel, parseMemberPaste, memberKey, planMemberSync,
   addDays, dayCount, todayISO, shortDate,
 } from "./tripLogic";
@@ -84,7 +84,7 @@ const datesOk = (start, end) => isValidISO(start) && isValidISO(end) && end >= s
 // ───────── 출장 가능자 고르기 ─────────
 
 /** 부서 인원 중 그 기간에 출장 갈 수 있는지(가용/충돌/비자 없음)를 보여 주며 한 명을 고른다 */
-function MemberPicker({ options, value, onChange, disabled, emptyText }) {
+function MemberPicker({ options, value, onChange, disabled, emptyText, dept }) {
   const [q, setQ] = useState("");
   const list = useMemo(() => {
     const key = q.trim().toLowerCase();
@@ -106,6 +106,7 @@ function MemberPicker({ options, value, onChange, disabled, emptyText }) {
               className={`tr-pick ${rank === 2 ? "bad" : rank === 1 ? "warn" : "ok"} ${value === member.id ? "on" : ""}`} onClick={() => onChange(member.id)}>
               <span className="who">
                 <b>{member.name}</b>
+                {dept && member.dept !== dept && <span className="tr-dept-tag" data-dept={member.dept}>{TRIP_DEPT_LABEL[member.dept]}</span>}
                 <span className="sub">{[member.team, member.rank].filter(Boolean).join(" · ") || "-"}</span>
                 {member.b1_visa && <span className="tr-b1 small">B1</span>}
                 {!member.active && <span className="tr-chip">비활성</span>}
@@ -124,7 +125,7 @@ const stripName = (message) => String(message || "").replace(/^[^:]+:\s*/, "");
 
 function memberOptions(ctx, dept, candidate, validDates, keepId = "") {
   return ctx.members
-    .filter((m) => m.dept === dept && (m.active || m.id === keepId))
+    .filter((m) => assignableDepts(dept).includes(m.dept) && (m.active || m.id === keepId))
     .map((m) => {
       const issues = validDates ? checkAssignment(candidate(m.id), ctx) : [];
       const relevant = issues.filter((i) => i.type !== "outside");
@@ -133,7 +134,7 @@ function memberOptions(ctx, dept, candidate, validDates, keepId = "") {
       const tag = !validDates ? "" : rank === 2 ? "충돌" : rank === 1 ? "비자 없음" : "가용";
       return { member: m, tag, rank, reason: relevant[0] ? stripName(relevant[0].message) : "" };
     })
-    .sort((a, b) => a.rank - b.rank || String(a.member.team || "").localeCompare(String(b.member.team || ""), "ko") || a.member.name.localeCompare(b.member.name, "ko"));
+    .sort((a, b) => a.rank - b.rank || (a.member.dept === dept ? 0 : 1) - (b.member.dept === dept ? 0 : 1) || String(a.member.team || "").localeCompare(String(b.member.team || ""), "ko") || a.member.name.localeCompare(b.member.name, "ko"));
 }
 
 // ───────── 출장자 배정 · 교대 ─────────
@@ -279,7 +280,7 @@ export function AssignmentModal({ plan, dept, assignment, defaults, ctx, canEdit
           </div>
           <div className="tr-field wide">
             <span className="tr-field-label">교대로 들어갈 출장자 <em className="tr-muted">{rotateOk ? `${rangeLabel(rotateStart, rotateEnd)} (${dayCount(rotateStart, rotateEnd)}일)` : ""}</em></span>
-            <MemberPicker options={rotateOptions} value={inId} onChange={setInId} disabled={!canEdit || !rotateOk} emptyText={`${deptName} 부서에 등록된 다른 인원이 없습니다.`} />
+            <MemberPicker dept={dept} options={rotateOptions} value={inId} onChange={setInId} disabled={!canEdit || !rotateOk} emptyText={`${deptName} 부서에 등록된 다른 인원이 없습니다.`} />
           </div>
           <Field label="메모" wide>
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="예: 1차 교대" maxLength={120} disabled={!canEdit} />
@@ -304,9 +305,9 @@ export function AssignmentModal({ plan, dept, assignment, defaults, ctx, canEdit
           {mode === "member" ? (
             <div className="tr-field wide">
               <span className="tr-field-label">{deptName} 출장자 선택</span>
-              <MemberPicker options={options} value={memberId} onChange={setMemberId} disabled={!canEdit}
+              <MemberPicker dept={dept} options={options} value={memberId} onChange={setMemberId} disabled={!canEdit}
                 emptyText={`${deptName} 부서에 등록된 인원이 없습니다. '팀원 관리'에서 먼저 등록하세요.`} />
-              <span className="tr-field-hint">고른 기간에 충돌(기간 겹침·부재)이 없는 인원이 위에 나옵니다.</span>
+              <span className="tr-field-hint">고른 기간에 충돌(기간 겹침·부재)이 없는 인원이 위에 나옵니다.{assignableDepts(dept).length > 1 ? ` ${deptName} 자리에는 ${assignableDepts(dept).map((k) => TRIP_DEPT_LABEL[k]).join('·')} 인원을 모두 넣을 수 있습니다.` : ""}</span>
             </div>
           ) : (
             <Field label="자리 이름" wide hint="인원 명단에 없는 자리입니다. 공수에는 1명으로 계산됩니다.">

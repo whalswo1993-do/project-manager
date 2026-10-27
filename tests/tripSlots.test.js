@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import ExcelJS from "exceljs";
 import {
   buildColumns, needOnDay, haveOnDay, needForWeek, haveForWeek, peakNeed, layoutLanes, laneCellState, laneGapRange,
-  parseMemberPaste, planMemberSync, mergeMemberRow, memberChanges, dayCount, guessDept, TRIP_DEPT_LABEL,
+  parseMemberPaste, planMemberSync, mergeMemberRow, memberChanges, dayCount, guessDept, TRIP_DEPT_LABEL, assignableDepts,
 } from "../src/tripLogic.js";
 import { buildMemberWorkbook, memberToRow, TEMPLATE_HEADERS } from "../src/tripTemplate.js";
 
@@ -194,6 +194,14 @@ describe("PM 부서 이름", () => {
     expect(wb.worksheets.map((w) => w.name)).toEqual(["PM", "작성 안내"]);
     expect(wb.getWorksheet("PM").getCell("A2").value).toBe("PM");
     expect(parseMemberPaste(["부서(분야)\t이름", "소장\t을", "PM\t병"].join("\n")).rows.map((r) => r.dept)).toEqual(["manager", "manager"]);
+  });
+});
+
+describe("PM 자리 배정 대상", () => {
+  it("PM 자리에는 PM과 기구 인원을 넣을 수 있고, 다른 부서 자리는 그 부서 인원만 넣는다", () => {
+    expect(assignableDepts("manager")).toEqual(["manager", "mechanical"]);
+    expect(assignableDepts("mechanical")).toEqual(["mechanical"]);
+    expect(assignableDepts("vision")).toEqual(["vision"]);
   });
 });
 

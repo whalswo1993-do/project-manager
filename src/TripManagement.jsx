@@ -26,8 +26,8 @@ const TABS = [
   { id: "summary", label: "종합·확인 사항", icon: "barChart" },
 ];
 const MAX_BOARD_WEEKS = 78;
-const WEEK_COUNTS = [8, 12, 16, 26, 40]; // 주 단위 보기에서 보여 줄 주 수
-const DAY_WEEKS = [2, 3, 4, 6, 8, 12]; // 일 단위 보기에서 보여 줄 주 수 (칸 수는 ×7)
+const WEEK_COUNTS = [12, 16, 26, 40]; // 주 단위 보기에서 보여 줄 주 수
+const DAY_WEEKS = [12, 16, 26, 40]; // 일 단위 보기에서 보여 줄 주 수 (칸 수는 ×7)
 const ABSENCE_MARK = { trip: "출", leave: "휴", training: "교", other: "기" };
 
 const safeGet = (key, fallback) => {
@@ -51,7 +51,7 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
   const [showPast, setShowPast] = useState(false);
   const [winStart, setWinStart] = useState(() => mondayOf(todayISO()));
   const [winCount, setWinCount] = useState(12);
-  const [dayWeeks, setDayWeeks] = useState(4);
+  const [dayWeeks, setDayWeeks] = useState(12);
   const [myDeptSaved, setMyDeptSaved] = useState(() => safeGet("pm_trip_mydept", ""));
   const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -340,19 +340,19 @@ function TimeHead({ cols, today, phases, phaseIdx = [], leftHead, extraLeft = []
         <>
           <tr>
             {cols.map((c) => (
-              <th key={c.key} className={`dy ${c.weekend ? "we" : ""} ${c.weekStart ? "ws" : ""} ${c.start === today ? "now" : ""}`} title={c.start}>{Number(c.start.slice(8))}</th>
+              <th key={c.key} className={`dy ${c.weekend ? "tr-we" : ""} ${c.weekStart ? "tr-ws" : ""} ${c.start === today ? "tr-today" : ""}`} title={c.start}>{Number(c.start.slice(8))}</th>
             ))}
           </tr>
           <tr>
             {cols.map((c) => (
-              <th key={c.key} className={`dw ${c.weekend ? "we" : ""} ${c.weekStart ? "ws" : ""} ${c.start === today ? "now" : ""}`}>{DOW_LABEL[c.dow]}</th>
+              <th key={c.key} className={`dw ${c.weekend ? "tr-we" : ""} ${c.weekStart ? "tr-ws" : ""} ${c.start === today ? "tr-today" : ""}`}>{DOW_LABEL[c.dow]}</th>
             ))}
           </tr>
         </>
       ) : (
         <tr>
           {cols.map((c) => (
-            <th key={c.key} className={`wk ${c.start <= today && today <= c.end ? "now" : ""}`} title={`${c.start} ~ ${c.end}`}>{shortDate(c.start)}</th>
+            <th key={c.key} className={`wk ${c.start <= today && today <= c.end ? "tr-today" : ""}`} title={`${c.start} ~ ${c.end}`}>{shortDate(c.start)}</th>
           ))}
         </tr>
       )}
@@ -389,7 +389,7 @@ function GridCols({ lead, count }) {
 }
 const gridWidth = (lead, count, unit) => ({ width: `max(100%, ${lead.reduce((a, b) => a + b, 0) + count * unit}px)` });
 
-const colClass = (c, today) => `${c.weekend ? "we" : ""} ${c.weekStart ? "ws" : ""} ${c.day && c.start === today ? "today" : !c.day && c.start <= today && today <= c.end ? "today" : ""}`;
+const colClass = (c, today) => `${c.weekend ? "tr-we" : ""} ${c.weekStart ? "tr-ws" : ""} ${c.day && c.start === today ? "tr-today" : !c.day && c.start <= today && today <= c.end ? "tr-today" : ""}`;
 
 // ───────────────────────────── 기간 창 조절 ─────────────────────────────
 
@@ -531,7 +531,7 @@ function PlanBoard({ plan, planStates, demands, assignments, members, notes, iss
   // 긴 프로젝트: 열 때 오늘 칸이 보이도록 옆으로 옮겨 둔다 (프로젝트 기간 밖이면 처음부터)
   const scrollToToday = useCallback((smooth = false) => {
     const wrap = wrapRef.current;
-    const mark = wrap?.querySelector("thead th.now");
+    const mark = wrap?.querySelector("thead th.tr-today");
     if (!wrap || !mark) return;
     const w = wrap.getBoundingClientRect();
     const t = mark.getBoundingClientRect();
@@ -741,7 +741,7 @@ function PlanBoard({ plan, planStates, demands, assignments, members, notes, iss
         </div>
         <div className="tr-legend">
           <span><i className="sw gap" /> 비어 있는 칸 (눌러서 배정)</span>
-          <span><i className="sw bar" /> 배정된 출장자</span>
+          <span><i className="sw asg" /> 배정된 출장자</span>
           <span><i className="sw warn" /> 경고 (비자 등)</span>
           <span><i className="sw bad" /> 충돌 (기간 겹침·부재)</span>
           <span><i className="sw short" /> 공수 부족</span>
@@ -883,7 +883,7 @@ function Roster({ members, demands, defaultDept, ctx, planIndex, today, viewMode
         </div>
         <div className="tr-legend">
           <span><i className="sw free" /> 가용</span>
-          <span><i className="sw bar" /> 프로젝트 배정 (칸에 마우스를 올리면 프로젝트 이름)</span>
+          <span><i className="sw asg" /> 프로젝트 배정 (칸에 마우스를 올리면 프로젝트 이름)</span>
           <span><i className="sw bad" /> 충돌 (!)</span>
           <span><i className="sw absent" /> 부재 (출=타 출장 · 휴=휴직 · 교=교육)</span>
         </div>

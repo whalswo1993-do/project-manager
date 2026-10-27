@@ -177,11 +177,11 @@
 .tr-grid thead tr:nth-child(8) th { top: 182px; }
 .tr-grid th.month { font-size: 11.5px; text-align: left; padding-left: 8px; }
 .tr-grid th.wk { min-width: 56px; width: 56px; font-weight: 500; font-size: 11.5px; }
-.tr-grid th.wk.now, .tr-grid th.dy.now, .tr-grid th.dw.now { background: var(--brand-wash); color: var(--brand); font-weight: 700; }
+.tr-grid th.tr-today { background: var(--brand-wash); color: var(--brand); font-weight: 700; }
 .tr-grid th.dy, .tr-grid th.dw { min-width: 32px; width: 32px; font-weight: 500; font-size: 11.5px; }
 .tr-grid th.dw { height: 20px; font-size: 10.5px; color: var(--ink-3); }
-.tr-grid th.we { color: var(--bad); }
-.tr-grid th.ws, .tr-grid td.ws { border-left: 1px solid var(--ink-4); }
+.tr-grid th.tr-we { color: var(--bad); }
+.tr-grid th.tr-ws, .tr-grid td.tr-ws { border-left: 1px solid var(--ink-4); }
 .tr-grid th.phase { font-size: 11px; font-weight: 600; color: var(--ink-3); height: 26px; }
 .tr-grid .tr-col-name { position: sticky; left: 0; z-index: 2; min-width: 230px; width: 230px; max-width: 230px; text-align: left; padding: 0 10px; background: var(--surface); box-shadow: 1px 0 0 var(--line-2); }
 .tr-grid thead .tr-col-name { z-index: 4; background: var(--surface-2); }
@@ -189,8 +189,8 @@
 .tr-grid thead .tr-col-meta, .tr-grid thead .tr-col-mini { background: var(--surface-2); z-index: 4; }
 .tr-grid .tr-col-mini { width: 36px; min-width: 36px; }
 .tr-grid .sub { color: var(--ink-3); font-size: 11.5px; }
-.tr-grid td.today { box-shadow: inset 1px 0 0 var(--signal), inset -1px 0 0 var(--signal); }
-.tr-grid td.we:not(.tr-cov):not(.tr-mcell) { background: var(--surface-2); }
+.tr-grid td.tr-today { box-shadow: inset 1px 0 0 var(--signal), inset -1px 0 0 var(--signal); }
+.tr-grid td.tr-we:not(.tr-cov):not(.tr-mcell) { background: var(--surface-2); }
 
 /* 배정 보드 */
 .tr-plan-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; }
@@ -260,7 +260,7 @@
 .sw.short { background: var(--bad-wash); border-color: var(--bad); }
 .sw.full { background: var(--ok-wash); border-color: var(--ok); }
 .sw.over { background: var(--warn-wash); border-color: var(--warn); }
-.sw.bar { background: color-mix(in srgb, var(--brand) 12%, var(--surface)); border-color: var(--brand); }
+.sw.asg { background: color-mix(in srgb, var(--brand) 12%, var(--surface)); border-color: var(--brand); }
 .sw.gap { background: color-mix(in srgb, var(--bad) 7%, var(--surface)); border: 1.5px dashed var(--bad); }
 .sw.warn { background: var(--warn-wash); border-color: var(--warn); }
 .sw.bad { background: repeating-linear-gradient(135deg, var(--bad) 0 3px, var(--bad-wash) 3px 6px); border-color: var(--bad); }
@@ -504,7 +504,7 @@
 .tr-compact .tr-cell { padding: 4px 1px !important; }
 .tr-compact .tr-cell button { padding: 0 4px; font-size: 12px; }
 .tr-compact .tr-cell.filled .sub { display: none; }
-.tr-compact td.we:not(.tr-cov) { background: color-mix(in srgb, var(--ink) 4%, var(--surface)); }
+.tr-compact td.tr-we:not(.tr-cov) { background: color-mix(in srgb, var(--ink) 4%, var(--surface)); }
 
 .tr-state.nodemand { background: var(--bg-2); color: var(--ink-3); border: 1px solid var(--line-2); }
 .tr-modal:focus { outline: none; }

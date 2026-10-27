@@ -508,3 +508,12 @@
 
 .tr-state.nodemand { background: var(--bg-2); color: var(--ink-3); border: 1px solid var(--line-2); }
 .tr-modal:focus { outline: none; }
+
+/* 종합·인원 현황 표: 고정 열 배치 (날짜 칸이 고르게 폭을 나눠 가진다) */
+.tr-fixed { table-layout: fixed; width: 100%; }
+.tr-fixed th.wk, .tr-fixed th.dy, .tr-fixed th.dw { min-width: 0; width: auto; }
+.tr-fixed .tr-col-name, .tr-fixed .tr-col-meta, .tr-fixed .tr-col-mini { min-width: 0; max-width: none; width: auto; overflow: hidden; text-overflow: ellipsis; }
+.tr-fixed .tr-col-meta { white-space: nowrap; }
+.tr-summary-grid .tr-col-meta { padding-left: 12px; }
+.tr-summary-grid .tr-num { font-size: 12.5px; }
+.tr-summary-grid td.tr-col-meta { color: var(--ink-2); font-size: 12px; }

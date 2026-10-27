@@ -27,7 +27,7 @@ const TABS = [
 ];
 const MAX_BOARD_WEEKS = 78;
 const WEEK_COUNTS = [8, 12, 16, 26, 40]; // 주 단위 보기에서 보여 줄 주 수
-const DAY_WEEKS = [2, 4, 8, 12]; // 일 단위 보기에서 보여 줄 주 수 (칸 수는 ×7)
+const DAY_WEEKS = [2, 3, 4, 6, 8, 12]; // 일 단위 보기에서 보여 줄 주 수 (칸 수는 ×7)
 const ABSENCE_MARK = { trip: "출", leave: "휴", training: "교", other: "기" };
 
 const safeGet = (key, fallback) => {
@@ -376,6 +376,18 @@ function TimeHead({ cols, today, phases, phaseIdx = [], leftHead, extraLeft = []
     </thead>
   );
 }
+
+// 날짜 칸이 적을 때 표가 한쪽 열로 늘어나지 않게: 글자 열은 고정 폭, 날짜 칸은 남는 폭을 똑같이 나눈다.
+// 날짜 칸이 많으면 칸당 최소 폭(unit)을 지켜 가로로 넘겨 본다.
+function GridCols({ lead, count }) {
+  return (
+    <colgroup>
+      {lead.map((w, i) => <col key={`l${i}`} style={{ width: w }} />)}
+      {Array.from({ length: count }, (_, i) => <col key={i} />)}
+    </colgroup>
+  );
+}
+const gridWidth = (lead, count, unit) => ({ width: `max(100%, ${lead.reduce((a, b) => a + b, 0) + count * unit}px)` });
 
 const colClass = (c, today) => `${c.weekend ? "we" : ""} ${c.weekStart ? "ws" : ""} ${c.day && c.start === today ? "today" : !c.day && c.start <= today && today <= c.end ? "today" : ""}`;
 
@@ -831,7 +843,8 @@ function Roster({ members, demands, defaultDept, ctx, planIndex, today, viewMode
         </div>
 
         <div className="tr-table-wrap tall">
-          <table className={`tr-grid tr-roster-grid tr-by-${viewMode}`}>
+          <table className={`tr-grid tr-roster-grid tr-fixed tr-by-${viewMode}`} style={gridWidth([170, 130, 36], cols.length, viewMode === "day" ? 30 : 56)}>
+            <GridCols lead={[170, 130, 36]} count={cols.length} />
             <TimeHead cols={cols} today={today} mode={viewMode} leftHead="이름"
               extraLeft={[{ key: "meta", className: "tr-col-meta", label: "부서 · 팀" }, { key: "b1", className: "tr-col-mini", label: "B1" }]} />
             <tbody>
@@ -1258,7 +1271,8 @@ function Summary({ plans, members, demands, assignments, ctx, issuesByAssignment
         <h3 className="tr-h">부서별 {viewMode === "day" ? "일자" : "주차"} 종합 <span className="tr-muted">진행 중인 모든 프로젝트 합계</span></h3>
         <WindowBar viewMode={viewMode} winStart={winStart} setWinStart={setWinStart} winCount={winCount} setWinCount={setWinCount} dayWeeks={dayWeeks} setDayWeeks={setDayWeeks} today={today} />
         <div className="tr-table-wrap tall">
-          <table className={`tr-grid tr-summary-grid tr-by-${viewMode}`}>
+          <table className={`tr-grid tr-summary-grid tr-fixed tr-by-${viewMode}`} style={gridWidth([72, 128], cols.length, viewMode === "day" ? 36 : 58)}>
+            <GridCols lead={[72, 128]} count={cols.length} />
             <TimeHead cols={cols} today={today} mode={viewMode} leftHead="부서" extraLeft={[{ key: "kind", className: "tr-col-meta", label: "구분" }]} />
             <tbody>
               {TRIP_DEPTS.map((d) => {

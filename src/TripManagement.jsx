@@ -11,7 +11,7 @@ import {
   buildColumns, mondayOf, todayISO, addDays, weeksBetween, monthSpans, shortDate, rangeLabel,
   needForWeek, haveForWeek, planCoverage, shortageRuns, analyzeAssignments, worstLevel,
   memberWeekState, deptWeekStats, projectsToPlans, buildDemands, assignmentState, isPastProject, guessDept,
-  peakNeed, layoutLanes, laneCellState, laneGapRange, phaseColors, phaseRows,
+  peakNeed, layoutLanes, laneCellState, laneGapRange, phaseColors, phaseRows, OUTSOURCE_PARENT,
 } from "./tripLogic";
 import { normalizeDeptKey } from "./manpowerDepts";
 import { confirmDialog } from "./confirmService";
@@ -103,7 +103,8 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
   // 계획 공수 = 프로젝트 마스터 플랜 공수 (화면에서 고치지 않는다)
   const demands = useMemo(() => buildDemands(plans, [], (name) => {
     const k = normalizeDeptKey(name);
-    return TRIP_DEPT_LABEL[k] ? k : null;
+    const parent = OUTSOURCE_PARENT[k] || k; // 기구 외주 → 기구, 비전 외주 → 비전 … (각 팀이 외주도 관리한다)
+    return TRIP_DEPT_LABEL[parent] ? parent : null;
   }), [plans]);
   const assignments = useMemo(() => data?.assignments || [], [data]);
   const absences = useMemo(() => data?.absences || [], [data]);
@@ -667,12 +668,13 @@ function PlanBoard({ plan, planStates, demands, assignments, members, notes, iss
                 const editable = canEditDept(dept);
                 const noteRow = notes.find((n) => n.project_id === plan.id && n.dept === dept);
                 const needBy = cols.map((c) => needForWeek(deptDemands, dept, c));
+                const subPeak = Math.max(0, ...deptDemands.map((x) => Number(x.sub) || 0)); // 계획 공수 중 외주 몫(최대)
                 return (
                   <Fragment key={dept}>
                     <tr className="tr-dept-row" data-dept={dept}>
                       <th className="tr-col-name">
                         <div className="tr-dept-title">
-                          <span className="tr-dept-name"><strong>{d.label}</strong><span className="tr-muted">{slots ? `칸 ${slots}개` : "칸 없음"}</span></span>
+                          <span className="tr-dept-name"><strong>{d.label}</strong><span className="tr-muted">{slots ? `칸 ${slots}개` : "칸 없음"}{subPeak ? ` · 외주 ${subPeak}명 포함` : ""}</span></span>
                           <span className="tr-dept-actions">
                             {editable && <button type="button" className="tr-btn tiny" onClick={() => openAssign(dept, null, {})} title="추가 인원을 넣거나, 인원을 교대합니다"><Icon name="plus" size={12} /> 출장자</button>}
                           </span>

@@ -255,7 +255,7 @@ export function AssignmentModal({ plan, dept, assignment, defaults, ctx, canEdit
       {!editing && (
         <div className="tr-seg" role="tablist" aria-label="배정 방식">
           <button type="button" className={mode === "member" ? "on" : ""} onClick={() => setMode("member")} disabled={!canEdit}>명단의 인원</button>
-          <button type="button" className={mode === "slot" ? "on" : ""} onClick={() => setMode("slot")} disabled={!canEdit}>명단에 없는 자리 (외주·법인 등)</button>
+          <button type="button" className={mode === "slot" ? "on" : ""} onClick={() => setMode("slot")} disabled={!canEdit}>외주·명단 외 인원</button>
           {canRotate && <button type="button" className={mode === "rotate" ? "on" : ""} onClick={() => { chooseOutgoing(outId || deptAssignments[deptAssignments.length - 1].id); setMode("rotate"); }}><Icon name="swap" size={13} /> 교대</button>}
         </div>
       )}
@@ -310,8 +310,8 @@ export function AssignmentModal({ plan, dept, assignment, defaults, ctx, canEdit
               <span className="tr-field-hint">고른 기간에 충돌(기간 겹침·부재)이 없는 인원이 위에 나옵니다.{assignableDepts(dept).length > 1 ? ` ${deptName} 자리에는 ${assignableDepts(dept).map((k) => TRIP_DEPT_LABEL[k]).join('·')} 인원을 모두 넣을 수 있습니다.` : ""}</span>
             </div>
           ) : (
-            <Field label="자리 이름" wide hint="인원 명단에 없는 자리입니다. 공수에는 1명으로 계산됩니다.">
-              <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="예: 외주1, 중국법인" maxLength={40} disabled={!canEdit} />
+            <Field label="외주·명단 외 인원 이름" wide hint="인원 명단에 없는 외주·법인 인원입니다. 공수에는 1명으로 계산됩니다. 외주도 각 부서 팀이 이 자리에 기입합니다.">
+              <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="예: 비전 외주 1, 중국법인" maxLength={40} disabled={!canEdit} />
             </Field>
           )}
           <Field label="메모" wide>

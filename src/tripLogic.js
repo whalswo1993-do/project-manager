@@ -586,53 +586,57 @@ export function projectsToPlans(projects) {
     .sort((a, b) => a.start_date.localeCompare(b.start_date) || a.name.localeCompare(b.name, "ko"));
 }
 
+// 마스터 플랜의 외주 부서(기구 외주·비전 외주·전장 외주·제어 외주)는 그 부서 팀이 직접 관리하므로 출장자 관리에서는 본 부서에 합친다.
+export const OUTSOURCE_PARENT = { mechanical_sub: "mechanical", vision_sub: "vision", control_sub: "control", electrical_sub: "electrical" };
+export const isOutsourceName = (name) => /외주|sub|협력|outsourc|엘라이트/i.test(String(name || ""));
+
 /**
- * 프로젝트 마스터 플랜 공수(manpower.departments[부서].daily = { 날짜: 인원 })를 주 단위 필요 인원으로 바꾼다.
- * 한 주(월~일) 안에서 가장 큰 값을 그 주 인원으로 보고, 같은 인원이 이어지는 주를 한 구간으로 묶는다.
- * 기구·비전·제어·전장·소장(화면에서는 PM)만 쓴다(외주·안전·SV 는 출장자 명단 대상이 아니다).
- * deptKeyOf: 공수 부서 이름 → 출장 부서 키(없으면 null)
+ * 프로젝트 마스터 플랜 공수(manpower.departments[부서].daily = { 날짜: 인원 })를 부서별 "일 단위" 필요 인원으로 바꾼다.
+ * 하루하루 마스터 플랜의 값을 그대로 쓰고(주 단위로 뭉뚱그리지 않는다), 같은 인원이 이어지는 날을 한 구간으로 묶는다.
+ * 기구·비전·제어·전장·소장(PM)만 쓰고, 각 부서의 외주는 그 부서에 더한다(외주 몫은 sub 로 남긴다).
+ * 안전·SV 는 출장자 명단 대상이 아니라 제외한다.
+ * deptKeyOf: 공수 부서 이름 → 출장 부서 키(없으면 null). 외주 이름은 본 부서 키를 돌려주면 된다.
  */
 export function autoDemands(projectId, manpower, deptKeyOf) {
   const departments = manpower?.departments;
   if (!departments || typeof departments !== "object") return [];
-  const perDay = {}; // 부서 키 → { 날짜: 인원 합 } (같은 부서로 모이는 이름이 둘 이상이면 합친다)
+  const perDay = {}; // 부서 키 → { 날짜: { total, sub } } (같은 부서로 모이는 이름이 둘 이상이면 합친다)
   Object.entries(departments).forEach(([name, obj]) => {
     const key = deptKeyOf(name);
     if (!key || !TRIP_DEPT_LABEL[key]) return;
+    const sub = isOutsourceName(name);
     Object.entries(obj?.daily || {}).forEach(([date, count]) => {
       const n = Number(count);
       if (!isValidISO(date) || !(n > 0)) return;
       perDay[key] = perDay[key] || {};
-      perDay[key][date] = (perDay[key][date] || 0) + n;
+      const cell = perDay[key][date] || { total: 0, sub: 0 };
+      cell.total += n;
+      if (sub) cell.sub += n;
+      perDay[key][date] = cell;
     });
   });
   const rows = [];
   Object.entries(perDay).forEach(([dept, days]) => {
-    const weekly = {};
-    Object.entries(days).forEach(([date, n]) => {
-      const wk = mondayOf(date);
-      weekly[wk] = Math.max(weekly[wk] || 0, n);
-    });
-    const weeks = Object.keys(weekly).sort();
     let run = null;
-    weeks.forEach((wk) => {
-      const n = weekly[wk];
-      if (run && run.headcount === n && addDays(run.lastWeek, 7) === wk) {
-        run.lastWeek = wk;
+    Object.keys(days).sort().forEach((date) => {
+      const { total, sub } = days[date];
+      if (run && run.headcount === total && run.sub === sub && addDays(run.last, 1) === date) {
+        run.last = date;
       } else {
         if (run) rows.push(run);
-        run = { dept, headcount: n, firstWeek: wk, lastWeek: wk };
+        run = { dept, headcount: total, sub, first: date, last: date };
       }
     });
     if (run) rows.push(run);
   });
   return rows.map((r) => ({
-    id: `auto-${projectId}-${r.dept}-${r.firstWeek}`,
+    id: `auto-${projectId}-${r.dept}-${r.first}`,
     project_id: projectId,
     dept: r.dept,
-    start_date: r.firstWeek,
-    end_date: addDays(r.lastWeek, 6),
+    start_date: r.first,
+    end_date: r.last,
     headcount: r.headcount,
+    sub: r.sub,
     auto: true,
   }));
 }

@@ -4,7 +4,7 @@ import {
   addDays, mondayOf, buildWeeks, overlaps, weeksBetween, isValidISO, monthSpans, todayISO,
   needForWeek, haveForWeek, planCoverage, shortageRuns, checkAssignment, analyzeAssignments, worstLevel,
   memberWeekState, deptWeekStats, parseMemberPaste, guessDept, memberKey,
-  projectsToPlans, autoDemands, buildDemands, assignmentState, isPastProject,
+  projectsToPlans, autoDemands, buildDemands, assignmentState, isPastProject, needOnDay,
 } from "../src/tripLogic.js";
 
 // 전부 가짜 데이터 (실제 인원·PJT 는 공개 저장소에 넣지 않는다)
@@ -213,7 +213,7 @@ describe("명단 붙여넣기", () => {
 });
 
 describe("프로젝트 일정 연동", () => {
-  const deptKeyOf = (name) => ({ "기구": "mechanical", "비전": "vision", "소장": "manager", "비전 외주": "vision_sub", "안전": "safety" }[name] || null);
+  const deptKeyOf = (name) => ({ "기구": "mechanical", "비전": "vision", "소장": "manager", "비전 외주": "vision", "기구 외주": "mechanical", "안전": "safety" }[name] || null); // 외주는 본 부서 키로 합친다
   const daily = (from, days, n) => Object.fromEntries(Array.from({ length: days }, (_, i) => [addDays(from, i), n]));
   const project = (extra = {}) => ({
     id: "pr1", name: "시험 프로젝트", site: "SITE-A", customer: "SK on", startDate: "2026-11-02", endDate: "2027-01-31", status: "진행중",
@@ -230,18 +230,44 @@ describe("프로젝트 일정 연동", () => {
     expect(plans.find((p) => p.id === "us").overseas).toBe(true);
     expect(plans[1].phases).toEqual([{ label: "설계", start: "2026-11-02", end: "2026-11-15" }]);
   });
-  it("마스터 플랜 공수를 주 단위 구간으로 바꾼다 (같은 인원이 이어지면 한 구간, 외주·안전은 제외)", () => {
+  it("마스터 플랜 공수를 일 단위 구간으로 바꾼다 (같은 인원이 이어지면 한 구간, 외주는 본 부서에 합치고 안전은 제외)", () => {
     const d = autoDemands("pr1", project().manpower, deptKeyOf);
     const mech = d.filter((x) => x.dept === "mechanical");
     expect(mech.map((x) => [x.start_date, x.end_date, x.headcount])).toEqual([["2026-11-02", "2026-11-15", 2], ["2026-11-16", "2026-11-29", 4]]);
-    expect(d.filter((x) => x.dept === "vision").map((x) => [x.start_date, x.end_date, x.headcount])).toEqual([["2026-11-02", "2026-11-08", 1]]);
-    expect(d.some((x) => ["vision_sub", "safety"].includes(x.dept))).toBe(false);
+    // 비전: 11/2~11/3 외주 2 + 11/4~11/6 (내부 1 + 외주 2) + 11/7~11/8 외주 2
+    expect(d.filter((x) => x.dept === "vision").map((x) => [x.start_date, x.end_date, x.headcount, x.sub])).toEqual([
+      ["2026-11-02", "2026-11-03", 2, 2], ["2026-11-04", "2026-11-06", 3, 2], ["2026-11-07", "2026-11-08", 2, 2],
+    ]);
+    expect(d.some((x) => x.dept === "safety")).toBe(false);
     expect(d.every((x) => x.auto && x.project_id === "pr1")).toBe(true);
   });
-  it("한 주 안에서 인원이 바뀌면 그 주는 큰 값으로 본다", () => {
+  it("한 주 안에서 인원이 바뀌면 그 날부터 바뀐 값을 쓴다 (주 단위로 부풀리지 않는다)", () => {
     const mp = { departments: { "기구": { daily: { ...daily("2026-11-02", 3, 2), ...daily("2026-11-05", 4, 5) } } } };
     const d = autoDemands("p", mp, deptKeyOf);
-    expect(d.map((x) => [x.start_date, x.end_date, x.headcount])).toEqual([["2026-11-02", "2026-11-08", 5]]);
+    expect(d.map((x) => [x.start_date, x.end_date, x.headcount])).toEqual([["2026-11-02", "2026-11-04", 2], ["2026-11-05", "2026-11-08", 5]]);
+    const week = { start: "2026-11-02", end: "2026-11-08" };
+    expect(needOnDay(d, "mechanical", "2026-11-03")).toBe(2);
+    expect(needForWeek(d, "mechanical", week)).toBe(5); // 주 단위로 볼 때만 그 주의 최대
+  });
+  it("계획 공수 정합성: 부서별 하루 인원 합이 마스터 플랜(외주 포함)의 하루 인원 합과 정확히 같다", () => {
+    const mp = {
+      departments: {
+        "기구": { daily: { ...daily("2026-11-02", 10, 3), ...daily("2026-11-14", 5, 1) } },
+        "기구 외주": { daily: daily("2026-11-05", 6, 2) },
+        "비전": { daily: daily("2026-11-02", 4, 1) },
+        "비전 외주": { daily: daily("2026-11-04", 4, 3) },
+        "안전": { daily: daily("2026-11-02", 9, 1) },
+      },
+    };
+    const d = autoDemands("p", mp, deptKeyOf);
+    const expectMech = {};
+    [["기구"], ["기구 외주"]].forEach(([n]) => Object.entries(mp.departments[n].daily).forEach(([day, c]) => { expectMech[day] = (expectMech[day] || 0) + c; }));
+    Object.entries(expectMech).forEach(([day, c]) => expect(needOnDay(d, "mechanical", day)).toBe(c));
+    // 사람·일 합계도 같다 (일 단위로 쪼개 더해 본다)
+    const manday = (dept) => { let sum = 0; for (let day = "2026-10-30"; day <= "2026-11-30"; day = addDays(day, 1)) sum += needOnDay(d, dept, day); return sum; };
+    expect(manday("mechanical")).toBe(Object.values(expectMech).reduce((x, y) => x + y, 0));
+    expect(manday("vision")).toBe(4 * 1 + 4 * 3);
+    expect(d.filter((x) => x.dept === "mechanical" && x.sub > 0).length).toBeGreaterThan(0); // 외주 몫이 표시용으로 남는다
   });
   it("공수가 없거나 모양이 이상하면 빈 목록", () => {
     expect(autoDemands("p", null, deptKeyOf)).toEqual([]);

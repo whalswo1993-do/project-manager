@@ -20,7 +20,7 @@ import ProjectPicker from "./TripProjectPicker";
 import { AssignmentModal, MemberModal, ImportModal, OutingModal } from "./TripModals";
 
 const TABS = [
-  { id: "board", label: "출장자 배정", icon: "calendar" },
+  { id: "board", label: "프로젝트 출장자 배정", icon: "calendar" },
   { id: "roster", label: "부서 인원 현황", icon: "users" },
   { id: "members", label: "팀원 관리", icon: "list" },
   { id: "summary", label: "종합·확인 사항", icon: "barChart" },

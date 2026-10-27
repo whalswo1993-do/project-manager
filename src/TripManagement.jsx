@@ -958,6 +958,11 @@ function Roster({ members, demands, defaultDept, ctx, planIndex, today, viewMode
   );
 }
 
+// 한 칸에 20명이 넘으면 카드를 여러 줄로 나눠 한 줄에 20명 안팎이 되게 한다 (21~40명=2줄, 41~60명=3줄, 최대 4줄)
+const LANE_SPLIT = 20;
+const laneCols = (n) => Math.min(4, Math.max(1, Math.ceil(n / LANE_SPLIT)));
+const wideCls = (n) => (n > LANE_SPLIT ? ` cols-${laneCols(n)}` : "");
+
 // 한 부서의 상황판: 본사 잔류 / PJT별 출장 / 부재 를 칸(열)으로 나누고, 그 안에 사람 카드를 둔다
 function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, setModal }) {
   const list = members.filter((m) => m.dept === dept.key && m.active);
@@ -1011,7 +1016,7 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
     <div className="tr-dept-board" data-dept={dept.key}>
       {showTitle && <h4 className="tr-dept-board-title">{dept.label} <span className="tr-muted">총 {list.length}명</span></h4>}
       <div className="tr-lanes">
-        <div className="tr-lane home">
+        <div className={`tr-lane home${wideCls(home.length)}`}>
           <div className="tr-lane-head"><strong>본사 잔류</strong><b>{home.length}</b></div>
           <div className="tr-lane-body">
             {home.length === 0 && <span className="tr-muted">모두 출장 중</span>}
@@ -1023,7 +1028,7 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
           const have = new Set(cards.map((c) => c.m.id)).size;
           const idx = (planIndex.get(id) ?? 0) % 6;
           return (
-            <div className={`tr-lane pc-${idx}`} key={id}>
+            <div className={`tr-lane pc-${idx}${wideCls(cards.length)}`} key={id}>
               <div className="tr-lane-head">
                 <strong title={plan?.name}>{plan?.name || "(프로젝트 없음)"}</strong>
                 <b className={need && have < need ? "short" : ""}>{need ? `${have}/${need}` : have}</b>
@@ -1036,7 +1041,7 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
           );
         })}
         {awayPlaces.map(({ place, list }) => (
-          <div className="tr-lane away" key={`away-${place}`}>
+          <div className={`tr-lane away${wideCls(list.length)}`} key={`away-${place}`}>
             <div className="tr-lane-head"><strong title={place}>{place}</strong><b>{list.length}</b></div>
             <div className="tr-lane-body">
               {list.map(({ m, ab }) => card(m, `${ABSENCE_KIND_LABEL[ab.kind] || "일정"} · ${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? ` · ${ab.note}` : ""}`, "", null, ab))}
@@ -1044,7 +1049,7 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
           </div>
         ))}
         {absent.length > 0 && (
-          <div className="tr-lane absent">
+          <div className={`tr-lane absent${wideCls(absent.length)}`}>
             <div className="tr-lane-head"><strong>부재</strong><b>{absent.length}</b></div>
             <div className="tr-lane-body">
               {absent.map(({ m, ab }) => card(m, `${absenceText(ab)} ${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? ` · ${ab.note}` : ""}`, "", null, ab))}

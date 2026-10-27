@@ -541,3 +541,12 @@ button.tr-now:hover { text-decoration: underline; }
 .tr-need-item b { max-width: 300px; font-weight: 650; }
 .tr-need-item .sub { font-size: 11px; }
 .tr-need-item .tr-state { height: 18px; padding: 0 6px; font-size: 10.5px; }
+
+/* 한 칸에 20명이 넘으면 여러 줄로 (cols-2~4) */
+.tr-lane[class*="cols-"] .tr-lane-body { display: grid; gap: 6px; align-items: start; }
+.tr-lane.cols-2 { flex-basis: 430px; min-width: 430px; }
+.tr-lane.cols-3 { flex-basis: 650px; min-width: 650px; }
+.tr-lane.cols-4 { flex-basis: 870px; min-width: 870px; }
+.tr-lane.cols-2 .tr-lane-body { grid-template-columns: repeat(2, 1fr); }
+.tr-lane.cols-3 .tr-lane-body { grid-template-columns: repeat(3, 1fr); }
+.tr-lane.cols-4 .tr-lane-body { grid-template-columns: repeat(4, 1fr); }

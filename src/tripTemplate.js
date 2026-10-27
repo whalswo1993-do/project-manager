@@ -138,7 +138,7 @@ const byTeamName = (a, b) => String(a.team || "").localeCompare(String(b.team ||
 /**
  * 양식 통합문서를 만든다.
  *  - members 가 없으면: "팀원 명단" 시트 하나에 예시 두 줄(빈 양식).
- *  - members 가 있으면: 부서마다 시트를 나눠(기구·비전·제어·전장·소장) 그 부서 인원을 같은 양식으로 채운다(수정해서 다시 붙여넣기용).
+ *  - members 가 있으면: 부서마다 시트를 나눠(기구·비전·제어·전장·PM) 그 부서 인원을 같은 양식으로 채운다(수정해서 다시 붙여넣기용).
  * depts = 보여 줄 부서 키(없으면 전체). ExcelJS 모듈은 부르는 쪽에서 넘긴다(화면은 필요할 때만 불러온다).
  */
 export function buildMemberWorkbook(ExcelJS, members = null, depts = null) {

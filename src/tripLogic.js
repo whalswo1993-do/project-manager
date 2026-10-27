@@ -6,7 +6,7 @@ export const TRIP_DEPTS = [
   { key: "vision", label: "비전" },
   { key: "control", label: "제어" },
   { key: "electrical", label: "전장" },
-  { key: "manager", label: "소장" },
+  { key: "manager", label: "PM" },
 ];
 export const TRIP_DEPT_LABEL = Object.fromEntries(TRIP_DEPTS.map((d) => [d.key, d.label]));
 
@@ -567,7 +567,7 @@ export function projectsToPlans(projects) {
 /**
  * 프로젝트 마스터 플랜 공수(manpower.departments[부서].daily = { 날짜: 인원 })를 주 단위 필요 인원으로 바꾼다.
  * 한 주(월~일) 안에서 가장 큰 값을 그 주 인원으로 보고, 같은 인원이 이어지는 주를 한 구간으로 묶는다.
- * 기구·비전·제어·전장·소장만 쓴다(외주·안전·SV 는 출장자 명단 대상이 아니다).
+ * 기구·비전·제어·전장·소장(화면에서는 PM)만 쓴다(외주·안전·SV 는 출장자 명단 대상이 아니다).
  * deptKeyOf: 공수 부서 이름 → 출장 부서 키(없으면 null)
  */
 export function autoDemands(projectId, manpower, deptKeyOf) {

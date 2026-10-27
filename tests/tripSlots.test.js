@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import ExcelJS from "exceljs";
 import {
   buildColumns, needOnDay, haveOnDay, needForWeek, haveForWeek, peakNeed, layoutLanes, laneCellState, laneGapRange,
-  parseMemberPaste, planMemberSync, mergeMemberRow, memberChanges, dayCount,
+  parseMemberPaste, planMemberSync, mergeMemberRow, memberChanges, dayCount, guessDept, TRIP_DEPT_LABEL,
 } from "../src/tripLogic.js";
 import { buildMemberWorkbook, memberToRow, TEMPLATE_HEADERS } from "../src/tripTemplate.js";
 
@@ -183,3 +183,17 @@ describe("팀원 엑셀 양식", () => {
     expect(ws.getCell("A10").dataValidation.formulae[0]).toBe('"비전"');
   });
 });
+
+describe("PM 부서 이름", () => {
+  it("화면과 엑셀에서는 PM, 예전 '소장' 표기도 같은 부서로 읽는다", () => {
+    expect(TRIP_DEPT_LABEL.manager).toBe("PM");
+    expect(guessDept("PM")).toBe("manager");
+    expect(guessDept("소장")).toBe("manager");
+    const members = [{ id: "m1", name: "갑", dept: "manager", team: "PM 1팀", rank: "", grade: "", b1_visa: false, active: true, note: "" }];
+    const wb = buildMemberWorkbook(ExcelJS, members);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(["PM", "작성 안내"]);
+    expect(wb.getWorksheet("PM").getCell("A2").value).toBe("PM");
+    expect(parseMemberPaste(["부서(분야)\t이름", "소장\t을", "PM\t병"].join("\n")).rows.map((r) => r.dept)).toEqual(["manager", "manager"]);
+  });
+});
+

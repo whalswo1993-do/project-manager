@@ -166,23 +166,16 @@
 
 .tr-grid { border-collapse: separate; border-spacing: 0; font-size: 12.5px; width: max-content; min-width: 100%; }
 .tr-grid th, .tr-grid td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 0; text-align: center; background: var(--surface); color: var(--ink); }
-.tr-grid thead th { position: sticky; z-index: 3; background: var(--surface-2); color: var(--ink-2); height: 26px; font-weight: 600; }
+.tr-grid thead th { position: sticky; top: var(--hr-top, 0px); z-index: 3; background: var(--surface-2); color: var(--ink-2); height: var(--hr-h, 26px); padding: 0; line-height: 1.1; font-weight: 600; }
 .tr-grid thead tr:nth-child(1) th { top: 0; }
-.tr-grid thead tr:nth-child(2) th { top: 26px; }
-.tr-grid thead tr:nth-child(3) th { top: 52px; }
-.tr-grid thead tr:nth-child(4) th { top: 78px; }
-.tr-grid thead tr:nth-child(5) th { top: 104px; }
-.tr-grid thead tr:nth-child(6) th { top: 130px; }
-.tr-grid thead tr:nth-child(7) th { top: 156px; }
-.tr-grid thead tr:nth-child(8) th { top: 182px; }
 .tr-grid th.month { font-size: 11.5px; text-align: left; padding-left: 8px; }
 .tr-grid th.wk { min-width: 56px; width: 56px; font-weight: 500; font-size: 11.5px; }
 .tr-grid th.tr-today { background: var(--brand-wash); color: var(--brand); font-weight: 700; }
 .tr-grid th.dy, .tr-grid th.dw { min-width: 32px; width: 32px; font-weight: 500; font-size: 11.5px; }
-.tr-grid th.dw { height: 20px; font-size: 10.5px; color: var(--ink-3); }
+.tr-grid th.dw { font-size: 10px; color: var(--ink-3); }
 .tr-grid th.tr-we { color: var(--bad); }
 .tr-grid th.tr-ws, .tr-grid td.tr-ws { border-left: 1px solid var(--ink-4); }
-.tr-grid th.phase { font-size: 11px; font-weight: 600; color: var(--ink-3); height: 26px; }
+.tr-grid th.phase { font-size: 11px; font-weight: 600; color: var(--ink-3); }
 .tr-grid .tr-col-name { position: sticky; left: 0; z-index: 2; min-width: 230px; width: 230px; max-width: 230px; text-align: left; padding: 0 10px; background: var(--surface); box-shadow: 1px 0 0 var(--line-2); }
 .tr-grid thead .tr-col-name { z-index: 4; background: var(--surface-2); }
 .tr-grid .tr-col-meta { min-width: 120px; text-align: left; padding: 0 10px; white-space: nowrap; color: var(--ink-2); background: var(--surface); }
@@ -489,9 +482,9 @@
 }
 .ms-0 { --msc: var(--ms-0); } .ms-1 { --msc: var(--ms-1); } .ms-2 { --msc: var(--ms-2); } .ms-3 { --msc: var(--ms-3); }
 .ms-4 { --msc: var(--ms-4); } .ms-5 { --msc: var(--ms-5); } .ms-6 { --msc: var(--ms-6); } .ms-7 { --msc: var(--ms-7); }
-.tr-grid th.phase.has { background: var(--msc); color: var(--ms-ink); font-size: 12px; font-weight: 800; letter-spacing: -0.01em; border-left: 2px solid var(--surface); border-right: 2px solid var(--surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tr-grid th.phase.has { background: var(--msc); color: var(--ms-ink); font-size: 11px; font-weight: 800; line-height: 1; letter-spacing: -0.01em; border-left: 2px solid var(--surface); border-right: 2px solid var(--surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tr-phase-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }
-.tr-phase-chip { display: inline-flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; background: var(--msc); color: var(--ms-ink); border-radius: var(--radius-sm); font-size: 12px; }
+.tr-phase-chip { display: inline-flex; align-items: center; gap: 8px; height: 22px; padding: 0 10px; background: var(--msc); color: var(--ms-ink); border-radius: var(--radius-sm); font-size: 12px; }
 .tr-phase-chip b { font-weight: 800; }
 .tr-phase-chip em { font-style: normal; font-weight: 600; opacity: .85; font-size: 11px; }
 .tr-chip.us { background: color-mix(in srgb, var(--brand) 12%, var(--surface)); color: var(--brand); border: 1px solid color-mix(in srgb, var(--brand) 40%, transparent); margin-left: 0; }

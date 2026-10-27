@@ -348,32 +348,40 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
 
 // ───────────────────────────── 시간 칸 머리글 (일/주 공통) ─────────────────────────────
 
+// 머리글 줄 높이(px): 월 / 일 / 요일 / 주 / 마일스톤 띠(얇게)
+const HEAD_H = { month: 24, day: 22, dow: 16, week: 24, phase: 18 };
+
 function TimeHead({ cols, today, phases, phaseIdx = [], leftHead, extraLeft = [], mode }) {
   const spans = monthSpans(cols);
   const lanes = phases?.length ? phaseRows(cols, phases, phaseIdx) : [];
   const rowSpan = (mode === "day" ? 3 : 2) + lanes.length;
+  // 머리글 줄마다 높이를 정하고, 위에서부터 쌓아 고정(sticky) 위치를 계산한다.
+  // (줄 수가 늘어도 고정된 줄끼리 어긋나거나 본문 위로 넘치지 않게 한다)
+  const heights = [HEAD_H.month, ...(mode === "day" ? [HEAD_H.day, HEAD_H.dow] : [HEAD_H.week]), ...lanes.map(() => HEAD_H.phase)];
+  const rowStyle = (i) => ({ "--hr-top": `${heights.slice(0, i).reduce((a, b) => a + b, 0)}px`, "--hr-h": `${heights[i]}px` });
+  let ri = 0;
   return (
     <thead>
-      <tr>
+      <tr style={rowStyle(ri++)}>
         <th className="tr-col-name" rowSpan={rowSpan}>{leftHead}</th>
         {extraLeft.map((x) => <th key={x.key} className={x.className} rowSpan={rowSpan}>{x.label}</th>)}
         {spans.map((s) => <th key={s.key} colSpan={s.span} className="month">{s.span < 3 ? s.shortLabel : s.label}</th>)}
       </tr>
       {mode === "day" ? (
         <>
-          <tr>
+          <tr style={rowStyle(ri++)}>
             {cols.map((c) => (
               <th key={c.key} className={`dy ${c.weekend ? "tr-we" : ""} ${c.weekStart ? "tr-ws" : ""} ${c.start === today ? "tr-today" : ""}`} title={c.start}>{Number(c.start.slice(8))}</th>
             ))}
           </tr>
-          <tr>
+          <tr style={rowStyle(ri++)}>
             {cols.map((c) => (
               <th key={c.key} className={`dw ${c.weekend ? "tr-we" : ""} ${c.weekStart ? "tr-ws" : ""} ${c.start === today ? "tr-today" : ""}`}>{DOW_LABEL[c.dow]}</th>
             ))}
           </tr>
         </>
       ) : (
-        <tr>
+        <tr style={rowStyle(ri++)}>
           {cols.map((c) => (
             <th key={c.key} className={`wk ${c.start <= today && today <= c.end ? "tr-today" : ""}`} title={`${c.start} ~ ${c.end}`}>{shortDate(c.start)}</th>
           ))}
@@ -389,7 +397,7 @@ function TimeHead({ cols, today, phases, phaseIdx = [], leftHead, extraLeft = []
         });
         if (k < cols.length) cells.push({ span: cols.length - k, empty: true });
         return (
-          <tr key={`phase-${li}`}>
+          <tr key={`phase-${li}`} style={rowStyle(ri++)}>
             {cells.map((c, i) => (c.empty
               ? <th key={i} colSpan={c.span} className="phase" />
               : <th key={i} colSpan={c.span} className={`phase has ms-${c.color}`} title={c.label}>{c.label}</th>))}

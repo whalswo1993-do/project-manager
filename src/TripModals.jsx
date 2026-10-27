@@ -3,7 +3,7 @@ import { Icon } from "./icons";
 import { PasteZone } from "./PasteZone";
 import { confirmDialog } from "./confirmService";
 import {
-  TRIP_DEPTS, TRIP_DEPT_LABEL, ABSENCE_KINDS, ABSENCE_KIND_LABEL,
+  TRIP_DEPTS, TRIP_DEPT_LABEL, ABSENCE_KINDS, isOutTrip, absenceText, overlaps,
   checkAssignment, worstLevel, isValidISO, rangeLabel, parseMemberPaste, memberKey, planMemberSync,
   addDays, dayCount, todayISO, shortDate,
 } from "./tripLogic";
@@ -335,7 +335,7 @@ export function MemberModal({ member, defaultDept, editableDepts, absences, onSa
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [abs, setAbs] = useState({ kind: "trip", start_date: "", end_date: "", note: "" });
+  const [abs, setAbs] = useState({ kind: "cs", location: "", start_date: "", end_date: "", note: "" });
   const set = (p) => setForm((f) => ({ ...f, ...p }));
   // 담당 부서가 하나뿐인 팀장은 자기 부서로 고정한다 (PM·관리자처럼 여러 부서를 맡을 때만 고른다)
   const lockedDept = editableDepts.length <= 1;
@@ -359,11 +359,12 @@ export function MemberModal({ member, defaultDept, editableDepts, absences, onSa
   }
   async function addAbsence() {
     setError("");
+    if (isOutTrip(abs.kind) && !abs.location.trim()) return setError("어디에 가 있는지(장소·내용)를 적어 주세요. 예: SKO 서산 CS 대응");
     if (!isValidISO(abs.start_date) || (abs.end_date && (!isValidISO(abs.end_date) || abs.end_date < abs.start_date))) {
-      return setError("부재 시작일을 입력하고, 종료일은 시작일 이후로 하세요. (종료일을 비우면 '계속'입니다)");
+      return setError("시작일을 입력하고, 종료일은 시작일 이후로 하세요. (종료일을 비우면 '계속'입니다)");
     }
     const res = await onAddAbsence({ ...abs, member_id: member.id });
-    if (res?.error) setError(res.error); else if (!res?.cancelled) setAbs({ kind: "trip", start_date: "", end_date: "", note: "" });
+    if (res?.error) setError(res.error); else if (!res?.cancelled) setAbs({ kind: "cs", location: "", start_date: "", end_date: "", note: "" });
   }
 
   return (
@@ -398,16 +399,16 @@ export function MemberModal({ member, defaultDept, editableDepts, absences, onSa
       {editing && (
         <div className="tr-absences">
           <div className="tr-phases-head">
-            <strong>출장 불가 기간</strong>
-            <span>휴직·타 출장·교육 등. 이 기간에 배정하면 경고가 뜹니다.</span>
+            <strong>프로젝트 외 일정</strong>
+            <span>CS·고객사 대응, 테스트 같은 프로젝트 배정이 아닌 출장이나 교육·휴직. 이 기간에는 본사 대기가 아니라 적어 둔 곳에 가 있는 것으로 보이고, 프로젝트에 배정하면 경고가 뜹니다.</span>
           </div>
-          {mine.length === 0 && <p className="tr-empty-line">등록된 기간이 없습니다.</p>}
+          {mine.length === 0 && <p className="tr-empty-line">등록된 일정이 없습니다.</p>}
           {mine.map((a) => (
             <div className="tr-absence-item" key={a.id}>
-              <span className="tr-chip">{ABSENCE_KIND_LABEL[a.kind]}</span>
+              <span className={`tr-chip ${isOutTrip(a.kind) ? "out" : ""}`}>{absenceText(a)}</span>
               <span>{rangeLabel(a.start_date, a.end_date)}</span>
               {a.note && <span className="tr-muted">{a.note}</span>}
-              {canEdit && <button type="button" className="tr-icon-btn danger" onClick={() => onDeleteAbsence(a.id).then((r) => r?.error && setError(r.error))} aria-label="기간 삭제"><Icon name="trash" size={14} /></button>}
+              {canEdit && <button type="button" className="tr-icon-btn danger" onClick={() => onDeleteAbsence(a.id).then((r) => r?.error && setError(r.error))} aria-label="일정 삭제"><Icon name="trash" size={14} /></button>}
             </div>
           ))}
           {canEdit && (
@@ -415,6 +416,7 @@ export function MemberModal({ member, defaultDept, editableDepts, absences, onSa
               <select value={abs.kind} onChange={(e) => setAbs({ ...abs, kind: e.target.value })} aria-label="종류">
                 {ABSENCE_KINDS.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}
               </select>
+              <input type="text" value={abs.location} onChange={(e) => setAbs({ ...abs, location: e.target.value })} placeholder={isOutTrip(abs.kind) ? "어디에 (예: SKO 서산)" : "내용 (선택)"} maxLength={60} aria-label="장소·내용" />
               <input type="date" value={abs.start_date} onChange={(e) => setAbs({ ...abs, start_date: e.target.value })} aria-label="시작일" />
               <span className="tr-tilde">~</span>
               <input type="date" value={abs.end_date} onChange={(e) => setAbs({ ...abs, end_date: e.target.value })} aria-label="종료일 (비우면 계속)" />
@@ -584,6 +586,78 @@ export function ImportModal({ existing, editableDepts, defaultDept, onImport, on
           )}
         </>
       )}
+    </Modal>
+  );
+}
+
+// ───────── 프로젝트 외 일정 등록 (여러 명 한 번에) ─────────
+
+export function OutingModal({ members, ctx, onSave, onClose }) {
+  const [kind, setKind] = useState("cs");
+  const [location, setLocation] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const depts = [...new Set(members.map((m) => m.dept))];
+  const dateOk = isValidISO(start) && (!end || (isValidISO(end) && end >= start));
+
+  // 같은 기간에 이미 프로젝트에 배정돼 있거나 다른 일정이 있는 사람
+  const clashes = useMemo(() => {
+    if (!dateOk) return [];
+    const to = end || "9999-12-31";
+    const list = [];
+    members.forEach((m) => {
+      ctx.assignments.filter((a) => a.member_id === m.id && overlaps(a.start_date, a.end_date, start, to)).forEach((a) => {
+        list.push(`${m.name}: '${ctx.plans.find((p) => p.id === a.project_id)?.name || "프로젝트"}' 배정(${rangeLabel(a.start_date, a.end_date)})과 겹칩니다`);
+      });
+      ctx.absences.filter((x) => x.member_id === m.id && overlaps(x.start_date, x.end_date, start, to)).forEach((x) => {
+        list.push(`${m.name}: ${absenceText(x)} 일정(${rangeLabel(x.start_date, x.end_date)})과 겹칩니다`);
+      });
+    });
+    return list;
+  }, [members, ctx, start, end, dateOk]);
+
+  async function submit() {
+    setError("");
+    if (isOutTrip(kind) && !location.trim()) return setError("어디에 가 있는지(장소·내용)를 적어 주세요. 예: SKO 서산 CS 대응");
+    if (!dateOk) return setError("시작일을 입력하고, 종료일은 시작일 이후로 하세요. (종료일을 비우면 '계속'입니다)");
+    if (clashes.length) {
+      const ok = await confirmDialog({ title: "겹치는 일정이 있습니다", message: "그래도 등록할까요?", detail: clashes.slice(0, 5).join(" · ") + (clashes.length > 5 ? ` 외 ${clashes.length - 5}건` : ""), confirmLabel: "그래도 등록", danger: false });
+      if (!ok) return;
+    }
+    setBusy(true);
+    const res = await onSave(members.map((m) => ({ member_id: m.id, kind, location, start_date: start, end_date: end, note })));
+    setBusy(false);
+    if (res?.error) setError(res.error);
+  }
+
+  return (
+    <Modal dept={depts.length === 1 ? depts[0] : undefined} title={`프로젝트 외 일정 등록 (${members.length}명)`} onClose={onClose} wide
+      subtitle={members.map((m) => m.name).join(", ")}
+      footer={
+        <>
+          <button type="button" className="tr-btn" onClick={onClose} disabled={busy}>닫기</button>
+          <button type="button" className="tr-btn primary" onClick={submit} disabled={busy}>{busy ? "저장 중..." : "등록"}</button>
+        </>
+      }>
+      <p className="tr-readonly-note"><Icon name="info" size={13} /> 프로젝트에 배정되지 않았지만 본사에 있지 않은 인원(CS 대응·고객사 대응·테스트 등)이 어디에 가 있는지 적어 두면, 그 기간에 '본사 대기'가 아니라 그 장소에 있는 것으로 조회됩니다.</p>
+      <div className="tr-form-grid">
+        <Field label="종류">
+          <select value={kind} onChange={(e) => setKind(e.target.value)}>
+            {ABSENCE_KINDS.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}
+          </select>
+        </Field>
+        <Field label={isOutTrip(kind) ? "어디에 (장소·내용)" : "내용 (선택)"} hint={isOutTrip(kind) ? "예: SKO 서산 / 고객사 미팅 / 설비 테스트" : ""}>
+          <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} maxLength={60} placeholder={isOutTrip(kind) ? "필수" : ""} />
+        </Field>
+        <Field label="시작일"><input type="date" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
+        <Field label="종료일" hint="비우면 '계속'으로 봅니다."><input type="date" value={end} onChange={(e) => setEnd(e.target.value)} /></Field>
+        <Field label="메모 (선택)" wide><input type="text" value={note} onChange={(e) => setNote(e.target.value)} maxLength={60} /></Field>
+      </div>
+      <IssueList issues={clashes.map((message) => ({ level: "warn", message }))} />
+      <ErrorLine error={error} />
     </Modal>
   );
 }

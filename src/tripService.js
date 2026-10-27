@@ -146,6 +146,7 @@ export const deleteAssignment = (id) => write(TABLES.assignments, "delete", { id
 const absenceRow = (a) => ({
   member_id: a.member_id,
   kind: a.kind || "other",
+  location: blankToNull(a.location),
   start_date: a.start_date,
   end_date: blankToNull(a.end_date),
   note: blankToNull(a.note),

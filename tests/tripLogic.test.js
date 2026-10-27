@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  isUsSite, phaseColors, phaseRows,
+  isUsSite, phaseColors, phaseRows, isOutTrip, absenceText,
   addDays, mondayOf, buildWeeks, overlaps, weeksBetween, isValidISO, monthSpans, todayISO,
   needForWeek, haveForWeek, planCoverage, shortageRuns, checkAssignment, analyzeAssignments, worstLevel,
   memberWeekState, deptWeekStats, parseMemberPaste, guessDept, memberKey,
@@ -169,7 +169,7 @@ describe("인원 현황", () => {
   });
   it("부서 통계는 활동 인원만 센다", () => {
     const mech = members.filter((m) => m.dept === "mechanical");
-    expect(deptWeekStats(mech, week, c)).toEqual({ total: 2, b1: 1, assigned: 1, absent: 1, free: 0 });
+    expect(deptWeekStats(mech, week, c)).toEqual({ total: 2, b1: 1, assigned: 1, away: 1, absent: 0, free: 0 });
   });
 });
 
@@ -307,5 +307,38 @@ describe("마일스톤 줄 나누기", () => {
     expect(rows.length).toBe(1);
     expect(rows[0].map((x) => x.label)).toEqual(["A", "B"]);
     expect(phaseRows(cols, [], [])).toEqual([]);
+  });
+});
+
+describe("프로젝트 외 출장 (CS·고객사 대응·테스트)", () => {
+  const members2 = [
+    { id: "m1", name: "갑", dept: "mechanical", team: "t", active: true, b1_visa: false },
+    { id: "m2", name: "을", dept: "mechanical", team: "t", active: true, b1_visa: false },
+    { id: "m3", name: "병", dept: "mechanical", team: "t", active: true, b1_visa: false },
+  ];
+  const ab = (id, member_id, kind, location, start_date = "2026-11-02", end_date = "2026-11-08") => ({ id, member_id, kind, location, start_date, end_date });
+  const week = { start: "2026-11-02", end: "2026-11-08" };
+  const ctx2 = (absences, assignments = []) => ({ assignments, absences, members: members2, plans: [] });
+
+  it("프로젝트 외 출장 종류를 가른다", () => {
+    ["cs", "customer", "test", "trip"].forEach((k) => expect(isOutTrip(k)).toBe(true));
+    ["leave", "training", "other"].forEach((k) => expect(isOutTrip(k)).toBe(false));
+    expect(absenceText({ kind: "cs", location: "SKO 서산" })).toBe("CS 대응 · SKO 서산");
+    expect(absenceText({ kind: "leave" })).toBe("휴직·휴가");
+  });
+  it("부서 통계에서 외부 출장(away)과 휴직 등 부재(absent)를 따로 센다", () => {
+    const stats = deptWeekStats(members2, week, ctx2([ab("a1", "m1", "cs", "SKO 서산"), ab("a2", "m2", "leave", "")]));
+    expect(stats).toMatchObject({ total: 3, away: 1, absent: 1, assigned: 0, free: 1 });
+  });
+  it("그 사람의 그 주 상태에 어디에 가 있는지 담긴다", () => {
+    const s = memberWeekState(members2[0], week, ctx2([ab("a1", "m1", "test", "고객사 설비")]));
+    expect(s.state).toBe("absent");
+    expect(absenceText(s.absence)).toBe("테스트 · 고객사 설비");
+  });
+  it("프로젝트 배정이 외부 출장과 겹치면 장소와 함께 경고한다", () => {
+    const a = { id: "x", member_id: "m1", project_id: "p1", dept: "mechanical", start_date: "2026-11-03", end_date: "2026-11-05" };
+    const issues = checkAssignment(a, { assignments: [a], absences: [ab("a1", "m1", "cs", "SKO 서산")], members: members2, plans: [plan] });
+    expect(issues.map((i) => i.type)).toContain("absent");
+    expect(issues.find((i) => i.type === "absent").message).toContain("CS 대응 · SKO 서산");
   });
 });

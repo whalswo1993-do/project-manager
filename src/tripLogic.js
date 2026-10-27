@@ -17,13 +17,22 @@ export function isUsSite(site) {
   return US_SITES.some((name) => new RegExp(`(^|[^A-Z0-9])${name}([^A-Z0-9]|$)`).test(text));
 }
 
+// 프로젝트 배정이 아닌 일정. out = 본사를 떠나 어딘가에 가 있는 "프로젝트 외 출장"(어디에 가 있는지 location 을 적는다)
 export const ABSENCE_KINDS = [
-  { key: "trip", label: "타 출장" },
-  { key: "leave", label: "휴직·휴가" },
-  { key: "training", label: "교육" },
-  { key: "other", label: "기타" },
+  { key: "cs", label: "CS 대응", out: true },
+  { key: "customer", label: "고객사 대응", out: true },
+  { key: "test", label: "테스트", out: true },
+  { key: "trip", label: "기타 출장", out: true },
+  { key: "training", label: "교육", out: false },
+  { key: "leave", label: "휴직·휴가", out: false },
+  { key: "other", label: "기타", out: false },
 ];
 export const ABSENCE_KIND_LABEL = Object.fromEntries(ABSENCE_KINDS.map((k) => [k.key, k.label]));
+const OUT_KINDS = new Set(ABSENCE_KINDS.filter((k) => k.out).map((k) => k.key));
+/** 프로젝트에 배정된 것은 아니지만 본사 밖(CS·고객사·테스트 등)에 나가 있는 일정인가 */
+export const isOutTrip = (kind) => OUT_KINDS.has(kind);
+/** "CS 대응 · SKO 서산" 처럼 종류와 장소를 한 줄로 */
+export const absenceText = (ab) => `${ABSENCE_KIND_LABEL[ab?.kind] || "부재"}${ab?.location ? ` · ${ab.location}` : ""}`;
 
 export const PLAN_STATUS = [
   { key: "planning", label: "계획" },
@@ -310,7 +319,7 @@ export function checkAssignment(candidate, ctx) {
     issues.push({
       type: "absent",
       level: "bad",
-      message: `${member.name}: ${ABSENCE_KIND_LABEL[ab.kind] || "부재"} 기간과 겹칩니다 (${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? `, ${ab.note}` : ""})`,
+      message: `${member.name}: ${absenceText(ab)} 일정과 겹칩니다 (${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? `, ${ab.note}` : ""})`,
       absenceId: ab.id,
     });
   });
@@ -356,22 +365,24 @@ export function memberWeekState(member, week, ctx) {
   return { state, assigned, absence };
 }
 
-/** 부서별 한 주 현황: 활동 인원·B1 보유·배정·부재·가용 */
+/** 부서별 한 주 현황: 활동 인원·B1 보유·프로젝트 출장(assigned)·프로젝트 외 출장(away)·휴직 등 부재(absent)·본사 가용(free) */
 export function deptWeekStats(members, week, ctx) {
   const active = members.filter((m) => m.active);
   let assigned = 0;
+  let away = 0;
   let absent = 0;
   let free = 0;
   active.forEach((m) => {
-    const s = memberWeekState(m, week, ctx).state;
-    if (s === "free") free += 1;
-    else if (s === "absent") absent += 1;
+    const st = memberWeekState(m, week, ctx);
+    if (st.state === "free") free += 1;
+    else if (st.state === "absent") { if (isOutTrip(st.absence.kind)) away += 1; else absent += 1; }
     else assigned += 1; // assigned · double · conflict 는 일하는 중
   });
   return {
     total: active.length,
     b1: active.filter((m) => m.b1_visa).length,
     assigned,
+    away,
     absent,
     free,
   };

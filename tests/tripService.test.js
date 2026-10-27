@@ -97,3 +97,15 @@ describe("fetchTripData", () => {
     expect(Object.keys(r.data).sort()).toEqual(["absences", "assignments", "members", "notes"]);
   });
 });
+
+describe("프로젝트 외 일정", () => {
+  it("장소(location)를 저장하고 비우면 null 로 보낸다", async () => {
+    nextResult = { data: [{ id: "ab" }], error: null };
+    await svc.createAbsence({ member_id: "m", kind: "cs", location: " SKO 서산 ", start_date: "2026-11-02", end_date: "" });
+    await svc.createAbsence({ member_id: "m", kind: "leave", location: " ", start_date: "2026-11-02", end_date: "2026-11-03" });
+    const first = calls[calls.length - 2].ops.find((o) => o[0] === "insert")[1];
+    const second = calls[calls.length - 1].ops.find((o) => o[0] === "insert")[1];
+    expect(first).toMatchObject({ kind: "cs", location: "SKO 서산", end_date: null });
+    expect(second).toMatchObject({ kind: "leave", location: null });
+  });
+});

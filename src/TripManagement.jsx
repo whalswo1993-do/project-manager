@@ -7,7 +7,7 @@ import {
   saveDeptNote,
 } from "./tripService";
 import {
-  TRIP_DEPTS, TRIP_DEPT_LABEL, ABSENCE_KIND_LABEL, DOW_LABEL,
+  TRIP_DEPTS, TRIP_DEPT_LABEL, DOW_LABEL, isOutTrip, absenceText,
   buildColumns, mondayOf, todayISO, addDays, weeksBetween, monthSpans, shortDate, rangeLabel,
   needForWeek, haveForWeek, planCoverage, shortageRuns, analyzeAssignments, worstLevel,
   memberWeekState, deptWeekStats, projectsToPlans, buildDemands, assignmentState, isPastProject, guessDept,
@@ -17,7 +17,7 @@ import { normalizeDeptKey } from "./manpowerDepts";
 import { confirmDialog } from "./confirmService";
 import { downloadMemberTemplate, downloadMemberRoster } from "./tripTemplate";
 import ProjectPicker from "./TripProjectPicker";
-import { AssignmentModal, MemberModal, ImportModal } from "./TripModals";
+import { AssignmentModal, MemberModal, ImportModal, OutingModal } from "./TripModals";
 
 const TABS = [
   { id: "board", label: "출장자 배정", icon: "calendar" },
@@ -28,7 +28,7 @@ const TABS = [
 const MAX_BOARD_WEEKS = 78;
 const WEEK_COUNTS = [12, 16, 26, 40]; // 주 단위 보기에서 보여 줄 주 수
 const DAY_WEEKS = [12, 16, 26, 40]; // 일 단위 보기에서 보여 줄 주 수 (칸 수는 ×7)
-const ABSENCE_MARK = { trip: "출", leave: "휴", training: "교", other: "기" };
+const ABSENCE_MARK = { cs: "CS", customer: "고", test: "T", trip: "출", leave: "휴", training: "교", other: "기" };
 
 const safeGet = (key, fallback) => {
   try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
@@ -156,8 +156,23 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
     deleteAssignment: async (id) => ((await guard([assignments.find((x) => x.id === id)?.dept], "출장자 배정")) ? run(deleteAssignment(id), "배정을 삭제했습니다.") : cancelled),
     saveMember: async (id, m) => ((await guard([m.dept, id ? deptOfMember(id) : null], "인원")) ? run(id ? updateMember(id, m) : createMember(m), id ? "인원 정보를 저장했습니다." : "인원을 추가했습니다.") : cancelled),
     deleteMember: async (id) => ((await guard([deptOfMember(id)], "인원")) ? run(deleteMember(id), "인원을 삭제했습니다.") : cancelled),
-    addAbsence: async (a) => ((await guard([deptOfMember(a.member_id)], "인원")) ? run(createAbsence(a), "출장 불가 기간을 추가했습니다.", { close: false }) : cancelled),
-    deleteAbsence: async (id) => ((await guard([deptOfMember(absences.find((x) => x.id === id)?.member_id)], "인원")) ? run(deleteAbsence(id), "출장 불가 기간을 삭제했습니다.", { close: false }) : cancelled),
+    addAbsence: async (a) => ((await guard([deptOfMember(a.member_id)], "인원")) ? run(createAbsence(a), "프로젝트 외 일정을 추가했습니다.", { close: false }) : cancelled),
+    // 여러 명에게 같은 프로젝트 외 일정(CS 대응·고객사 대응·테스트 등)을 한 번에 등록한다
+    addAbsences: async (list) => {
+      if (!(await guard(list.map((a) => deptOfMember(a.member_id)), "인원"))) return cancelled;
+      for (let i = 0; i < list.length; i += 1) {
+        const res = await createAbsence(list[i]);
+        if (res.error) {
+          await reload();
+          return { error: `${members.find((m) => m.id === list[i].member_id)?.name || ""}: ${res.error}${i ? ` (앞의 ${i}명은 등록되었습니다)` : ""}` };
+        }
+      }
+      await reload();
+      flash("ok", `${list.length}명의 프로젝트 외 일정을 등록했습니다.`);
+      setModal(null);
+      return {};
+    },
+    deleteAbsence: async (id) => ((await guard([deptOfMember(absences.find((x) => x.id === id)?.member_id)], "인원")) ? run(deleteAbsence(id), "프로젝트 외 일정을 삭제했습니다.", { close: false }) : cancelled),
     saveNote: async (n) => ((await guard([n.dept], "특이사항")) ? run(saveDeptNote(n), "", { close: false }) : cancelled),
   };
 
@@ -315,6 +330,9 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
         <MemberModal member={modal.member} defaultDept={modal.defaultDept || myDept} editableDepts={editableDepts} absences={absences}
           onSave={actions.saveMember} onDelete={actions.deleteMember}
           onAddAbsence={actions.addAbsence} onDeleteAbsence={actions.deleteAbsence} onClose={() => setModal(null)} />
+      )}
+      {modal?.type === "outing" && (
+        <OutingModal members={modal.members} ctx={ctx} onSave={actions.addAbsences} onClose={() => setModal(null)} />
       )}
       {modal?.type === "import" && (
         <ImportModal existing={members} editableDepts={editableDepts} defaultDept={myDept} onImport={importMembers} onClose={() => setModal(null)} />
@@ -802,7 +820,7 @@ function Roster({ members, demands, defaultDept, ctx, planIndex, today, viewMode
             <button type="button" key={d.key} data-dept={d.key} className={`tr-kpi btn ${deptFilter === d.key ? "sel" : ""}`} onClick={() => { setDeptFilter(deptFilter === d.key ? "all" : d.key); setTeamFilter("all"); }}>
               <span className="tr-kpi-label">{d.label}</span>
               <span className="tr-kpi-val">{s.free}<em>명 본사 / 총 {s.total}</em></span>
-              <span className="tr-kpi-sub">출장 {s.assigned} · 부재 {s.absent} · B1 보유 {s.b1}</span>
+              <span className="tr-kpi-sub">출장 {s.assigned} · 외부 {s.away} · 부재 {s.absent} · B1 {s.b1}</span>
             </button>
           );
         })}
@@ -863,14 +881,15 @@ function Roster({ members, demands, defaultDept, ctx, planIndex, today, viewMode
                     const cls = colClass(c, today);
                     if (stt.state === "free") return <td key={c.key} className={`tr-mcell free ${cls}`} />;
                     if (stt.state === "absent") {
-                      return <td key={c.key} className={`tr-mcell absent ${cls}`} title={`${ABSENCE_KIND_LABEL[stt.absence.kind]} (${rangeLabel(stt.absence.start_date, stt.absence.end_date)})${stt.absence.note ? ` · ${stt.absence.note}` : ""}`}>{c.day ? "" : ABSENCE_MARK[stt.absence.kind]}</td>;
+                      const out = isOutTrip(stt.absence.kind);
+                      return <td key={c.key} className={`tr-mcell ${out ? "away" : "absent"} ${cls}`} title={`${absenceText(stt.absence)} (${rangeLabel(stt.absence.start_date, stt.absence.end_date)})${stt.absence.note ? ` · ${stt.absence.note}` : ""}`}>{c.day ? "" : ABSENCE_MARK[stt.absence.kind]}</td>;
                     }
                     const names = stt.assigned.map((x) => x.plan?.name).filter(Boolean).join(" + ");
                     const first = stt.assigned[0]?.plan;
                     const pcIdx = (planIndex.get(first?.id) ?? 0) % 6;
                     const bad = stt.state === "double" || stt.state === "conflict";
                     return (
-                      <td key={c.key} className={`tr-mcell on pc-${pcIdx} ${bad ? "bad" : ""} ${cls}`} title={`${bad ? "충돌: " : ""}${names}${stt.absence ? ` / ${ABSENCE_KIND_LABEL[stt.absence.kind]}` : ""}`}>
+                      <td key={c.key} className={`tr-mcell on pc-${pcIdx} ${bad ? "bad" : ""} ${cls}`} title={`${bad ? "충돌: " : ""}${names}${stt.absence ? ` / ${absenceText(stt.absence)}` : ""}`}>
                         {bad ? "!" : ""}
                       </td>
                     );
@@ -885,7 +904,8 @@ function Roster({ members, demands, defaultDept, ctx, planIndex, today, viewMode
           <span><i className="sw free" /> 가용</span>
           <span><i className="sw asg" /> 프로젝트 배정 (칸에 마우스를 올리면 프로젝트 이름)</span>
           <span><i className="sw bad" /> 충돌 (!)</span>
-          <span><i className="sw absent" /> 부재 (출=타 출장 · 휴=휴직 · 교=교육)</span>
+          <span><i className="sw away" /> 프로젝트 외 출장 (CS · 고=고객사 · T=테스트 · 출=기타 출장) — 칸에 마우스를 올리면 장소</span>
+          <span><i className="sw absent" /> 부재 (휴=휴직 · 교=교육)</span>
         </div>
       </div>
     </div>
@@ -897,6 +917,7 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
   const list = members.filter((m) => m.dept === dept.key && m.active);
   const home = [];
   const absent = [];
+  const away = [];
   const byPlan = new Map();
   list.forEach((m) => {
     const st = memberWeekState(m, week, ctx);
@@ -906,7 +927,7 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
         .sort((x, y) => x.start_date.localeCompare(y.start_date))[0];
       home.push({ m, next, nextPlan: next ? ctx.plans.find((p) => p.id === next.project_id) : null });
     } else if (st.state === "absent") {
-      absent.push({ m, ab: st.absence });
+      (isOutTrip(st.absence.kind) ? away : absent).push({ m, ab: st.absence });
     } else {
       st.assigned.forEach(({ assignment, plan }) => {
         const key = plan?.id || "none";
@@ -960,11 +981,19 @@ function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, se
             </div>
           );
         })}
+        {away.length > 0 && (
+          <div className="tr-lane away">
+            <div className="tr-lane-head"><strong>프로젝트 외 출장</strong><b>{away.length}</b></div>
+            <div className="tr-lane-body">
+              {away.map(({ m, ab }) => card(m, `${absenceText(ab)} · ${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? ` · ${ab.note}` : ""}`))}
+            </div>
+          </div>
+        )}
         {absent.length > 0 && (
           <div className="tr-lane absent">
             <div className="tr-lane-head"><strong>부재</strong><b>{absent.length}</b></div>
             <div className="tr-lane-body">
-              {absent.map(({ m, ab }) => card(m, `${ABSENCE_KIND_LABEL[ab.kind]} ${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? ` · ${ab.note}` : ""}`))}
+              {absent.map(({ m, ab }) => card(m, `${absenceText(ab)} ${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? ` · ${ab.note}` : ""}`))}
             </div>
           </div>
         )}
@@ -1012,7 +1041,7 @@ function Members({ members, ctx, today, editableDepts, defaultDept, myDept, setM
     if (!m.active) return { text: "퇴사·제외", cls: "off" };
     const s = memberWeekState(m, today1, ctx);
     if (s.state === "free") return { text: "본사 대기", cls: "home" };
-    if (s.state === "absent") return { text: ABSENCE_KIND_LABEL[s.absence.kind], cls: "abs" };
+    if (s.state === "absent") return isOutTrip(s.absence.kind) ? { text: `외부 · ${absenceText(s.absence)}`, cls: "away" } : { text: absenceText(s.absence), cls: "abs" };
     return { text: `출장 · ${s.assigned.map((x) => x.plan?.name).filter(Boolean).join(" + ") || "배정"}`, cls: s.state === "assigned" ? "trip" : "bad" };
   };
 
@@ -1140,6 +1169,7 @@ function Members({ members, ctx, today, editableDepts, defaultDept, myDept, setM
         {pickedRows.length > 0 && (
           <div className="tr-bulkbar" role="region" aria-label="선택한 인원 일괄 처리">
             <strong>{pickedRows.length}명 선택</strong>
+            <button type="button" className="tr-btn small" disabled={busy} onClick={() => setModal({ type: "outing", members: pickedRows.filter((m) => m.active) })}><Icon name="calendar" size={13} /> 프로젝트 외 일정</button>
             <button type="button" className="tr-btn small" disabled={busy} onClick={() => setActive(pickedRows.filter((m) => m.active), false)}>퇴사 처리</button>
             <button type="button" className="tr-btn small" disabled={busy} onClick={() => setActive(pickedRows.filter((m) => !m.active), true)}>복귀 처리</button>
             <button type="button" className="tr-btn small danger" disabled={busy} onClick={() => remove(pickedRows)}><Icon name="trash" size={13} /> 삭제</button>
@@ -1180,6 +1210,7 @@ function Members({ members, ctx, today, editableDepts, defaultDept, myDept, setM
                       <td className="act">
                         {editable ? (
                           <span className="tr-row-btns">
+                            {m.active && <button type="button" className="tr-icon-btn" onClick={() => setModal({ type: "outing", members: [m] })} aria-label={`${m.name} 프로젝트 외 일정 등록`} title="프로젝트 외 일정 (CS·고객사 대응·테스트 등 어디에 가 있는지)"><Icon name="calendar" size={14} /></button>}
                             <button type="button" className="tr-icon-btn" onClick={() => setModal({ type: "member", member: m })} aria-label={`${m.name} 수정`} title="수정"><Icon name="pencil" size={14} /></button>
                             <button type="button" className="tr-btn tiny" disabled={busy} onClick={() => setActive([m], !m.active)}>{m.active ? "퇴사" : "복귀"}</button>
                             <button type="button" className="tr-icon-btn danger" disabled={busy} onClick={() => remove([m])} aria-label={`${m.name} 삭제`} title="삭제"><Icon name="trash" size={14} /></button>

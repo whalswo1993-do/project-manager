@@ -1994,6 +1994,19 @@ JSON 출력 예시:
             </button>
             <button
               type="button"
+              className={`nav-tab-btn tab-trips ${currentView === "trips" ? "active" : ""} ${!canAccessTrips ? "restricted" : ""}`}
+              onClick={() => {
+                if (!canAccessTrips) return showPermissionModal("출장자 관리");
+                switchView("trips");
+              }}
+              title={!canAccessTrips ? "출장자 관리는 Grade 3(PM) 또는 팀장(Grade 2.5) 이상만 이용할 수 있습니다 (클릭 시 권한 안내)" : ""}
+            >
+              <Icon name="briefcase" size={16} />
+              <span className="nav-tab-label">출장자 관리</span>
+              {!canAccessTrips && <Icon name="lock" size={13} className="nav-tab-lock" />}
+            </button>
+            <button
+              type="button"
               className={`nav-tab-btn tab-issues ${currentView === "issues" ? "active" : ""}`}
               onClick={() => switchView("issues")}
             >
@@ -2020,19 +2033,6 @@ JSON 출력 예시:
               <Icon name="receipt" size={16} />
               <span className="nav-tab-label">견적 조회</span>
               {!canAccessQuotations && <Icon name="lock" size={13} className="nav-tab-lock" />}
-            </button>
-            <button
-              type="button"
-              className={`nav-tab-btn tab-trips ${currentView === "trips" ? "active" : ""} ${!canAccessTrips ? "restricted" : ""}`}
-              onClick={() => {
-                if (!canAccessTrips) return showPermissionModal("출장자 관리");
-                switchView("trips");
-              }}
-              title={!canAccessTrips ? "출장자 관리는 Grade 3(PM) 또는 팀장(Grade 2.5) 이상만 이용할 수 있습니다 (클릭 시 권한 안내)" : ""}
-            >
-              <Icon name="briefcase" size={16} />
-              <span className="nav-tab-label">출장자 관리</span>
-              {!canAccessTrips && <Icon name="lock" size={13} className="nav-tab-lock" />}
             </button>
             <button
               type="button"

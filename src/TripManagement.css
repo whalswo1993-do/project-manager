@@ -50,7 +50,7 @@
 .tr-mode button:hover:not(.on) { background: var(--bg-hover); }
 .tr-mode button.on { background: var(--btn-bg); color: var(--btn-ink); }
 
-.tr-check { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.tr-check { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
 .tr-check.inline { margin-left: 4px; }
 .tr-check.wide { grid-column: 1 / -1; }
 
@@ -94,7 +94,8 @@
 .tr-field-label { font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .tr-field-label em { font-style: normal; margin-left: 6px; font-weight: 500; }
 .tr-field-hint { font-size: 11.5px; color: var(--ink-3); }
-.tr-field input, .tr-field select { height: 36px; padding: 0 10px; width: 100%; }
+.tr-field input:not([type="checkbox"]), .tr-field select { height: 36px; padding: 0 10px; width: 100%; }
+.tr-field input[type="checkbox"] { width: 16px; height: 16px; padding: 0; margin: 0; flex: none; }
 .tr-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -4px; }
 .tr-quick button { height: 26px; padding: 0 10px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 12px; color: var(--ink-2); cursor: pointer; }
 .tr-quick button:hover:not(:disabled) { border-color: var(--ink-3); }

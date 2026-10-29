@@ -297,7 +297,7 @@
 /* 부서 상황판 */
 .tr-place { display: flex; flex-direction: column; gap: 8px; }
 .tr-place-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-.tr-place-head .tr-h { margin: 0; }
+.tr-place-head .tr-h { margin: 0; font-size: 19px; }
 .tr-dept-board { display: flex; flex-direction: column; gap: 8px; }
 .tr-dept-board-title { margin: 6px 0 0; font-size: 14px; display: flex; align-items: baseline; gap: 8px; }
 .tr-lanes { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; align-items: flex-start; }

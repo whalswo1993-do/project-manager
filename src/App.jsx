@@ -23,6 +23,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { filterSitesByCustomer } from "./siteCustomers";
 import { normalizeJVName, getConstructionPeriod, getMonthDailyDeptMatrix, getDailyDepartmentManpower } from "./utils";
 import { SkOnLogo, SamsungSdiLogo, HyundaiLogo } from "./CustomerLogos";
+import ManualManpowerEditor from "./ManualManpowerEditor";
 import {
   purgeLegacyLocalAuthData,
   importLegacyLocalProfiles,
@@ -2740,6 +2741,14 @@ JSON 출력 예시:
                       </div>
                     )}
                   </div>
+
+                  {!isGrade2Tier && (
+                    <ManualManpowerEditor
+                      manpower={form.manpower}
+                      rows={form.manualManpowerRows}
+                      onChange={(rows, mp) => setForm(f => ({ ...f, manualManpowerRows: rows, manpower: mp }))}
+                    />
+                  )}
 
                   {create && (
                     <div className="milestones">

@@ -12,6 +12,7 @@ import {
   needForWeek, haveForWeek, planCoverage, shortageRuns, analyzeAssignments, worstLevel,
   memberWeekState, deptWeekStats, projectsToPlans, buildDemands, assignmentState, isPastProject, guessDept,
   peakNeed, layoutLanes, laneCellState, laneGapRange, phaseColors, phaseRows, OUTSOURCE_PARENT,
+  dayOverview, nextNotableDay,
 } from "./tripLogic";
 import { normalizeDeptKey } from "./manpowerDepts";
 import { confirmDialog } from "./confirmService";
@@ -830,6 +831,16 @@ function Roster({ members, demands, defaultDept, ctx, planIndex, today, viewMode
   const statDay = viewMode === "day" ? { start: baseDate, end: baseDate } : statCol;
   const step = viewMode === "day" ? 1 : 7;
 
+  // 날짜 띠: 기준일을 따라다니는 9주 범위의 부족·변동 정보 (보고 있는 부서만)
+  const [stripStart, setStripStart] = useState(() => addDays(mondayOf(baseDate), -21));
+  const stripEnd = addDays(stripStart, 62);
+  if (baseDate < stripStart || baseDate > stripEnd) setStripStart(addDays(mondayOf(baseDate), -21)); // 띠 밖으로 나가면 범위를 따라 옮긴다
+  const stripDays = useMemo(() => Array.from({ length: 63 }, (_, i) => addDays(stripStart, i)), [stripStart]);
+  const overview = useMemo(() => dayOverview(stripDays, {
+    plans: ctx.plans, demands, assignments: ctx.assignments, absences: ctx.absences, members,
+    depts: deptFilter === "all" ? TRIP_DEPTS.map((d) => d.key) : [deptFilter], shortFrom: today,
+  }), [stripDays, ctx, demands, members, deptFilter, today]);
+
   const teams = useMemo(() => {
     const set = new Set(members.filter((m) => deptFilter === "all" || m.dept === deptFilter).map((m) => m.team).filter(Boolean));
     return [...set].sort((a, b) => a.localeCompare(b, "ko"));
@@ -875,15 +886,8 @@ function Roster({ members, demands, defaultDept, ctx, planIndex, today, viewMode
       <div className="tr-panel tr-place">
         <div className="tr-place-head">
           <h3 className="tr-h">부서 상황판</h3>
-          <div className="tr-window-bar">
-            <button type="button" className="tr-btn small" onClick={() => setBaseDate(addDays(baseDate, -step))} aria-label={viewMode === "day" ? "전날" : "이전 주"}><Icon name="chevLeft" size={14} /></button>
-            <label className="tr-inline-field">{viewMode === "day" ? "기준일" : "기준 주"}
-              <input type="date" value={baseDate} onChange={(e) => e.target.value && setBaseDate(e.target.value)} />
-            </label>
-            <span className="tr-muted">{viewMode === "day" ? `${shortDate(baseDate)} (${DOW_LABEL[(new Date(`${baseDate}T00:00:00Z`).getUTCDay() + 6) % 7]})` : `${shortDate(statCol.start)} ~ ${shortDate(statCol.end)}`}</span>
-            <button type="button" className="tr-btn small" onClick={() => setBaseDate(addDays(baseDate, step))} aria-label={viewMode === "day" ? "다음날" : "다음 주"}><Icon name="chevRight" size={14} /></button>
-            <button type="button" className="tr-btn small" onClick={() => setBaseDate(today)}>{viewMode === "day" ? "오늘" : "이번 주"}</button>
-          </div>
+          <BoardDateBar viewMode={viewMode} baseDate={baseDate} setBaseDate={setBaseDate} today={today} statCol={statCol} step={step}
+            overview={overview} stripDays={stripDays} />
         </div>
         {TRIP_DEPTS.filter((d) => deptFilter === "all" || d.key === deptFilter).map((d) => (
           <DeptBoard key={d.key} dept={d} members={members} ctx={ctx} demands={demands} week={statDay} planIndex={planIndex} showTitle={deptFilter === "all"} setModal={setModal} />
@@ -964,6 +968,71 @@ const laneCols = (n) => Math.min(4, Math.max(1, Math.ceil(n / LANE_SPLIT)));
 const wideCls = (n) => (n > LANE_SPLIT ? ` cols-${laneCols(n)}` : "");
 
 // 한 부서의 상황판: 본사 잔류 / PJT별 출장 / 부재 를 칸(열)으로 나누고, 그 안에 사람 카드를 둔다
+// 부서 상황판의 날짜 이동 줄: 단위 이동(달·주·일) + 변동일 건너뛰기 + 부족·변동이 보이는 날짜 띠
+function BoardDateBar({ viewMode, baseDate, setBaseDate, today, statCol, step, overview, stripDays }) {
+  const isDay = viewMode === "day";
+  const monthStep = isDay ? 30 : 28;
+  const cur = overview.get(isDay ? baseDate : statCol.start);
+  const dowOf = (iso) => DOW_LABEL[(new Date(`${iso}T00:00:00Z`).getUTCDay() + 6) % 7];
+  const jump = (dir) => {
+    const target = nextNotableDay(overview, baseDate, dir);
+    if (target) setBaseDate(target);
+  };
+  const weekOf = (iso) => mondayOf(iso);
+  const inSel = (d) => (isDay ? d === baseDate : weekOf(d) === statCol.start);
+  const label = isDay ? `${baseDate} (${dowOf(baseDate)})` : `${shortDate(statCol.start)} ~ ${shortDate(statCol.end)}`;
+  const items = [];
+  if (isDay && cur) {
+    cur.shortItems.forEach((t) => items.push({ type: "short", text: `인원 부족: ${t}` }));
+    cur.events.forEach((e) => items.push(e));
+  }
+  const months = [];
+  stripDays.forEach((d, i) => { if (i % 7 === 0) months.push({ i, text: shortDate(d) }); });
+
+  return (
+    <div className="tr-datebar">
+      <div className="tr-window-bar">
+        <button type="button" className="tr-btn small" onClick={() => setBaseDate(addDays(baseDate, -monthStep))}>-1달</button>
+        {isDay && <button type="button" className="tr-btn small" onClick={() => setBaseDate(addDays(baseDate, -7))}>-1주</button>}
+        <button type="button" className="tr-btn small" onClick={() => setBaseDate(addDays(baseDate, -step))} aria-label={isDay ? "전날" : "이전 주"}><Icon name="chevLeft" size={14} /></button>
+        <label className="tr-inline-field">{isDay ? "기준일" : "기준 주"}
+          <input type="date" value={baseDate} onChange={(e) => e.target.value && setBaseDate(e.target.value)} />
+        </label>
+        <span className="tr-muted">{label}</span>
+        <button type="button" className="tr-btn small" onClick={() => setBaseDate(addDays(baseDate, step))} aria-label={isDay ? "다음날" : "다음 주"}><Icon name="chevRight" size={14} /></button>
+        {isDay && <button type="button" className="tr-btn small" onClick={() => setBaseDate(addDays(baseDate, 7))}>+1주</button>}
+        <button type="button" className="tr-btn small" onClick={() => setBaseDate(addDays(baseDate, monthStep))}>+1달</button>
+        <button type="button" className="tr-btn small" onClick={() => setBaseDate(today)}>{isDay ? "오늘" : "이번 주"}</button>
+        <span className="tr-datebar-sep" />
+        <button type="button" className="tr-btn small" onClick={() => jump(-1)} title="인원 부족이 시작되거나 출장 시작·종료가 있는 이전 날로 이동">◀ 변동일</button>
+        <button type="button" className="tr-btn small" onClick={() => jump(1)} title="인원 부족이 시작되거나 출장 시작·종료가 있는 다음 날로 이동">변동일 ▶</button>
+      </div>
+      <div className="tr-strip" role="group" aria-label="날짜 띠 (눌러서 이동)">
+        {stripDays.map((d) => {
+          const c = overview.get(d);
+          const dow = (new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7;
+          const tip = [`${shortDate(d)} (${DOW_LABEL[dow]})`, ...(c.short ? [`인원 부족 ${c.short}명`, ...c.shortItems.slice(0, 3)] : []), ...c.events.slice(0, 3).map((e) => e.text)];
+          return (
+            <button key={d} type="button" title={tip.join(String.fromCharCode(10))} aria-label={tip.join(", ")}
+              className={`tr-strip-cell${c.short ? " short" : ""}${c.events.length ? " ev" : ""}${dow >= 6 ? " sun" : ""}${d === today ? " today" : ""}${inSel(d) ? " sel" : ""}`}
+              onClick={() => setBaseDate(d)} />
+          );
+        })}
+      </div>
+      <div className="tr-strip-axis" aria-hidden="true">{months.map((m) => <span key={m.i}>{m.text}</span>)}</div>
+      <div className="tr-strip-legend">
+        <span><i className="lg ok" />정상</span><span><i className="lg short" />인원 부족</span><span><i className="lg ev" />출장 시작·종료</span><span><i className="lg today" />오늘</span>
+      </div>
+      {isDay && (
+        <div className="tr-strip-info">
+          {items.length === 0 ? "이 날은 인원 부족·출장 시작·종료가 없습니다." : items.slice(0, 4).map((it, i) => <span key={i} className={`tr-strip-tag ${it.type}`}>{it.text}</span>)}
+          {items.length > 4 && <span className="tr-muted"> 외 {items.length - 4}건</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DeptBoard({ dept, members, ctx, demands, week, planIndex, showTitle, setModal }) {
   const list = members.filter((m) => m.dept === dept.key && m.active);
   const home = [];

@@ -711,3 +711,68 @@ export function phaseRows(cols, phases, phaseIdx) {
   });
   return rows;
 }
+
+/**
+ * 날짜 이동 띠용: 날짜별 인원 부족과 변동(출장 시작·복귀, 외부 일정 시작)을 센다.
+ * depts = 보고 있는 부서 키 목록. 반환: Map(날짜 → { short: 부족 인원 합, shortItems: 문구[], events: [{ type, text }] })
+ * 부족 = 프로젝트·부서별 하루 계획 공수 − 그날 배정된 인원 (상황판 칸의 "배정/필요"와 같은 기준). shortFrom 보다 앞 날짜는 부족을 세지 않는다(지난 날 노이즈 방지).
+ */
+export function dayOverview(days, { plans, demands, assignments, absences = [], members = [], depts, shortFrom = "" }) {
+  const out = new Map();
+  const deptSet = new Set(depts);
+  const nameOf = new Map(members.map((m) => [m.id, m.name]));
+  const planOf = new Map(plans.map((p) => [p.id, p]));
+  const daySet = new Set(days);
+  days.forEach((d) => out.set(d, { short: 0, shortItems: [], events: [] }));
+
+  plans.forEach((p) => {
+    const myDemands = demands.filter((d) => d.project_id === p.id && deptSet.has(d.dept));
+    if (myDemands.length === 0) return;
+    const myAssign = assignments.filter((a) => a.project_id === p.id);
+    deptSet.forEach((dept) => {
+      const dd = myDemands.filter((d) => d.dept === dept);
+      if (dd.length === 0) return;
+      days.forEach((day) => {
+        if (day < shortFrom) return;
+        const gap = needOnDay(dd, dept, day) - haveOnDay(myAssign, dept, day);
+        if (gap > 0) {
+          const cell = out.get(day);
+          cell.short += gap;
+          cell.shortItems.push(`${p.name} ${TRIP_DEPT_LABEL[dept]} -${gap}명`);
+        }
+      });
+    });
+  });
+
+  assignments.forEach((a) => {
+    if (!deptSet.has(a.dept)) return;
+    const who = nameOf.get(a.member_id) || "자리";
+    const pj = planOf.get(a.project_id)?.name || "프로젝트";
+    if (daySet.has(a.start_date)) out.get(a.start_date).events.push({ type: "start", text: `${who} · ${pj} 출장 시작` });
+    if (a.end_date && daySet.has(a.end_date)) out.get(a.end_date).events.push({ type: "end", text: `${who} · ${pj} 출장 종료` });
+  });
+  absences.forEach((ab) => {
+    if (!isOutTrip(ab.kind) || !daySet.has(ab.start_date)) return;
+    const m = members.find((x) => x.id === ab.member_id);
+    if (!m || !deptSet.has(m.dept)) return;
+    out.get(ab.start_date).events.push({ type: "away", text: `${m.name} · ${ab.location || "외부"} 외부 일정 시작` });
+  });
+  return out;
+}
+
+/** 기준일에서 앞(dir=1)·뒤(dir=-1)로 가장 가까운 "변동 또는 부족이 있는 날". 없으면 null. */
+export function nextNotableDay(overview, from, dir) {
+  const days = [...overview.keys()].sort();
+  const hit = (d) => { const c = overview.get(d); return c.short > 0 || c.events.length > 0; };
+  const list = dir > 0 ? days.filter((d) => d > from) : days.filter((d) => d < from).reverse();
+  // 같은 부족 인원이 이어지는 날은 첫 날만 잡는다(연속된 날을 하나씩 밟지 않게)
+  for (const d of list) {
+    if (!hit(d)) continue;
+    const prev = addDays(d, dir > 0 ? -1 : 1);
+    const c = overview.get(d);
+    const prevC = overview.get(prev);
+    if (c.events.length === 0 && prevC && prevC.short === c.short) continue;
+    return d;
+  }
+  return null;
+}

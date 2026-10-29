@@ -373,3 +373,31 @@ describe("미등록 프로젝트 대응 (CS·고객사 대응·테스트)", () =
     expect(issues.find((i) => i.type === "absent").message).toContain("고객사 대응 · SKO 서산");
   });
 });
+
+import { dayOverview, nextNotableDay } from "../src/tripLogic";
+describe("날짜 띠: dayOverview / nextNotableDay", () => {
+  const plans = [{ id: "p1", name: "SKBA 4Line" }];
+  const demands = [{ project_id: "p1", dept: "vision", start_date: "2026-11-02", end_date: "2026-11-06", headcount: 2 }];
+  const assignments = [{ id: "a1", project_id: "p1", dept: "vision", member_id: "m1", start_date: "2026-11-02", end_date: "2026-11-04" }];
+  const members = [{ id: "m1", name: "홍길동", dept: "vision" }];
+  const days = ["2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07"];
+  const ov = dayOverview(days, { plans, demands, assignments, members, depts: ["vision"] });
+
+  it("계획 공수보다 배정이 적은 날을 부족으로 센다", () => {
+    expect(ov.get("2026-11-01").short).toBe(0);
+    expect(ov.get("2026-11-03").short).toBe(1); // 필요 2 - 배정 1
+    expect(ov.get("2026-11-05").short).toBe(2); // 필요 2 - 배정 0
+    expect(ov.get("2026-11-07").short).toBe(0);
+  });
+  it("출장 시작·종료를 변동으로 표시한다", () => {
+    expect(ov.get("2026-11-02").events.map((e) => e.type)).toEqual(["start"]);
+    expect(ov.get("2026-11-04").events.map((e) => e.type)).toEqual(["end"]);
+  });
+  it("변동일 이동은 이어지는 부족 구간의 첫 날만 밟는다", () => {
+    expect(nextNotableDay(ov, "2026-11-01", 1)).toBe("2026-11-02");
+    expect(nextNotableDay(ov, "2026-11-02", 1)).toBe("2026-11-04");
+    expect(nextNotableDay(ov, "2026-11-04", 1)).toBe("2026-11-05");
+    expect(nextNotableDay(ov, "2026-11-05", 1)).toBeNull();
+    expect(nextNotableDay(ov, "2026-11-05", -1)).toBe("2026-11-04");
+  });
+});

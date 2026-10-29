@@ -551,3 +551,28 @@ button.tr-now:hover { text-decoration: underline; }
 .tr-lane.cols-2 .tr-lane-body { grid-template-columns: repeat(2, 1fr); }
 .tr-lane.cols-3 .tr-lane-body { grid-template-columns: repeat(3, 1fr); }
 .tr-lane.cols-4 .tr-lane-body { grid-template-columns: repeat(4, 1fr); }
+
+/* 부서 상황판 날짜 이동 줄: 단위 버튼 + 변동일 건너뛰기 + 부족·변동 날짜 띠 */
+.tr-datebar { flex: 1 1 100%; display: flex; flex-direction: column; gap: 6px; min-width: 0; margin-top: 6px; }
+.tr-datebar-sep { width: 1px; height: 20px; background: var(--line-2); margin: 0 4px; }
+.tr-strip { display: grid; grid-template-columns: repeat(63, minmax(0, 1fr)); gap: 1px; margin: 10px 0 6px; }
+.tr-strip-cell { position: relative; height: 22px; padding: 0; min-width: 0; background: var(--ok-wash, color-mix(in srgb, var(--ok) 16%, var(--surface))); border: 0; border-radius: var(--radius-xs); cursor: pointer; }
+.tr-strip-cell.short { background: color-mix(in srgb, var(--bad) 28%, var(--surface)); box-shadow: inset 0 -2px 0 var(--bad); }
+.tr-strip-cell.sun { opacity: .5; }
+.tr-strip-cell.ev::before { content: ""; position: absolute; top: -6px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--brand); }
+.tr-strip-cell.today { outline: 1.5px solid var(--ink-3); outline-offset: -1.5px; }
+.tr-strip-cell.sel { opacity: 1; }
+.tr-strip-cell.sel::after { content: ""; position: absolute; left: 0; right: 0; bottom: -6px; height: 3px; background: var(--ink); border-radius: var(--radius-xs); }
+.tr-strip-cell:hover { filter: brightness(.92); }
+.tr-strip-axis { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); font-size: 11px; color: var(--ink-3); font-family: var(--font-mono); }
+.tr-strip-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11.5px; color: var(--ink-2); }
+.tr-strip-legend .lg { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: var(--radius-xs); }
+.tr-strip-legend .lg.ok { background: color-mix(in srgb, var(--ok) 16%, var(--surface)); }
+.tr-strip-legend .lg.short { background: color-mix(in srgb, var(--bad) 28%, var(--surface)); box-shadow: inset 0 -2px 0 var(--bad); }
+.tr-strip-legend .lg.ev { background: var(--brand); border-radius: 50%; }
+.tr-strip-legend .lg.today { outline: 1.5px solid var(--ink-3); outline-offset: -1.5px; }
+.tr-strip-info { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 7px 10px; background: var(--bg-2); border-radius: var(--radius-md); font-size: 12.5px; color: var(--ink-2); }
+.tr-strip-tag { padding: 1px 8px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--surface); }
+.tr-strip-tag.short { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+.tr-strip-tag.start, .tr-strip-tag.away { color: var(--brand); }
+@media (max-width: 760px) { .tr-strip-legend { gap: 8px; } }

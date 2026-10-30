@@ -401,3 +401,33 @@ describe("날짜 띠: dayOverview / nextNotableDay", () => {
     expect(nextNotableDay(ov, "2026-11-05", -1)).toBe("2026-11-04");
   });
 });
+
+describe("겹침 규칙: 동일 사이트 일시 예외", () => {
+  const P = (id, site) => ({ id, name: id, site, start_date: "2026-11-01", end_date: "2026-12-31" });
+  const plans = [P("a", "SKO"), P("b", "SKO"), P("c", "HSBMA")];
+  const ex = { id: "x1", member_id: "m1", dept: "mechanical", project_id: "a", start_date: "2026-11-02", end_date: "2026-11-15" };
+  const cand = (project_id, extra = {}) => ({ id: "__new__", member_id: "m1", dept: "mechanical", project_id, start_date: "2026-11-10", end_date: "2026-11-20", ...extra });
+  const run = (c, absences = []) => checkAssignment(c, { assignments: [ex], absences, members, plans });
+  it("사이트가 다른 프로젝트와 겹치면 hard(저장 불가)", () => {
+    expect(run(cand("c")).find((i) => i.type === "overlap")).toMatchObject({ level: "bad", hard: true });
+  });
+  it("같은 프로젝트 안에서 겹쳐도 hard", () => {
+    expect(run(cand("a")).find((i) => i.type === "overlap")).toMatchObject({ hard: true });
+  });
+  it("동일 사이트는 사유가 필요하고, 사유를 적으면 info 로 바뀐다", () => {
+    expect(run(cand("b")).find((i) => i.type === "overlap")).toMatchObject({ level: "bad", needsReason: true });
+    const ok = run(cand("b", { overlap_reason: "라인 지원" }));
+    expect(ok.find((i) => i.type === "overlap_exception")).toMatchObject({ level: "info" });
+    expect(ok.some((i) => i.type === "overlap")).toBe(false);
+  });
+  it("상대 배정에 사유가 적혀 있으면 이미 등록한 쪽도 예외로 본다", () => {
+    const other = { ...cand("b"), id: "y", overlap_reason: "라인 지원" };
+    const r = checkAssignment(ex, { assignments: [ex, other], absences: [], members, plans });
+    expect(r.map((i) => i.type)).toContain("overlap_exception");
+  });
+  it("부재와 겹치면 사유가 필요하고, 사유가 있으면 info", () => {
+    const ab = [{ id: "ab1", member_id: "m1", kind: "leave", start_date: "2026-11-12", end_date: "2026-11-13" }];
+    expect(run(cand("zz"), ab).find((i) => i.type === "absent")).toMatchObject({ needsReason: true });
+    expect(run(cand("zz", { overlap_reason: "휴가 반납" }), ab).find((i) => i.type === "absent_exception")).toMatchObject({ level: "info" });
+  });
+});

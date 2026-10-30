@@ -17,6 +17,8 @@ export function tripErrorMessage(error) {
   const code = error.code || "";
   const msg = String(error.message || error || "");
   if (msg === "trip_no_rows") return "저장되지 않았습니다. 권한이 없거나 이미 삭제된 항목입니다. 새로고침 후 다시 시도하세요.";
+  if (msg.includes("trip_overlap_blocked")) return "다른 프로젝트(사이트가 다르거나 같은 프로젝트)와 일정이 겹쳐 배정할 수 없습니다.";
+  if (msg.includes("trip_overlap_reason_required")) return "일정이 겹치는 배정은 사유를 적어야 저장할 수 있습니다.";
   if (msg.includes("trip_member_dept_mismatch")) return "그 인원의 부서와 배정하려는 부서가 다릅니다.";
   if (msg.includes("trip_member_inactive")) return "비활성 처리된 인원은 새로 배정할 수 없습니다.";
   if (msg.includes("trip_member_has_assignments")) return "배정이 있는 인원은 부서를 바꿀 수 없습니다. 먼저 배정을 정리하세요.";
@@ -138,6 +140,7 @@ const assignmentRow = (a) => ({
   start_date: a.start_date,
   end_date: a.end_date,
   note: blankToNull(a.note),
+  overlap_reason: blankToNull(a.overlap_reason),
 });
 export const createAssignment = (a) => write(TABLES.assignments, "insert", { row: assignmentRow(a) });
 export const updateAssignment = (id, a) => write(TABLES.assignments, "update", { id, row: assignmentRow(a) });

@@ -298,8 +298,14 @@ export function laneGapRange(lane, laneIndex, demands, dept, col, plan) {
 /**
  * 배정 하나(후보 포함)의 문제점을 모은다.
  * ctx = { assignments, absences, members, plans } — assignments 에는 자기 자신이 들어 있어도 된다(id 로 제외).
- * level: bad(겹침·부재·비활성) / warn(B1 비자 없음) / info(PJT 기간 밖)
+ * level: bad(겹침·부재·비활성) / warn(B1 비자 없음) / info(PJT 기간 밖, 사유가 적힌 겹침 예외)
+ * hard = 저장할 수 없는 겹침(사이트가 다르거나 같은 프로젝트), needsReason = 동일 사이트 겹침·부재 → 사유(candidate.overlap_reason)를 적으면 등록 가능
  */
+const sameSite = (a, b) => {
+  const x = String(a?.site || "").trim().toLowerCase();
+  return Boolean(x) && x === String(b?.site || "").trim().toLowerCase();
+};
+
 export function checkAssignment(candidate, ctx) {
   const issues = [];
   if (!candidate.member_id) return issues;
@@ -311,28 +317,32 @@ export function checkAssignment(candidate, ctx) {
     issues.push({ type: "inactive", level: "bad", message: `${member.name}: 배정 대상에서 빠진(비활성) 인원입니다` });
   }
 
+  const reason = String(candidate.overlap_reason || "").trim();
   ctx.assignments.forEach((other) => {
     if (other.id === candidate.id || other.member_id !== candidate.member_id) return;
     if (!overlaps(candidate.start_date, candidate.end_date, other.start_date, other.end_date)) return;
     const otherPlan = ctx.plans.find((p) => p.id === other.project_id);
     const same = other.project_id === candidate.project_id;
-    issues.push({
-      type: "overlap",
-      level: "bad",
-      message: `${member.name}: ${same ? "같은 프로젝트 안에서" : `'${otherPlan?.name || "다른 프로젝트"}'와`} 기간이 겹칩니다 (${rangeLabel(other.start_date, other.end_date)})`,
-      otherAssignmentId: other.id,
-    });
+    const where = same ? "같은 프로젝트 안에서" : `'${otherPlan?.name || "다른 프로젝트"}'와`;
+    const range = rangeLabel(other.start_date, other.end_date);
+    const siteOk = !same && sameSite(plan, otherPlan);
+    const why = reason || String(other.overlap_reason || "").trim();
+    if (siteOk && why) {
+      issues.push({ type: "overlap_exception", level: "info", message: `${member.name}: ${where} 기간이 겹치지만 동일 사이트 예외로 등록됨 (${range}, 사유: ${why})`, otherAssignmentId: other.id });
+    } else if (siteOk) {
+      issues.push({ type: "overlap", level: "bad", needsReason: true, message: `${member.name}: ${where} 기간이 겹칩니다 (${range}) — 동일 사이트라 예외 사유를 적으면 등록할 수 있습니다`, otherAssignmentId: other.id });
+    } else {
+      issues.push({ type: "overlap", level: "bad", hard: true, message: `${member.name}: ${where} 기간이 겹칩니다 (${range}) — ${same ? "같은 프로젝트에서는" : "사이트가 달라"} 배정할 수 없습니다`, otherAssignmentId: other.id });
+    }
   });
 
   ctx.absences.forEach((ab) => {
     if (ab.member_id !== candidate.member_id) return;
     if (!overlaps(candidate.start_date, candidate.end_date, ab.start_date, ab.end_date)) return;
-    issues.push({
-      type: "absent",
-      level: "bad",
-      message: `${member.name}: ${absenceText(ab)} 일정과 겹칩니다 (${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? `, ${ab.note}` : ""})`,
-      absenceId: ab.id,
-    });
+    const text = `${member.name}: ${absenceText(ab)} 일정과 겹칩니다 (${rangeLabel(ab.start_date, ab.end_date)}${ab.note ? `, ${ab.note}` : ""})`;
+    issues.push(reason
+      ? { type: "absent_exception", level: "info", message: `${text} — 사유: ${reason}`, absenceId: ab.id }
+      : { type: "absent", level: "bad", needsReason: true, message: `${text} — 사유를 적으면 등록할 수 있습니다`, absenceId: ab.id });
   });
 
   if (plan?.overseas && !member.b1_visa) {

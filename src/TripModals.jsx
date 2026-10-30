@@ -75,6 +75,16 @@ function IssueList({ issues }) {
   );
 }
 
+/** 동일 사이트 일시 예외 / 부재 겹침 사유 입력칸: 겹침이 있을 때만 나타난다 */
+function OverlapReason({ show, reason, setReason, disabled }) {
+  if (!show) return null;
+  return (
+    <Field label="겹침 사유 (동일 사이트 일시 예외) · 필수" wide hint="다른 일정과 기간이 겹치는데도 등록하는 이유를 적으세요. 작업 기록에도 남습니다.">
+      <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="예: 같은 사이트 두 라인을 오가며 지원" maxLength={120} disabled={disabled} />
+    </Field>
+  );
+}
+
 function ErrorLine({ error }) {
   return error ? <div className="tr-error" role="alert"><Icon name="alert" size={14} /> {error}</div> : null;
 }
@@ -100,9 +110,9 @@ function MemberPicker({ options, value, onChange, disabled, emptyText, dept }) {
       <ul role="listbox" aria-label="출장자 목록">
         {options.length === 0 && <li className="tr-picklist-empty">{emptyText}</li>}
         {options.length > 0 && list.length === 0 && <li className="tr-picklist-empty">검색 결과가 없습니다.</li>}
-        {list.map(({ member, tag, rank, reason }) => (
+        {list.map(({ member, tag, rank, reason, hard }) => (
           <li key={member.id}>
-            <button type="button" role="option" aria-selected={value === member.id} disabled={disabled}
+            <button type="button" role="option" aria-selected={value === member.id} disabled={disabled || (hard && value !== member.id)}
               className={`tr-pick ${rank === 2 ? "bad" : rank === 1 ? "warn" : "ok"} ${value === member.id ? "on" : ""}`} onClick={() => onChange(member.id)}>
               <span className="who">
                 <b>{member.name}</b>
@@ -131,8 +141,10 @@ function memberOptions(ctx, dept, candidate, validDates, keepId = "") {
       const relevant = issues.filter((i) => i.type !== "outside");
       const worst = worstLevel(relevant);
       const rank = worst === "bad" ? 2 : worst === "warn" ? 1 : 0;
-      const tag = !validDates ? "" : rank === 2 ? "충돌" : rank === 1 ? "비자 없음" : "가용";
-      return { member: m, tag, rank, reason: relevant[0] ? stripName(relevant[0].message) : "" };
+      const hard = relevant.some((i) => i.hard);
+      const needs = !hard && relevant.some((i) => i.needsReason);
+      const tag = !validDates ? "" : hard ? "배정 불가" : needs ? "겹침 · 사유 필요" : rank === 2 ? "충돌" : rank === 1 ? "비자 없음" : "가용";
+      return { member: m, tag, rank, hard, reason: relevant[0] ? stripName(relevant[0].message) : "" };
     })
     .sort((a, b) => a.rank - b.rank || (a.member.dept === dept ? 0 : 1) - (b.member.dept === dept ? 0 : 1) || String(a.member.team || "").localeCompare(String(b.member.team || ""), "ko") || a.member.name.localeCompare(b.member.name, "ko"));
 }
@@ -151,6 +163,7 @@ export function AssignmentModal({ plan, dept, assignment, defaults, ctx, canEdit
   const [start, setStart] = useState(assignment?.start_date || defaults?.start || plan.start_date);
   const [end, setEnd] = useState(assignment?.end_date || defaults?.end || plan.end_date);
   const [note, setNote] = useState(assignment?.note || "");
+  const [reason, setReason] = useState(assignment?.overlap_reason || "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -182,8 +195,26 @@ export function AssignmentModal({ plan, dept, assignment, defaults, ctx, canEdit
     [ctx, dept, rotateStart, rotateEnd, rotateOk, outgoing?.member_id, plan.id],
   );
 
-  const issues = mode === "member" && memberId && validDates ? checkAssignment(candidate(memberId), ctx) : [];
-  const rotateIssues = mode === "rotate" && inId && rotateOk ? checkAssignment({ id: "__rotate__", member_id: inId, project_id: plan.id, dept, start_date: rotateStart, end_date: rotateEnd }, ctx) : [];
+  // 겹침 규칙: 사유 없이 본 결과(base)로 막을지·사유가 필요한지 정하고, 화면에는 사유를 반영한 결과를 보여 준다
+  const rotateCand = { id: "__rotate__", member_id: inId, project_id: plan.id, dept, start_date: rotateStart, end_date: rotateEnd };
+  const baseIssues = mode === "member" && memberId && validDates ? checkAssignment(candidate(memberId), ctx)
+    : mode === "rotate" && inId && rotateOk ? checkAssignment(rotateCand, ctx) : [];
+  const reasonedIssues = reason.trim()
+    ? (mode === "member" && memberId && validDates ? checkAssignment({ ...candidate(memberId), overlap_reason: reason.trim() }, ctx)
+      : mode === "rotate" && inId && rotateOk ? checkAssignment({ ...rotateCand, overlap_reason: reason.trim() }, ctx) : [])
+    : baseIssues;
+  const issues = mode === "member" ? reasonedIssues : [];
+  const rotateIssues = mode === "rotate" ? reasonedIssues : [];
+  const needReason = baseIssues.some((i) => i.needsReason);
+  // 이미 저장된 배정을 사람·기간 변경 없이 고칠 때는 예전 겹침 때문에 막지 않는다
+  const unchanged = editing && mode !== "rotate" && assignment.member_id === memberId && assignment.start_date === start && assignment.end_date === end;
+
+  // 겹침이 있으면 막거나(사이트 다름·같은 프로젝트), 사유를 받는다(동일 사이트·부재). 통과하면 저장할 사유(없으면 "")를 돌려준다.
+  function overlapGate() {
+    if (!unchanged && baseIssues.some((i) => i.hard)) return { error: "겹치는 일정은 사이트가 다르거나 같은 프로젝트라 저장할 수 없습니다. 기간이나 출장자를 바꿔 주세요." };
+    if (needReason && !unchanged && reason.trim().length < 2) return { error: "일정이 겹치는 배정은 사유(동일 사이트 일시 예외)를 적어야 저장할 수 있습니다." };
+    return { reason: needReason ? reason.trim() : "" };
+  }
 
   async function confirmRisky(list) {
     const risky = list.filter((i) => i.level !== "info");
@@ -198,9 +229,11 @@ export function AssignmentModal({ plan, dept, assignment, defaults, ctx, canEdit
       if (!isValidISO(handover) || handover < outgoing.start_date || handover >= outgoing.end_date) return setError(`마지막 근무일은 ${rangeLabel(outgoing.start_date, addDays(outgoing.end_date, -1))} 안에서 정하세요.`);
       if (!inId) return setError("교대로 들어갈 출장자를 선택하세요.");
       if (!isValidISO(rotateEnd) || rotateEnd < rotateStart) return setError("교대 인원의 종료일을 확인하세요.");
+      const gate = overlapGate();
+      if (gate.error) return setError(gate.error);
       if (!(await confirmRisky(rotateIssues))) return;
       setBusy(true);
-      const res = await onRotate({ outgoing, handover, incoming: { project_id: plan.id, dept, member_id: inId, start_date: rotateStart, end_date: rotateEnd, note } });
+      const res = await onRotate({ outgoing, handover, incoming: { project_id: plan.id, dept, member_id: inId, start_date: rotateStart, end_date: rotateEnd, note, overlap_reason: gate.reason } });
       setBusy(false);
       if (res?.error) setError(res.error);
       return;
@@ -208,9 +241,11 @@ export function AssignmentModal({ plan, dept, assignment, defaults, ctx, canEdit
     if (mode === "member" && !memberId) return setError("출장자를 선택하세요.");
     if (mode === "slot" && !label.trim()) return setError("자리 이름(예: 외주1, 중국법인)을 입력하세요.");
     if (!validDates) return setError("시작일과 종료일을 확인하세요. (종료일은 시작일 이후여야 합니다)");
+    const gate = mode === "member" ? overlapGate() : { reason: "" };
+    if (gate.error) return setError(gate.error);
     if (!(await confirmRisky(issues))) return;
     setBusy(true);
-    const res = await onSave({ id: assignment?.id, project_id: plan.id, dept, member_id: mode === "member" ? memberId : null, label: mode === "slot" ? label : null, start_date: start, end_date: end, note });
+    const res = await onSave({ id: assignment?.id, project_id: plan.id, dept, member_id: mode === "member" ? memberId : null, label: mode === "slot" ? label : null, start_date: start, end_date: end, note, overlap_reason: gate.reason });
     setBusy(false);
     if (res?.error) setError(res.error);
   }
@@ -285,6 +320,7 @@ export function AssignmentModal({ plan, dept, assignment, defaults, ctx, canEdit
           <Field label="메모" wide>
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="예: 1차 교대" maxLength={120} disabled={!canEdit} />
           </Field>
+          <OverlapReason show={needReason} reason={reason} setReason={setReason} disabled={!canEdit} />
           <IssueList issues={rotateIssues} />
         </>
       ) : (
@@ -317,6 +353,7 @@ export function AssignmentModal({ plan, dept, assignment, defaults, ctx, canEdit
           <Field label="메모" wide>
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="예: 3라인 대응 후 4라인 이동" maxLength={120} disabled={!canEdit} />
           </Field>
+          <OverlapReason show={needReason} reason={reason} setReason={setReason} disabled={!canEdit} />
           <IssueList issues={issues} />
         </>
       )}

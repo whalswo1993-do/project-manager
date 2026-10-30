@@ -35,7 +35,7 @@ const val = (c) => (c && typeof c === "object" && "formula" in c ? c : { value: 
 describe("출장자 종합 엑셀 builder", () => {
   it("시트 7개를 만들고 첫 시트가 PJT 출장자 양식이다", () => {
     const wb = build();
-    expect(wb.worksheets.map((w) => w.name)).toEqual([MAIN, "종합 현황", "인원별 현황", "프로젝트 목차", "인원 명단", "외부 일정", "작성 안내"]);
+    expect(wb.worksheets.map((w) => w.name)).toEqual([MAIN, "종합 현황", "인원별 위치 현황", "프로젝트 목차", "인원 명단", "외부 일정", "작성 안내"]);
   });
 
   it("프로젝트마다 H·S·T 표시 줄이 있고 TOTAL·취합 공수는 수식이다", () => {
@@ -109,7 +109,7 @@ describe("출장자 종합 엑셀 builder", () => {
     expect(back.getWorksheet(MAIN).getCell(b.totalRows[0], 5).value.formula).toBe(wb.getWorksheet(MAIN).getCell(b.totalRows[0], 5).value.formula);
   });
 
-  it("종합 현황·인원별 현황이 메인 시트를 수식으로 참조한다", () => {
+  it("종합 현황·인원별 위치 현황이 메인 시트를 수식으로 참조한다", () => {
     const wb = build();
     const sm = wb.getWorksheet("종합 현황");
     const found = [];

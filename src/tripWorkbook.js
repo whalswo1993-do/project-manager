@@ -1,8 +1,8 @@
 // 출장자 종합 엑셀: 기존 관리장표("PJT 출장자" 시트)와 같은 모양으로 프로젝트별 출장자 배정을 한 파일에 모은다.
 // 이 파일은 값만 박아 넣은 그림이 아니라 수식으로 이어져 있다 — 엑셀에서 이름을 적거나 칸·프로젝트를 복사해 붙이면
-// 프로젝트별 TOTAL, 취합 공수, 종합 현황, 인원별 현황이 같이 바뀐다. (행 번호가 아니라 "표시 열(A)"과 부서 이름으로 모으기 때문)
+// 프로젝트별 TOTAL, 취합 공수, 종합 현황, 인원별 위치 현황이 같이 바뀐다. (행 번호가 아니라 "표시 열(A)"과 부서 이름으로 모으기 때문)
 //
-// 시트: PJT 출장자(관리장표) · 종합 현황 · 인원별 현황 · 프로젝트 목차 · 인원 명단 · 외부 일정 · 작성 안내
+// 시트: PJT 출장자(관리장표) · 종합 현황 · 인원별 위치 현황 · 프로젝트 목차 · 인원 명단 · 외부 일정 · 작성 안내
 // 계산 결과(result)를 같이 적어 두어서 미리보기 화면에서도 숫자가 보이고, 엑셀에서 열면 다시 계산한다.
 import {
   TRIP_DEPTS, TRIP_DEPT_LABEL, ABSENCE_KIND_LABEL, buildColumns, mondayOf, addDays, overlaps, weeksBetween, shortDate, rangeLabel,
@@ -12,11 +12,11 @@ import {
 export const MAIN = "PJT 출장자";
 const FONT = "맑은 고딕";
 const C = {
-  ink: "FF1F2937", muted: "FF6B7280", line: "FFD1D5DB", head: "FF1F2937", brand: "FF0B57A4", zebra: "FFF8FAFC", wash: "FFEAF1FB",
+  ink: "FF1F2937", muted: "FF6B7280", line: "FFD1D5DB", head: "FFDCE8F5", brand: "FF0B57A4", zebra: "FFF8FAFC", wash: "FFEAF1FB",
   open: "FFFDE2E2", openInk: "FFB91C1C", ok: "FFE7F5EC", warn: "FFFFF1D6", away: "FFDDF3F1", awayInk: "FF0F766E",
 };
 const DEPT_COLOR = { mechanical: "FF2563A8", vision: "FF7048C2", control: "FF0F8A80", electrical: "FFB83A76", manager: "FF566478" };
-const MS_COLOR = ["FF1D5FD1", "FFC2570C", "FF15803D", "FF7C3AED", "FFBE185D", "FF0E7490", "FFA16207", "FFB91C1C"];
+const MS_COLOR = ["FFB3D0F2", "FFF9D2AE", "FFBFE6CC", "FFDACBF3", "FFF6C4DB", "FFB5E1EC", "FFF2E2A6", "FFF4C0C0"]; // 파스텔 톤(글자는 검정)
 const STATUS_LIST = '"지속,검토 중,공수 확정,공수 협의 전,진행중,제작중,검토중,완료"';
 const FIRST_DATA_ROW = 8; // 머리글(5~7줄) 다음
 const WEEK_COL0 = 5; // E 열부터 주 단위 칸
@@ -28,7 +28,9 @@ const asDate = (iso) => new Date(`${iso}T00:00:00Z`);
 const solid = (argb) => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
 const thin = { style: "thin", color: { argb: C.line } };
 const box = { top: thin, left: thin, bottom: thin, right: thin };
-const font = (extra = {}) => ({ name: FONT, size: 10, color: { argb: C.ink }, ...extra });
+// 글자는 기본 검정, 굵게 쓰지 않는다(밝은 바탕 위). 흰색·강조색 글자는 모두 검정으로 바꾼다. 회색 보조 글자와 연한 표시 문자만 남긴다.
+const SOFT_TEXT = new Set([C.muted, "FFE5E7EB", "FF9CA3AF"]);
+const font = ({ bold: _bold, color, ...extra } = {}) => ({ name: FONT, size: 10, ...extra, bold: false, color: { argb: color && SOFT_TEXT.has(color.argb) ? color.argb : C.ink } });
 
 // 행의 "접힘(collapsed)" 표시: ExcelJS 기본 동작은 그룹 안의 모든 행에 붙여서, 엑셀이 그룹 상태를 잘못 읽는다 → 직접 정한다.
 function setCollapsed(row, value) {
@@ -65,7 +67,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   });
   // (outlineProperties 는 쓰지 않는다: 엑셀 기본값이 "요약 줄이 아래"이고, ExcelJS 가 fitToPage 와 같이 쓰면 XML 순서가 어긋나 엑셀이 파일을 못 연다)
   ws.columns = [
-    { width: 2.2 }, { width: 10 }, { width: 38 }, { width: 10 },
+    { width: 2.2 }, { width: 10 }, { width: 46 }, { width: 10 },
     ...Array.from({ length: weeks }, () => ({ width: 7.6 })),
     { width: 20 },
   ];
@@ -121,7 +123,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   const weekHead = `E5:${lastColL}7`;
   ws.addConditionalFormatting({
     ref: weekHead,
-    rules: [{ type: "expression", formulae: [`AND(E$7<=TODAY(),E$7+7>TODAY())`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FF2563EB" } }, font: { bold: true, color: { argb: "FFFFFFFF" } } } }],
+    rules: [{ type: "expression", formulae: [`AND(E$7<=TODAY(),E$7+7>TODAY())`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFFFE699" } }, font: { color: { argb: "FF1F2937" } } } }],
   });
   ws.getCell(1, AJ).value = null;
   ws.getCell(5, AJ).value = "프로젝트 표시";
@@ -172,7 +174,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
       const cell = ws.getCell(r, c);
       cell.fill = solid(c <= 4 ? C.head : "FFF1F5F9");
       cell.font = c <= 4 ? font({ bold: true, color: { argb: "FFFFFFFF" }, size: c === 3 ? 11 : 10 }) : font({ size: 9.5, color: { argb: C.muted } });
-      cell.alignment = { vertical: "middle", horizontal: c === 3 || c === 5 ? "left" : "center", wrapText: c === 3 };
+      cell.alignment = { vertical: "middle", horizontal: c === 3 || c === 5 ? "left" : "center", wrapText: false, shrinkToFit: c === 3 };
       cell.border = box;
     }
     ws.getCell(r, 2).alignment = { vertical: "middle", horizontal: "center" };
@@ -290,7 +292,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     if (plan.overseas) {
       ws.addConditionalFormatting({
         ref: `E${slotFirst}:${lastColL}${slotLast}`,
-        rules: [{ type: "expression", formulae: [`AND(ISTEXT(E${slotFirst}),ISERROR(SEARCH("외주",E${slotFirst})),COUNTIFS('인원 명단'!$C$6:$C$900,E${slotFirst},'인원 명단'!$F$6:$F$900,"O")=0)`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFFFD8A8" } }, font: { color: { argb: "FF9A3412" }, bold: true } } }],
+        rules: [{ type: "expression", formulae: [`AND(ISTEXT(E${slotFirst}),ISERROR(SEARCH("외주",E${slotFirst})),COUNTIFS('인원 명단'!$C$6:$C$900,E${slotFirst},'인원 명단'!$F$6:$F$900,"O")=0)`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFFFD8A8" } }, font: { color: { argb: "FF1F2937" } } } }],
       });
     }
 
@@ -344,7 +346,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     const groupLast = r - 1;
     // 블록 사이 빈 줄 = 위 그룹의 "요약 줄": 이 줄의 +/− 버튼으로 프로젝트 하나를 접고 편다
     const spacer = ws.getRow(r);
-    spacer.height = 10;
+    spacer.height = 20; // +/− 버튼이 이 줄에 붙으므로 누르기 쉽게 높인다
     setCollapsed(spacer, Boolean(options.collapsed));
     if (options.collapsed) for (let rr = slotFirst - 0; rr <= groupLast; rr += 1) ws.getRow(rr).hidden = true;
     r += 1;
@@ -374,13 +376,13 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   });
   const sumFirst = sumTitle;
   const sumLast = r - 1;
-  ws.addConditionalFormatting({ ref: `E${sumFirst}:${lastColL}${sumLast}`, rules: [{ type: "colorScale", cfvo: [{ type: "min" }, { type: "max" }], color: [{ argb: "FFFFFFFF" }, { argb: "FF7FC8A0" }] }] });
+  ws.addConditionalFormatting({ ref: `E${sumFirst}:${lastColL}${sumLast}`, rules: [{ type: "colorScale", cfvo: [{ type: "min" }, { type: "max" }], color: [{ argb: "FFFFFFFF" }, { argb: "FFC6EBD3" }] }] });
 
   // 같은 주에 두 곳에 배정된 이름(외주 제외)은 빨강 — 전체 데이터 범위에서 센다
   if (blocks.length) {
     ws.addConditionalFormatting({
       ref: `E${FIRST_DATA_ROW}:${lastColL}${rangeEnd}`,
-      rules: [{ type: "expression", formulae: [`AND($A${FIRST_DATA_ROW}="S",ISTEXT(E${FIRST_DATA_ROW}),ISERROR(SEARCH("외주",E${FIRST_DATA_ROW})),COUNTIFS($A$${FIRST_DATA_ROW}:$A$${rangeEnd},"S",E$${FIRST_DATA_ROW}:E$${rangeEnd},E${FIRST_DATA_ROW})>1)`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFEF4444" } }, font: { color: { argb: "FFFFFFFF" }, bold: true } } }],
+      rules: [{ type: "expression", formulae: [`AND($A${FIRST_DATA_ROW}="S",ISTEXT(E${FIRST_DATA_ROW}),ISERROR(SEARCH("외주",E${FIRST_DATA_ROW})),COUNTIFS($A$${FIRST_DATA_ROW}:$A$${rangeEnd},"S",E$${FIRST_DATA_ROW}:E$${rangeEnd},E${FIRST_DATA_ROW})>1)`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFF8A5A5" } }, font: { color: { argb: "FF1F2937" } } } }],
     });
   }
   ws.autoFilter = undefined;
@@ -393,7 +395,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   sm.getCell(1, 2).font = font({ size: 18, bold: true });
   sm.getRow(1).height = 30;
   sm.mergeCells(2, 2, 2, LAST_COL);
-  sm.getCell(2, 2).value = "계획 공수 = 내려받은 시점의 마스터 플랜 값(고정), 나머지는 ‘PJT 출장자’·‘인원별 현황’ 시트에서 자동 계산됩니다. 과부족 = 배정 − 계획 (빨강 = 모자람, 주황 = 계획보다 많음)";
+  sm.getCell(2, 2).value = "계획 공수 = 내려받은 시점의 마스터 플랜 값(고정), 나머지는 ‘PJT 출장자’·‘인원별 위치 현황’ 시트에서 자동 계산됩니다. 과부족 = 배정 − 계획 (빨강 = 모자람, 주황 = 계획보다 많음)";
   sm.getCell(2, 2).font = font({ size: 9, color: { argb: C.muted } });
   [["YEAR", 5], ["MONTH", 6], ["DAY", 7]].forEach(([label, rr]) => {
     sm.getRow(rr).height = 20;
@@ -412,10 +414,10 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   const M = `'${MAIN}'`;
   const matrixRows = Math.max(members.length + 40, 60);
   const ROS = 6; // 인원 명단 첫 데이터 줄
-  const MX0 = 8; // 인원별 현황 첫 데이터 줄
+  const MX0 = 8; // 인원별 위치 현황 첫 데이터 줄
   const MXL = MX0 + matrixRows - 1;
   const mainLast = rangeEnd + EXTRA_ROWS;
-  // 인원별 현황 계산 결과(본사/프로젝트/외부)를 미리 구한다
+  // 인원별 위치 현황 계산 결과(본사/프로젝트/외부)를 미리 구한다
   const weekLabel = (m, i) => {
     const col = cols[i];
     const hit = nameWeek.get(m.name)?.get(i);
@@ -435,7 +437,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
       ["외주", "이름에 ‘외주’가 들어간 칸"],
       ["과부족", "배정 − 계획"],
       ["미배정 칸", "분홍 ‘1’이 남은 칸"],
-      ["본사 가용", "인원별 현황에서 ‘본사’인 인원"],
+      ["본사 가용", "인원별 위치 현황에서 ‘본사’인 인원"],
       ["외부 일정", "미등록 프로젝트 대응 등으로 외부"],
     ];
     const rowOf = {};
@@ -470,14 +472,14 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
       sm.getCell(rowOf["외주"], c).value = { formula: `COUNTIFS(${crit},${M}!${L}:${L},"*외주*")`, result: a.sub };
       sm.getCell(rowOf["과부족"], c).value = { formula: `${L}${rowOf["배정 인원"]}-${L}${rowOf["계획 공수"]}`, result: a.filled - plan };
       sm.getCell(rowOf["미배정 칸"], c).value = { formula: `COUNTIFS(${crit},${M}!${L}:${L},1)`, result: a.open };
-      sm.getCell(rowOf["본사 가용"], c).value = { formula: `COUNTIFS('인원별 현황'!$B$${MX0}:$B$${MXL},$D${rowOf["계획 공수"]},'인원별 현황'!${L}$${MX0}:${L}$${MXL},"본사")`, result: home };
-      sm.getCell(rowOf["외부 일정"], c).value = { formula: `COUNTIFS('인원별 현황'!$B$${MX0}:$B$${MXL},$D${rowOf["계획 공수"]},'인원별 현황'!${L}$${MX0}:${L}$${MXL},"외부:*")`, result: away };
+      sm.getCell(rowOf["본사 가용"], c).value = { formula: `COUNTIFS('인원별 위치 현황'!$B$${MX0}:$B$${MXL},$D${rowOf["계획 공수"]},'인원별 위치 현황'!${L}$${MX0}:${L}$${MXL},"본사")`, result: home };
+      sm.getCell(rowOf["외부 일정"], c).value = { formula: `COUNTIFS('인원별 위치 현황'!$B$${MX0}:$B$${MXL},$D${rowOf["계획 공수"]},'인원별 위치 현황'!${L}$${MX0}:${L}$${MXL},"외부:*")`, result: away };
     });
     sm.addConditionalFormatting({ ref: `E${rowOf["과부족"]}:${lastColL}${rowOf["과부족"]}`, rules: [
-      { type: "cellIs", operator: "lessThan", formulae: [0], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFFDE2E2" } }, font: { color: { argb: "FFB91C1C" }, bold: true } } },
-      { type: "cellIs", operator: "greaterThan", formulae: [0], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFFFF1D6" } }, font: { color: { argb: "FF9A3412" }, bold: true } } },
+      { type: "cellIs", operator: "lessThan", formulae: [0], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFFDE2E2" } }, font: { color: { argb: "FF1F2937" } } } },
+      { type: "cellIs", operator: "greaterThan", formulae: [0], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFFFF1D6" } }, font: { color: { argb: "FF1F2937" } } } },
     ] });
-    sm.addConditionalFormatting({ ref: `E${rowOf["미배정 칸"]}:${lastColL}${rowOf["미배정 칸"]}`, rules: [{ type: "cellIs", operator: "greaterThan", formulae: [0], style: { font: { color: { argb: "FFB91C1C" }, bold: true } } }] });
+    sm.addConditionalFormatting({ ref: `E${rowOf["미배정 칸"]}:${lastColL}${rowOf["미배정 칸"]}`, rules: [{ type: "cellIs", operator: "greaterThan", formulae: [0], style: { font: { color: { argb: "FF1F2937" } } } }] });
   });
   // 합계(부서 전체)
   sm.mergeCells(sr, 2, sr, 4);
@@ -502,14 +504,14 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     });
   });
   sm.addConditionalFormatting({ ref: `E${sr + 2}:${lastColL}${sr + 2}`, rules: [
-    { type: "cellIs", operator: "lessThan", formulae: [0], style: { font: { color: { argb: "FFB91C1C" }, bold: true } } },
+    { type: "cellIs", operator: "lessThan", formulae: [0], style: { font: { color: { argb: "FF1F2937" } } } },
   ] });
 
-  // ── 인원별 현황 (사람 × 주) ──
-  const mx = wb.addWorksheet("인원별 현황", { views: [{ state: "frozen", xSplit: 4, ySplit: 7, zoomScale: 85, showGridLines: false }], properties: { tabColor: { argb: "FF7048C2" } }, pageSetup: { orientation: "landscape", paperSize: 8, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
+  // ── 인원별 위치 현황 (사람 × 주) ──
+  const mx = wb.addWorksheet("인원별 위치 현황", { views: [{ state: "frozen", xSplit: 4, ySplit: 7, zoomScale: 85, showGridLines: false }], properties: { tabColor: { argb: "FF7048C2" } }, pageSetup: { orientation: "landscape", paperSize: 8, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
   mx.columns = [{ width: 2.2 }, { width: 9 }, { width: 14 }, { width: 18 }, ...Array.from({ length: weeks }, () => ({ width: 11 }))];
   mx.mergeCells(1, 2, 1, 4 + Math.min(weeks, 12));
-  mx.getCell(1, 2).value = "인원별 현황 — 누가 어느 주에 어디에 있는지";
+  mx.getCell(1, 2).value = "인원별 위치 현황 — 누가 어느 주에 어디에 있는지";
   mx.getCell(1, 2).font = font({ size: 18, bold: true });
   mx.getRow(1).height = 30;
   mx.mergeCells(2, 2, 2, 4 + Math.min(weeks, 12));
@@ -557,12 +559,12 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   }
   const mxRef = `E${MX0}:${lastColL}${MXL}`;
   mx.addConditionalFormatting({ ref: mxRef, rules: [
-    { type: "expression", priority: 1, formulae: [`AND($C${MX0}<>"",COUNTIF(${M}!E$${FIRST_DATA_ROW}:E$${mainLast},$C${MX0})>1)`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFEF4444" } }, font: { color: { argb: "FFFFFFFF" }, bold: true } } },
-    { type: "expression", priority: 2, formulae: [`LEFT(E${MX0},3)="외부:"`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFDDF3F1" } }, font: { color: { argb: "FF0F766E" }, bold: true } } },
+    { type: "expression", priority: 1, formulae: [`AND($C${MX0}<>"",COUNTIF(${M}!E$${FIRST_DATA_ROW}:E$${mainLast},$C${MX0})>1)`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFF8A5A5" } }, font: { color: { argb: "FF1F2937" } } } },
+    { type: "expression", priority: 2, formulae: [`LEFT(E${MX0},3)="외부:"`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFDDF3F1" } }, font: { color: { argb: "FF1F2937" } } } },
     { type: "expression", priority: 3, formulae: [`LEFT(E${MX0},3)="부재:"`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFE5E7EB" } }, font: { color: { argb: "FF6B7280" } } } },
-    { type: "expression", priority: 4, formulae: [`E${MX0}="본사"`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFE7F5EC" } }, font: { color: { argb: "FF15803D" } } } },
+    { type: "expression", priority: 4, formulae: [`E${MX0}="본사"`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFE7F5EC" } }, font: { color: { argb: "FF1F2937" } } } },
     { type: "expression", priority: 5, formulae: [`E${MX0}="퇴사"`], style: { font: { color: { argb: "FF9CA3AF" } } } },
-    { type: "expression", priority: 6, formulae: [`AND(E${MX0}<>"",E${MX0}<>"본사")`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFEAF1FB" } }, font: { color: { argb: "FF0B57A4" }, bold: true } } },
+    { type: "expression", priority: 6, formulae: [`AND(E${MX0}<>"",E${MX0}<>"본사")`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFEAF1FB" } }, font: { color: { argb: "FF1F2937" } } } },
   ] });
   mx.autoFilter = { from: { row: 7, column: 2 }, to: { row: 7, column: 4 } };
 
@@ -602,7 +604,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     ix.getCell(rr, 8).font = font({ size: 10, bold: true });
     void own;
   });
-  ix.addConditionalFormatting({ ref: `H5:H${4 + blocks.length}`, rules: [{ type: "cellIs", operator: "greaterThan", formulae: [0], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFFDE2E2" } }, font: { color: { argb: "FFB91C1C" }, bold: true } } }] });
+  ix.addConditionalFormatting({ ref: `H5:H${4 + blocks.length}`, rules: [{ type: "cellIs", operator: "greaterThan", formulae: [0], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFFDE2E2" } }, font: { color: { argb: "FF1F2937" } } } }] });
   ix.autoFilter = { from: { row: 4, column: 2 }, to: { row: 4 + Math.max(1, blocks.length), column: 10 } };
 
   // ── 인원 명단 ──
@@ -613,12 +615,12 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   ro.getCell(1, 1).font = font({ size: 18, bold: true });
   ro.getRow(1).height = 30;
   ro.mergeCells(3, 1, 3, 8);
-  ro.getCell(3, 1).value = "※ 새 인원은 맨 아래 빈 줄에 이어서 적으면 목록·인원별 현황에 바로 들어갑니다. 중간에 빈 줄을 두지 마세요. B1은 보유하면 O.";
+  ro.getCell(3, 1).value = "※ 새 인원은 맨 아래 빈 줄에 이어서 적으면 목록·인원별 위치 현황에 바로 들어갑니다. 중간에 빈 줄을 두지 마세요. B1은 보유하면 O.";
   ro.getCell(3, 1).font = font({ size: 9, color: { argb: C.muted } });
   ["부서", "소속 팀", "이름", "직위", "등급", "B1", "상태", "비고"].forEach((h, i) => {
     const cell = ro.getCell(5, 1 + i);
     cell.value = h;
-    cell.fill = solid(i === 0 || i === 2 ? C.brand : C.head);
+    cell.fill = solid(i === 0 || i === 2 ? "FFBFD9F2" : C.head);
     cell.font = font({ bold: true, color: { argb: "FFFFFFFF" } });
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = box;
@@ -650,12 +652,12 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   ev.getCell(1, 1).font = font({ size: 18, bold: true });
   ev.getRow(1).height = 30;
   ev.mergeCells(3, 1, 3, 8);
-  ev.getCell(3, 1).value = "※ 프로젝트에 배정되지 않았지만 본사에 있지 않은 기간을 적으면 ‘인원별 현황’에 간 곳이 표시됩니다. 종료일을 비우면 ‘계속’입니다. H열은 자동입니다.";
+  ev.getCell(3, 1).value = "※ 프로젝트에 배정되지 않았지만 본사에 있지 않은 기간을 적으면 ‘인원별 위치 현황’에 간 곳이 표시됩니다. 종료일을 비우면 ‘계속’입니다. H열은 자동입니다.";
   ev.getCell(3, 1).font = font({ size: 9, color: { argb: C.muted } });
   ["부서", "이름", "종류", "간 곳(장소·내용)", "시작일", "종료일", "메모", "표시(자동)"].forEach((h, i) => {
     const cell = ev.getCell(5, 1 + i);
     cell.value = h;
-    cell.fill = solid(i === 1 || i === 4 ? C.brand : C.head);
+    cell.fill = solid(i === 1 || i === 4 ? "FFBFD9F2" : C.head);
     cell.font = font({ bold: true, color: { argb: "FFFFFFFF" } });
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = box;
@@ -692,12 +694,12 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     ["파일의 성격", "TW Project Manager의 출장자 배정을 내려받은 시점 그대로 담은 종합 장표입니다. 이 파일에서 고친 내용은 프로그램으로 다시 올라가지 않으니, 정식 변경은 프로그램에서 하고 이 파일은 취합·보고·검토용으로 쓰세요."],
     ["PJT 출장자", "프로젝트마다 부서별 칸(줄)이 있고 주 단위(월요일 시작)로 이름이 들어 있습니다. 분홍 ‘1’은 필요하지만 아직 정해지지 않은 자리입니다 — 이름으로 바꾸면 합계가 자동으로 바뀝니다."],
     ["칸이 모자랄 때", "프로젝트 블록 아래쪽의 흐린 여유 줄(부서 이름이 적힌 줄 또는 부서를 고르는 마지막 줄)에 이름을 적으세요. 줄을 더 넣을 때는 블록 안쪽에 행을 삽입해야 TOTAL에 포함됩니다."],
-    ["프로젝트 추가", "프로젝트 블록(머리글 줄부터 특이사항 줄까지)을 통째로 복사해서 맨 아래 ‘PJT 별 취합 공수’ 줄 위에 붙여넣으세요. A열의 H·M·S·T 표시를 지우지 않으면 취합 공수, 종합 현황, 인원별 현황에 자동으로 들어갑니다."],
+    ["프로젝트 추가", "프로젝트 블록(머리글 줄부터 특이사항 줄까지)을 통째로 복사해서 맨 아래 ‘PJT 별 취합 공수’ 줄 위에 붙여넣으세요. A열의 H·M·S·T 표시를 지우지 않으면 취합 공수, 종합 현황, 인원별 위치 현황에 자동으로 들어갑니다."],
     ["접기 / 펼치기", "왼쪽 위의 숫자 1·2 버튼은 전체, 각 프로젝트 아래 줄의 +/− 버튼은 그 프로젝트만 접고 폅니다. 접어 두면 프로젝트 이름과 취합 공수만 한눈에 볼 수 있습니다."],
     ["색 표시", "파랑 = 배정된 출장자 · 분홍 1 = 미정 · 주황 = 미국 사이트(HSBMA·SKBA·SKOT)인데 인원 명단에서 B1 보유가 확인되지 않은 이름 · 빨강 = 같은 주에 두 곳에 배정(외주 이름은 제외) · 맨 위 파란 주 = 이번 주."],
     ["종합 현황", "부서별로 계획 공수(내려받은 시점 고정값) 대비 배정, 외주, 과부족, 미배정 칸, 본사 가용, 외부 일정을 주별로 보여 줍니다. 모두 수식입니다."],
-    ["인원별 현황", "인원 명단의 모든 사람이 주마다 어디에 있는지(프로젝트 / 본사 / 외부:간 곳 / 부재) 자동으로 나옵니다. 같은 주에 두 곳이면 빨강으로 표시됩니다."],
-    ["인원 명단 · 외부 일정", "새 인원이나 외부 일정은 두 시트의 맨 아래 빈 줄에 이어서 적으면 됩니다. 이름 선택 목록과 B1 확인, 인원별 현황이 그 값을 씁니다."],
+    ["인원별 위치 현황", "인원 명단의 모든 사람이 주마다 어디에 있는지(프로젝트 / 본사 / 외부:간 곳 / 부재) 자동으로 나옵니다. 같은 주에 두 곳이면 빨강으로 표시됩니다."],
+    ["인원 명단 · 외부 일정", "새 인원이나 외부 일정은 두 시트의 맨 아래 빈 줄에 이어서 적으면 됩니다. 이름 선택 목록과 B1 확인, 인원별 위치 현황이 그 값을 씁니다."],
     ["주의", "A열(작은 회색 글자)과 AJ열(프로젝트 표시)은 계산에 쓰이니 지우지 마세요. 열이 거슬리면 숨기기만 하세요."],
   ];
   lines.forEach(([k, v], i) => {

@@ -120,7 +120,7 @@ export default function TripActivity({ refreshKey }) {
               <div key={g.key} className="tr-act-day">
                 <div className="tr-act-dayhead">{dayTitle(g.key, todayKey)}<span>{g.key}</span></div>
                 {g.items.map((a) => (
-                  <div key={a.id} className="tr-act-item" data-action={a.action}>
+                  <div key={a.id} className="tr-act-item" data-action={a.action} title={[a.summary, place(a)].filter(Boolean).join(" · ")}>
                     <span className="tr-act-time">{timeOf(a.at)}</span>
                     <div className="tr-act-body">
                       <div className="tr-act-line"><b>{who(a)}</b>{a.actor_team ? <em>{a.actor_team}</em> : null}<span className="tr-act-tag">{ENTITY[a.entity]} {ACTION[a.action]}</span></div>

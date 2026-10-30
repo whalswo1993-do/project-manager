@@ -7,7 +7,7 @@ import { TRIP_DEPT_LABEL } from "./tripLogic";
 const ENTITY = { assignment: "배정", member: "인원", absence: "외부 일정", note: "특이사항" };
 const ACTION = { insert: "추가", update: "수정", delete: "삭제" };
 const FILTERS = [["all", "전체"], ["assignment", "배정"], ["member", "인원"], ["absence", "외부 일정"], ["note", "특이사항"]];
-const PAGE = 40;
+const PAGE = 100; // DB 에는 최근 100건만 남는다
 
 const pad = (n) => String(n).padStart(2, "0");
 const dayKey = (iso) => { const d = new Date(iso); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
@@ -42,7 +42,6 @@ export default function TripActivity({ refreshKey }) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("all");
   const [rows, setRows] = useState([]);
-  const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const root = useRef(null);
@@ -58,19 +57,17 @@ export default function TripActivity({ refreshKey }) {
     return () => { live = false; };
   }, [refreshKey]);
 
-  const load = useCallback(async (reset) => {
+  const load = useCallback(async () => {
     setBusy(true);
-    const before = reset ? null : rows[rows.length - 1]?.at;
-    const res = await fetchActivity({ limit: PAGE, before, entity: filter });
+    const res = await fetchActivity({ limit: PAGE, entity: filter });
     setErr(res.error);
-    setRows((prev) => (reset ? res.data : [...prev, ...res.data]));
-    setMore(res.data.length === PAGE);
+    setRows(res.data);
     setBusy(false);
-  }, [filter, rows]);
+  }, [filter]);
 
   useEffect(() => {
-    if (open) load(true);
-    // 열 때, 필터를 바꿀 때, 데이터가 바뀔 때 다시 읽는다 (load 는 rows 에 의존하므로 제외)
+    if (open) load();
+    // 열 때, 필터를 바꿀 때, 데이터가 바뀔 때 다시 읽는다
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, filter, refreshKey]);
 
@@ -122,16 +119,13 @@ export default function TripActivity({ refreshKey }) {
                 {g.items.map((a) => (
                   <div key={a.id} className="tr-act-item" data-action={a.action} title={[a.summary, place(a)].filter(Boolean).join(" · ")}>
                     <span className="tr-act-time">{timeOf(a.at)}</span>
-                    <div className="tr-act-body">
-                      <div className="tr-act-line"><b>{who(a)}</b>{a.actor_team ? <em>{a.actor_team}</em> : null}<span className="tr-act-tag">{ENTITY[a.entity]} {ACTION[a.action]}</span></div>
-                      {a.summary && <div className="tr-act-sum">{a.summary}</div>}
-                      {place(a) && <div className="tr-act-place">{place(a)}</div>}
-                    </div>
+                    <span className="tr-act-tag">{ENTITY[a.entity]} {ACTION[a.action]}</span>
+                    <b>{who(a)}</b>
+                    <span className="tr-act-sum">{[a.summary, place(a)].filter(Boolean).join(" · ")}</span>
                   </div>
                 ))}
               </div>
             ))}
-            {more && <button type="button" className="tr-act-more" disabled={busy} onClick={() => load(false)}>{busy ? "불러오는 중..." : "더 보기"}</button>}
           </div>
         </div>
       )}

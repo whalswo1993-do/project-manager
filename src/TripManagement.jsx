@@ -39,10 +39,10 @@ const safeSet = (key, value) => {
   try { localStorage.setItem(key, value); } catch { /* 저장소를 못 써도 화면은 동작한다 */ }
 };
 
-// 종합 엑셀은 테스트 중이라 이 계정만 쓸 수 있다 (다듬은 뒤 목록을 없애면 모두에게 열린다)
-const EXPORT_TESTERS = ["cmj1012@twgroup.co.kr"];
+// 종합 엑셀은 AI 없이 화면 데이터로 만드는 파일이다. 내려받기는 PM·팀장(Grade 2.5) 이상만 (Grade 2 는 보기 전용)
+const EXPORT_ROLES = ["admin", "grade3", "grade2_5"];
 
-export default function TripManagement({ role, email = "", myTeam = "", projects = [], onPermissionDenied }) {
+export default function TripManagement({ role, myTeam = "", projects = [], onPermissionDenied }) {
   // 조회·수정은 PM 이상과 모든 부서 팀장(grade2_5)이 할 수 있다. 자기 부서가 아닌 것을 고칠 때는 확인만 받는다.
   // grade2 는 보기만 한다 (DB 정책 trip_can_view / trip_can_edit 와 같은 구분)
   const canView = ["admin", "grade3", "grade2_5", "grade2"].includes(role);
@@ -211,7 +211,7 @@ export default function TripManagement({ role, email = "", myTeam = "", projects
 
   // 종합 엑셀: 화면이 쓰는 데이터를 그대로 넘겨 PJT 출장자 양식(수식·접기/펼치기 포함)으로 만든다. 엑셀 모듈은 누를 때만 읽는다.
   async function exportWorkbook(options) {
-    if (!EXPORT_TESTERS.includes(String(email).toLowerCase())) return { error: "테스트 중입니다." };
+    if (!EXPORT_ROLES.includes(role)) return { error: "종합 엑셀은 PM·팀장(Grade 2.5) 이상만 내려받을 수 있습니다." };
     try {
       const { downloadTripWorkbook } = await import("./tripWorkbook");
       await downloadTripWorkbook({ plans, demands, assignments, members, absences, notes }, { ...options, today });
@@ -285,7 +285,7 @@ export default function TripManagement({ role, email = "", myTeam = "", projects
               <button type="button" className={viewMode === "day" ? "on" : ""} onClick={() => setViewMode("day")}>일 단위</button>
               <button type="button" className={viewMode === "week" ? "on" : ""} onClick={() => setViewMode("week")}>주 단위</button>
             </div>
-            <button type="button" className="system-toggle-all-btn" onClick={() => (EXPORT_TESTERS.includes(String(email).toLowerCase()) ? setModal({ type: "export" }) : flash("err", "종합 엑셀은 테스트 중입니다."))} disabled={!data} title="프로젝트별 출장자 표 양식으로 종합 엑셀을 내려받습니다 (수식·접기/펼치기 포함)">
+            <button type="button" className="system-toggle-all-btn" onClick={() => (EXPORT_ROLES.includes(role) ? setModal({ type: "export" }) : flash("err", "종합 엑셀은 PM·팀장(Grade 2.5) 이상만 내려받을 수 있습니다."))} disabled={!data} title="프로젝트별 출장자 표 양식으로 종합 엑셀을 내려받습니다 (수식·접기/펼치기 포함)">
               <Icon name="download" size="1.1em" /> 종합 엑셀
             </button>
             <button type="button" className="system-toggle-all-btn" onClick={refresh} title="최신 내용으로 다시 불러오기">

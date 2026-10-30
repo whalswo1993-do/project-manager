@@ -36,6 +36,7 @@ const PATHS = {
   layers: '<path d="m12 2.8 9.2 4.7L12 12.2 2.8 7.5 12 2.8Z"/><path d="m2.8 12.2 9.2 4.7 9.2-4.7M2.8 16.9l9.2 4.7 9.2-4.7"/>',
   grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.4"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.4"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.4"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.4"/>',
   shield: '<path d="M12 2.8 4.5 5.6v5.7c0 4.6 3.1 8.4 7.5 9.9 4.4-1.5 7.5-5.3 7.5-9.9V5.6L12 2.8Z"/><path d="m8.8 12 2.2 2.2 4.2-4.4"/>',
+  "chevron-down": '<path d="m6 9 6 6 6-6"/>',
   clock: '<circle cx="12" cy="12" r="9.5"/><path d="M12 6.8V12l3.4 2"/>',
   filter: '<path d="M3.5 5h17l-6.6 8v5.8l-3.8 1.7V13L3.5 5Z"/>',
   table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.5h18M3 14.5h18M9.5 4v16"/>',

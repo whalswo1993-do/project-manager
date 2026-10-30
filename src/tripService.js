@@ -155,3 +155,21 @@ const absenceRow = (a) => ({
 export const createAbsence = (a) => write(TABLES.absences, "insert", { row: absenceRow(a) });
 export const updateAbsence = (id, a) => write(TABLES.absences, "update", { id, row: absenceRow(a) });
 export const deleteAbsence = (id) => write(TABLES.absences, "delete", { id });
+
+// ── 작업 기록(trip_activity) ──
+// 아직 DB 가 준비되지 않았으면 missing=true 로 알려 주어 화면이 조용히 숨는다.
+export async function fetchActivity({ limit = 40, before = null, entity = "all" } = {}) {
+  try {
+    let q = supabase.from("trip_activity").select("*").order("at", { ascending: false }).limit(limit);
+    if (before) q = q.lt("at", before);
+    if (entity && entity !== "all") q = q.eq("entity", entity);
+    const { data, error } = await q;
+    if (error) {
+      const missing = error.code === "PGRST205" || error.code === "42P01" || /Could not find the table|does not exist/i.test(String(error.message));
+      return { data: [], error: missing ? "" : tripErrorMessage(error), missing };
+    }
+    return { data: data || [], error: "", missing: false };
+  } catch (e) {
+    return { data: [], error: tripErrorMessage(e), missing: false };
+  }
+}

@@ -18,6 +18,7 @@ import { normalizeDeptKey } from "./manpowerDepts";
 import { confirmDialog } from "./confirmService";
 import { downloadMemberTemplate, downloadMemberRoster } from "./tripTemplate";
 import ProjectPicker from "./TripProjectPicker";
+import TripActivity from "./TripActivity";
 import { AssignmentModal, MemberModal, ImportModal, OutingModal, ExportModal } from "./TripModals";
 
 const TABS = [
@@ -279,6 +280,7 @@ export default function TripManagement({ role, email = "", myTeam = "", projects
             </div>
           </div>
           <div className="system-header-actions tr-header-actions">
+            <div className="tr-header-btns">
             <div className="tr-mode" role="group" aria-label="보기 단위">
               <button type="button" className={viewMode === "day" ? "on" : ""} onClick={() => setViewMode("day")}>일 단위</button>
               <button type="button" className={viewMode === "week" ? "on" : ""} onClick={() => setViewMode("week")}>주 단위</button>
@@ -298,6 +300,8 @@ export default function TripManagement({ role, email = "", myTeam = "", projects
                 </select>
               </label>
             )}
+            </div>
+            <TripActivity refreshKey={data} />
           </div>
         </div>
         <div className="system-sub-nav">

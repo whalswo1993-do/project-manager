@@ -906,14 +906,14 @@
   padding: 10px 22px;
   border-radius: var(--radius-md);
   border: none;
-  background: var(--btn-bg);
-  color: var(--btn-ink);
+  background: var(--btn-ppt);
+  color: var(--btn-ppt-ink);
   font-size: 13.5px;
   font-weight: 700;
   cursor: pointer;
   box-shadow: none;
   transition: all 0.15s ease;
-  border-color: var(--btn-bg);
+  border-color: var(--btn-ppt);
 }
 
 .aim-btn-execute:hover:not(:disabled) {

@@ -1414,34 +1414,10 @@ body.theme-dark .axis .g-today-chip { color: #1B0E08; }
   border-color: var(--border-strong) !important;
 }
 
-/* PPT 내보내기: 화면의 주 행동이라 잉크(라이트)/골드(다크) 채움 */
+/* 내보내기 버튼(보고서·자료 다운로드): 엑셀=초록, PPT=주황(라이트). 다크는 둘 다 금색(토큰: --btn-xlsx / --btn-ppt).
+   양식(템플릿) 다운로드 버튼은 이 클래스를 쓰지 않는다. */
 .ppt-btn,
-.mp-ppt-btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 8px !important;
-  height: 34px !important;
-  padding: 0 16px !important;
-  background: var(--btn-bg) !important;
-  color: var(--btn-ink) !important;
-  border: 1px solid var(--btn-bg) !important;
-  border-radius: var(--radius-md) !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  box-shadow: none !important;
-  cursor: pointer !important;
-  white-space: nowrap !important;
-  text-decoration: none !important;
-  line-height: 1.25 !important;
-  transition: opacity var(--dur-fast) var(--ease-in-out) !important;
-}
-.ppt-btn:hover:not(:disabled),
-.mp-ppt-btn:hover:not(:disabled) { opacity: .88 !important; transform: none !important; box-shadow: none !important; filter: none !important; }
-.ppt-btn:disabled,
-.mp-ppt-btn:disabled { opacity: 0.5 !important; cursor: not-allowed !important; }
-
-/* 엑셀 내보내기: 보조 버튼 */
+.mp-ppt-btn,
 .excel-export-btn,
 .mp-excel-btn {
   display: inline-flex !important;
@@ -1450,21 +1426,34 @@ body.theme-dark .axis .g-today-chip { color: #1B0E08; }
   gap: 8px !important;
   height: 34px !important;
   padding: 0 16px !important;
-  background: var(--surface) !important;
-  color: var(--ink) !important;
-  border: 1px solid var(--line-2) !important;
   border-radius: var(--radius-md) !important;
   font-size: 13px !important;
-  font-weight: 600 !important;
+  font-weight: 650 !important;
   box-shadow: none !important;
   cursor: pointer !important;
   white-space: nowrap !important;
   text-decoration: none !important;
   line-height: 1.25 !important;
-  transition: background var(--dur-fast) var(--ease-in-out), border-color var(--dur-fast) var(--ease-in-out) !important;
+  transition: opacity var(--dur-fast) var(--ease-in-out) !important;
 }
+.ppt-btn,
+.mp-ppt-btn {
+  background: var(--btn-ppt) !important;
+  color: var(--btn-ppt-ink) !important;
+  border: 1px solid var(--btn-ppt) !important;
+}
+.excel-export-btn,
+.mp-excel-btn {
+  background: var(--btn-xlsx) !important;
+  color: var(--btn-xlsx-ink) !important;
+  border: 1px solid var(--btn-xlsx) !important;
+}
+.ppt-btn:hover:not(:disabled),
+.mp-ppt-btn:hover:not(:disabled),
 .excel-export-btn:hover:not(:disabled),
-.mp-excel-btn:hover:not(:disabled) { background: var(--bg-hover) !important; border-color: var(--border-strong) !important; transform: none !important; box-shadow: none !important; filter: none !important; }
+.mp-excel-btn:hover:not(:disabled) { opacity: .88 !important; transform: none !important; box-shadow: none !important; filter: none !important; }
+.ppt-btn:disabled,
+.mp-ppt-btn:disabled,
 .excel-export-btn:disabled,
 .mp-excel-btn:disabled { opacity: 0.5 !important; cursor: not-allowed !important; }
 

@@ -758,7 +758,7 @@ export function ExportModal({ pastCount, onExport, onClose }) {
       footer={
         <>
           <button type="button" className="tr-btn" onClick={onClose} disabled={busy}>닫기</button>
-          <button type="button" className="tr-btn primary" onClick={submit} disabled={busy}><Icon name="download" size={14} /> {busy ? "만드는 중..." : "엑셀 내려받기"}</button>
+          <button type="button" className="tr-btn primary excel-export-btn" onClick={submit} disabled={busy}><Icon name="download" size={14} /> {busy ? "만드는 중..." : "엑셀 내려받기"}</button>
         </>
       }>
       <p className="tr-readonly-note"><Icon name="info" size={13} /> 프로젝트별 출장자 표, 부서별 종합 현황, 인원별 위치 현황이 한 파일에 들어갑니다. 파일에서 이름을 바꾸거나 칸을 추가하면 TOTAL·취합 공수·종합 현황이 수식으로 함께 바뀝니다. 파일에서 고친 내용은 시스템에 자동 반영되지 않습니다.</p>

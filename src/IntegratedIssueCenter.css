@@ -232,26 +232,27 @@
 }
 
 .iic-btn-excel-prominent {
-  background: var(--surface);
-  color: var(--ink);
+  background: var(--btn-xlsx);
+  color: var(--btn-xlsx-ink);
+  border-color: var(--btn-xlsx);
   box-shadow: none;
 }
 
 .iic-btn-excel-prominent:hover {
-  background: var(--bg-hover);
-  filter: none;
+  background: var(--btn-xlsx);
+  filter: brightness(1.08);
 }
 
 /* 고객사별 종합본 보고서 다운로드 (녹색 강조) */
 .iic-btn-summary-excel {
-  background: var(--ok);
-  color: var(--on-brand);
-  border-color: var(--ok);
+  background: var(--btn-xlsx);
+  color: var(--btn-xlsx-ink);
+  border-color: var(--btn-xlsx);
   box-shadow: none;
 }
 
 .iic-btn-summary-excel:hover {
-  background: var(--ok);
+  background: var(--btn-xlsx);
   filter: brightness(1.08);
 }
 

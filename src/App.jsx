@@ -3,7 +3,6 @@ import "./App.css";
 import { supabase } from "./supabase";
 import Login from "./Login";
 import { confirmDialog } from "./confirmService";
-import { exportProjectList } from "./exportProjectList";
 import { exportComprehensiveReport } from "./reportExports";
 import IntegratedExportModal from "./IntegratedExportModal";
 import VisionSPC from "./VisionSPC";
@@ -2950,32 +2949,16 @@ JSON 출력 예시:
                 </button>
                 <button
                   type="button"
-                  className="ppt-btn"
-                  disabled={view.length === 0}
-                  onClick={() => {
-                    const rows = selectedProjects.size > 0 ? view.filter(p => selectedProjects.has(p.id)) : view;
-                    exportProjectList(rows, {
-                      customer: currentCustomer,
-                      label: selectedProjects.size > 0 ? `선택${rows.length}건` : (isAllYears ? "전체" : selectedYearsLabel),
-                    });
-                  }}
-                  title={selectedProjects.size > 0 ? "선택한 프로젝트만 엑셀로 다운로드" : "현재 목록(검색·필터 적용)을 엑셀로 다운로드"}
-                >
-                  <Icon name="download" size={15} />
-                  {selectedProjects.size > 0 ? `선택 ${selectedProjects.size}건 엑셀` : "엑셀 다운로드"}
-                </button>
-                <button
-                  type="button"
-                  className="ppt-btn"
+                  className="excel-export-btn"
                   disabled={view.length === 0}
                   onClick={() => {
                     const rows = selectedProjects.size > 0 ? view.filter(p => selectedProjects.has(p.id)) : view;
                     setGanttExportRows({ rows, label: selectedProjects.size > 0 ? `선택${rows.length}건` : (isAllYears ? "전체" : selectedYearsLabel) });
                   }}
-                  title="프로젝트별 전체 일정과 마일스톤을 간트차트(접기/펼치기, 일·주 단위)로 엑셀에 담습니다"
+                  title="프로젝트별 전체 일정·마일스톤 간트차트(접기/펼치기, 일·주 단위)와 부서별 계획공수 합산표를 엑셀로 다운로드합니다"
                 >
-                  <Icon name="barChart" size={15} />
-                  {selectedProjects.size > 0 ? `선택 ${selectedProjects.size}건 간트 엑셀` : "간트 엑셀"}
+                  <Icon name="download" size={15} />
+                  {selectedProjects.size > 0 ? `선택 ${selectedProjects.size}건 엑셀 다운로드` : "엑셀 다운로드"}
                 </button>
               </div>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="제조번호, Site, Line, 프로젝트, 담당자 검색" />

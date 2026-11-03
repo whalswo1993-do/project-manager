@@ -20,5 +20,5 @@
 .pgx-error { margin-top: 10px; padding: 8px 10px; font-size: 12.5px; color: var(--bad); background: var(--bad-wash, transparent); border: 1px solid var(--bad); border-radius: var(--radius-md); }
 .pgx-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .pgx-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 13px; background: var(--surface); color: var(--ink); border: 1px solid var(--line-2, var(--line)); border-radius: var(--radius-md); cursor: pointer; }
-.pgx-btn.primary { background: var(--btn-bg); color: var(--btn-ink); border-color: var(--btn-bg); font-weight: 650; }
+.pgx-btn.primary { background: var(--btn-xlsx); color: var(--btn-xlsx-ink); border-color: var(--btn-xlsx); font-weight: 650; }
 .pgx-btn:disabled { opacity: .55; cursor: not-allowed; }

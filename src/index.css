@@ -45,6 +45,11 @@ body.theme-light {
 
   --btn-bg:  #14171D;
   --btn-ink: #FFFFFF;
+  /* 내보내기(보고서·자료 다운로드) 버튼: 엑셀=초록, PPT=주황. 다크에서는 둘 다 금색 */
+  --btn-xlsx:     #1D7A45;
+  --btn-xlsx-ink: #FFFFFF;
+  --btn-ppt:      #D9531E;
+  --btn-ppt-ink:  #FFFFFF;
   --hatch:   rgba(20, 23, 29, .30);
 
   /* 예전 이름(별칭) — 기존 CSS 가 그대로 새 색을 따른다 */
@@ -152,6 +157,10 @@ body.theme-dark {
 
   --btn-bg:  #CDAE72;
   --btn-ink: #15110A;
+  --btn-xlsx:     var(--btn-bg);
+  --btn-xlsx-ink: var(--btn-ink);
+  --btn-ppt:      var(--btn-bg);
+  --btn-ppt-ink:  var(--btn-ink);
   --hatch:   rgba(238, 235, 227, .34);
 
   --bg-canvas:        var(--bg);

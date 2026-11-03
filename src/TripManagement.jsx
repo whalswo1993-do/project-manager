@@ -285,7 +285,7 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
               <button type="button" className={viewMode === "day" ? "on" : ""} onClick={() => setViewMode("day")}>일 단위</button>
               <button type="button" className={viewMode === "week" ? "on" : ""} onClick={() => setViewMode("week")}>주 단위</button>
             </div>
-            <button type="button" className="system-toggle-all-btn" onClick={() => (EXPORT_ROLES.includes(role) ? setModal({ type: "export" }) : flash("err", "종합 엑셀은 PM·팀장(Grade 2.5) 이상만 내려받을 수 있습니다."))} disabled={!data} title="프로젝트별 출장자 표 양식으로 종합 엑셀을 내려받습니다 (수식·접기/펼치기 포함)">
+            <button type="button" className="excel-export-btn" onClick={() => (EXPORT_ROLES.includes(role) ? setModal({ type: "export" }) : flash("err", "종합 엑셀은 PM·팀장(Grade 2.5) 이상만 내려받을 수 있습니다."))} disabled={!data} title="프로젝트별 출장자 표 양식으로 종합 엑셀을 내려받습니다 (수식·접기/펼치기 포함)">
               <Icon name="download" size="1.1em" /> 종합 엑셀
             </button>
             <button type="button" className="system-toggle-all-btn" onClick={refresh} title="최신 내용으로 다시 불러오기">

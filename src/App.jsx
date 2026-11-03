@@ -372,6 +372,7 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("진행중");
   const [siteFilter, setSiteFilter] = useState([]); // 선택한 Site 배열(빈 배열 = 전체)
+  const [projectFilter, setProjectFilter] = useState([]); // 선택한 프로젝트 id 배열(빈 배열 = 전체)
   const [personFilter, setPersonFilter] = useState("전체");
   
   // 복수 연간 단위 프로젝트 조회 시스템 (Multi-Year Filter: 1년, 2년치, 3년치, 전체 등 복수 선택 가능)
@@ -702,9 +703,10 @@ export default function App() {
   const [collapsedSections, setCollapsedSections] = useState(() => {
     try {
       const saved = localStorage.getItem('pm_app_collapsed_sections');
-      return saved ? JSON.parse(saved) : {};
+      // 프로젝트 등록 입력란은 쓸 때만 펼치므로 화면을 열 때마다 접힌 상태로 시작한다
+      return { ...(saved ? JSON.parse(saved) : {}), form: true };
     } catch (e) {
-      return {};
+      return { form: true };
     }
   });
 
@@ -1085,6 +1087,14 @@ export default function App() {
 
   const peopleNames = [...new Set(people.map(p => p.name))].sort();
 
+  // 프로젝트 필터 목록: 선택한 Site에 속한 프로젝트만, 제조번호·이름순
+  const projectFilterOptions = useMemo(() => currentCustomerProjects
+    .filter(p => matchesSites(siteFilter, p.site))
+    .map(p => ({ value: p.id, label: [p.manufacturingNo, p.name].filter(Boolean).join(" · ") || "(이름 없음)" }))
+    .sort((a, b) => a.label.localeCompare(b.label, "ko")), [currentCustomerProjects, siteFilter]);
+  // Site를 바꿔서 목록에서 빠진 프로젝트는 선택에서도 뺀다(화면에 안 보이는 선택이 조회를 막지 않게)
+  const effectiveProjectFilter = useMemo(() => projectFilter.filter(id => projectFilterOptions.some(o => o.value === id)), [projectFilter, projectFilterOptions]);
+
   const view = useMemo(() => {
     const list = currentCustomerProjects.map(p => {
       const cleanMs = (p.milestones || [])
@@ -1134,7 +1144,7 @@ export default function App() {
 
       const text = [p.manufacturingNo, p.site, p.line, p.name, p.pm, p.design, p.facilityTechnology, p.control, p.vision].join(" ").toLowerCase();
       const status = filter === "전체" || (filter === "완료" && p.status === "완료") || (filter === "진행중" && p.status !== "완료") || (filter === "지연" && p.overdue) || (p.status === filter);
-      const site = matchesSites(siteFilter, p.site);
+      const site = matchesSites(siteFilter, p.site) && (effectiveProjectFilter.length === 0 || effectiveProjectFilter.includes(p.id));
       const person = personFilter === "전체" || [p.pm, p.design, p.facilityTechnology, p.control, p.vision].includes(personFilter);
       return yearMatch && text.includes(search.toLowerCase()) && status && site && person;
     });
@@ -1157,7 +1167,7 @@ export default function App() {
 
     // 동시 진행 프로젝트 간 중복 및 유사 색상을 방지하는 지능형 색상 분산 적용
     return assignDistinctColors(list, PROJECT_COLORS[theme] || PROJECT_COLORS.dark);
-  }, [currentCustomerProjects, search, filter, siteFilter, personFilter, selectedYears, isAllYears, theme]);
+  }, [currentCustomerProjects, search, filter, siteFilter, effectiveProjectFilter, personFilter, selectedYears, isAllYears, theme]);
 
   // 등록된 프로젝트들의 기간에서 추출한 고유 연도 목록 (최신순)
   const availableYears = useMemo(() => {
@@ -2135,6 +2145,7 @@ JSON 출력 예시:
                   onClick={() => {
                     setCurrentCustomer(cust.id);
                     setSiteFilter([]);
+                    setProjectFilter([]);
                     setForm(f => ({ ...f, customer: cust.id }));
                   }}
                   className={`customer-tab-btn ${cust.cls} ${isSelected ? 'active' : ''}`}
@@ -2423,9 +2434,9 @@ JSON 출력 예시:
                 { id: 'all', icon: 'layers', label: '전체 표시' },
                 ...(edit ? [{ id: 'form', icon: 'pencil', label: '프로젝트 등록/수정' }] : []),
                 { id: 'filter', icon: 'filter', label: '일정 조회 필터' },
+                { id: 'list', icon: 'list', label: '프로젝트 목록' },
                 { id: 'gantt', icon: 'barChart', label: '프로젝트 간트차트' },
-                { id: 'calendar', icon: 'calendar', label: '프로젝트 일정 달력' },
-                { id: 'list', icon: 'list', label: '프로젝트 목록' }
+                { id: 'calendar', icon: 'calendar', label: '프로젝트 일정 달력' }
               ].map(sec => (
                 <button
                   key={sec.id}
@@ -2461,6 +2472,11 @@ JSON 출력 예시:
                       <FoldLabel collapsed={collapsedSections.form} />
                     </span>
                   </h2>
+                  {collapsedSections.form && (
+                    <span style={{ fontSize: '12px', color: 'var(--ink-3)' }}>
+                      입력란이 접혀 있습니다 (클릭하여 펼치기)
+                    </span>
+                  )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
                     <span style={{
                       fontSize: '12px',
@@ -2795,14 +2811,7 @@ JSON 출력 예시:
                     )}
                   </div>
                 </>
-              ) : (
-                <div 
-                  onClick={() => toggleSection('form')}
-                  className="section-collapsed-placeholder"
-                >
-                  프로젝트 {editing ? "수정" : "등록"} 입력란이 접혀 있습니다. (클릭하여 입력란 펼치기)
-                </div>
-              )}
+              ) : null}
             </section>
           )}
 
@@ -2822,7 +2831,7 @@ JSON 출력 예시:
                 {!collapsedSections.filter && (
                   <button 
                     type="button"
-                    onClick={() => { handlePresetYears('current'); setSiteFilter([]); setPersonFilter("전체"); }}
+                    onClick={() => { handlePresetYears('current'); setSiteFilter([]); setProjectFilter([]); setPersonFilter("전체"); }}
                     className="filter-reset-btn"
                     title="조회 연도, Site, 담당자 필터를 초기화합니다"
                   >
@@ -2873,6 +2882,15 @@ JSON 출력 예시:
                   allLabel="Site: 전체"
                 />
 
+                <MultiSiteSelect
+                  className="project-msite"
+                  options={projectFilterOptions}
+                  value={effectiveProjectFilter}
+                  onChange={setProjectFilter}
+                  allLabel="프로젝트: 전체"
+                  ariaLabel="프로젝트 필터"
+                  title="프로젝트를 하나 이상 선택해서 볼 수 있습니다"
+                />
                 <select value={personFilter} onChange={e => setPersonFilter(e.target.value)}>
                   <option>전체</option>
                   {peopleNames.map(p => <option key={p}>{p}</option>)}
@@ -2880,7 +2898,7 @@ JSON 출력 예시:
                 <button 
                   type="button"
                   className="filter-reset-btn"
-                  onClick={() => { handlePresetYears('current'); setSiteFilter([]); setPersonFilter("전체"); }}
+                  onClick={() => { handlePresetYears('current'); setSiteFilter([]); setProjectFilter([]); setPersonFilter("전체"); }}
                 >
                   <Icon name="refresh" size={14} /> 필터 초기화
                 </button>
@@ -2900,7 +2918,197 @@ JSON 출력 예시:
                   marginTop: '8px'
                 }}
               >
-                <Icon name="filter" size={14} /> 연도: <b>{selectedYearsLabel}</b> · Site: <b>{sitesLabel(siteFilter)}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경)
+                <Icon name="filter" size={14} /> 연도: <b>{selectedYearsLabel}</b> · Site: <b>{sitesLabel(siteFilter)}</b> · 프로젝트: <b>{effectiveProjectFilter.length ? `${effectiveProjectFilter.length}개 선택` : "전체"}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경)
+              </div>
+            )}
+          </section>
+          )}
+
+          {(activeProjectSection === 'all' || activeProjectSection === 'list') && (
+          <section>
+            <div className="tools">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h2>
+                  {isAllYears ? "프로젝트 목록" : `${selectedYearsLabel} 프로젝트 목록`} ({view.length}건)
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => toggleSection('list')}
+                  style={{
+                    background: collapsedSections.list ? 'var(--btn-bg)' : 'var(--bg-card-subtle)',
+                    color: collapsedSections.list ? 'var(--btn-ink)' : 'var(--ink-2)',
+                    border: '1px solid var(--line-2)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <FoldLabel collapsed={collapsedSections.list} />
+                </button>
+                <button
+                  type="button"
+                  className="ppt-btn"
+                  disabled={view.length === 0}
+                  onClick={() => {
+                    const rows = selectedProjects.size > 0 ? view.filter(p => selectedProjects.has(p.id)) : view;
+                    exportProjectList(rows, {
+                      customer: currentCustomer,
+                      label: selectedProjects.size > 0 ? `선택${rows.length}건` : (isAllYears ? "전체" : selectedYearsLabel),
+                    });
+                  }}
+                  title={selectedProjects.size > 0 ? "선택한 프로젝트만 엑셀로 다운로드" : "현재 목록(검색·필터 적용)을 엑셀로 다운로드"}
+                >
+                  <Icon name="download" size={15} />
+                  {selectedProjects.size > 0 ? `선택 ${selectedProjects.size}건 엑셀` : "엑셀 다운로드"}
+                </button>
+              </div>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="제조번호, Site, Line, 프로젝트, 담당자 검색" />
+              {["전체", "진행중", "완료", "지연"].map(x => {
+                const activeClass = filter === x
+                  ? (x === "진행중" ? "active-ongoing" : x === "완료" ? "active-completed" : x === "지연" ? "active-delayed" : "active-all")
+                  : "";
+                return (
+                  <button key={x} className={activeClass} onClick={() => setFilter(x)}>{x}</button>
+                );
+              })}
+            </div>
+            {!collapsedSections.list ? (
+              <>
+                {view.length === 0 ? (
+                  <div style={{ padding: '36px 20px', textAlign: 'center', background: 'var(--bg-card-subtle)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-medium)', margin: '10px 14px' }}>
+                    <div style={{ marginBottom: '10px', color: 'var(--ink-4)' }}><Icon name="folder" size={28} stroke={1.4} /></div>
+                    <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                      {isAllYears ? "조회 조건에 일치하는 프로젝트가 없습니다." : `선택하신 ${selectedYearsLabel}에 일치하는 프로젝트가 없습니다.`}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      다른 연도를 선택하시거나, 검색어 및 필터를 초기화해 보세요.
+                    </div>
+                    {!isAllYears && (
+                      <button
+                        type="button"
+                        onClick={() => handlePresetYears('all')}
+                        style={{ marginTop: '12px', padding: '6px 14px', borderRadius: 'var(--radius-md)', background: 'var(--brand-wash)', color: 'var(--brand)', border: '1px solid color-mix(in srgb, var(--brand) 40%, transparent)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                      >
+                        전체 누적 프로젝트 보기
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '0 14px 10px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>
+                        <input type="checkbox" checked={view.length > 0 && selectedProjects.size === view.length} onChange={toggleSelectAll} style={{ width: 'auto', margin: 0, cursor: 'pointer' }} />
+                        전체 선택
+                      </label>
+                      {selectedProjects.size > 0 && (
+                        <button
+                          onClick={() => { if (!del) return showPermissionModal("프로젝트 다중 삭제"); removeSelected(); }}
+                          style={{ background: 'var(--bad-wash)',
+color: 'var(--bad)',
+border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4px 10px', borderRadius: 'var(--radius-md)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          선택 항목 삭제 ({selectedProjects.size}) {!del && <Icon name="lock" size={12} />}
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+                {view.map(p => (
+                  <article key={p.id} style={{ borderLeft: `3px solid ${p.projectColor}` }}>
+                    <div>
+                      <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="checkbox" checked={selectedProjects.has(p.id)} onChange={() => toggleSelect(p.id)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                        {p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}
+                      </h3>
+                      <p>
+                        {p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} &nbsp;|&nbsp; 소장 {p.pm || p.manager || "-"} · 설계 {p.design || "-"} · 설비 {p.facilityTechnology || "-"} · 제어 {p.control || "-"} · 비전 {p.vision || "-"} &nbsp;|&nbsp; {p.startDate} ~ {p.endDate} · <b style={{ color: p.isManualStatus ? (p.status === "PO대기중" ? 'var(--bad)' : 'var(--signal)') : 'inherit' }}>{p.status}</b>
+                      </p>
+                      {p.isManualStatus && (
+                        <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--warning-muted)', border: '1px solid color-mix(in srgb, var(--signal) 28%, transparent)', padding: '4px 9px', borderRadius: 'var(--radius-md)', fontSize: '11px', color: 'var(--warning)', fontWeight: '600' }}>
+                          <span><Icon name="alert" size={13} /> <b>수동 설정 ({p.manualStatusBy || "담당자"})</b> : 상태 확인 후 상태 변경을 해주세요</span>
+                          {edit && p.status !== "PO대기중" && (
+                            <button
+                              type="button"
+                              onClick={() => switchToAutoStatus(p)}
+                              style={{ background: 'var(--warn)', border: '1px solid var(--warn)', color: 'var(--on-brand)', padding: '2px 7px', borderRadius: 'var(--radius-md)', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}
+                              title="마일스톤 기반 자동 상태 계산으로 복귀"
+                            >
+                              자동 상태 전환
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {expanded[p.id] && (
+                        <div className="detail">
+                          {p.milestones.length ? p.milestones.map(m => (
+                            <div key={m.id}>
+                              <b>{m.name}</b>
+                              <span>{m.startDate} ~ {m.endDate}</span>
+                              <span>{pct(m.startDate, m.endDate)}%</span>
+                              <span>{dt(m.startDate) < dt(p.startDate) ? "선행 일정" : dt(m.endDate) > dt(p.endDate) ? "후행 일정" : "프로젝트 기간 내"}</span>
+                            </div>
+                          )) : <p>등록된 마일스톤이 없습니다.</p>}
+                        </div>
+                      )}
+                    </div>
+                    <div className="bar">
+                      <i style={{ width: p.value + "%", background: p.projectColor }} />
+                      <b>{p.value}%</b>
+                    </div>
+                    <aside>
+                      <button onClick={() => setExpanded({ ...expanded, [p.id]: !expanded[p.id] })}>
+                        {expanded[p.id] ? "마일스톤 닫기" : "마일스톤 보기"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!canViewManpowerDetail) return showPermissionModal("공수 상세 확인");
+                          setSelectedManpowerProject(p);
+                        }}
+                        style={{
+                          background: p.manpower ? 'var(--brand-wash)' : 'var(--bg-card-subtle)',
+                          color: !canViewManpowerDetail ? 'var(--ink-3)' : (p.manpower ? 'var(--brand)' : 'var(--ink-2)'),
+                          border: p.manpower ? '1px solid color-mix(in srgb, var(--brand) 40%, transparent)' : '1px solid var(--line-2)',
+                          fontWeight: 'bold',
+                          cursor: 'pointer'
+                        }}
+                        title={!canViewManpowerDetail ? "공수 상세 확인은 Grade 2 이상 권한이 필요합니다" : "프로젝트 공수 상세 내역을 확인합니다"}
+                      >
+                        공수 확인 {p.manpower?.totalManday ? `(${p.manpower.totalManday}M/D)` : ''} {!canViewManpowerDetail && <Icon name="lock" size={12} />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!edit) return showPermissionModal("프로젝트 수정");
+                          editProject(p);
+                        }}
+                        style={{ color: edit ? 'inherit' : 'var(--ink-3)' }}
+                        title={!edit ? "프로젝트 수정 권한이 없습니다 (Grade 3 이상 가능)" : ""}
+                      >
+                        수정 {!edit && <Icon name="lock" size={12} />}
+                      </button>
+                      <button onClick={() => { if (!del) return showPermissionModal("프로젝트 삭제"); remove(p.id); }} style={{ color: del ? 'inherit' : 'var(--ink-3)' }}>
+                        삭제 {!del && <Icon name="lock" size={12} />}
+                      </button>
+                    </aside>
+                  </article>
+                ))}
+              </>
+            ) : (
+              <div 
+                onClick={() => toggleSection('list')}
+                style={{
+                  padding: '12px 16px',
+                  background: 'var(--bg-card-subtle)',
+                  border: '1px dashed var(--border-medium)',
+                  borderRadius: 'var(--radius-md)',
+                  textAlign: 'center',
+                  color: 'var(--text-secondary)',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  margin: '8px 14px 14px'
+                }}
+              >
+                프로젝트 목록 ({view.length}건, 필터: {filter})이 접혀 있습니다. (클릭하여 펼치기)
               </div>
             )}
           </section>
@@ -3500,196 +3708,6 @@ JSON 출력 예시:
                 className="section-collapsed-placeholder"
               >
                 프로젝트 일정 달력 ({month.getFullYear()}년 {month.getMonth() + 1}월)이 접혀 있습니다. (클릭하여 펼치기)
-              </div>
-            )}
-          </section>
-          )}
-
-          {(activeProjectSection === 'all' || activeProjectSection === 'list') && (
-          <section>
-            <div className="tools">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2>
-                  {isAllYears ? "프로젝트 목록" : `${selectedYearsLabel} 프로젝트 목록`} ({view.length}건)
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => toggleSection('list')}
-                  style={{
-                    background: collapsedSections.list ? 'var(--btn-bg)' : 'var(--bg-card-subtle)',
-                    color: collapsedSections.list ? 'var(--btn-ink)' : 'var(--ink-2)',
-                    border: '1px solid var(--line-2)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '2px 8px',
-                    fontSize: '11px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <FoldLabel collapsed={collapsedSections.list} />
-                </button>
-                <button
-                  type="button"
-                  className="ppt-btn"
-                  disabled={view.length === 0}
-                  onClick={() => {
-                    const rows = selectedProjects.size > 0 ? view.filter(p => selectedProjects.has(p.id)) : view;
-                    exportProjectList(rows, {
-                      customer: currentCustomer,
-                      label: selectedProjects.size > 0 ? `선택${rows.length}건` : (isAllYears ? "전체" : selectedYearsLabel),
-                    });
-                  }}
-                  title={selectedProjects.size > 0 ? "선택한 프로젝트만 엑셀로 다운로드" : "현재 목록(검색·필터 적용)을 엑셀로 다운로드"}
-                >
-                  <Icon name="download" size={15} />
-                  {selectedProjects.size > 0 ? `선택 ${selectedProjects.size}건 엑셀` : "엑셀 다운로드"}
-                </button>
-              </div>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="제조번호, Site, Line, 프로젝트, 담당자 검색" />
-              {["전체", "진행중", "완료", "지연"].map(x => {
-                const activeClass = filter === x
-                  ? (x === "진행중" ? "active-ongoing" : x === "완료" ? "active-completed" : x === "지연" ? "active-delayed" : "active-all")
-                  : "";
-                return (
-                  <button key={x} className={activeClass} onClick={() => setFilter(x)}>{x}</button>
-                );
-              })}
-            </div>
-            {!collapsedSections.list ? (
-              <>
-                {view.length === 0 ? (
-                  <div style={{ padding: '36px 20px', textAlign: 'center', background: 'var(--bg-card-subtle)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-medium)', margin: '10px 14px' }}>
-                    <div style={{ marginBottom: '10px', color: 'var(--ink-4)' }}><Icon name="folder" size={28} stroke={1.4} /></div>
-                    <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                      {isAllYears ? "조회 조건에 일치하는 프로젝트가 없습니다." : `선택하신 ${selectedYearsLabel}에 일치하는 프로젝트가 없습니다.`}
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      다른 연도를 선택하시거나, 검색어 및 필터를 초기화해 보세요.
-                    </div>
-                    {!isAllYears && (
-                      <button
-                        type="button"
-                        onClick={() => handlePresetYears('all')}
-                        style={{ marginTop: '12px', padding: '6px 14px', borderRadius: 'var(--radius-md)', background: 'var(--brand-wash)', color: 'var(--brand)', border: '1px solid color-mix(in srgb, var(--brand) 40%, transparent)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                      >
-                        전체 누적 프로젝트 보기
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '0 14px 10px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold' }}>
-                        <input type="checkbox" checked={view.length > 0 && selectedProjects.size === view.length} onChange={toggleSelectAll} style={{ width: 'auto', margin: 0, cursor: 'pointer' }} />
-                        전체 선택
-                      </label>
-                      {selectedProjects.size > 0 && (
-                        <button
-                          onClick={() => { if (!del) return showPermissionModal("프로젝트 다중 삭제"); removeSelected(); }}
-                          style={{ background: 'var(--bad-wash)',
-color: 'var(--bad)',
-border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4px 10px', borderRadius: 'var(--radius-md)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                        >
-                          선택 항목 삭제 ({selectedProjects.size}) {!del && <Icon name="lock" size={12} />}
-                        </button>
-                      )}
-                    </div>
-                  </>
-                )}
-                {view.map(p => (
-                  <article key={p.id} style={{ borderLeft: `3px solid ${p.projectColor}` }}>
-                    <div>
-                      <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <input type="checkbox" checked={selectedProjects.has(p.id)} onChange={() => toggleSelect(p.id)} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
-                        {p.manufacturingNo ? `${p.manufacturingNo.replace(/-[a-f0-9]{4}$/i, '')} · ` : ""}{p.name}
-                      </h3>
-                      <p>
-                        {p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} &nbsp;|&nbsp; 소장 {p.pm || p.manager || "-"} · 설계 {p.design || "-"} · 설비 {p.facilityTechnology || "-"} · 제어 {p.control || "-"} · 비전 {p.vision || "-"} &nbsp;|&nbsp; {p.startDate} ~ {p.endDate} · <b style={{ color: p.isManualStatus ? (p.status === "PO대기중" ? 'var(--bad)' : 'var(--signal)') : 'inherit' }}>{p.status}</b>
-                      </p>
-                      {p.isManualStatus && (
-                        <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--warning-muted)', border: '1px solid color-mix(in srgb, var(--signal) 28%, transparent)', padding: '4px 9px', borderRadius: 'var(--radius-md)', fontSize: '11px', color: 'var(--warning)', fontWeight: '600' }}>
-                          <span><Icon name="alert" size={13} /> <b>수동 설정 ({p.manualStatusBy || "담당자"})</b> : 상태 확인 후 상태 변경을 해주세요</span>
-                          {edit && p.status !== "PO대기중" && (
-                            <button
-                              type="button"
-                              onClick={() => switchToAutoStatus(p)}
-                              style={{ background: 'var(--warn)', border: '1px solid var(--warn)', color: 'var(--on-brand)', padding: '2px 7px', borderRadius: 'var(--radius-md)', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}
-                              title="마일스톤 기반 자동 상태 계산으로 복귀"
-                            >
-                              자동 상태 전환
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      {expanded[p.id] && (
-                        <div className="detail">
-                          {p.milestones.length ? p.milestones.map(m => (
-                            <div key={m.id}>
-                              <b>{m.name}</b>
-                              <span>{m.startDate} ~ {m.endDate}</span>
-                              <span>{pct(m.startDate, m.endDate)}%</span>
-                              <span>{dt(m.startDate) < dt(p.startDate) ? "선행 일정" : dt(m.endDate) > dt(p.endDate) ? "후행 일정" : "프로젝트 기간 내"}</span>
-                            </div>
-                          )) : <p>등록된 마일스톤이 없습니다.</p>}
-                        </div>
-                      )}
-                    </div>
-                    <div className="bar">
-                      <i style={{ width: p.value + "%", background: p.projectColor }} />
-                      <b>{p.value}%</b>
-                    </div>
-                    <aside>
-                      <button onClick={() => setExpanded({ ...expanded, [p.id]: !expanded[p.id] })}>
-                        {expanded[p.id] ? "마일스톤 닫기" : "마일스톤 보기"}
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (!canViewManpowerDetail) return showPermissionModal("공수 상세 확인");
-                          setSelectedManpowerProject(p);
-                        }}
-                        style={{
-                          background: p.manpower ? 'var(--brand-wash)' : 'var(--bg-card-subtle)',
-                          color: !canViewManpowerDetail ? 'var(--ink-3)' : (p.manpower ? 'var(--brand)' : 'var(--ink-2)'),
-                          border: p.manpower ? '1px solid color-mix(in srgb, var(--brand) 40%, transparent)' : '1px solid var(--line-2)',
-                          fontWeight: 'bold',
-                          cursor: 'pointer'
-                        }}
-                        title={!canViewManpowerDetail ? "공수 상세 확인은 Grade 2 이상 권한이 필요합니다" : "프로젝트 공수 상세 내역을 확인합니다"}
-                      >
-                        공수 확인 {p.manpower?.totalManday ? `(${p.manpower.totalManday}M/D)` : ''} {!canViewManpowerDetail && <Icon name="lock" size={12} />}
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (!edit) return showPermissionModal("프로젝트 수정");
-                          editProject(p);
-                        }}
-                        style={{ color: edit ? 'inherit' : 'var(--ink-3)' }}
-                        title={!edit ? "프로젝트 수정 권한이 없습니다 (Grade 3 이상 가능)" : ""}
-                      >
-                        수정 {!edit && <Icon name="lock" size={12} />}
-                      </button>
-                      <button onClick={() => { if (!del) return showPermissionModal("프로젝트 삭제"); remove(p.id); }} style={{ color: del ? 'inherit' : 'var(--ink-3)' }}>
-                        삭제 {!del && <Icon name="lock" size={12} />}
-                      </button>
-                    </aside>
-                  </article>
-                ))}
-              </>
-            ) : (
-              <div 
-                onClick={() => toggleSection('list')}
-                style={{
-                  padding: '12px 16px',
-                  background: 'var(--bg-card-subtle)',
-                  border: '1px dashed var(--border-medium)',
-                  borderRadius: 'var(--radius-md)',
-                  textAlign: 'center',
-                  color: 'var(--text-secondary)',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  margin: '8px 14px 14px'
-                }}
-              >
-                프로젝트 목록 ({view.length}건, 필터: {filter})이 접혀 있습니다. (클릭하여 펼치기)
               </div>
             )}
           </section>

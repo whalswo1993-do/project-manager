@@ -1,4 +1,6 @@
 .msite { position: relative; display: inline-block; min-width: 150px; }
+.msite.project-msite { min-width: 240px; max-width: 320px; }
+.msite.project-msite .msite-panel { max-width: 440px; }
 .msite.iic-msite { min-width: 190px; }
 .msite.iic-msite .msite-btn { font-weight: 600; padding: 7px 12px; }
 .msite-btn {
@@ -30,7 +32,7 @@
 .msite .msite-opt input[type="checkbox"] {
   flex: none; width: 14px !important; height: 14px !important; min-width: 14px; padding: 0 !important; margin: 0; box-shadow: none;
 }
-.msite .msite-opt span { flex: 1; width: auto; text-align: left; white-space: nowrap; }
+.msite .msite-opt span { flex: 1; width: auto; min-width: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .msite .msite-opt em { flex: none; margin-left: 12px; }
 .msite .msite-all { text-align: left; white-space: nowrap; }
 .msite .msite-btn { text-align: left; }

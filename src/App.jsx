@@ -22,6 +22,7 @@ import * as XLSX from "xlsx";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { filterSitesByCustomer } from "./siteCustomers";
 import MultiSiteSelect from "./MultiSiteSelect";
+import ProjectGanttExportModal from "./ProjectGanttExportModal";
 import { matchesSites, sitesLabel } from "./siteFilter";
 import { normalizeJVName, getConstructionPeriod, getMonthDailyDeptMatrix, getDailyDepartmentManpower } from "./utils";
 import { SkOnLogo, SamsungSdiLogo, HyundaiLogo } from "./CustomerLogos";
@@ -373,6 +374,7 @@ export default function App() {
   const [filter, setFilter] = useState("진행중");
   const [siteFilter, setSiteFilter] = useState([]); // 선택한 Site 배열(빈 배열 = 전체)
   const [projectFilter, setProjectFilter] = useState([]); // 선택한 프로젝트 id 배열(빈 배열 = 전체)
+  const [ganttExportRows, setGanttExportRows] = useState(null); // 간트 엑셀 내려받기 창: { rows, label } | null
   const [personFilter, setPersonFilter] = useState("전체");
   
   // 복수 연간 단위 프로젝트 조회 시스템 (Multi-Year Filter: 1년, 2년치, 3년치, 전체 등 복수 선택 가능)
@@ -2962,6 +2964,19 @@ JSON 출력 예시:
                   <Icon name="download" size={15} />
                   {selectedProjects.size > 0 ? `선택 ${selectedProjects.size}건 엑셀` : "엑셀 다운로드"}
                 </button>
+                <button
+                  type="button"
+                  className="ppt-btn"
+                  disabled={view.length === 0}
+                  onClick={() => {
+                    const rows = selectedProjects.size > 0 ? view.filter(p => selectedProjects.has(p.id)) : view;
+                    setGanttExportRows({ rows, label: selectedProjects.size > 0 ? `선택${rows.length}건` : (isAllYears ? "전체" : selectedYearsLabel) });
+                  }}
+                  title="프로젝트별 전체 일정과 마일스톤을 간트차트(접기/펼치기, 일·주 단위)로 엑셀에 담습니다"
+                >
+                  <Icon name="barChart" size={15} />
+                  {selectedProjects.size > 0 ? `선택 ${selectedProjects.size}건 간트 엑셀` : "간트 엑셀"}
+                </button>
               </div>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="제조번호, Site, Line, 프로젝트, 담당자 검색" />
               {["전체", "진행중", "완료", "지연"].map(x => {
@@ -4289,6 +4304,14 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
         }}
       />
 
+      {ganttExportRows && (
+        <ProjectGanttExportModal
+          projects={ganttExportRows.rows}
+          customer={currentCustomer}
+          label={ganttExportRows.label}
+          onClose={() => setGanttExportRows(null)}
+        />
+      )}
       <IntegratedExportModal
         isOpen={showIntegratedExportModal}
         onClose={() => setShowIntegratedExportModal(false)}

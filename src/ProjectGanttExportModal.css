@@ -1,0 +1,24 @@
+.pgx-backdrop { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0, 0, 0, .45); }
+.pgx-modal { width: min(520px, 100%); max-height: 90vh; overflow-y: auto; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius-xl); box-shadow: var(--shadow-xl); padding: 18px 20px; }
+.pgx-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.pgx-head h3 { margin: 2px 0 0; font-size: 17px; }
+.pgx-x { background: transparent; border: 0; color: var(--ink-3); cursor: pointer; padding: 4px; }
+.pgx-note { display: flex; gap: 6px; margin: 12px 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-2, var(--ink)); }
+.pgx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pgx-field { display: flex; flex-direction: column; gap: 6px; }
+.pgx-field.wide { grid-column: 1 / -1; }
+.pgx-label { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+.pgx-field input[type="date"] { width: 100%; padding: 7px 10px; }
+.pgx-seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; width: max-content; }
+.pgx-seg button { padding: 7px 18px; font-size: 13px; background: var(--surface); color: var(--ink-2, var(--ink)); border: 0; border-right: 1px solid var(--line); border-radius: 0; cursor: pointer; }
+.pgx-seg button:last-child { border-right: 0; }
+.pgx-seg button.on { background: var(--btn-bg); color: var(--btn-ink); font-weight: 650; }
+.pgx-modal .pgx-check { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.pgx-modal .pgx-check input { width: 14px; height: 14px; padding: 0; margin: 0; }
+.pgx-link { align-self: flex-start; background: transparent; border: 0; padding: 0; font-size: 12px; color: var(--brand); cursor: pointer; text-decoration: underline; }
+.pgx-foot-info { margin-top: 12px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); }
+.pgx-error { margin-top: 10px; padding: 8px 10px; font-size: 12.5px; color: var(--bad); background: var(--bad-wash, transparent); border: 1px solid var(--bad); border-radius: var(--radius-md); }
+.pgx-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.pgx-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 13px; background: var(--surface); color: var(--ink); border: 1px solid var(--line-2, var(--line)); border-radius: var(--radius-md); cursor: pointer; }
+.pgx-btn.primary { background: var(--btn-bg); color: var(--btn-ink); border-color: var(--btn-bg); font-weight: 650; }
+.pgx-btn:disabled { opacity: .55; cursor: not-allowed; }

@@ -605,7 +605,8 @@ button.tr-now:hover { text-decoration: underline; }
 .tr-act-sum { flex: 1; min-width: 0; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; }
 
 /* 종합 엑셀 다운로드: 이 화면의 핵심 산출물이라 크게 */
-.tr-header-btns .excel-export-btn.tr-export-big {
+.tr-header-actions > .excel-export-btn.tr-export-big {
+  width: 100% !important;
   height: 46px !important;
   padding: 0 26px !important;
   gap: 10px !important;

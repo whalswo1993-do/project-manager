@@ -34,7 +34,7 @@ describe("프로젝트 간트 엑셀", () => {
 
   it("시트 구성·개요 그룹·접힘 상태", () => {
     const wb = buildProjectGanttWorkbook(ExcelJS, projects, { unit: "week", collapsed: true, today: "2026-11-10" });
-    expect(wb.worksheets.map((s) => s.name)).toEqual([SHEET_GANTT, SHEET_LIST, "작성 안내"]);
+    expect(wb.worksheets.map((s) => s.name)).toEqual([SHEET_GANTT, SHEET_LIST]);
     const ws = wb.getWorksheet(SHEET_GANTT);
     const { firstRow } = wb.__gantt;
     expect(ws.getRow(firstRow).outlineLevel).toBe(0);
@@ -71,6 +71,40 @@ describe("프로젝트 간트 엑셀", () => {
     // 한 칸짜리 병합은 엑셀이 거부한다
     const merges = [...xml.matchAll(/<mergeCell ref="([A-Z]+\d+):([A-Z]+\d+)"/g)];
     merges.forEach((m) => expect(m[1]).not.toBe(m[2]));
+  });
+
+  it("맨 아래에 부서별 계획공수 합산표가 들어가고 합계가 맞는다", () => {
+    const withMp = projects.map((p, i) => ({
+      ...p,
+      manpower: { departments: i === 0
+        ? { mechanical: { daily: { "2026-11-02": 2, "2026-11-03": 3, "2026-11-10": 4 } }, control: { daily: { "2026-11-03": 1 } } }
+        : { mechanical: { daily: { "2026-12-01": 5 } } } },
+    }));
+    const wb = buildProjectGanttWorkbook(ExcelJS, withMp, { unit: "week", today: "2026-11-10" });
+    const ws = wb.getWorksheet(SHEET_GANTT);
+    const { manpowerRows, cols } = wb.__gantt;
+    const mech = manpowerRows.find((r) => r.key === "mechanical");
+    const ctrl = manpowerRows.find((r) => r.key === "control");
+    const all = manpowerRows.find((r) => r.key === "total");
+    expect(mech.total).toBe(14);
+    expect(ctrl.total).toBe(1);
+    expect(all.total).toBe(15);
+    expect(ws.getCell(mech.row, 2).value).toBe("기구");
+    // 11/2 주: 기구 2+3=5, 11/9 주: 4, 11/30 주: 5
+    const wk = (start) => 9 + cols.findIndex((c) => c.start === start);
+    expect(ws.getCell(mech.row, wk("2026-11-02")).value).toBe(5);
+    expect(ws.getCell(mech.row, wk("2026-11-09")).value).toBe(4);
+    expect(ws.getCell(mech.row, wk("2026-11-30")).value).toBe(5);
+    expect(ws.getCell(all.row, wk("2026-11-02")).value.result).toBe(6);
+    expect(ws.getCell(mech.row, 6).value.formula).toMatch(/^SUM\(/);
+  });
+
+  it("열 너비를 글자 길이에 맞추고 안내 시트는 없다", () => {
+    const longName = "아주 긴 프로젝트 이름 아주 긴 프로젝트 이름 아주 긴 프로젝트 이름 아주 긴 프로젝트 이름";
+    const wb = buildProjectGanttWorkbook(ExcelJS, [{ ...projects[1], name: longName }], { unit: "week" });
+    expect(wb.getWorksheet(SHEET_GANTT).getColumn(2).width).toBeGreaterThan(46);
+    expect(wb.getWorksheet(SHEET_LIST).getColumn(2).width).toBeGreaterThan(40);
+    expect(wb.getWorksheet("작성 안내")).toBeUndefined();
   });
 
   it("일정이 없거나 너무 긴 기간은 안내 문구로 막는다", () => {

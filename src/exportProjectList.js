@@ -9,7 +9,7 @@ import { BASE_DEPT_ORDER, DEPT_SHORT, normalizeDeptKey } from './manpowerDepts';
 const stripHash = (no) => String(no || '').replace(/-[a-f0-9]{4}$/i, '');
 const num = (v) => Number(v) || 0;
 
-function deptLabel(key) {
+export function deptLabel(key) {
   return DEPT_SHORT[key] || key;
 }
 
@@ -106,7 +106,7 @@ export function detectWorkStart(project, summary) {
 }
 
 // 부서 열 순서: 기본 순서 먼저, 그 밖의 부서는 뒤에 붙인다
-function orderDepts(keys) {
+export function orderDepts(keys) {
   const set = new Set(keys);
   const ordered = BASE_DEPT_ORDER.filter((k) => set.has(k));
   keys.forEach((k) => { if (!ordered.includes(k)) ordered.push(k); });

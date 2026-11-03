@@ -3,8 +3,9 @@
 // 마일스톤 줄은 프로젝트 줄 아래 개요 그룹(+/−)이라 프로젝트별로 접고 펼 수 있다.
 // 일 단위/주 단위를 골라 칸 폭을 바꾼다. 일정 날짜는 텍스트(날짜 칸)로도 그대로 보인다.
 //
-// 시트: 프로젝트 간트(간트+일정) · 일정표(텍스트 목록) · 작성 안내
+// 시트: 프로젝트 간트(간트+일정+맨 아래 부서별 계획공수 합산표) · 일정표(텍스트 목록)
 import { addDays, mondayOf, todayISO } from "./tripLogic";
+import { deptLabel, orderDepts, summarizeManpower } from "./exportProjectList";
 
 export const SHEET_GANTT = "프로젝트 간트";
 export const SHEET_LIST = "일정표";
@@ -15,6 +16,7 @@ const HEADER_DATE_ROW = 6;
 const FIRST_ROW = 7;
 const MAX_COLUMNS = 1500;
 const DEFAULT_COLOR = "0B57A4";
+const MAX_TEXT_WIDTH = 100;
 const HELPER_IDS = new Set(["__status_meta__", "__manpower_meta__"]);
 
 const colLetter = (n) => { let s = ""; let x = n; while (x > 0) { const m = (x - 1) % 26; s = String.fromCharCode(65 + m) + s; x = Math.floor((x - 1) / 26); } return s; };
@@ -27,6 +29,8 @@ const thin = { style: "thin", color: { argb: C.line } };
 const box = { top: thin, left: thin, bottom: thin, right: thin };
 const font = (extra = {}) => ({ name: FONT, size: 10, color: { argb: C.ink }, ...extra });
 const progressOf = (p) => (Number.isFinite(+p.value) ? +p.value : p.status === "완료" ? 100 : 0);
+// 글자 폭 추정: 한글·전각은 2칸, 영문·숫자는 1칸
+const textWidth = (s) => [...String(s ?? "")].reduce((n, ch) => n + (ch.charCodeAt(0) > 0x2e7f ? 2 : 1.05), 0);
 const WEEKDAY = ["일", "월", "화", "수", "목", "금", "토"];
 
 function setCollapsed(row, value) {
@@ -244,6 +248,95 @@ export function buildProjectGanttWorkbook(ExcelJS, projects, options = {}) {
   });
   ws.getRow(sumRow).height = 18;
 
+  // ── 부서별 계획공수 합산표(맨 아래): 칸마다 그 기간의 M/D 합계. 합계 열·합계 줄은 수식 ──
+  const mp = blocks.map((b) => summarizeManpower(b.p));
+  const deptKeys = orderDepts([...new Set(mp.flatMap((s) => Object.keys(s.depts)))]);
+  const dailyByDept = {};
+  deptKeys.forEach((k) => {
+    const daily = {};
+    mp.forEach((s) => Object.entries(s.depts[k]?.daily || {}).forEach(([d, v]) => { daily[d] = (daily[d] || 0) + v; }));
+    dailyByDept[k] = daily;
+  });
+  const manpowerRows = [];
+  if (deptKeys.length) {
+    const titleRow = sumRow + 3;
+    ws.getCell(titleRow, 1).value = "부서별 계획공수 합산 (M/D)";
+    ws.getCell(titleRow, 1).font = font({ size: 12, bold: true, color: { argb: C.brand } });
+    ws.getCell(titleRow + 1, 1).value = `선택한 프로젝트 ${blocks.length}건의 마스터 스케줄 계획공수를 부서별로 더한 값입니다. 칸 값은 ${unit === "day" ? "그날 투입 인원" : "그 주 투입 M/D(일별 인원의 합)"}입니다.`;
+    ws.getCell(titleRow + 1, 1).font = font({ size: 9, color: { argb: C.muted } });
+    const hr = titleRow + 2;
+    ["", "부서", "", "", "", "합계 M/D", "", "최대 인원(명)"].forEach((t, i) => {
+      const cell = ws.getCell(hr, i + 1);
+      cell.value = t || null;
+      cell.font = font({ bold: true });
+      cell.fill = solid(C.head);
+      cell.border = box;
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+    });
+    cols.forEach((col, i) => {
+      const cell = ws.getCell(hr, COL.T0 + i);
+      cell.value = asDate(col.start);
+      cell.numFmt = unit === "day" ? "d" : "m/d";
+      cell.font = font({ size: 8.5 });
+      cell.fill = solid(C.head);
+      cell.border = box;
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+    });
+    ws.getRow(hr).height = 17;
+    const first = hr + 1;
+    const colTotals = cols.map(() => 0);
+    deptKeys.forEach((k, di) => {
+      const rr = first + di;
+      const daily = dailyByDept[k];
+      let rowTotal = 0;
+      ws.getCell(rr, COL.NAME).value = deptLabel(k);
+      cols.forEach((col, i) => {
+        let v = 0;
+        for (let d = col.start; d <= col.end; d = addDays(d, 1)) v += daily[d] || 0;
+        const cell = ws.getCell(rr, COL.T0 + i);
+        if (v > 0) cell.value = v;
+        cell.font = font({ size: 9 });
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = box;
+        rowTotal += v;
+        colTotals[i] += v;
+      });
+      ws.getCell(rr, COL.DAYS).value = { formula: `SUM(${tl}${rr}:${ll}${rr})`, result: rowTotal };
+      ws.getCell(rr, COL.STATE).value = Math.max(0, ...Object.values(daily)) || null;
+      for (let c = 1; c <= COL.STATE; c += 1) {
+        const cell = ws.getCell(rr, c);
+        cell.border = box;
+        cell.font = font({ bold: c === COL.NAME || c === COL.DAYS });
+        cell.alignment = { horizontal: c === COL.NAME ? "left" : "center", vertical: "middle" };
+      }
+      ws.getRow(rr).height = 18;
+      manpowerRows.push({ key: k, row: rr, total: rowTotal });
+    });
+    const tr = first + deptKeys.length;
+    ws.getCell(tr, COL.NAME).value = "전체 합계";
+    ws.getCell(tr, COL.DAYS).value = { formula: `SUM(${tl}${tr}:${ll}${tr})`, result: colTotals.reduce((a, v) => a + v, 0) };
+    const dayAll = {};
+    deptKeys.forEach((k) => Object.entries(dailyByDept[k]).forEach(([d, v]) => { dayAll[d] = (dayAll[d] || 0) + v; }));
+    ws.getCell(tr, COL.STATE).value = Math.max(0, ...Object.values(dayAll)) || null;
+    for (let c = 1; c <= lastCol; c += 1) {
+      const cell = ws.getCell(tr, c);
+      cell.border = box;
+      cell.fill = solid(C.head);
+      cell.font = font({ bold: true, size: c >= COL.T0 ? 9 : 10 });
+      cell.alignment = { horizontal: c === COL.NAME ? "left" : "center", vertical: "middle" };
+    }
+    cols.forEach((_, i) => {
+      const L = colLetter(COL.T0 + i);
+      ws.getCell(tr, COL.T0 + i).value = { formula: `SUM(${L}${first}:${L}${tr - 1})`, result: colTotals[i] };
+    });
+    ws.getRow(tr).height = 18;
+    ws.addConditionalFormatting({
+      ref: `${tl}${first}:${ll}${tr - 1}`,
+      rules: [{ type: "colorScale", priority: 100000, cfvo: [{ type: "min" }, { type: "max" }], color: [{ argb: "FFFFFFFF" }, { argb: "FFC6EBD3" }] }],
+    });
+    manpowerRows.push({ key: "total", row: tr, total: colTotals.reduce((a, v) => a + v, 0) });
+  }
+
   // ── 조건부 서식: 막대(프로젝트 색) → 오늘 → 주말 순으로 우선 ──
   let priority = 1;
   const inBar = (row) => `AND(ISNUMBER($D${row}),ISNUMBER($E${row}),${tl}$${dr}<=$E${row},${tl}$${dr}+${span - 1}>=$D${row})`;
@@ -293,24 +386,28 @@ export function buildProjectGanttWorkbook(ExcelJS, projects, options = {}) {
   });
   ls.autoFilter = { from: { row: 1, column: 1 }, to: { row: Math.max(1, lr - 1), column: listHead.length } };
 
-  // ── 작성 안내 ──
-  const guide = wb.addWorksheet("작성 안내", { views: [{ showGridLines: false }], properties: { tabColor: { argb: "FF9CA3AF" } } });
-  guide.columns = [{ width: 110 }];
-  [
-    "프로젝트 일정 종합 엑셀 사용 안내",
-    "· '프로젝트 간트' 시트: 프로젝트 줄은 색이 진한 막대, 마일스톤 줄은 같은 색의 연한 막대입니다. 프로젝트 줄 왼쪽의 +/− 로 마일스톤을 접고 펼칩니다. 왼쪽 위 숫자 1·2 버튼으로 전체를 한 번에 접고 펼칠 수 있습니다.",
-    "· 막대는 조건부 서식이라서 시작일·종료일 칸을 고치면 막대가 같이 움직입니다. 오늘이 든 칸은 붉게 표시됩니다.",
-    `· 칸 단위는 ${unitLabel}입니다. 주 단위의 한 칸은 월요일부터 일요일까지이고, 그 주에 하루라도 걸치면 칠해집니다.`,
-    "· '일정표' 시트는 같은 내용을 텍스트 목록으로 모은 것입니다. 머리글의 필터로 프로젝트·구분·Site를 골라 볼 수 있습니다.",
-    "· 이 파일에서 고친 내용은 시스템에 자동으로 반영되지 않습니다(내려받기 전용).",
-  ].forEach((t, i) => {
-    const cell = guide.getCell(i + 1, 1);
-    cell.value = t;
-    cell.font = font({ size: i === 0 ? 14 : 10, bold: i === 0, color: { argb: i === 0 ? C.brand : C.ink } });
-    cell.alignment = { wrapText: true, vertical: "top" };
-  });
+  // ── 열 너비: 글자가 잘리지 않게 내용 길이에 맞춘다(날짜 열은 고정) ──
+  const fit = (sheet, colIdx, texts, min = 8) => {
+    const w = Math.max(min, ...texts.map(textWidth)) + 3;
+    sheet.getColumn(colIdx).width = Math.min(MAX_TEXT_WIDTH, Math.ceil(w));
+  };
+  fit(ws, COL.NO, [headLabels[0], ...blocks.map((b) => stripHash(b.p.manufacturingNo))], 10);
+  fit(ws, COL.NAME, [
+    headLabels[1], "동시 진행 프로젝트 수", ...deptKeys.map(deptLabel),
+    ...blocks.flatMap((b) => [b.p.name || "", ...b.milestones.map((m) => `    ${m.name}`)]),
+  ], 20);
+  fit(ws, COL.SITE, [headLabels[2], ...blocks.map((b) => b.p.site || "")], 8);
+  fit(ws, COL.STATE, [headLabels[7], ...blocks.map((b) => `${b.p.status || "진행중"} · 100%`)], 12);
+  for (let i = 1; i <= listHead.length; i += 1) {
+    const texts = [listHead[i - 1]];
+    ls.getColumn(i).eachCell({ includeEmpty: false }, (cell) => {
+      if (cell.row > 1 && typeof cell.value === "string") texts.push(cell.value);
+    });
+    if (i === 6 || i === 7) ls.getColumn(i).width = 12;
+    else fit(ls, i, texts, 8);
+  }
 
-  wb.__gantt = { blocks, cols, span, unit, firstRow: FIRST_ROW, lastRow, sumRow, dateRow: dr, rangeStart, rangeEnd };
+  wb.__gantt = { blocks, cols, span, unit, firstRow: FIRST_ROW, lastRow, sumRow, dateRow: dr, manpowerRows, rangeStart, rangeEnd };
   return wb;
 }
 

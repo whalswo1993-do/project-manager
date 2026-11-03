@@ -21,6 +21,8 @@ import { generateAIText } from "./ai";
 import * as XLSX from "xlsx";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { filterSitesByCustomer } from "./siteCustomers";
+import MultiSiteSelect from "./MultiSiteSelect";
+import { matchesSites, sitesLabel } from "./siteFilter";
 import { normalizeJVName, getConstructionPeriod, getMonthDailyDeptMatrix, getDailyDepartmentManpower } from "./utils";
 import { SkOnLogo, SamsungSdiLogo, HyundaiLogo } from "./CustomerLogos";
 import ManualManpowerEditor from "./ManualManpowerEditor";
@@ -369,7 +371,7 @@ export default function App() {
   });
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("진행중");
-  const [siteFilter, setSiteFilter] = useState("전체");
+  const [siteFilter, setSiteFilter] = useState([]); // 선택한 Site 배열(빈 배열 = 전체)
   const [personFilter, setPersonFilter] = useState("전체");
   
   // 복수 연간 단위 프로젝트 조회 시스템 (Multi-Year Filter: 1년, 2년치, 3년치, 전체 등 복수 선택 가능)
@@ -1132,7 +1134,7 @@ export default function App() {
 
       const text = [p.manufacturingNo, p.site, p.line, p.name, p.pm, p.design, p.facilityTechnology, p.control, p.vision].join(" ").toLowerCase();
       const status = filter === "전체" || (filter === "완료" && p.status === "완료") || (filter === "진행중" && p.status !== "완료") || (filter === "지연" && p.overdue) || (p.status === filter);
-      const site = siteFilter === "전체" || p.site === siteFilter;
+      const site = matchesSites(siteFilter, p.site);
       const person = personFilter === "전체" || [p.pm, p.design, p.facilityTechnology, p.control, p.vision].includes(personFilter);
       return yearMatch && text.includes(search.toLowerCase()) && status && site && person;
     });
@@ -2132,7 +2134,7 @@ JSON 출력 예시:
                   type="button"
                   onClick={() => {
                     setCurrentCustomer(cust.id);
-                    setSiteFilter("전체");
+                    setSiteFilter([]);
                     setForm(f => ({ ...f, customer: cust.id }));
                   }}
                   className={`customer-tab-btn ${cust.cls} ${isSelected ? 'active' : ''}`}
@@ -2820,7 +2822,7 @@ JSON 출력 예시:
                 {!collapsedSections.filter && (
                   <button 
                     type="button"
-                    onClick={() => { handlePresetYears('current'); setSiteFilter("전체"); setPersonFilter("전체"); }}
+                    onClick={() => { handlePresetYears('current'); setSiteFilter([]); setPersonFilter("전체"); }}
                     className="filter-reset-btn"
                     title="조회 연도, Site, 담당자 필터를 초기화합니다"
                   >
@@ -2864,10 +2866,13 @@ JSON 출력 예시:
                     <option key={yr} value={yr}>연도: {yr}년 {yr === currentYearStr ? '(현재)' : ''}</option>
                   ))}
                 </select>
-                <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
-                  <option>전체</option>
-                  {currentCustomerSites.map(s => <option key={s.id}>{s.name}</option>)}
-                </select>
+                <MultiSiteSelect
+                  options={currentCustomerSites.map(s => s.name)}
+                  value={siteFilter}
+                  onChange={setSiteFilter}
+                  allLabel="Site: 전체"
+                />
+
                 <select value={personFilter} onChange={e => setPersonFilter(e.target.value)}>
                   <option>전체</option>
                   {peopleNames.map(p => <option key={p}>{p}</option>)}
@@ -2875,7 +2880,7 @@ JSON 출력 예시:
                 <button 
                   type="button"
                   className="filter-reset-btn"
-                  onClick={() => { handlePresetYears('current'); setSiteFilter("전체"); setPersonFilter("전체"); }}
+                  onClick={() => { handlePresetYears('current'); setSiteFilter([]); setPersonFilter("전체"); }}
                 >
                   <Icon name="refresh" size={14} /> 필터 초기화
                 </button>
@@ -2895,7 +2900,7 @@ JSON 출력 예시:
                   marginTop: '8px'
                 }}
               >
-                <Icon name="filter" size={14} /> 연도: <b>{selectedYearsLabel}</b> · Site: <b>{siteFilter}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경)
+                <Icon name="filter" size={14} /> 연도: <b>{selectedYearsLabel}</b> · Site: <b>{sitesLabel(siteFilter)}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경)
               </div>
             )}
           </section>
@@ -4274,7 +4279,7 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
         defaultStartDate={integratedModalSource === 'calendar' ? new Date(month.getFullYear(), month.getMonth(), 1).toISOString().slice(0, 10) : (ganttStartDate || `${new Date().toISOString().slice(0, 7)}-01`)}
         defaultEndDate={integratedModalSource === 'calendar' ? new Date(month.getFullYear(), month.getMonth() + 1, 0).toISOString().slice(0, 10) : (ganttEndDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10))}
         customer={currentCustomer}
-        filters={{ filter, siteFilter, personFilter, search }}
+        filters={{ filter, siteFilter: sitesLabel(siteFilter), personFilter, search }}
         onExport={handleIntegratedExportSubmit}
       />
     </main>

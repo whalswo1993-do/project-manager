@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "./icons";
 import { rangeLabel } from "./tripLogic";
+import MultiSiteSelect from "./MultiSiteSelect";
+import { matchesSites } from "./siteFilter";
 
 const STATE_LABEL = { none: "배정 필요", short: "인원 부족", ok: "배정 완료", nodemand: "공수 없음" };
 
@@ -8,7 +10,7 @@ const STATE_LABEL = { none: "배정 필요", short: "인원 부족", ok: "배정
 export default function ProjectPicker({ plans, states, selectedId, onSelect, showPast, setShowPast, pastCount }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [site, setSite] = useState("all");
+  const [site, setSite] = useState([]); // 선택한 Site 배열(빈 배열 = 모든 Site)
   const [customer, setCustomer] = useState("all");
   const [stateFilter, setStateFilter] = useState("all");
   const boxRef = useRef(null);
@@ -32,7 +34,7 @@ export default function ProjectPicker({ plans, states, selectedId, onSelect, sho
     const q = query.trim().toLowerCase();
     return plans.filter((p) => {
       if (customer !== "all" && p.customer !== customer) return false;
-      if (site !== "all" && p.site !== site) return false;
+      if (!matchesSites(site, p.site)) return false;
       if (stateFilter !== "all" && states.get(p.id)?.state !== stateFilter) return false;
       if (!q) return true;
       return [p.name, p.site, p.line, p.manufacturingNo, p.customer].some((v) => String(v || "").toLowerCase().includes(q));
@@ -54,10 +56,8 @@ export default function ProjectPicker({ plans, states, selectedId, onSelect, sho
               <option value="all">모든 고객사</option>
               {customers.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
-            <select value={site} onChange={(e) => setSite(e.target.value)} aria-label="Site 필터">
-              <option value="all">모든 Site</option>
-              {sites.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <MultiSiteSelect options={sites} value={site} onChange={setSite} allLabel="모든 Site" />
+
             <select value={stateFilter} onChange={(e) => setStateFilter(e.target.value)} aria-label="배정 상태 필터">
               <option value="all">모든 상태</option>
               <option value="none">배정 필요</option>

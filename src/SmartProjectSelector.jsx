@@ -22,7 +22,7 @@ export default function SmartProjectSelector({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [yearFilter, setYearFilter] = useState(defaultYear);
-  const [siteFilter, setSiteFilter] = useState('ALL');
+  const [siteFilter, setSiteFilter] = useState([]); // 선택한 Site 배열(빈 배열 = 전체)
   const containerRef = useRef(null);
   const searchInputRef = useRef(null);
 
@@ -139,9 +139,9 @@ export default function SmartProjectSelector({
       }
 
       // 2. Site 필터링
-      if (siteFilter !== 'ALL') {
+      if (siteFilter.length) {
         const s = normalizeJVName(p.site || '').trim();
-        if (s !== siteFilter) return false;
+        if (!siteFilter.includes(s)) return false;
       }
 
       // 3. 키워드 검색 (띄어쓰기 구분 다중 단어 검색 지원)
@@ -401,34 +401,36 @@ export default function SmartProjectSelector({
                 <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginRight: '4px' }}>Site:</span>
                 <button
                   type="button"
-                  onClick={() => setSiteFilter('ALL')}
+                  onClick={() => setSiteFilter([])}
                   style={{
                     padding: '2px 8px',
                     borderRadius: 'var(--radius-md)',
                     fontSize: '10.5px',
-                    fontWeight: siteFilter === 'ALL' ? 700 : 500,
-                    background: siteFilter === 'ALL' ? 'var(--teal)' : 'var(--bg-card)',
-                    color: siteFilter === 'ALL' ? 'var(--on-brand)' : 'var(--text-secondary)',
-                    border: siteFilter === 'ALL' ? '1px solid var(--teal)' : '1px solid var(--border-subtle)',
+                    fontWeight: siteFilter.length === 0 ? 700 : 500,
+                    background: siteFilter.length === 0 ? 'var(--teal)' : 'var(--bg-card)',
+                    color: siteFilter.length === 0 ? 'var(--on-brand)' : 'var(--text-secondary)',
+                    border: siteFilter.length === 0 ? '1px solid var(--teal)' : '1px solid var(--border-subtle)',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease'
                   }}
                 >
                   전체
                 </button>
-                {availableSites.slice(0, 6).map(s => (
+                {availableSites.map(s => (
                   <button
                     key={s}
                     type="button"
-                    onClick={() => setSiteFilter(s)}
+                    aria-pressed={siteFilter.includes(s)}
+                    title="여러 Site를 눌러 함께 조회할 수 있습니다"
+                    onClick={() => setSiteFilter(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
                     style={{
                       padding: '2px 8px',
                       borderRadius: 'var(--radius-md)',
                       fontSize: '10.5px',
-                      fontWeight: siteFilter === s ? 700 : 500,
-                      background: siteFilter === s ? 'var(--teal)' : 'var(--bg-card)',
-                      color: siteFilter === s ? 'var(--on-brand)' : 'var(--text-secondary)',
-                      border: siteFilter === s ? '1px solid var(--teal)' : '1px solid var(--border-subtle)',
+                      fontWeight: siteFilter.includes(s) ? 700 : 500,
+                      background: siteFilter.includes(s) ? 'var(--teal)' : 'var(--bg-card)',
+                      color: siteFilter.includes(s) ? 'var(--on-brand)' : 'var(--text-secondary)',
+                      border: siteFilter.includes(s) ? '1px solid var(--teal)' : '1px solid var(--border-subtle)',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease'
                     }}

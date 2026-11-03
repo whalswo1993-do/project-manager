@@ -13,6 +13,8 @@ import {
 } from './issueService';
 import { exportIssuesExcelReport } from './exportIssueReport';
 import { normalizeJVName } from './utils';
+import MultiSiteSelect from './MultiSiteSelect';
+import { sitesLabel } from './siteFilter';
 
 const CHRONIC_ALL_SITES = '전체 사이트 공통';
 const STATUS_FILTER_OPTIONS = [
@@ -46,7 +48,7 @@ export default function IntegratedIssueCenter({
   // 필터 상태
   const [selectedProcess, setSelectedProcess] = useState('all'); // 'all' | 'stacking' | 'notching'
   const [selectedStatuses, setSelectedStatuses] = useState([]); // 비어 있으면 전체, 아니면 'open' | 'in_progress' | 'resolved' 중 선택한 것만
-  const [selectedSiteFilter, setSelectedSiteFilter] = useState('all');
+  const [selectedSiteFilter, setSelectedSiteFilter] = useState([]); // 선택한 Site 배열(빈 배열 = 전체)
   const [selectedYear, setSelectedYear] = useState('all'); // 'all' | '2026' ...
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCustomerFilter, setSelectedCustomerFilter] = useState(currentCustomer === 'All' ? 'all' : currentCustomer);
@@ -176,15 +178,15 @@ export default function IntegratedIssueCenter({
       if (selectedStatuses.length && !selectedStatuses.includes(item.status)) return false;
 
       // 사이트 필터 (등록된 SITE명 정확 일치 — SKOH와 SKOH2가 섞이지 않도록)
-      if (selectedSiteFilter !== 'all') {
-        const targetNorm = normalizeJVName(selectedSiteFilter).trim().toUpperCase();
+      if (selectedSiteFilter.length) {
+        const norm = s => normalizeJVName(s || '').trim().toUpperCase();
+        const targets = selectedSiteFilter.map(norm);
         if (item.chronic) {
           // 고질 이슈: 선택한 사이트 중 하나라도 맞거나, 선택이 없으면(전체 공통) 모든 사이트에 보인다
           const names = item.siteNames || [];
-          if (names.length && !names.some(s => normalizeJVName(s).trim().toUpperCase() === targetNorm)) return false;
+          if (names.length && !names.some(s => targets.includes(norm(s)))) return false;
         } else {
-          const itemSiteNorm = normalizeJVName(item.siteName || '').trim().toUpperCase();
-          if (itemSiteNorm !== targetNorm) return false;
+          if (!targets.includes(norm(item.siteName))) return false;
         }
       }
 
@@ -301,7 +303,7 @@ export default function IntegratedIssueCenter({
 
     try {
       const filterInfo = {
-        site: selectedSiteFilter === 'all' ? '전체' : selectedSiteFilter,
+        site: sitesLabel(selectedSiteFilter),
         year: selectedYear === 'all' ? '전체' : `${selectedYear}년`,
         process: selectedProcess === 'stacking' ? '스태킹 (Stacking)' : selectedProcess === 'notching' ? '노칭 (Notching)' : '전체',
         status: selectedStatuses.length ? selectedStatuses.map(k => STATUS_FILTER_OPTIONS.find(o => o.key === k)?.exportLabel).join(', ') : '전체',
@@ -475,22 +477,19 @@ export default function IntegratedIssueCenter({
           {/* 1. 전체 SITE 드롭다운 ([Site 관리]에 등록된 SITE만 표시) */}
           <div className="iic-filter-group site-dropdown-group">
             <span className="filter-label"><Icon name="building" size="1.1em" /> 전체 SITE:</span>
-            <select
-              className="iic-select site-select-prominent"
+            <MultiSiteSelect
+              className="iic-msite"
+              options={availableSites}
               value={selectedSiteFilter}
-              onChange={(e) => setSelectedSiteFilter(e.target.value)}
-              title="등록된 전체 SITE를 선택하여 해당 사이트의 이슈만 필터링합니다"
-            >
-              <option value="all">전체 사이트 ({availableSites.length}개소)</option>
-              {availableSites.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            {selectedSiteFilter !== 'all' && (
+              onChange={setSelectedSiteFilter}
+              allLabel={`전체 사이트 (${availableSites.length}개소)`}
+              title="등록된 SITE를 하나 이상 선택하여 해당 사이트의 이슈만 필터링합니다"
+            />
+            {selectedSiteFilter.length > 0 && (
               <button
                 type="button"
                 className="site-clear-btn"
-                onClick={() => setSelectedSiteFilter('all')}
+                onClick={() => setSelectedSiteFilter([])}
                 title="사이트 필터 초기화"
               >
                 <Icon name="x" size="1.1em" /> 해제
@@ -593,11 +592,11 @@ export default function IntegratedIssueCenter({
             <div className="empty-icon"><Icon name="folder" size="1.1em" /></div>
             <h4>조회된 이슈 내역이 없습니다</h4>
             <p>
-              {searchQuery || selectedProcess !== 'all' || selectedStatuses.length > 0 || selectedSiteFilter !== 'all' || selectedYear !== 'all'
+              {searchQuery || selectedProcess !== 'all' || selectedStatuses.length > 0 || selectedSiteFilter.length > 0 || selectedYear !== 'all'
                 ? '선택된 필터 조건(연도, SITE, 공정, 상태 등)에 해당하는 이슈가 없습니다. 필터를 초기화해 보세요.'
                 : '아직 등록된 이슈가 없습니다. 상단의 [+ 신규 이슈 등록] 버튼을 눌러 첫 이슈를 기록해보세요.'}
             </p>
-            {(searchQuery || selectedProcess !== 'all' || selectedStatuses.length > 0 || selectedSiteFilter !== 'all' || selectedYear !== 'all') && (
+            {(searchQuery || selectedProcess !== 'all' || selectedStatuses.length > 0 || selectedSiteFilter.length > 0 || selectedYear !== 'all') && (
               <button
                 type="button"
                 className="iic-btn iic-btn-subtle"
@@ -605,7 +604,7 @@ export default function IntegratedIssueCenter({
                   setSelectedYear('all');
                   setSelectedProcess('all');
                   setSelectedStatuses([]);
-                  setSelectedSiteFilter('all');
+                  setSelectedSiteFilter([]);
                   setSearchQuery('');
                 }}
               >

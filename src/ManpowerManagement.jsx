@@ -6,6 +6,8 @@ import PptxGenJS from "pptxgenjs";
 import { normalizeJVName, getMonthDailyDeptMatrix } from "./utils";
 import { supabase } from "./supabase";
 import SmartProjectSelector from "./SmartProjectSelector";
+import MultiSiteSelect from "./MultiSiteSelect";
+import { matchesSites, sitesLabel } from "./siteFilter";
 import { BASE_DEPT_ORDER, DEPT_SHORT, normalizeDeptKey } from "./manpowerDepts";
 
 const DEPT_LABELS = {
@@ -375,7 +377,7 @@ export default function ManpowerManagement({
     return endDt.toISOString().slice(0, 10);
   });
 
-  const [siteFilter, setSiteFilter] = useState("전체");
+  const [siteFilter, setSiteFilter] = useState([]); // 선택한 Site 배열(빈 배열 = 전체)
   const [deptFilter, setDeptFilter] = useState("전체");
   const [search, setSearch] = useState("");
   const [selectedDay, setSelectedDay] = useState(null);
@@ -598,8 +600,7 @@ export default function ManpowerManagement({
   const filteredProjects = useMemo(() => {
     return projects.filter(p => {
       const pSiteNorm = normalizeJVName(p.site);
-      const siteFilterNorm = normalizeJVName(siteFilter);
-      if (siteFilter !== "전체" && pSiteNorm !== siteFilterNorm && p.site !== siteFilter) return false;
+      if (!matchesSites(siteFilter, p.site, normalizeJVName)) return false;
       if (search.trim()) {
         const q = normalizeJVName(search.toLowerCase().trim()).toLowerCase();
         const rawQ = search.toLowerCase().trim();
@@ -1056,7 +1057,7 @@ export default function ManpowerManagement({
       addSlideHeader(
         s1,
         "공수 통합 관리 종합 현황 (Executive Summary)",
-        `조회 대상: ${effectiveLabel}  |  Site 필터: ${siteFilter}  |  부서 필터: ${deptFilter}`,
+        `조회 대상: ${effectiveLabel}  |  Site 필터: ${sitesLabel(siteFilter)}  |  부서 필터: ${deptFilter}`,
         curPage++,
         totalSlides
       );
@@ -1864,8 +1865,8 @@ export default function ManpowerManagement({
       list = list.filter(item => item.reportCount > 0 || item.planTotal > 0);
     }
 
-    if (siteFilter !== "전체") {
-      list = list.filter(item => item.site === siteFilter);
+    if (siteFilter.length) {
+      list = list.filter(item => matchesSites(siteFilter, item.site));
     }
 
     if (compSearch.trim()) {
@@ -2201,10 +2202,7 @@ export default function ManpowerManagement({
             <div className="mp-controls-row">
               <div className="mp-filter-group">
                 <label style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-secondary)" }}>Site 필터:</label>
-                <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
-                  <option value="전체">전체 Site</option>
-                  {sites.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                </select>
+                <MultiSiteSelect options={sites.map(s => s.name)} value={siteFilter} onChange={setSiteFilter} allLabel="전체 Site" />
 
                 <label style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-secondary)" }}>부서 필터:</label>
                 <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)}>
@@ -2247,7 +2245,7 @@ export default function ManpowerManagement({
               cursor: 'pointer'
             }}
           >
-            <Icon name="search" size="1.1em" /> 조회 조건: <b>{viewMode === "month" ? `${year}년 ${month + 1}월` : `${customStart} ~ ${customEnd}`}</b> · Site: <b>{siteFilter}</b> · 부서: <b>{deptFilter === "전체" ? "전체" : getDeptLabel(deptFilter)}</b> (클릭하여 조건 변경 <Icon name="chevDown" size="1.1em" /> )
+            <Icon name="search" size="1.1em" /> 조회 조건: <b>{viewMode === "month" ? `${year}년 ${month + 1}월` : `${customStart} ~ ${customEnd}`}</b> · Site: <b>{sitesLabel(siteFilter)}</b> · 부서: <b>{deptFilter === "전체" ? "전체" : getDeptLabel(deptFilter)}</b> (클릭하여 조건 변경 <Icon name="chevDown" size="1.1em" /> )
           </div>
         )}
       </div>

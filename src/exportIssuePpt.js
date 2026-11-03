@@ -41,11 +41,14 @@ function frame(slide, title, sub, page, total) {
  * 등록된 이슈(조치 이력) 기반 이슈 통합분석 PPT
  */
 export async function exportIssuesPpt({ issues = [], startDate, endDate, siteFilter = 'all' }) {
+  // siteFilter: 'all' | Site 이름 하나 | Site 이름 배열(빈 배열 = 전체)
+  const siteList = Array.isArray(siteFilter) ? siteFilter : (siteFilter === 'all' ? [] : [siteFilter]);
+  const siteNorms = siteList.map(s => normalizeJVName(s).trim().toUpperCase());
   const inRange = issues.filter(i => {
     const d = (i.occurredDate || String(i.createdAt || '').slice(0, 10) || '');
     if (!d || d < startDate || d > endDate) return false;
-    if (siteFilter !== 'all') {
-      return siteOf(i).toUpperCase() === normalizeJVName(siteFilter).trim().toUpperCase();
+    if (siteNorms.length) {
+      return siteNorms.includes(siteOf(i).toUpperCase());
     }
     return true;
   }).sort((a, b) =>
@@ -84,7 +87,7 @@ export async function exportIssuesPpt({ issues = [], startDate, endDate, siteFil
   pptx.title = '이슈 통합분석 보고서';
   pptx.lang = 'ko-KR';
 
-  const periodText = `${startDate} ~ ${endDate}${siteFilter !== 'all' ? ` | ${siteFilter}` : ''}`;
+  const periodText = `${startDate} ~ ${endDate}${siteList.length ? ` | ${siteList.join(', ')}` : ''}`;
 
   // ── 1. 요약 슬라이드 ──
   const s1 = pptx.addSlide();

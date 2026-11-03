@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { analyzeWorkbook, analyzePastedText, buildQuotations } from './quotationParser';
 import { detectQuotationSite, SITE_UNASSIGNED } from './quotationSite';
 import { PasteZone, PasteEntry } from './PasteZone';
+import MultiSiteSelect from './MultiSiteSelect';
 import { confirmDialog } from "./confirmService";
 
 // 품목 구분 (견적 라인 대분류 + 상세 리스트 품목 구분). 화면 필터 순서이기도 하다.
@@ -275,7 +276,7 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
     
     // 다차원 연동 필터 상태 (공정, 프로젝트, 구분, 품목명, 유닛명)
     const [filterProcess, setFilterProcess] = useState('전체'); // '전체' | 'Notching' | 'Stacking'
-    const [filterSite, setFilterSite] = useState('전체'); // '전체' | 사이트명 | SITE_UNASSIGNED
+    const [filterSite, setFilterSite] = useState([]); // 선택한 사이트명 배열(SITE_UNASSIGNED 포함 가능, 빈 배열 = 전체)
     const [filterProject, setFilterProject] = useState('전체'); // '전체' | projectKey
     const [filterCategory, setFilterCategory] = useState('전체'); // '전체' | '가공품' | '시장품' | '기타'
     const [filterItemName, setFilterItemName] = useState('전체'); // '전체' | itemName
@@ -751,7 +752,8 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
             .map(([name, count]) => ({ name, count }))
             .sort((a, b) => (a.name === SITE_UNASSIGNED) - (b.name === SITE_UNASSIGNED) || a.name.localeCompare(b.name));
     }, [scopedItems, filterProcess]);
-    const effectiveSite = (filterSite !== '전체' && availableSites.some(s => s.name === filterSite)) ? filterSite : '전체';
+    // 공정을 바꿔서 목록에서 사라진 사이트는 선택에서 뺀다
+    const effectiveSites = useMemo(() => filterSite.filter(n => availableSites.some(s => s.name === n)), [filterSite, availableSites]);
     const unassignedQuotations = customerQuotations.filter(q => !q.site);
 
     // 2. [공정 + 사이트 필터]에 따른 유효 프로젝트 목록
@@ -762,13 +764,13 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
             }
-            if (effectiveSite !== '전체' && item.site !== effectiveSite) return;
+            if (effectiveSites.length && !effectiveSites.includes(item.site)) return;
             counts[item.projectKey] = (counts[item.projectKey] || 0) + 1;
         });
         return Object.entries(counts)
             .map(([name, count]) => ({ name, count }))
             .sort((a, b) => a.name.localeCompare(b.name));
-    }, [scopedItems, filterProcess, effectiveSite]);
+    }, [scopedItems, filterProcess, effectiveSites]);
 
     // 유효한 선택 프로젝트 결정 (파생 상태)
     const effectiveProject = (filterProject !== '전체' && availableProjects.some(p => p.name === filterProject)) ? filterProject : '전체';
@@ -781,13 +783,13 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
             }
-            if (effectiveSite !== '전체' && item.site !== effectiveSite) return;
+            if (effectiveSites.length && !effectiveSites.includes(item.site)) return;
             if (effectiveProject !== '전체' && item.projectKey !== effectiveProject) return;
             if (counts[item.normCategory] !== undefined) counts[item.normCategory]++;
             else counts['기타']++;
         });
         return counts;
-    }, [scopedItems, filterProcess, effectiveSite, effectiveProject]);
+    }, [scopedItems, filterProcess, effectiveSites, effectiveProject]);
 
     // 4. [공정 + 프로젝트 + 구분] 복합 조건에 따른 유효 품목 목록 (핵심 연동!)
     const availableItemNames = useMemo(() => {
@@ -797,7 +799,7 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
             }
-            if (effectiveSite !== '전체' && item.site !== effectiveSite) return;
+            if (effectiveSites.length && !effectiveSites.includes(item.site)) return;
             if (effectiveProject !== '전체' && item.projectKey !== effectiveProject) return;
             if (filterCategory !== '전체' && item.normCategory !== filterCategory) return;
 
@@ -812,7 +814,7 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
         return Object.entries(itemMap)
             .map(([name, info]) => ({ name, ...info }))
             .sort((a, b) => a.name.localeCompare(b.name));
-    }, [scopedItems, filterProcess, effectiveSite, effectiveProject, filterCategory]);
+    }, [scopedItems, filterProcess, effectiveSites, effectiveProject, filterCategory]);
 
     // 유효한 선택 품목명 결정 (파생 상태)
     const effectiveItemName = (filterItemName !== '전체' && availableItemNames.some(i => i.name === filterItemName)) ? filterItemName : '전체';
@@ -825,7 +827,7 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return;
             }
-            if (effectiveSite !== '전체' && item.site !== effectiveSite) return;
+            if (effectiveSites.length && !effectiveSites.includes(item.site)) return;
             if (effectiveProject !== '전체' && item.projectKey !== effectiveProject) return;
             if (filterCategory !== '전체' && item.normCategory !== filterCategory) return;
             if (effectiveItemName !== '전체' && item.item_name !== effectiveItemName) return;
@@ -834,7 +836,7 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
             if (item.unit_name) unitSet.add(item.unit_name);
         });
         return [...unitSet].sort();
-    }, [scopedItems, filterProcess, effectiveSite, effectiveProject, filterCategory, effectiveItemName, searchQuery]);
+    }, [scopedItems, filterProcess, effectiveSites, effectiveProject, filterCategory, effectiveItemName, searchQuery]);
 
     // 유효한 선택 유닛명 결정 (파생 상태)
     const effectiveUnitName = (filterUnitName !== '전체' && availableUnitNames.includes(filterUnitName)) ? filterUnitName : '전체';
@@ -853,7 +855,7 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
                 if (filterProcess === 'Notching' && item.processType !== 'Notching' && item.processType !== 'Both') return false;
                 if (filterProcess === 'Stacking' && item.processType !== 'Stacking' && item.processType !== 'Both') return false;
             }
-            if (effectiveSite !== '전체' && item.site !== effectiveSite) return false;
+            if (effectiveSites.length && !effectiveSites.includes(item.site)) return false;
             if (effectiveProject !== '전체' && item.projectKey !== effectiveProject) return false;
             if (filterCategory !== '전체' && item.normCategory !== filterCategory) return false;
             if (effectiveItemName !== '전체' && item.item_name !== effectiveItemName) return false;
@@ -875,7 +877,7 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
         else list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         return list;
-    }, [scopedItems, filterProcess, effectiveSite, effectiveProject, filterCategory, effectiveItemName, effectiveUnitName, searchQuery, sortOrder]);
+    }, [scopedItems, filterProcess, effectiveSites, effectiveProject, filterCategory, effectiveItemName, effectiveUnitName, searchQuery, sortOrder]);
 
     // 단가 통계 계산
     const { statMinPrice, statMaxPrice, statAvgPrice, statTotalPrice } = useMemo(() => {
@@ -890,7 +892,7 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
 
     const handleResetFilters = () => {
         setFilterProcess('전체');
-        setFilterSite('전체');
+        setFilterSite([]);
         setFilterProject('전체');
         setFilterCategory('전체');
         setFilterItemName('전체');
@@ -902,7 +904,7 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
 
     const groupedQuotations = {};
     customerQuotations.forEach(q => {
-        if (effectiveSite !== '전체' && (q.site || SITE_UNASSIGNED) !== effectiveSite) return;
+        if (effectiveSites.length && !effectiveSites.includes(q.site || SITE_UNASSIGNED)) return;
         let key = "미지정 프로젝트";
         if (q.project_id) {
             const p = projects.find(proj => proj.id === q.project_id);
@@ -1177,7 +1179,7 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
                 {unassignedQuotations.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', padding: '10px 14px', marginBottom: '10px', border: '1px solid var(--bad)', borderRadius: 'var(--radius-md)', background: 'var(--bad-wash)', fontSize: '13px', color: 'var(--bad)' }}>
                         <span><Icon name="alert" size="1.1em" /> 사이트를 알 수 없는 견적이 <b>{unassignedQuotations.length}건</b> 있습니다. 어느 사이트의 견적인지 확인해 지정해 주세요.</span>
-                        <button type="button" className="filter-reset-btn" onClick={() => { setFilterSite(SITE_UNASSIGNED); handleSelectQuoteSection('projectSummary'); }}>
+                        <button type="button" className="filter-reset-btn" onClick={() => { setFilterSite([SITE_UNASSIGNED]); handleSelectQuoteSection('projectSummary'); }}>
                             미확인 견적 보러 가기
                         </button>
                     </div>
@@ -1240,19 +1242,14 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
                             <label className="quote-filter-label">
                                 <Icon name="building" size="1.1em" /> 사이트 선택 ({availableSites.length}곳)
                             </label>
-                            <select
-                                className="quote-select"
-                                style={{ width: '100%' }}
-                                value={effectiveSite}
-                                onChange={e => setFilterSite(e.target.value)}
-                            >
-                                <option value="전체">모든 사이트 ({scopedItems.length}건)</option>
-                                {availableSites.map(s => (
-                                    <option key={s.name} value={s.name}>
-                                        {s.name === SITE_UNASSIGNED ? `사이트 미확인 (${s.count}건)` : `${s.name} (${s.count}건)`}
-                                    </option>
-                                ))}
-                            </select>
+                            <MultiSiteSelect
+                                className="quote-msite"
+                                options={availableSites.map(s => ({ value: s.name, label: s.name === SITE_UNASSIGNED ? '사이트 미확인' : s.name, count: s.count }))}
+                                value={effectiveSites}
+                                onChange={setFilterSite}
+                                allLabel={`모든 사이트 (${scopedItems.length}건)`}
+                                title="여러 사이트를 함께 선택할 수 있습니다"
+                            />
                         </div>
 
                         {/* 2. 프로젝트 필터 (공정·사이트에 맞춰 연동) */}
@@ -1621,17 +1618,13 @@ function QuotationsManager({ projects, sites = [], role, onPermissionDenied, cur
                     </div>
                     {!collapsedSections.projectSummary && (
                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <select
-                                className="quote-select"
-                                value={effectiveSite}
-                                onChange={e => setFilterSite(e.target.value)}
+                            <MultiSiteSelect
+                                options={availableSites.map(s => ({ value: s.name, label: s.name === SITE_UNASSIGNED ? '사이트 미확인' : s.name }))}
+                                value={effectiveSites}
+                                onChange={setFilterSite}
+                                allLabel="모든 사이트"
                                 title="사이트별로 모아 봅니다 (품목 조회의 사이트 선택과 같이 움직입니다)"
-                            >
-                                <option value="전체">모든 사이트</option>
-                                {availableSites.map(s => (
-                                    <option key={s.name} value={s.name}>{s.name === SITE_UNASSIGNED ? '사이트 미확인' : s.name}</option>
-                                ))}
-                            </select>
+                            />
                             <button
                                 type="button"
                                 onClick={() => toggleAllProjects(true)}

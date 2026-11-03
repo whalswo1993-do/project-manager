@@ -8,6 +8,7 @@ import pptxgen from 'pptxgenjs';
 import { exportIssuesPpt } from './exportIssuePpt';
 import { fetchRemoteIssues, getRegisteredSiteNames } from './issueService';
 import { PasteZone, PasteEntry } from './PasteZone';
+import MultiSiteSelect from './MultiSiteSelect';
 import { confirmDialog } from "./confirmService";
 
 export default function IssueManagement({ projects, sites = [], role, onPermissionDenied, currentCustomer, onNavigateToIssueCenter }) {
@@ -158,7 +159,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
     // 이슈 통합분석 PPT 팝업 상태
     const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
     const [analysisMode, setAnalysisMode] = useState('issues'); // 'issues' | 'reports'
-    const [analysisSite, setAnalysisSite] = useState('all');
+    const [analysisSite, setAnalysisSite] = useState([]); // PPT 대상 SITE 배열(빈 배열 = 전체)
     const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10));
     const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -199,7 +200,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
     }, [registeredSiteNames, projects, currentCustomer]);
 
     // 개별 프로젝트 다단계 필터링 상태 (사이트, 공정, 연도)
-    const [projFilterSite, setProjFilterSite] = useState('ALL');
+    const [projFilterSite, setProjFilterSite] = useState([]); // 선택한 사이트 배열(빈 배열 = 전체)
     const [projFilterProcess, setProjFilterProcess] = useState('ALL');
     const [projFilterYear, setProjFilterYear] = useState('ALL');
 
@@ -238,10 +239,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
     const filteredProjectOptions = useMemo(() => {
         return (projects || []).filter(p => {
             // 1. 사이트 필터
-            if (projFilterSite !== 'ALL') {
-                const pSite = normalizeSite(p.site);
-                if (pSite !== projFilterSite) return false;
-            }
+            if (projFilterSite.length && !projFilterSite.includes(normalizeSite(p.site))) return false;
             // 2. 공정 필터
             if (projFilterProcess !== 'ALL') {
                 const detected = detectProjectProcess(p);
@@ -297,19 +295,12 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                     {/* 사이트 필터 */}
                     <div className="proj-filter-group">
                         <span className="proj-filter-label"><Icon name="building" size="1.1em" /> 사이트:</span>
-                        <select
-                            className="proj-filter-select"
+                        <MultiSiteSelect
+                            options={availableSites.map(s => ({ value: s, count: (projects || []).filter(p => normalizeSite(p.site) === s).length }))}
                             value={projFilterSite}
-                            onChange={(e) => setProjFilterSite(e.target.value)}
-                        >
-                            <option value="ALL">전체 사이트 ({projects?.length || 0})</option>
-                            {availableSites.map(s => {
-                                const count = (projects || []).filter(p => normalizeSite(p.site) === s).length;
-                                return (
-                                    <option key={s} value={s}>{s} ({count})</option>
-                                );
-                            })}
-                        </select>
+                            onChange={setProjFilterSite}
+                            allLabel={`전체 사이트 (${projects?.length || 0})`}
+                        />
                     </div>
 
                     {/* 공정 필터 (스태킹, 노칭 2가지만 제공) */}
@@ -342,12 +333,12 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
                     </div>
 
                     {/* 필터 초기화 버튼 */}
-                    {(projFilterSite !== 'ALL' || projFilterProcess !== 'ALL' || projFilterYear !== 'ALL') && (
+                    {(projFilterSite.length > 0 || projFilterProcess !== 'ALL' || projFilterYear !== 'ALL') && (
                         <button
                             type="button"
                             className="proj-filter-reset-btn"
                             onClick={() => {
-                                setProjFilterSite('ALL');
+                                setProjFilterSite([]);
                                 setProjFilterProcess('ALL');
                                 setProjFilterYear('ALL');
                             }}
@@ -3542,16 +3533,12 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                                 <div className="aim-section">
                                     <label className="aim-label">2. 대상 SITE 선택 (등록 사이트 기준)</label>
                                     <div className="aim-site-select-wrap">
-                                        <select
-                                            className="aim-select"
+                                        <MultiSiteSelect
+                                            options={registeredSiteNames}
                                             value={analysisSite}
-                                            onChange={e => setAnalysisSite(e.target.value)}
-                                        >
-                                            <option value="all">전체 사이트 (모든 등록 SITE 대상)</option>
-                                            {registeredSiteNames.map(s => (
-                                                <option key={s} value={s}>{s}</option>
-                                            ))}
-                                        </select>
+                                            onChange={setAnalysisSite}
+                                            allLabel="전체 사이트 (모든 등록 SITE 대상)"
+                                        />
                                         <span className="aim-hint">
                                             * 등록된 SITE: {registeredSiteNames.join(', ')}
                                         </span>
@@ -3602,7 +3589,7 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                                 <div>
                                     {analysisMode === 'issues' ? (
                                         <span>
-                                            설정한 기간({startDate} ~ {endDate}) 동안 등록된 {analysisSite === 'all' ? '전체 사이트' : analysisSite}의 스태킹/노칭 이슈를 취합하여 16:9 와이드 프레젠테이션(PPTX)으로 즉시 내보냅니다.
+                                            설정한 기간({startDate} ~ {endDate}) 동안 등록된 {analysisSite.length === 0 ? '전체 사이트' : analysisSite.join(', ')}의 스태킹/노칭 이슈를 취합하여 16:9 와이드 프레젠테이션(PPTX)으로 즉시 내보냅니다.
                                         </span>
                                     ) : (
                                         <span>

@@ -1522,7 +1522,15 @@ export default function App() {
 
       setForm(updatedRow);
       setMilestones(cleanMs.length >= 5 ? cleanMs : [...cleanMs, ...newMs().slice(0, 5 - cleanMs.length)]);
-      const { error } = await supabase.from("projects").update(to(updatedRow)).eq("id", editing);
+      const updatePayload = to(updatedRow);
+      let { error } = await supabase.from("projects").update(updatePayload).eq("id", editing);
+      // DB에 customer 컬럼이 없으면(고객사는 milestones 메타에 저장됨) 컬럼 없이 다시 저장
+      if (error && String(error.message || "").toLowerCase().includes("customer")) {
+        const fallback = { ...updatePayload };
+        delete fallback.customer;
+        const retry = await supabase.from("projects").update(fallback).eq("id", editing);
+        error = retry.error;
+      }
 
       if (error) {
         console.error("Master plan update error:", error);

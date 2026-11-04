@@ -1,0 +1,262 @@
+/* ========================================================
+   자재현황 조회(내장 앱) — 프로젝트 매니저 디자인 시스템 적용
+   원본은 Tailwind CDN 유틸리티 클래스(남색 머리말, 알록달록한 단추)로 되어 있다.
+   기능·구조는 그대로 두고, 색 클래스를 앱 토큰(라이트=Atelier / 다크=Obsidian)으로 다시 매핑한다.
+   Tailwind 가 나중에 만든 스타일을 이기려고 html 접두사 + !important 를 쓴다.
+   ======================================================== */
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F6F5F2; --bg-2: #EFEDE8; --surface: #FFFFFF; --surface-2: #FAF9F7;
+  --line: #E8E5DE; --line-2: #D8D4CB;
+  --ink: #14171D; --ink-2: #454B58; --ink-3: #7A8090; --ink-4: #A8ADB8;
+  --brand: #0B57A4; --brand-2: #09478A; --brand-wash: #EDF3FA; --brand-line: #C7DAEE; --on-brand: #FFFFFF;
+  --signal: #D94A1F;
+  --ok: #2B7A58; --ok-wash: #E7F2EC; --warn: #A9701A; --warn-wash: #F7EFDF;
+  --bad: #BE3A2D; --bad-wash: #F9E9E6; --on-bad: #FFFFFF;
+  --teal: #21798A; --teal-wash: #E4F1F4;
+  --btn-bg: #14171D; --btn-ink: #FFFFFF; --btn-xlsx: #1D7A45; --btn-xlsx-ink: #FFFFFF;
+  --bg-hover: #F1EFEA; --bg-overlay: rgba(20, 23, 29, 0.46); --focus-ring: rgba(11, 87, 164, 0.16);
+  --shadow-xl: 0 28px 64px rgba(20, 23, 29, 0.16), 0 4px 12px rgba(20, 23, 29, 0.06);
+  --row-ok: #EEF5F0; --row-ok-h: #E3EFE7;
+  --row-miss: #FBF0EC; --row-miss-h: #F6E4DE;
+  --row-part: #FAF4E6; --row-part-h: #F4EAD0;
+  --row-over: #F9E9E6; --row-over-h: #F3DAD5;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #09090A; --bg-2: #0E0E10; --surface: #111113; --surface-2: #151517;
+  --line: rgba(255, 255, 255, 0.075); --line-2: rgba(255, 255, 255, 0.13);
+  --ink: #EEEBE3; --ink-2: #BAB6AC; --ink-3: #85827A; --ink-4: #55534E;
+  --brand: #CDAE72; --brand-2: #E2C990; --brand-wash: rgba(205, 174, 114, 0.09); --brand-line: rgba(205, 174, 114, 0.34); --on-brand: #15110A;
+  --signal: #EB7A5D;
+  --ok: #86B596; --ok-wash: rgba(134, 181, 150, 0.13); --warn: #C9A25A; --warn-wash: rgba(201, 162, 90, 0.13);
+  --bad: #E0705F; --bad-wash: rgba(224, 112, 95, 0.13); --on-bad: #1B0D09;
+  --teal: #8FA8BD; --teal-wash: rgba(143, 168, 189, 0.13);
+  --btn-bg: #CDAE72; --btn-ink: #15110A; --btn-xlsx: #CDAE72; --btn-xlsx-ink: #15110A;
+  --bg-hover: rgba(255, 255, 255, 0.045); --bg-overlay: rgba(0, 0, 0, 0.72); --focus-ring: rgba(205, 174, 114, 0.22);
+  --shadow-xl: 0 28px 70px rgba(0, 0, 0, 0.72), 0 4px 14px rgba(0, 0, 0, 0.5);
+  --row-ok: rgba(134, 181, 150, 0.10); --row-ok-h: rgba(134, 181, 150, 0.17);
+  --row-miss: rgba(224, 112, 95, 0.10); --row-miss-h: rgba(224, 112, 95, 0.17);
+  --row-part: rgba(201, 162, 90, 0.10); --row-part-h: rgba(201, 162, 90, 0.17);
+  --row-over: rgba(224, 112, 95, 0.16); --row-over-h: rgba(224, 112, 95, 0.24);
+}
+:root {
+  --font-sans: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', 'Malgun Gothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, ui-monospace, monospace;
+}
+
+/* ─── 바탕 · 글꼴 ──────────────────────────────────────── */
+html body {
+  font-family: var(--font-sans) !important;
+  background-color: var(--bg) !important;
+  color: var(--ink) !important;
+  letter-spacing: -0.008em;
+  -webkit-font-smoothing: antialiased;
+}
+* { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent !important; }
+::-webkit-scrollbar-thumb { background: var(--line-2) !important; border-radius: 999px; }
+::selection { background: color-mix(in srgb, var(--brand) 26%, transparent); }
+
+/* 그림자·그라데이션 제거 */
+html .shadow-md, html .shadow-sm, html .shadow-xs, html .shadow-lg, html .shadow { box-shadow: none !important; }
+html .bg-gradient-to-r { background-image: none !important; }
+
+/* ─── 면(바탕) 색 매핑 ─────────────────────────────────── */
+html .bg-white { background-color: var(--surface) !important; }
+html .bg-slate-50, html .bg-slate-50\/50, html [class~="bg-rose-50/30"] { background-color: var(--surface-2) !important; }
+html .bg-slate-100 { background-color: var(--bg-2) !important; }
+html .bg-slate-200, html [class~="bg-[#e5e7eb]"] { background-color: var(--bg-2) !important; }
+html .bg-slate-900\/60 { background-color: var(--bg-overlay) !important; }
+html .bg-rose-50, html .bg-rose-100 { background-color: var(--bad-wash) !important; }
+html .bg-amber-50, html .bg-amber-100 { background-color: var(--warn-wash) !important; }
+html .bg-emerald-100 { background-color: var(--ok-wash) !important; }
+html .bg-cyan-50, html [class~="bg-cyan-50/60"] { background-color: var(--teal-wash) !important; }
+html .hover\:bg-slate-100:hover, html .hover\:bg-slate-300:hover, html .hover\:bg-amber-100:hover, html .hover\:bg-rose-100:hover, html [class~="hover:bg-cyan-50/60"]:hover { background-color: var(--bg-hover) !important; }
+
+/* 테두리 */
+html [class*="border-slate-"], html [class*="border-rose-"], html [class*="border-amber-"], html [class*="border-emerald-"], html [class*="border-cyan-"] { border-color: var(--line-2) !important; }
+html .border-slate-200 { border-color: var(--line) !important; }
+html .divide-slate-300 > :not([hidden]) ~ :not([hidden]) { border-color: var(--line) !important; }
+html .border-rose-500, html .border-rose-700 { border-color: var(--bad) !important; }
+html .ring-rose-400, html .ring-amber-400 { --tw-ring-color: var(--brand) !important; }
+html [class*="focus:ring-"]:focus { --tw-ring-color: var(--focus-ring) !important; border-color: var(--brand) !important; }
+
+/* ─── 글자색 매핑 ──────────────────────────────────────── */
+html .text-slate-900, html .text-slate-800, html .text-slate-700 { color: var(--ink) !important; }
+html .text-slate-600 { color: var(--ink-2) !important; }
+html .text-slate-500, html .text-slate-400 { color: var(--ink-3) !important; }
+html .text-slate-300, html .text-slate-200, html .text-slate-100 { color: var(--ink-2) !important; }
+html [class*="text-[#1b365d]"] { color: var(--ink) !important; }
+html .text-emerald-900, html .text-emerald-800, html .text-emerald-700, html .text-emerald-600, html .text-emerald-400, html .text-emerald-300, html .text-emerald-200 { color: var(--ok) !important; }
+html .text-rose-900, html .text-rose-800, html .text-rose-700, html .text-rose-600, html .text-rose-400, html .text-rose-300, html .text-rose-200 { color: var(--bad) !important; }
+html .text-amber-900, html .text-amber-800, html .text-amber-700, html .text-amber-500, html .text-amber-400, html .text-amber-300, html .text-amber-200 { color: var(--warn) !important; }
+html .text-sky-700, html .text-sky-600, html .text-sky-400, html .text-sky-300, html .text-blue-700, html .text-indigo-700, html .text-indigo-200, html .text-cyan-600, html .text-teal-300, html .text-teal-200, html .text-violet-700, html .text-violet-300 { color: var(--brand) !important; }
+html .hover\:text-white:hover, html .hover\:text-slate-800:hover { color: var(--ink) !important; }
+html [style*="color:#92400e"] { color: var(--warn) !important; }
+html .accent-amber-600, html .accent-amber-500 { accent-color: var(--brand) !important; }
+html input[type="checkbox"], html input[type="radio"] { accent-color: var(--brand); }
+
+/* ─── 머리말(남색 띠 → 표면) ───────────────────────────── */
+html header[class~="bg-[#0f2342]"] {
+  background-color: var(--surface) !important;
+  color: var(--ink) !important;
+  border-bottom: 1px solid var(--line) !important;
+}
+html header .text-white { color: var(--ink) !important; }
+html header .text-amber-300, html header .text-amber-400, html header .text-sky-300, html header .text-sky-400 { color: var(--brand) !important; }
+html header [class~="bg-[#1b365d]"] {
+  background-color: var(--surface) !important;
+  border: 1px solid var(--line-2) !important;
+  border-radius: 3px !important;
+}
+html header [class~="bg-[#1b365d]"] .text-white { color: var(--ink) !important; }
+html header #main-title-text { font-weight: 650 !important; letter-spacing: -0.02em !important; }
+html header img { background: transparent; }
+
+/* ─── 진한 띠(표 머리글 · 합계 줄 · 모달 머리 · 슬라이서 제목) → 옅은 면 ─── */
+html thead.bg-slate-800, html thead.bg-slate-700, html thead[class~="bg-[#1b365d]"], html thead[class~="bg-[#102a43]"], html thead[class~="bg-[#0e7490]"],
+html tr[class~="bg-[#0e7490]"], html tr[class~="bg-[#1b365d]"], html tr[class~="bg-[#102a43]"],
+html th[class~="bg-[#155e75]"], html th[class~="bg-[#0e7490]"], html td[class~="bg-[#0e7490]"], html td[class~="bg-[#0f2342]"], html th.bg-slate-800, html th.bg-slate-700 {
+  background-color: var(--surface-2) !important;
+  color: var(--ink-2) !important;
+}
+html thead th, html thead td { background-color: var(--surface-2) !important; color: var(--ink-3) !important; font-weight: 650; }
+html thead .text-white, html tr[class~="bg-[#1b365d]"] .text-white, html tr[class~="bg-[#0e7490]"] .text-white, html td.text-white, html th.text-white { color: var(--ink-2) !important; }
+/* 합계 줄(TOTAL) */
+html tr.border-amber-400, html tr[class*="border-t-2"] { border-top: 1px solid var(--line-2) !important; }
+html tr[class~="bg-[#1b365d]"] td, html td[class~="bg-[#0f2342]"] { background-color: var(--surface-2) !important; color: var(--ink) !important; font-weight: 650; }
+html td[class~="bg-[#0f2342]"].text-amber-300, html tr[class~="bg-[#1b365d]"] .text-amber-300 { color: var(--brand) !important; }
+/* 접기/펴기 작은 단추(흰 바탕) */
+html td[class~="bg-[#0e7490]"] button.bg-white { background-color: var(--surface) !important; color: var(--ink-2) !important; border: 1px solid var(--line-2); }
+
+/* 모달 머리말 */
+html div[class~="bg-[#102a43]"] {
+  background-color: var(--surface-2) !important;
+  color: var(--ink) !important;
+  border-bottom: 1px solid var(--line) !important;
+}
+html div[class~="bg-[#102a43]"] .text-white, html div[class~="bg-[#102a43]"] [class*="text-"] { color: var(--ink) !important; }
+html div[class~="bg-[#102a43]"] button { color: var(--ink-2) !important; background: transparent !important; }
+html div[class~="bg-[#102a43]"] button:hover { color: var(--ink) !important; }
+
+/* 청록 큰 라벨(현재 차수) */
+html #cha-current-label { background-color: var(--teal-wash) !important; background-image: none !important; color: var(--teal) !important; border-bottom: 1px solid var(--line); }
+
+/* ─── 단추 ─────────────────────────────────────────────── */
+html button, html input, html select, html textarea { font-family: var(--font-sans) !important; }
+html button { letter-spacing: -0.01em; box-shadow: none !important; }
+html button.rounded, html a.rounded, html button[class*="rounded"] { border-radius: 4px !important; }
+
+/* 주 단추(저장하기 등 남색 채움) → 앱의 주 단추 */
+html button[class~="bg-[#102a43]"], html button[class~="hover:bg-[#0f2342]"] {
+  background-color: var(--btn-bg) !important; color: var(--btn-ink) !important; border: 1px solid var(--btn-bg) !important;
+}
+html button[class~="bg-[#102a43]"]:hover { opacity: .88; }
+/* 슬레이트 채움 단추 → 보조 단추(선만 있는 모양) */
+html button.bg-slate-800, html button.bg-slate-700, html button.bg-slate-600 {
+  background-color: var(--surface) !important; color: var(--ink-2) !important; border: 1px solid var(--line-2) !important;
+}
+html button.bg-slate-800:hover, html button.bg-slate-700:hover, html button.bg-slate-600:hover { background-color: var(--bg-hover) !important; color: var(--ink) !important; }
+/* 엑셀 계열(초록 / 다크는 금색) */
+html button.bg-emerald-700, html button.bg-emerald-600 {
+  background-color: var(--btn-xlsx) !important; color: var(--btn-xlsx-ink) !important; border: 1px solid var(--btn-xlsx) !important;
+}
+html button.bg-emerald-700:hover, html button.bg-emerald-600:hover { opacity: .88; }
+/* 위험(분홍 계열): 옅은 배경 + 붉은 선 */
+html button.bg-rose-600, html button.bg-rose-700, html button[class~="bg-rose-900/80"] {
+  background-color: var(--bad-wash) !important; color: var(--bad) !important; border: 1px solid color-mix(in srgb, var(--bad) 45%, transparent) !important;
+}
+html button.bg-rose-600:hover, html button.bg-rose-700:hover { border-color: var(--bad) !important; }
+/* 보조 강조(청록·인디고·호박) → 옅은 강조색. 파일 올리기(label)도 같은 모양 */
+html .bg-teal-700, html .bg-indigo-700, html .bg-amber-600, html button.bg-amber-500, html button.bg-amber-400, html button.bg-amber-300 {
+  background-color: var(--brand-wash) !important; color: var(--brand) !important; border: 1px solid var(--brand-line) !important;
+}
+html .bg-teal-700:hover, html .bg-indigo-700:hover, html .bg-amber-600:hover { border-color: var(--brand) !important; }
+html button.bg-white, html button.bg-slate-100 { color: var(--ink-2) !important; border: 1px solid var(--line-2); }
+html button.bg-white:hover, html button.bg-slate-100:hover { background-color: var(--bg-hover) !important; color: var(--ink) !important; }
+html button .text-white, html button.text-white { color: inherit; }
+html button .text-white, html label .text-white { color: inherit !important; }
+
+/* 날짜·시계·건수 같은 작은 상태 칩 */
+html .bg-amber-300 { background-color: var(--brand-wash) !important; color: var(--brand) !important; }
+html .bg-amber-300 * { color: var(--brand) !important; }
+html .bg-rose-900\/80 { background-color: var(--bad-wash) !important; color: var(--bad) !important; border-color: var(--bad) !important; }
+html .bg-rose-900\/80 * { color: var(--bad) !important; }
+html .bg-slate-700:not(button), html .bg-slate-800:not(button):not(thead):not(th), html .bg-slate-600:not(button) { background-color: var(--surface-2) !important; color: var(--ink) !important; border: 1px solid var(--line-2); }
+
+/* ─── 입력 ─────────────────────────────────────────────── */
+html input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), html select, html textarea {
+  background-color: var(--surface) !important;
+  color: var(--ink) !important;
+  border-color: var(--line-2) !important;
+  border-radius: 4px !important;
+}
+html input:focus, html select:focus, html textarea:focus { outline: none !important; border-color: var(--brand) !important; box-shadow: 0 0 0 3px var(--focus-ring) !important; }
+html ::placeholder { color: var(--ink-4) !important; }
+html select option { background: var(--surface); color: var(--ink); }
+html input[type="date"], html input[type="month"] { color-scheme: inherit; }
+
+/* ─── 원본 CSS 클래스들 ────────────────────────────────── */
+.excel-table th, .excel-table td { border: 1px solid var(--line) !important; }
+html .excel-table tbody tr { background-color: var(--surface); }
+html .excel-table tbody tr:hover { background-color: var(--bg-hover); }
+html .excel-table td { color: var(--ink); }
+
+.row-complete { background-color: var(--row-ok) !important; }
+.row-complete:hover { background-color: var(--row-ok-h) !important; }
+.row-missing { background-color: var(--row-miss) !important; }
+.row-missing:hover { background-color: var(--row-miss-h) !important; }
+.row-partial { background-color: var(--row-part) !important; }
+.row-partial:hover { background-color: var(--row-part-h) !important; }
+.row-overdue { background-color: var(--row-over) !important; border-left: 3px solid var(--bad) !important; }
+.row-overdue:hover { background-color: var(--row-over-h) !important; }
+html [class~="bg-[#e2efda]"] { background-color: var(--ok-wash) !important; }
+html [class~="bg-[#fce4d6]"] { background-color: var(--bad-wash) !important; }
+html [class~="bg-[#fff2cc]"] { background-color: var(--warn-wash) !important; }
+html [class~="bg-[#e2efda]"], html [class~="bg-[#fce4d6]"], html [class~="bg-[#fff2cc]"] { border-color: var(--line-2) !important; }
+
+/* 슬라이서 */
+.slicer-box { background-color: var(--surface) !important; border: 1px solid var(--line) !important; box-shadow: none !important; border-radius: 4px !important; }
+.slicer-header, html .slicer-header.bg-gradient-to-r {
+  background: var(--surface-2) !important; color: var(--ink-2) !important;
+  border-bottom: 1px solid var(--line); font-weight: 650;
+}
+.slicer-header * { color: inherit !important; }
+.slicer-btn { background-color: var(--surface) !important; color: var(--ink-2) !important; border: 1px solid var(--line-2) !important; border-radius: 3px !important; }
+.slicer-btn:hover { background-color: var(--bg-hover) !important; color: var(--ink) !important; }
+.slicer-btn.active { background-color: var(--btn-bg) !important; color: var(--btn-ink) !important; border-color: var(--btn-bg) !important; }
+
+/* 탭 */
+.tab-btn { color: var(--ink-3); border-bottom: 2px solid transparent; transition: color .12s ease; }
+.tab-btn:hover { color: var(--ink); }
+html .tab-btn.active { background-color: transparent !important; color: var(--ink) !important; border-bottom: 2px solid var(--brand) !important; font-weight: 650; }
+html .tab-btn.active * { color: inherit !important; }
+
+/* 카드 · 차트 패널 */
+.premium-panel, .chart-card, .chart-card--gold {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+.chart-card:hover { transform: none !important; box-shadow: none !important; }
+.chart-card::before, .chart-card--emerald, .chart-card--blue, .chart-card--violet, .chart-card--gold { --accent: var(--line-2); }
+.chart-card::before { height: 2px !important; background: var(--line-2) !important; }
+.chart-card--gold::before { background: var(--brand) !important; }
+.chart-title { color: var(--ink-2) !important; }
+.chart-center-text { color: var(--ink) !important; font-family: var(--font-mono); font-weight: 600; }
+.chart-center-text--total { color: var(--brand) !important; }
+
+/* 전체 모서리 */
+html .rounded-lg, html .rounded-xl, html .rounded-2xl { border-radius: 4px !important; }
+html .rounded, html .rounded-md { border-radius: 3px !important; }
+/* 모달 바탕 */
+html .fixed.inset-0 > div.bg-white, html .fixed.inset-0 > .bg-white { border: 1px solid var(--line-2); box-shadow: var(--shadow-xl) !important; border-radius: 8px !important; }
+
+/* 상태 색 칩(입고 완료 등) */
+html span.bg-emerald-100, html span[class*="bg-emerald-"] { background-color: var(--ok-wash) !important; color: var(--ok) !important; }
+html span.bg-rose-100 { background-color: var(--bad-wash) !important; color: var(--bad) !important; }

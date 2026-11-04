@@ -255,6 +255,36 @@ function TripsArt() {
   );
 }
 
+// CS: Site(행)별 형교환·개조 단계 흐름. 끝낸 단계는 채우고 진행 중은 테두리, 위험은 마름모로 표시한다
+function CsArt() {
+  const rows = [
+    { y: 46, name: "SITE A", done: 4, risk: -1 },
+    { y: 88, name: "SITE B", done: 2, risk: 3 },
+    { y: 130, name: "SITE C", done: 5, risk: -1 },
+  ];
+  const x0 = 470;
+  const gap = 56;
+  const steps = 6;
+  return (
+    <svg viewBox={VB} focusable="false">
+      {rows.map((r) => (
+        <g key={r.name}>
+          <text className="tx" x={x0 - 70} y={r.y + 3}>{r.name}</text>
+          <line className="ln-s" x1={x0} y1={r.y} x2={x0 + gap * (steps - 1)} y2={r.y} />
+          {Array.from({ length: steps }, (_, i) => {
+            const cx = x0 + i * gap;
+            if (i === r.risk) return <rect key={i} className="diamond bad" x={cx - 5} y={r.y - 5} width="10" height="10" transform={`rotate(45 ${cx} ${r.y})`} />;
+            const cls = i < r.done ? "node-done" : i === r.done ? "node-now" : "node-todo";
+            return <circle key={i} className={cls} cx={cx} cy={r.y} r="6" />;
+          })}
+          <rect className="fl-2" x={x0 + gap * steps} y={r.y - 2} width="40" height="4" />
+        </g>
+      ))}
+      <line className="today" x1={x0 + gap * 2.5} y1="14" x2={x0 + gap * 2.5} y2="166" />
+    </svg>
+  );
+}
+
 const ARTS = {
   trips: TripsArt,
   projects: ScheduleArt,
@@ -263,6 +293,7 @@ const ARTS = {
   "daily-reports": DailyArt,
   quotations: QuotationsArt,
   "vision-spc": SpcArt,
+  cs: CsArt,
 };
 
 export default function SystemBackdrop({ kind }) {

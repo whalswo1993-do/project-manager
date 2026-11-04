@@ -6,6 +6,7 @@ import { confirmDialog } from "./confirmService";
 import { exportComprehensiveReport } from "./reportExports";
 import IntegratedExportModal from "./IntegratedExportModal";
 import VisionSPC from "./VisionSPC";
+import CsProgram from './CsProgram';
 import IssueManagement from "./IssueManagement";
 import IntegratedIssueCenter from "./IntegratedIssueCenter";
 import Quotations from "./Quotations";
@@ -543,7 +544,7 @@ export default function App() {
   const [newSite, setNewSite] = useState("");
   const [newPerson, setNewPerson] = useState("");
   const [newDept, setNewDept] = useState("소장");
-  const VALID_VIEWS = ["projects", "manpower", "issues", "daily-reports", "quotations", "trips", "vision-spc"];
+  const VALID_VIEWS = ["projects", "manpower", "issues", "daily-reports", "quotations", "trips", "vision-spc", "cs"];
   const [externalNewIssueData, setExternalNewIssueData] = useState(null);
 
   const [currentView, setCurrentView] = useState(() => {
@@ -2057,6 +2058,15 @@ JSON 출력 예시:
               <Icon name="activity" size={16} />
               <span className="nav-tab-label">Vision SPC</span>
             </button>
+            <button
+              type="button"
+              className={`nav-tab-btn tab-cs ${currentView === "cs" ? "active" : ""}`}
+              onClick={() => switchView("cs")}
+              title="형교환·개조 CS 통합 관리"
+            >
+              <Icon name="headset" size={16} />
+              <span className="nav-tab-label">CS 통합 관리</span>
+            </button>
           </nav>
 
           <div className="system-user-and-tools">
@@ -2128,7 +2138,7 @@ JSON 출력 예시:
         )}
 
         {/* 출장자 관리는 고객사·연도와 상관없이 전체 프로젝트를 쓰므로 이 두 줄(고객사·조회 연도)을 숨긴다 */}
-        {currentView !== "trips" && (
+        {currentView !== "trips" && currentView !== "cs" && (
           <>
         {/* ========================================================
             고객사별 독립 시스템 선택 바 (Customer Selection Bar)
@@ -2331,7 +2341,9 @@ JSON 출력 예시:
         </div>
       )}
 
-      {currentView === "vision-spc" ? (
+      {currentView === "cs" ? (
+        <ErrorBoundary><CsProgram /></ErrorBoundary>
+      ) : currentView === "vision-spc" ? (
         <ErrorBoundary><VisionSPC currentCustomer={currentCustomer} /></ErrorBoundary>
       ) : currentView === "issues" ? (
         <ErrorBoundary>

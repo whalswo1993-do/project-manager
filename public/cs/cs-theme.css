@@ -1,0 +1,464 @@
+/* ========================================================
+   CS 통합 관리 프로그램 — 프로젝트 매니저 디자인 시스템 적용
+   라이트 = Atelier(종이 톤 · 브랜드 블루) / 다크 = Obsidian(그라파이트 · 샴페인 골드)
+   원본 프로그램의 기능·버튼·구조는 그대로 두고 색·반경·글꼴·표면만 앱의 토큰(src/index.css)과 맞춘다.
+   원본 <style> 뒤에 불러오므로 같은 선택자는 이 파일이 이긴다.
+   ======================================================== */
+
+/* ─── 토큰: src/index.css 와 같은 값 ───────────────────────── */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg:        #F6F5F2;
+  --bg-2:      #EFEDE8;
+  --surface:   #FFFFFF;
+  --surface-2: #FAF9F7;
+  --line:      #E8E5DE;
+  --line-2:    #D8D4CB;
+  --ink:       #14171D;
+  --ink-2:     #454B58;
+  --ink-3:     #7A8090;
+  --ink-4:     #A8ADB8;
+  --brand:      #0B57A4;
+  --brand-2:    #09478A;
+  --brand-wash: #EDF3FA;
+  --brand-line: #C7DAEE;
+  --on-brand:   #FFFFFF;
+  --signal:      #D94A1F;
+  --signal-wash: #FCEEE9;
+  --ok:          #2B7A58;
+  --ok-wash:     #E7F2EC;
+  --warn:        #A9701A;
+  --warn-wash:   #F7EFDF;
+  --bad:         #BE3A2D;
+  --bad-wash:    #F9E9E6;
+  --teal:        #21798A;
+  --teal-wash:   #E4F1F4;
+  --btn-bg:  #14171D;
+  --btn-ink: #FFFFFF;
+  --btn-xlsx:     #1D7A45;
+  --btn-xlsx-ink: #FFFFFF;
+  --btn-ppt:      #D9531E;
+  --btn-ppt-ink:  #FFFFFF;
+  --bg-hover:     #F1EFEA;
+  --bg-overlay:   rgba(20, 23, 29, 0.46);
+  --focus-ring:   rgba(11, 87, 164, 0.16);
+  --shadow-xl:    0 28px 64px rgba(20, 23, 29, 0.16), 0 4px 12px rgba(20, 23, 29, 0.06);
+  --paper: #FFFFFF;
+  --paper-ink: #14171D;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:        #09090A;
+  --bg-2:      #0E0E10;
+  --surface:   #111113;
+  --surface-2: #151517;
+  --line:      rgba(255, 255, 255, 0.075);
+  --line-2:    rgba(255, 255, 255, 0.13);
+  --ink:       #EEEBE3;
+  --ink-2:     #BAB6AC;
+  --ink-3:     #85827A;
+  --ink-4:     #55534E;
+  --brand:      #CDAE72;
+  --brand-2:    #E2C990;
+  --brand-wash: rgba(205, 174, 114, 0.09);
+  --brand-line: rgba(205, 174, 114, 0.34);
+  --on-brand:   #15110A;
+  --signal:      #EB7A5D;
+  --signal-wash: rgba(235, 122, 93, 0.13);
+  --ok:          #86B596;
+  --ok-wash:     rgba(134, 181, 150, 0.13);
+  --warn:        #C9A25A;
+  --warn-wash:   rgba(201, 162, 90, 0.13);
+  --bad:         #E0705F;
+  --bad-wash:    rgba(224, 112, 95, 0.13);
+  --teal:        #8FA8BD;
+  --teal-wash:   rgba(143, 168, 189, 0.13);
+  --btn-bg:  #CDAE72;
+  --btn-ink: #15110A;
+  --btn-xlsx:     #CDAE72;
+  --btn-xlsx-ink: #15110A;
+  --btn-ppt:      #CDAE72;
+  --btn-ppt-ink:  #15110A;
+  --bg-hover:     rgba(255, 255, 255, 0.045);
+  --bg-overlay:   rgba(0, 0, 0, 0.72);
+  --focus-ring:   rgba(205, 174, 114, 0.22);
+  --shadow-xl:    0 28px 70px rgba(0, 0, 0, 0.72), 0 4px 14px rgba(0, 0, 0, 0.5);
+  --paper: #F4F2EC;
+  --paper-ink: #14171D;
+}
+
+:root {
+  --font-sans: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', 'Malgun Gothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', Consolas, ui-monospace, monospace;
+  --font-display: var(--font-sans);
+  --display-weight: 300;
+  --display-tracking: -0.045em;
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-pill: 999px;
+
+  /* 원본 프로그램이 쓰던 변수 이름을 앱 토큰으로 연결 */
+  --panel:  var(--surface);
+  --panel2: var(--surface-2);
+  --text:   var(--ink);
+  --muted:  var(--ink-3);
+  --accent: var(--brand);
+  --accent2: var(--brand-line);
+  --accent-bg: var(--brand-wash);
+  --danger: var(--bad);
+  --shadow: none;
+  --table-head: var(--surface-2);
+  --table-head-text: var(--ink-3);
+  --row-alt: transparent;
+  --row-hover: var(--bg-hover);
+  --row-border: var(--line);
+  --soft-green: var(--ok-wash);
+  --soft-red: var(--bad-wash);
+  --soft-yellow: var(--warn-wash);
+  --soft-blue: var(--brand-wash);
+  --soft-purple: var(--teal-wash);
+}
+[data-theme="dark"] {
+  --font-display: 'Instrument Serif', 'Noto Serif KR', Georgia, serif;
+  --display-weight: 400;
+  --display-tracking: -0.02em;
+}
+
+/* ─── 바탕 · 글꼴 ──────────────────────────────────────── */
+html { scroll-behavior: auto; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+  letter-spacing: -0.008em;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: color-mix(in srgb, var(--brand) 26%, transparent); }
+::placeholder { color: var(--ink-4); }
+.muted, .sub { color: var(--ink-3); }
+.small { font-size: 11.5px; }
+b, strong { font-weight: 650; }
+
+/* 스크롤바 */
+* { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: var(--radius-pill); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-4); }
+
+/* ─── 단추 ─────────────────────────────────────────────── */
+button {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  background: var(--surface);
+  color: var(--ink-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  box-shadow: none;
+  transition: background-color .12s ease, border-color .12s ease, color .12s ease;
+}
+button:hover { filter: none; transform: none; background: var(--bg-hover); color: var(--ink); border-color: var(--ink-4); }
+button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.primary, .primary {
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+  border-color: var(--btn-bg);
+  box-shadow: none;
+}
+button.primary:hover, .primary:hover { background: var(--btn-bg); color: var(--btn-ink); border-color: var(--btn-bg); opacity: .88; }
+button.danger, .danger {
+  background: var(--bad-wash);
+  color: var(--bad);
+  border-color: transparent;
+}
+button.danger:hover, .danger:hover { background: var(--bad-wash); color: var(--bad); border-color: var(--bad); }
+
+/* 표 안의 주 단추는 조용하게(색 채운 면 대신 옅은 배경) */
+td button.primary, td .primary {
+  background: var(--brand-wash);
+  color: var(--brand);
+  border-color: var(--brand-line);
+}
+td button.primary:hover, td .primary:hover { background: var(--brand-wash); color: var(--brand); border-color: var(--brand); opacity: 1; }
+
+/* 내보내기 단추: 엑셀 = 초록, PPT = 주황 (다크는 둘 다 금색) */
+button[onclick^="exportXLSX"], button[onclick^="exportExecutiveXLSX"] {
+  background: var(--btn-xlsx); color: var(--btn-xlsx-ink); border-color: var(--btn-xlsx);
+}
+button[onclick^="exportPPTX"] {
+  background: var(--btn-ppt); color: var(--btn-ppt-ink); border-color: var(--btn-ppt);
+}
+button[onclick^="exportXLSX"]:hover, button[onclick^="exportExecutiveXLSX"]:hover {
+  background: var(--btn-xlsx); color: var(--btn-xlsx-ink); border-color: var(--btn-xlsx); opacity: .88;
+}
+button[onclick^="exportPPTX"]:hover {
+  background: var(--btn-ppt); color: var(--btn-ppt-ink); border-color: var(--btn-ppt); opacity: .88;
+}
+
+/* ─── 입력 ─────────────────────────────────────────────── */
+input, select, textarea {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  padding: 6px 9px;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+input:hover:not(:focus):not(:disabled), select:hover:not(:focus):not(:disabled), textarea:hover:not(:focus):not(:disabled) { border-color: var(--ink-4); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--focus-ring); }
+input:disabled, select:disabled, textarea:disabled { opacity: .55; cursor: not-allowed; }
+input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: var(--brand); width: auto; }
+input[type="color"] { padding: 2px; min-width: 38px; background: var(--surface); }
+select option { background: var(--surface); color: var(--ink); }
+.toolbar input, .toolbar select { background: var(--surface); }
+label { color: var(--ink-2); font-size: 12px; }
+label > input, label > select, label > textarea { margin-top: 3px; }
+
+/* ─── 상단 머리말 ──────────────────────────────────────── */
+.top {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  box-shadow: none;
+  padding: 10px 24px 0;
+}
+.toprow { gap: 8px; }
+.brand { font-size: 15px; font-weight: 650; letter-spacing: -0.02em; color: var(--ink); }
+.brand .sub { font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: .02em; color: var(--ink-3); margin-left: 6px; }
+#storageModeStatus { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
+
+/* 메뉴: 알약 → 밑줄 탭 */
+nav { gap: 2px; padding-top: 8px; overflow-x: auto; }
+nav button {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 9px 13px;
+  color: var(--ink-3);
+  font-weight: 550;
+  white-space: nowrap;
+}
+nav button:hover { background: transparent; color: var(--ink); border-color: transparent; border-bottom-color: var(--line-2); }
+nav button.active { background: transparent; color: var(--ink); border-color: transparent; border-bottom-color: var(--brand); font-weight: 650; }
+
+/* ─── 본문 ─────────────────────────────────────────────── */
+main { max-width: none; padding: 18px 24px 48px; }
+.view > .toolbar:first-child, .view > .card:first-child { margin-top: 0; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  padding: 14px 16px;
+}
+.card h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  border-left: 0;
+  padding-left: 0;
+}
+.card h3 .small { font-weight: 450; margin-left: 6px; }
+.metric { font-family: var(--font-display); font-weight: var(--display-weight); font-size: 28px; letter-spacing: var(--display-tracking); color: var(--ink); line-height: 1.15; }
+
+/* 도구줄: 상자를 빼고 여백으로만 나눈다 */
+.toolbar {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.toolbar input, .toolbar select { max-width: 240px; }
+.toolbar > b { font-size: 14px; font-weight: 650; color: var(--ink); }
+
+/* ─── 표 ───────────────────────────────────────────────── */
+.tablewrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.card > .tablewrap { border: 0; border-radius: 0; }
+table { font-size: 12.5px; }
+thead th, th {
+  background: var(--surface-2);
+  color: var(--ink-3);
+  font-size: 11.5px;
+  font-weight: 650;
+  letter-spacing: 0;
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--line-2);
+}
+tbody td, td { border-bottom: 1px solid var(--line); color: var(--ink); }
+tbody tr:nth-child(even) { background: transparent; }
+tbody tr:hover { background: var(--bg-hover); }
+tbody tr:last-child td { border-bottom: 0; }
+td.muted, td .muted { color: var(--ink-3); }
+.schedule-legend { color: var(--ink-2); }
+.schedule-dot { border-radius: var(--radius-xs); border: 1px solid var(--line-2); }
+.schedule-dot.progress { background: var(--ok-wash); border-color: var(--ok); }
+.schedule-dot.overdue { background: var(--bad-wash); border-color: var(--bad); }
+.project-row-progress, .project-row-progress td { background: var(--ok-wash) !important; }
+.project-row-overdue, .project-row-overdue td { background: var(--bad-wash) !important; border-color: color-mix(in srgb, var(--bad) 35%, transparent) !important; }
+.project-row-progress:hover, .project-row-overdue:hover { filter: none; }
+td[ondblclick*="openSiteDetail"]:hover { background: var(--brand-wash) !important; }
+
+/* Site 색 표시: 사용자가 정한 Site 색은 유지하되, 면은 표면 위에 옅게 얹는다 */
+.site-tint-row { background: color-mix(in srgb, var(--site-color) 10%, var(--surface)) !important; box-shadow: inset 4px 0 var(--site-color); }
+.site-tint-row:hover { filter: none; background: color-mix(in srgb, var(--site-color) 16%, var(--surface)) !important; }
+.site-tint-row.project-row-progress { background: var(--ok-wash) !important; }
+.site-tint-row.project-row-overdue { background: var(--bad-wash) !important; }
+#dashboard .site-tint-row td:first-child { background: color-mix(in srgb, var(--site-color) 28%, var(--surface)) !important; box-shadow: inset 4px 0 var(--site-color); color: var(--ink); }
+/* 배경이 사용자가 고른 옅은 색이라 글자는 어두운 색을 유지한다(다크에서도 읽히도록) */
+.site-color-badge { border-radius: var(--radius-xs); color: #1B2127; border: 1px solid rgba(20, 23, 29, .16); }
+.site-color-select { color: #1B2127; border: 1px solid rgba(20, 23, 29, .22); }
+.site-color-select option { color: #1B2127; background: #fff; }
+
+/* 배지 */
+.badge {
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-weight: 650;
+  padding: 3px 7px;
+  min-width: 0;
+  letter-spacing: 0;
+}
+.b-pre  { background: var(--bg-2) !important;      color: var(--ink-3) !important; }
+.b-run  { background: var(--brand-wash) !important; color: var(--brand) !important; }
+.b-done { background: var(--ok-wash) !important;    color: var(--ok) !important; }
+.b-risk { background: var(--warn-wash) !important;  color: var(--warn) !important; }
+.b-high { background: var(--bad-wash) !important;   color: var(--bad) !important; }
+
+/* ─── 요약 띠(KPI) ─────────────────────────────────────── */
+.integrated-kpi { padding: 10px 14px; }
+.integrated-kpi:before { height: 2px; background: var(--line-2); }
+.integrated-kpi.alert:before { background: var(--bad); }
+.integrated-kpi.good:before { background: var(--ok); }
+.kpi-link { transition: border-color .12s ease; }
+.kpi-link:hover { transform: none; box-shadow: none; border-color: var(--brand-line); background: var(--brand-wash); }
+.kpi-link:after { color: var(--ink-4); font-family: var(--font-mono); }
+.kpi { align-items: baseline; }
+
+/* 진척 막대 · 타임라인 */
+.progress { height: 6px; background: var(--bg-2); border-radius: var(--radius-xs); }
+.progress > i { background: var(--brand); border-radius: var(--radius-xs); }
+.timeline .step { border-top: 2px solid var(--brand-line); }
+.timeline .step.done { border-top-color: var(--ok); }
+.timeline .step.risk { border-top-color: var(--bad); }
+
+/* ─── 일정표(가로 간트) ────────────────────────────────── */
+.project-schedule-wrap { border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); }
+.project-schedule th, .project-schedule td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.project-schedule thead th { background: var(--surface-2); color: var(--ink-2); }
+.project-schedule .schedule-label { background: var(--surface); color: var(--ink); }
+.project-schedule thead .schedule-label { background: var(--surface-2); }
+.project-schedule .schedule-weekend, .project-schedule .schedule-holiday { background: var(--bad-wash); color: var(--bad); font-weight: 700; }
+.project-schedule tbody td.schedule-weekend, .project-schedule tbody td.schedule-holiday { background: color-mix(in srgb, var(--bad) 5%, var(--surface)); color: var(--bad); }
+.project-schedule .schedule-today { box-shadow: inset 2px 0 var(--signal), inset -2px 0 var(--signal); }
+.project-schedule td.schedule-active-new { --schedule-line: var(--brand); }
+.project-schedule td.schedule-active-change { --schedule-line: var(--teal); }
+.project-schedule td.schedule-active-existing { --schedule-line: var(--ink-3); }
+.schedule-type-legend .new { --legend-line: var(--brand); background: var(--brand); }
+.schedule-type-legend .change { --legend-line: var(--teal); background: var(--teal); }
+.schedule-type-legend .existing { --legend-line: var(--ink-3); background: var(--ink-3); }
+.schedule-type-legend .holiday { background: var(--bad-wash); border: 1px solid var(--bad); }
+.schedule-type-legend span[style*="c62828"] { color: var(--bad) !important; }
+.schedule-view-btn.active { background: var(--btn-bg); border-color: var(--btn-bg); color: var(--btn-ink); font-weight: 650; }
+.schedule-month-picker { width: 145px; min-width: 145px; }
+
+/* ─── 모달 ─────────────────────────────────────────────── */
+.modal { background: var(--bg-overlay); }
+.modalbox {
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  color: var(--ink);
+  padding: 20px;
+}
+.modalbox h2, .modalbox h3 { letter-spacing: -0.025em; color: var(--ink); }
+.actions { gap: 8px; }
+
+/* ─── 붙여넣기 · 파일 칸 (앱의 PasteZone 과 같은 모양: 색이 있는 점선 칸) ─── */
+.capture-paste-zone, .bom-paste-zone, .ppt-paste-zone, .project-file-zone {
+  border: 1.5px dashed var(--brand-line);
+  border-radius: var(--radius-lg);
+  background: var(--brand-wash);
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.capture-paste-zone:focus, .bom-paste-zone:focus, .ppt-paste-zone:focus,
+.project-file-zone:focus, .project-file-zone.dragover {
+  border-color: var(--brand);
+  background: var(--brand-wash);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.bom-table-paste { outline: 1.5px dashed var(--brand-line); background: var(--surface); }
+.bom-table-paste:focus { outline: 2px solid var(--brand); box-shadow: 0 0 0 3px var(--focus-ring); }
+.capture-card, .ppt-paste-card, .ppt-page-card { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.capture-card img, .ppt-paste-card img { background: var(--paper); border-radius: var(--radius-xs); }
+.ppt-paste-card pre { background: var(--paper); color: var(--paper-ink); border-radius: var(--radius-xs); }
+.project-file-row { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
+
+/* PPT 편집창: 붙여넣은 슬라이드는 자체 색을 가지므로 종이색 바탕을 유지한다 */
+.ppt-rich-editor, .ppt-page-editor, .ppt-view-page {
+  background: var(--paper);
+  color: var(--paper-ink);
+  border-radius: var(--radius-lg);
+}
+.ppt-rich-editor { border: 1.5px dashed var(--brand-line); }
+.ppt-page-editor { border: 1.5px dashed var(--brand-line); }
+.ppt-view-page { border: 1px solid var(--line-2); }
+.ppt-rich-editor:focus, .ppt-page-editor:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--focus-ring); }
+.ppt-rich-editor:empty:before, .ppt-page-editor:empty:before { color: #5C6370; }
+.ppt-rich-editor table, .ppt-view-page table { background: var(--paper); }
+
+/* 엑셀 모양 입력표 */
+.excel-cell-grid td { background: var(--surface); border-right: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); color: var(--ink); }
+.excel-cell-grid td:first-child { background: var(--bg-2); color: var(--ink-3); font-family: var(--font-mono); font-size: 11px; }
+.excel-cell-grid td[contenteditable="true"]:focus { background: var(--brand-wash) !important; box-shadow: inset 0 0 0 2px var(--brand); }
+
+/* ─── 기타 조각 ────────────────────────────────────────── */
+.material-frame { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.material-open-btn { color: var(--brand); background: var(--brand-wash); border-color: var(--brand-line); font-weight: 650; }
+.material-open-btn:hover { background: var(--brand-wash); border-color: var(--brand); color: var(--brand); }
+.daily-issue-item { border-left: 3px solid var(--bad); background: var(--bad-wash); border-radius: var(--radius-xs); color: var(--ink); }
+.daily-action-item { border-left: 3px solid var(--brand); background: var(--brand-wash); border-radius: var(--radius-xs); color: var(--ink); }
+
+/* 원본이 글자색·바탕색을 직접 지정한 조각들(인라인 스타일)을 토큰으로 되돌린다 */
+[style*="background:#fff"], [style*="background: #fff"] { background-color: var(--surface) !important; }
+[style*="color:#243238"], [style*="color: #243238"], [style*="color:#333"] { color: var(--ink) !important; }
+
+@media (max-width: 900px) { main { padding: 14px 14px 40px; } .top { padding: 10px 14px 0; } }
+
+/* 앱 안에 끼워 넣었을 때: 바깥 화면이 시스템 머리말·좌우 여백을 맡으므로 프로그램은 하위 메뉴 줄처럼 보이게 한다 */
+html.embedded, html.embedded body { background: transparent; }
+html.embedded .top { background: var(--bg); padding: 0; border-bottom: 1px solid var(--line); }
+html.embedded .top .toprow { padding: 0 0 8px; }
+html.embedded nav { padding-top: 0; margin-bottom: -1px; }
+html.embedded main { padding: 18px 0 48px; }
+html.embedded .brand { font-size: 14px; }
+
+/* 인쇄는 원본 규칙을 그대로 쓰되 색만 종이에 맞춘다 */
+@media print {
+  body { background: #fff; color: #000; }
+  .card, .tablewrap { border-color: #bbb; }
+}

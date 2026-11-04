@@ -1,0 +1,14 @@
+/* CS 통합 관리 화면: 시스템 머리말 아래를 프로그램(iframe)이 채운다 */
+.cs-frame-wrap {
+  margin-top: 22px;
+  min-width: 1216px;
+}
+.cs-frame {
+  display: block;
+  width: 100%;
+  height: calc(100vh - var(--app-fixed-top-height, 106px) - 40px);
+  min-height: 680px;
+  border: 0;
+  background: transparent;
+  color-scheme: normal;
+}

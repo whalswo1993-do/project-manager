@@ -17,7 +17,6 @@
   <div class="toprow">
     
     <span id="storageModeStatus" class="small muted">저장소 준비 중…</span>
-    <button id="importJsonBtn" onclick="importJSONPrompt()" style="display:none" title="이전 프로그램에서 저장한 JSON 파일로 서버 데이터를 교체합니다(관리자)">이전 데이터 가져오기</button><input id="importJsonFile" type="file" accept=".json,application/json" style="display:none" onchange="importJSONFile(this)">
     <button class="primary" onclick="exportXLSX()">Excel 저장(.xlsx)</button><span class="small muted" style="margin-left:4px">PJT 시트: 계획/실적 2행 형식</span><button onclick="exportCSV()">Excel용 CSV</button>
     <button class="primary" onclick="exportPPTX()">PowerPoint 저장(.pptx)</button>
     <button onclick="window.print()">PDF / 인쇄</button>

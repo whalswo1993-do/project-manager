@@ -21,10 +21,9 @@ describe('CS 통합 관리 프로그램', () => {
     expect(read('material.html')).not.toContain('indexedDB.open');
     expect(app).not.toMatch(/localStorage\.(get|set)Item\('gacs_v1'/);
   });
-
-  it('JSON 저장 단추는 없고 관리자용 가져오기만 있다', () => {
+  it('JSON 저장/가져오기 단추는 없다', () => {
     expect(html).not.toContain('>JSON 저장<');
-    expect(html).toContain('importJSONPrompt()');
+    expect(html).not.toContain('importJSON');
   });
 
   it('쓰지 않는 옛 구역(SKO·규격·출하·이슈·품질 등)이 남아 있지 않다', () => {

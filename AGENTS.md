@@ -115,11 +115,11 @@ npm run build     # 프로덕션 빌드 → dist/
 - 로컬 점검: 저장소에 올리지 않는 `ui-demo/`(가짜 Supabase + 가짜 프로젝트로 이 화면만 띄움). `node node_modules/vite/bin/vite.js --config ui-demo/vite.config.js` → `http://localhost:5199/?role=grade3|grade2_5|grade2&theme=dark`. SQL/RLS는 운영 DB가 아니라 PGlite(`@electric-sql/pglite`)로 로컬 검증했다.
 
 ## CS 통합 관리 (`public/cs/`, 2026-11-04)
-- 별도로 만든 단일 HTML 프로그램(Global_CS_Management_Program)을 **그대로 옮겨** 앱 탭("CS 통합 관리")의 iframe(`src/CsProgram.jsx`)으로 띄운다. 기능 코드는 원본이고, 바꾼 것은 `scripts/build-cs-program.cjs` + `scripts/cs-storage-patch.cjs`가 원본에 끼워 넣는 패치뿐이다. **`public/cs/index.html`은 생성물이니 직접 고치지 말고** `node scripts/build-cs-program.cjs "<원본 html>"`로 다시 만든다(디자인 CSS를 고친 뒤에도 실행해야 캐시 버전이 갱신된다).
-- 디자인: `cs-theme.css`(본체), `cs-material-theme.css`(내장 자재현황 앱, Tailwind 색 클래스를 토큰으로 재매핑). 앱 토큰과 같은 값을 복사해 두었으니 `src/index.css` 토큰을 바꾸면 여기도 맞춘다. 라이트/다크는 `pm_theme_mode`(localStorage)를 읽고 storage 이벤트로 따라간다. 원본의 "색 모드(눈 편한 5가지)"는 디자인과 부딪혀 없앴다.
-- **저장은 Supabase**: `src/csBridge.js`가 `window.__csBridge`를 놓고, 프로그램(`cs-store.js`)이 IndexedDB 호출을 같은 모양의 가짜 db(facade)로 받아 `cs_records`(항목 1개=1행, 바뀐 항목만 저장)와 `cs-files` 버킷(첨부 파일)에 쓴다. 문서 `main`(CS 프로그램), `material`(자재현황). 부모가 없으면(단독 실행) 원본대로 IndexedDB. 권한: 조회=`cs_can_view()`(활성 사용자 전원), 수정=`cs_can_edit()`(admin·grade3·grade2_5·grade2). 마이그레이션 `20261104004253_cs_storage.sql`.
-- 같은 항목을 동시에 고치면 마지막 저장이 남는다(항목이 다르면 안 덮어쓴다). 화면으로 돌아오거나 60초마다 다른 사람의 변경을 불러온다(모달이 열려 있으면 건너뜀). 서버가 비어 있으면 원본의 예시 데이터를 올리지 않고 빈 상태로 시작한다. 관리자는 "이전 데이터 가져오기"로 옛 프로그램의 JSON을 올릴 수 있다(JSON 저장 단추는 없앴다).
-- 원본의 `renderAll`이 화면에 없는 옛 구역 때문에 null 오류로 멈춰 시작 코드가 끊기던 문제는 호출을 감싸 해결했다.
+- 별도 단일 HTML 프로그램이던 것을 앱으로 옮겨 **이제 `public/cs/`가 원본(직접 고치는 소스)**이다(예전의 빌드·패치 스크립트는 없앴다). 앱 탭 "CS 통합 관리"의 iframe(`src/CsProgram.jsx`)로 뜨고, 앱 밖(단독)에서는 열리지 않는다. 구성: `index.html`(화면 뼈대) · `cs-app.js`(기능) · `cs-base.css`(옛 스타일) · `cs-theme.css`(앱 디자인 토큰 적용, 우선) · `cs-store.js`(저장소 어댑터) · `cs-theme-sync.js` · `material.html`(자재현황 앱, iframe으로 불러옴) + `cs-material-theme.css`. `public/cs`는 앱 lint 대상이 아니다. 함수를 지우거나 바꾸면 인라인 `onclick`·템플릿 문자열에서 쓰이는지 꼭 확인한다(빌드·테스트가 못 잡는다).
+- 디자인: `cs-theme.css`/`cs-material-theme.css`는 `src/index.css` 토큰과 같은 값을 복사해 둔 것이라 토큰을 바꾸면 여기도 맞춘다(자재현황은 Tailwind 색 클래스를 토큰으로 재매핑). 라이트/다크는 `pm_theme_mode`(localStorage)를 읽고 storage 이벤트로 따라간다. 머리말은 `CsProgram.jsx`가 낮게(`--cs-head-h` 92px) 그리고, iframe이 그 위로 겹쳐 올라와 작업 단추를 머리말 오른쪽에 둔다(`html.embedded` 규칙). 프로그램 안의 제목(brand)은 숨긴다.
+- **저장은 Supabase**: `src/csBridge.js`가 `window.__csBridge`를 놓고, `cs-store.js`가 원본의 IndexedDB 호출을 같은 모양의 가짜 db(facade)로 받아 `cs_records`(항목 1개=1행, 바뀐 항목만 저장)와 `cs-files` 버킷(첨부)에 쓴다. 문서 `main`(CS 프로그램)·`material`(자재현황). 조회=`cs_can_view()`(활성 사용자 전원), 수정=`cs_can_edit()`(admin·grade3·grade2_5·grade2). 마이그레이션 `20261104004253_cs_storage.sql`. 테스트 `tests/csStore.test.js`·`tests/csProgram.test.js`.
+- 같은 항목을 동시에 고치면 마지막 저장이 남는다(항목이 다르면 안 덮어쓴다). 화면으로 돌아오거나 60초마다 다른 사람의 변경을 불러온다(모달이 열려 있으면 건너뜀). 서버가 비어 있으면 빈 상태로 시작한다(자재현황은 원본의 샘플 PJT가 보이다가 첫 저장 때 올라간다). 관리자는 "이전 데이터 가져오기"로 옛 프로그램의 JSON을 올릴 수 있다(JSON 저장 단추는 없앴다).
+- 정리한 것: 화면에 없던 옛 구역(SKO·제품규격·출하·이슈·품질·자재·포장·연락처 화면)과 프로그램 제목 편집·메뉴 이름 편집·색 모드·대표보고 메모·브라우저 IndexedDB/localStorage 저장 코드. 데이터 구조(`db.issues` 등 빈 목록)와 엑셀 내보내기의 옛 시트는 남겨 두었다.
 
 ## 배포 (GitHub `main` push → Vercel 자동 배포)
 - 작업이 끝나고 검증이 통과하면 커밋 후 `main`에 push한다(사용자가 "로컬로만"이라고 하지 않는 한). 배포 후 Vercel 배포 상태와 URL을 함께 보고한다.

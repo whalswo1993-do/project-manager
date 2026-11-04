@@ -262,7 +262,7 @@ function CsArt() {
     { y: 88, name: "SITE B", done: 2, risk: 3 },
     { y: 130, name: "SITE C", done: 5, risk: -1 },
   ];
-  const x0 = 470;
+  const x0 = 250;
   const gap = 56;
   const steps = 6;
   return (

@@ -1,36 +1,40 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
-// CS 통합 관리 프로그램(public/cs)은 원본 단일 HTML에 디자인 연결만 끼운 것이다.
-// scripts/build-cs-program.cjs 로 다시 만들었을 때 연결이 빠지지 않았는지 확인한다.
-const html = readFileSync('public/cs/index.html', 'utf8');
+// public/cs 는 앱에 끼워 넣은 CS 통합 관리 프로그램(직접 고치는 원본)이다. 연결이 빠지지 않았는지 확인한다.
+const read = (f) => readFileSync(`public/cs/${f}`, 'utf8');
+const html = read('index.html');
+const app = read('cs-app.js');
 
 describe('CS 통합 관리 프로그램', () => {
-  it('앱 디자인 파일과 테마 동기화가 연결되어 있다', () => {
-    expect(html).toMatch(/href="\.\/cs-theme\.css\?v=[a-z0-9]+"/);
-    expect(html).toContain("pm_theme_mode");
-    expect(html).toContain('cs-material-theme.css');
+  it('앱 디자인·테마 동기화·저장소 어댑터가 연결되어 있다', () => {
+    expect(html).toContain('./cs-theme.css');
+    expect(html).toContain('./cs-store.js');
+    expect(html).toContain('./cs-theme-sync.js');
+    expect(read('cs-theme-sync.js')).toContain('pm_theme_mode');
+    expect(read('material.html')).toContain('cs-material-theme.css');
   });
 
-  it('내장 자재현황 앱 코드가 문서를 깨지 않게 </script> 를 이스케이프한다', () => {
-    const fn = html.slice(html.indexOf('function materialAppHtml'));
-    const line = fn.slice(0, fn.indexOf('\n'));
-    expect(line.includes('</script>')).toBe(false);
+  it('저장은 Supabase 어댑터만 쓴다(브라우저 IndexedDB/localStorage 저장소를 직접 열지 않는다)', () => {
+    expect(app).toContain('csStore.facade()');
+    expect(app).not.toContain('indexedDB.open');
+    expect(read('material.html')).not.toContain('indexedDB.open');
+    expect(app).not.toMatch(/localStorage\.(get|set)Item\('gacs_v1'/);
   });
 
-  it('없는 옛 구역 때문에 시작 코드가 멈추지 않도록 renderAll 이 오류를 걸러 낸다', () => {
-    expect(html).toContain("const legacy=['renderIssues'");
-  });
-
-  it('앱 안에서는 저장소를 Supabase 로 돌리고, 단독 실행은 IndexedDB 를 그대로 쓴다', () => {
-    expect(html).toContain('cs-store.js');
-    expect(html).toContain('if(csStore.remote())return Promise.resolve(csStore.facade())');
-    expect(html).toContain('function importJSONPrompt()');
+  it('JSON 저장 단추는 없고 관리자용 가져오기만 있다', () => {
     expect(html).not.toContain('>JSON 저장<');
+    expect(html).toContain('importJSONPrompt()');
   });
 
-  it('디자인 파일이 있다', () => {
-    expect(readFileSync('public/cs/cs-theme.css', 'utf8')).toContain('--brand');
-    expect(readFileSync('public/cs/cs-material-theme.css', 'utf8')).toContain('--brand');
+  it('쓰지 않는 옛 구역(SKO·규격·출하·이슈·품질 등)이 남아 있지 않다', () => {
+    ['sko', 'specs', 'shipping'].forEach((id) => expect(html).not.toContain(`<section id="${id}"`));
+    ['renderIssues', 'renderQuality', 'renderSKO', 'renderExecutive', 'exportJSON'].forEach((n) => expect(app).not.toContain(n));
+  });
+
+  it('자재현황은 srcdoc/base64 가 아니라 별도 파일로 불러온다', () => {
+    expect(app).not.toContain('MATERIAL_APP_HTML_B64');
+    expect(app).toContain("frame.src='./material.html");
+    expect(existsSync('public/cs/material.html')).toBe(true);
   });
 });

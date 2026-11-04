@@ -14,7 +14,7 @@ export default function CsProgram({ role }) {
   }, [role]);
   const src = `${import.meta.env.BASE_URL || "/"}cs/index.html`.replace("//", "/");
   return (
-    <>
+    <div className="cs-head">
       <div className="system-sticky-header">
         <div className="system-header-row">
           <div className="system-title-group">
@@ -35,6 +35,6 @@ export default function CsProgram({ role }) {
           allowTransparency="true"
         />
       </div>
-    </>
+    </div>
   );
 }

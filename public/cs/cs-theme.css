@@ -436,8 +436,6 @@ td[ondblclick*="openSiteDetail"]:hover { background: var(--brand-wash) !importan
 .excel-cell-grid td:first-child { background: var(--bg-2); color: var(--ink-3); font-family: var(--font-mono); font-size: 11px; }
 .excel-cell-grid td[contenteditable="true"]:focus { background: var(--brand-wash) !important; box-shadow: inset 0 0 0 2px var(--brand); }
 
-/* 환경설정의 색 모드 선택은 앱의 라이트/다크와 부딪히므로 숨긴다(글자 크기만 남긴다) */
-label:has(> #theme) { display: none; }
 
 /* ─── 기타 조각 ────────────────────────────────────────── */
 .material-frame { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
@@ -452,13 +450,14 @@ label:has(> #theme) { display: none; }
 
 @media (max-width: 900px) { main { padding: 14px 14px 40px; } .top { padding: 10px 14px 0; } }
 
-/* 앱 안에 끼워 넣었을 때: 바깥 화면이 시스템 머리말·좌우 여백을 맡으므로 프로그램은 하위 메뉴 줄처럼 보이게 한다 */
+/* 앱 안에 끼워 넣었을 때: 바깥 화면(CsProgram.jsx)이 시스템 머리말(높이 --cs-head-h)을 그리고,
+   이 문서는 그 머리말 위로 겹쳐 올라와서 작업 단추를 머리말 오른쪽에 놓는다. 하위 메뉴(nav)는 머리말 바로 아래에 붙고 스크롤해도 따라온다. */
 html.embedded, html.embedded body { background: transparent; }
-html.embedded .top { background: var(--bg); padding: 0; border-bottom: 1px solid var(--line); }
-html.embedded .top .toprow { padding: 0 0 8px; }
-html.embedded nav { padding-top: 0; margin-bottom: -1px; }
+html.embedded .top { display: contents; }
+html.embedded .toprow { height: var(--cs-head-h, 92px); padding: 0; align-items: center; justify-content: flex-end; flex-wrap: nowrap; }
+html.embedded .brand { display: none; }
+html.embedded nav { position: sticky; top: 0; z-index: 10; padding-top: 0; background: var(--bg); border-bottom: 1px solid var(--line); }
 html.embedded main { padding: 18px 0 48px; }
-html.embedded .brand { font-size: 14px; }
 
 /* 인쇄는 원본 규칙을 그대로 쓰되 색만 종이에 맞춘다 */
 @media print {

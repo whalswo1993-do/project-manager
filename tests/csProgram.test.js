@@ -22,6 +22,13 @@ describe('CS 통합 관리 프로그램', () => {
     expect(html).toContain("const legacy=['renderIssues'");
   });
 
+  it('앱 안에서는 저장소를 Supabase 로 돌리고, 단독 실행은 IndexedDB 를 그대로 쓴다', () => {
+    expect(html).toContain('cs-store.js');
+    expect(html).toContain('if(csStore.remote())return Promise.resolve(csStore.facade())');
+    expect(html).toContain('function importJSONPrompt()');
+    expect(html).not.toContain('>JSON 저장<');
+  });
+
   it('디자인 파일이 있다', () => {
     expect(readFileSync('public/cs/cs-theme.css', 'utf8')).toContain('--brand');
     expect(readFileSync('public/cs/cs-material-theme.css', 'utf8')).toContain('--brand');

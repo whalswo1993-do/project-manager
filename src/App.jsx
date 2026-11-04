@@ -2342,7 +2342,7 @@ JSON 출력 예시:
       )}
 
       {currentView === "cs" ? (
-        <ErrorBoundary><CsProgram /></ErrorBoundary>
+        <ErrorBoundary><CsProgram role={role} /></ErrorBoundary>
       ) : currentView === "vision-spc" ? (
         <ErrorBoundary><VisionSPC currentCustomer={currentCustomer} /></ErrorBoundary>
       ) : currentView === "issues" ? (

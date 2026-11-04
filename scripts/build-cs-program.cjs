@@ -2,6 +2,7 @@
 // 기능 코드는 그대로 두고, 디자인 파일(cs-theme.css, cs-material-theme.css) 연결과 테마 동기화만 끼워 넣는다.
 // 사용: node scripts/build-cs-program.cjs "<원본 html 경로>"
 const fs = require('fs');
+const { patchMain, patchMaterial } = require('./cs-storage-patch.cjs');
 const path = require('path');
 
 const src = process.argv[2];
@@ -50,6 +51,14 @@ const oldRenderAll = "function renderAll(){renderExecutive();renderDailyReports(
 if (!html.includes(oldRenderAll)) throw new Error('renderAll 함수를 찾지 못했습니다.');
 const newRenderAll = "function renderAll(){const legacy=['renderIssues','renderQuality','renderMaterials','renderPackaging','renderContacts'];[renderExecutive,renderDailyReports,updateMenuSectionTitles,fillSiteFilters,renderDashboard,renderProjects,renderTasks,renderEffort,renderSites,renderIssues,renderQuality,renderMaterials,renderPackaging,renderContacts].forEach(fn=>{try{fn()}catch(e){if(!legacy.includes(fn.name))console.error(fn.name,e)}})}";
 html = html.replace(oldRenderAll, () => newRenderAll);
+
+// 내장 자재현황 앱(base64)을 풀어 저장소 패치를 적용한 뒤 다시 넣는다
+const b64re = /const MATERIAL_APP_HTML_B64='([^']+)'/;
+const mm = html.match(b64re);
+if (!mm) throw new Error('자재현황 base64 를 찾지 못했습니다.');
+const patchedMat = patchMaterial(Buffer.from(mm[1], 'base64').toString('utf8'));
+html = html.replace(b64re, () => "const MATERIAL_APP_HTML_B64='" + Buffer.from(patchedMat, 'utf8').toString('base64') + "'");
+html = patchMain(html).split('__VER__').join(VER);
 
 const out = path.join(__dirname, '..', 'public', 'cs', 'index.html');
 fs.writeFileSync(out, html);

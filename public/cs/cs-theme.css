@@ -436,6 +436,9 @@ td[ondblclick*="openSiteDetail"]:hover { background: var(--brand-wash) !importan
 .excel-cell-grid td:first-child { background: var(--bg-2); color: var(--ink-3); font-family: var(--font-mono); font-size: 11px; }
 .excel-cell-grid td[contenteditable="true"]:focus { background: var(--brand-wash) !important; box-shadow: inset 0 0 0 2px var(--brand); }
 
+/* 환경설정의 색 모드 선택은 앱의 라이트/다크와 부딪히므로 숨긴다(글자 크기만 남긴다) */
+label:has(> #theme) { display: none; }
+
 /* ─── 기타 조각 ────────────────────────────────────────── */
 .material-frame { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
 .material-open-btn { color: var(--brand); background: var(--brand-wash); border-color: var(--brand-line); font-weight: 650; }

@@ -1,9 +1,17 @@
+import { useState, useEffect } from "react";
 import "./CsProgram.css";
+import { createCsBridge } from "./csBridge";
 
 // CS 통합 관리 프로그램: 독립 프로그램(public/cs/index.html)을 앱 안에 끼워 넣는다.
 // - 프로그램의 기능·데이터 저장(브라우저 IndexedDB)은 원본 그대로이고, 디자인은 public/cs/cs-theme.css 가 앱 토큰에 맞춘다.
 // - 라이트/다크는 앱이 저장하는 pm_theme_mode 를 프로그램이 직접 읽고 storage 이벤트로 따라간다.
-export default function CsProgram() {
+export default function CsProgram({ role }) {
+  // iframe 이 열리기 전에 다리를 먼저 놓는다(렌더 중 1회). 권한이 바뀌면 아래 effect 가 다시 놓는다.
+  useState(() => { window.__csBridge = createCsBridge(role); });
+  useEffect(() => {
+    window.__csBridge = createCsBridge(role);
+    return () => { delete window.__csBridge; };
+  }, [role]);
   const src = `${import.meta.env.BASE_URL || "/"}cs/index.html`.replace("//", "/");
   return (
     <>

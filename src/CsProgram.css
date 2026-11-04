@@ -1,9 +1,7 @@
-/* CS 통합 관리 화면: 시스템 머리말은 낮게 두고, 프로그램(iframe)이 그 위로 겹쳐 올라와 작업 단추를 머리말 오른쪽에 둔다 */
-.cs-head { --cs-head-h: 92px; }
-.cs-head .system-sticky-header { height: var(--cs-head-h); padding-top: 18px; box-sizing: border-box; }
-.cs-head .system-title-text .eyebrow { margin-bottom: 6px; }
-.cs-head .system-title-text h2 { font-size: 24px; }
-.cs-head .system-title-text p { margin-top: 5px; font-size: 13px; }
+/* CS 통합 관리 화면: 시스템 머리말은 다른 시스템과 같은 크기이고,
+   프로그램(iframe)이 그 위로 겹쳐 올라와 작업 단추를 머리말 오른쪽(제목 줄)에 둔다.
+   머리말 높이(--cs-head-h)는 CsProgram.jsx 가 실제로 재서 넣는다. */
+.cs-head { --cs-head-h: 110px; }
 .cs-frame-wrap {
   margin-top: calc(-1 * var(--cs-head-h));
   min-width: 1216px;
@@ -11,7 +9,7 @@
 .cs-frame {
   display: block;
   width: 100%;
-  height: calc(100vh - var(--app-fixed-top-height, 106px) + var(--cs-head-h) - 8px);
+  height: calc(100vh - var(--app-fixed-top-height, 106px) - 8px);
   min-height: 680px;
   border: 0;
   background: transparent;

@@ -454,7 +454,7 @@ td[ondblclick*="openSiteDetail"]:hover { background: var(--brand-wash) !importan
    이 문서는 그 머리말 위로 겹쳐 올라와서 작업 단추를 머리말 오른쪽에 놓는다. 하위 메뉴(nav)는 머리말 바로 아래에 붙고 스크롤해도 따라온다. */
 html.embedded, html.embedded body { background: transparent; }
 html.embedded .top { display: contents; }
-html.embedded .toprow { height: var(--cs-head-h, 92px); padding: 0; align-items: center; justify-content: flex-end; flex-wrap: nowrap; }
+html.embedded .toprow { height: var(--cs-head-h, 110px); padding: 0 0 6px; align-items: flex-end; justify-content: flex-end; flex-wrap: nowrap; }
 html.embedded .brand { display: none; }
 html.embedded nav { position: sticky; top: 0; z-index: 10; padding-top: 0; background: var(--bg); border-bottom: 1px solid var(--line); }
 html.embedded main { padding: 18px 0 48px; }

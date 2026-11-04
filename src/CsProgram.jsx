@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./CsProgram.css";
 import { createCsBridge } from "./csBridge";
 
@@ -12,10 +12,32 @@ export default function CsProgram({ role }) {
     window.__csBridge = createCsBridge(role);
     return () => { delete window.__csBridge; };
   }, [role]);
+  const wrapRef = useRef(null);
+  const headRef = useRef(null);
+  const frameRef = useRef(null);
+
+  // 머리말(다른 시스템과 같은 크기)의 실제 높이를 재서, 바깥과 iframe 안쪽 모두에 알려 준다
+  useEffect(() => {
+    const apply = () => {
+      const h = headRef.current?.offsetHeight;
+      if (!h) return;
+      wrapRef.current?.style.setProperty("--cs-head-h", `${h}px`);
+      try {
+        frameRef.current?.contentDocument?.documentElement.style.setProperty("--cs-head-h", `${h}px`);
+      } catch {
+        // 같은 출처가 아니면 건너뜀
+      }
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    if (headRef.current) ro.observe(headRef.current);
+    return () => ro.disconnect();
+  }, []);
+
   const src = `${import.meta.env.BASE_URL || "/"}cs/index.html`.replace("//", "/");
   return (
-    <div className="cs-head">
-      <div className="system-sticky-header">
+    <div className="cs-head" ref={wrapRef}>
+      <div className="system-sticky-header" ref={headRef}>
         <div className="system-header-row">
           <div className="system-title-group">
             <div className="system-title-text">
@@ -28,6 +50,8 @@ export default function CsProgram({ role }) {
       </div>
       <div className="cs-frame-wrap">
         <iframe
+          ref={frameRef}
+          onLoad={() => headRef.current && frameRef.current?.contentDocument?.documentElement.style.setProperty("--cs-head-h", `${headRef.current.offsetHeight}px`)}
           className="cs-frame"
           title="CS 통합 관리 프로그램"
           src={src}

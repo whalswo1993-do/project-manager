@@ -194,21 +194,26 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     ws.getCell(r, 1).font = font({ size: 6, color: { argb: "FFE5E7EB" } });
     r += 1;
 
-    // 마일스톤(작업 단계): 시작일 순서대로 한 줄에 하나씩 계단식으로 나열. 프로젝트 이름 칸부터 끝까지 모든 칸에 테두리를 둬서 격자가 이어지게 한다.
-    phaseLanes.flat().sort((x, y) => x.from - y.from || String(x.start).localeCompare(String(y.start)) || y.to - x.to).forEach((it, li) => {
-      ws.getRow(r).height = 11;
-      ws.getCell(r, 1).value = "M";
-      ws.getCell(r, 1).font = font({ size: 6, color: { argb: "FFE5E7EB" } });
-      for (let c = 2; c <= LAST_COL; c += 1) ws.getCell(r, c).border = box;
-      if (li === 0) { ws.getCell(r, 3).value = "작업 단계"; ws.getCell(r, 3).font = font({ size: 8, color: { argb: C.muted } }); ws.getCell(r, 3).alignment = { horizontal: "right", vertical: "middle" }; }
+    // 마일스톤(작업 단계): 시작일 순서대로 계단식으로 나열. 첫 단계는 프로젝트 이름이 있는 머리글 줄에서 시작하고,
+    // 나머지는 그 아래 얇은 줄에 이어 그린다. 주 칸(E열~)에만 테두리를 두어 격자가 이어지게 한다.
+    const gantt = (row, it) => {
       const c1 = WEEK_COL0 + it.from;
       const c2 = WEEK_COL0 + it.to;
-      if (c2 > c1) ws.mergeCells(r, c1, r, c2);
-      const cell = ws.getCell(r, c1);
+      if (c2 > c1) ws.mergeCells(row, c1, row, c2);
+      const cell = ws.getCell(row, c1);
       cell.value = it.label;
       cell.fill = solid(MS_COLOR[it.color % MS_COLOR.length]);
       cell.font = font({ size: 8, color: { argb: C.ink } });
       cell.alignment = { horizontal: "center", vertical: "middle", shrinkToFit: true };
+    };
+    const steps = phaseLanes.flat().sort((x, y) => x.from - y.from || String(x.start).localeCompare(String(y.start)) || y.to - x.to);
+    if (steps.length) gantt(headerRow, steps[0]);
+    steps.slice(1).forEach((it) => {
+      ws.getRow(r).height = 11;
+      ws.getCell(r, 1).value = "M";
+      ws.getCell(r, 1).font = font({ size: 6, color: { argb: "FFE5E7EB" } });
+      for (let c = WEEK_COL0; c <= LAST_COL; c += 1) ws.getCell(r, c).border = box;
+      gantt(r, it);
       r += 1;
     });
 

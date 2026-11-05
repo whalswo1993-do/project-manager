@@ -5,6 +5,8 @@ import { supabase } from './supabase';
 import { generateAIText } from './ai';
 import * as XLSX from 'xlsx';
 import { exportDailyReportsExcel } from './exportDailyReports';
+import { matchesSites } from './siteFilter';
+import { normalizeJVName } from './utils';
 import { getRegisteredSiteNames } from './issueService';
 import { PasteZone, PasteEntry } from './PasteZone';
 import MultiSiteSelect from './MultiSiteSelect';
@@ -155,6 +157,11 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
     
     // 이슈 통합분석 PPT 팝업 상태
     const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
+    const [exportMode, setExportMode] = useState('site'); // 'site' | 'project'
+    const [exportProjectIds, setExportProjectIds] = useState([]); // 프로젝트별 내려받기에서 고른 프로젝트
+    const [exportProjectQuery, setExportProjectQuery] = useState('');
+    const [exportAllPeriod, setExportAllPeriod] = useState(false); // 기간 제한 없이 전체 일보
+    const [exportCollapseDaily, setExportCollapseDaily] = useState(false); // 공수 시트를 프로젝트 소계만 보이게 접어서 저장
         const [analysisSite, setAnalysisSite] = useState([]); // 엑셀 대상 SITE 배열(빈 배열 = 전체)
     const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10));
     const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
@@ -2460,34 +2467,55 @@ ${allText.substring(0, 100000)}
     };
 
     // 공사일보 취합 엑셀: 현재 고객사의 프로젝트 중 선택 SITE·기간의 일보를 모아 내려받는다 (AI 호출 없음)
+    // 프로젝트별 내려받기에서 고를 수 있는 프로젝트 (SITE 필터 + 검색어 반영)
+    const exportProjectOptions = useMemo(() => {
+        const q = exportProjectQuery.trim().toLowerCase();
+        return (projects || [])
+            .filter(p => matchesSites(analysisSite, normalizeJVName(p.site || ''), normalizeJVName))
+            .filter(p => !q || `${p.manufacturingNo || ''} ${p.name || ''} ${p.site || ''} ${p.line || ''}`.toLowerCase().includes(q))
+            .sort((a, b) => String(a.site || '').localeCompare(String(b.site || ''), 'ko') || String(a.manufacturingNo || '').localeCompare(String(b.manufacturingNo || ''), 'ko'));
+    }, [projects, analysisSite, exportProjectQuery]);
+
+    const toggleExportProject = (id) => setExportProjectIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+    // 공사일보 취합 엑셀: SITE 기준 또는 고른 프로젝트의 일보를 모아 내려받는다 (AI 호출 없음)
     const handleExportReportsExcel = async () => {
         if (!canExportReports) return notifyPermission('공사일보 취합 엑셀 다운로드');
-        if (startDate > endDate) return setAnalyzeMsg('오류: 시작일이 종료일보다 클 수 없습니다.');
+        if (!exportAllPeriod && startDate > endDate) return setAnalyzeMsg('오류: 시작일이 종료일보다 클 수 없습니다.');
+        if (exportMode === 'project' && exportProjectIds.length === 0) return setAnalyzeMsg('오류: 내려받을 프로젝트를 하나 이상 선택해주세요.');
         setIsAnalyzing(true);
         setAnalyzeMsg('공사일보를 수집하는 중...');
         try {
-            const ids = (projects || []).map(p => p.id);
+            const targets = exportMode === 'project'
+                ? (projects || []).filter(p => exportProjectIds.includes(p.id))
+                : (projects || []).filter(p => matchesSites(analysisSite, normalizeJVName(p.site || ''), normalizeJVName));
+            const ids = targets.map(p => p.id);
             const all = [];
             // 프로젝트가 많아도 URL 이 길어지지 않게 나눠서 조회 (Supabase 기본 1000행 제한도 페이지로 넘김)
             for (let i = 0; i < ids.length; i += 50) {
                 const chunk = ids.slice(i, i + 50);
                 for (let from = 0; ; from += 1000) {
-                    const { data, error } = await supabase
-                        .from('daily_reports')
-                        .select('*')
-                        .in('project_id', chunk)
-                        .gte('report_date', startDate)
-                        .lte('report_date', endDate)
-                        .order('report_date', { ascending: true })
-                        .range(from, from + 999);
+                    let q = supabase.from('daily_reports').select('*').in('project_id', chunk);
+                    if (!exportAllPeriod) q = q.gte('report_date', startDate).lte('report_date', endDate);
+                    const { data, error } = await q.order('report_date', { ascending: true }).range(from, from + 999);
                     if (error) throw error;
                     all.push(...(data || []));
                     if (!data || data.length < 1000) break;
                 }
             }
             setAnalyzeMsg('엑셀 파일을 만드는 중...');
-            const { total } = await exportDailyReportsExcel({ reports: all, projects, startDate, endDate, sites: analysisSite });
-            setAnalyzeMsg(`공사일보 ${total}건 엑셀 다운로드가 완료되었습니다!`);
+            const { total, projects: n } = await exportDailyReportsExcel(
+                {
+                    reports: all, projects: targets,
+                    startDate: exportAllPeriod ? '' : startDate, endDate: exportAllPeriod ? '' : endDate,
+                    sites: exportMode === 'site' ? analysisSite : [],
+                },
+                {
+                    collapseDaily: exportCollapseDaily,
+                    scopeLabel: exportMode === 'project' ? `프로젝트 ${targets.length}개 선택` : undefined,
+                },
+            );
+            setAnalyzeMsg(`프로젝트 ${n}개 · 공사일보 ${total}건 엑셀 다운로드가 완료되었습니다!`);
         } catch (error) {
             console.error(error);
             setAnalyzeMsg('오류 발생: ' + error.message);
@@ -3355,7 +3383,7 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                                 <span className="aim-title-icon"><Icon name="barChart" size="1.1em" /></span>
                                 <div>
                                     <h3 className="aim-title">공사일보 취합 엑셀 다운로드</h3>
-                                    <p className="aim-subtitle">SITE와 기간을 선택하면 등록된 공사일보를 취합해 엑셀로 내려받습니다.</p>
+                                    <p className="aim-subtitle">SITE 또는 프로젝트를 골라 등록된 공사일보를 일보 내용·공수 2개 시트로 내려받습니다.</p>
                                 </div>
                             </div>
                             <button
@@ -3370,20 +3398,57 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                         </div>
 
                         <div className="aim-body">
-                            {/* 옵션: 이슈 분석 시 사이트 필터 */}
-                            {(
+                            {/* 내려받기 기준: SITE별 / 프로젝트별 */}
+                            <div className="aim-section">
+                                <label className="aim-label">1. 내려받기 기준</label>
+                                <div className="aim-seg">
+                                    <button type="button" className={exportMode === 'site' ? 'active' : ''} onClick={() => setExportMode('site')}>
+                                        <Icon name="building" size="1.1em" /> SITE별
+                                    </button>
+                                    <button type="button" className={exportMode === 'project' ? 'active' : ''} onClick={() => setExportMode('project')}>
+                                        <Icon name="folder" size="1.1em" /> 프로젝트별
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="aim-section">
+                                <label className="aim-label">{exportMode === 'site' ? '2. 대상 SITE 선택' : '2. SITE로 먼저 좁히기 (선택 사항)'}</label>
+                                <div className="aim-site-select-wrap">
+                                    <MultiSiteSelect
+                                        options={registeredSiteNames}
+                                        value={analysisSite}
+                                        onChange={setAnalysisSite}
+                                        allLabel="전체 사이트 (모든 등록 SITE 대상)"
+                                    />
+                                    {exportMode === 'site' && (
+                                        <span className="aim-hint">* 등록된 SITE: {registeredSiteNames.join(', ')}</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {exportMode === 'project' && (
                                 <div className="aim-section">
-                                    <label className="aim-label">1. 대상 SITE 선택 (등록 사이트 기준)</label>
-                                    <div className="aim-site-select-wrap">
-                                        <MultiSiteSelect
-                                            options={registeredSiteNames}
-                                            value={analysisSite}
-                                            onChange={setAnalysisSite}
-                                            allLabel="전체 사이트 (모든 등록 SITE 대상)"
+                                    <label className="aim-label">3. 프로젝트 선택 * <span className="aim-hint">({exportProjectIds.length}개 선택)</span></label>
+                                    <div className="aim-proj-tools">
+                                        <input
+                                            type="text"
+                                            className="aim-date-input"
+                                            placeholder="제조번호·프로젝트명·SITE 검색"
+                                            value={exportProjectQuery}
+                                            onChange={e => setExportProjectQuery(e.target.value)}
                                         />
-                                        <span className="aim-hint">
-                                            * 등록된 SITE: {registeredSiteNames.join(', ')}
-                                        </span>
+                                        <button type="button" className="aim-quick-btn" onClick={() => setExportProjectIds(prev => [...new Set([...prev, ...exportProjectOptions.map(p => p.id)])])}>목록 전체 선택</button>
+                                        <button type="button" className="aim-quick-btn" onClick={() => setExportProjectIds([])}>선택 해제</button>
+                                    </div>
+                                    <div className="aim-proj-list">
+                                        {exportProjectOptions.length === 0 && <div className="aim-proj-empty">조건에 맞는 프로젝트가 없습니다.</div>}
+                                        {exportProjectOptions.map(p => (
+                                            <label key={p.id} className={`aim-proj-row ${exportProjectIds.includes(p.id) ? 'checked' : ''}`}>
+                                                <input type="checkbox" checked={exportProjectIds.includes(p.id)} onChange={() => toggleExportProject(p.id)} />
+                                                <span className="aim-proj-name">{[normalizeJVName(p.manufacturingNo || ''), normalizeJVName(p.name || '')].filter(Boolean).join(' · ')}</span>
+                                                <span className="aim-proj-meta">{[normalizeJVName(p.site || ''), normalizeJVName(p.line || '')].filter(Boolean).join(' / ')}</span>
+                                            </label>
+                                        ))}
                                     </div>
                                 </div>
                             )}
@@ -3392,37 +3457,38 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                             <div className="aim-section">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                                     <label className="aim-label" style={{ margin: 0 }}>
-                                        2. 공사일보 수집 기간 설정 *
+                                        {exportMode === 'site' ? '3' : '4'}. 공사일보 수집 기간 *
                                     </label>
                                     <div className="aim-quick-pills">
-                                        <button type="button" onClick={() => applyQuickPeriod(7)} className="aim-quick-btn">최근 7일</button>
-                                        <button type="button" onClick={() => applyQuickPeriod(14)} className="aim-quick-btn">최근 14일</button>
-                                        <button type="button" onClick={() => applyQuickPeriod(30)} className="aim-quick-btn">최근 30일</button>
-                                        <button type="button" onClick={() => applyQuickPeriod(90)} className="aim-quick-btn">최근 3개월</button>
+                                        <button type="button" onClick={() => applyQuickPeriod(7)} className="aim-quick-btn" disabled={exportAllPeriod}>최근 7일</button>
+                                        <button type="button" onClick={() => applyQuickPeriod(14)} className="aim-quick-btn" disabled={exportAllPeriod}>최근 14일</button>
+                                        <button type="button" onClick={() => applyQuickPeriod(30)} className="aim-quick-btn" disabled={exportAllPeriod}>최근 30일</button>
+                                        <button type="button" onClick={() => applyQuickPeriod(90)} className="aim-quick-btn" disabled={exportAllPeriod}>최근 3개월</button>
                                     </div>
                                 </div>
 
-                                <div className="aim-date-row">
+                                <div className="aim-date-row" style={{ opacity: exportAllPeriod ? 0.45 : 1 }}>
                                     <div className="aim-date-field">
                                         <span className="aim-date-tag">시작일</span>
-                                        <input
-                                            type="date"
-                                            className="aim-date-input"
-                                            value={startDate}
-                                            onChange={e => setStartDate(e.target.value)}
-                                        />
+                                        <input type="date" className="aim-date-input" value={startDate} disabled={exportAllPeriod} onChange={e => setStartDate(e.target.value)} />
                                     </div>
                                     <span className="aim-date-sep">~</span>
                                     <div className="aim-date-field">
                                         <span className="aim-date-tag">종료일</span>
-                                        <input
-                                            type="date"
-                                            className="aim-date-input"
-                                            value={endDate}
-                                            onChange={e => setEndDate(e.target.value)}
-                                        />
+                                        <input type="date" className="aim-date-input" value={endDate} disabled={exportAllPeriod} onChange={e => setEndDate(e.target.value)} />
                                     </div>
                                 </div>
+                                <label className="aim-check">
+                                    <input type="checkbox" checked={exportAllPeriod} onChange={e => setExportAllPeriod(e.target.checked)} />
+                                    기간 제한 없이 등록된 전체 일보 (처음부터 현재까지)
+                                </label>
+                            </div>
+
+                            <div className="aim-section">
+                                <label className="aim-check" style={{ marginTop: 0 }}>
+                                    <input type="checkbox" checked={exportCollapseDaily} onChange={e => setExportCollapseDaily(e.target.checked)} />
+                                    공수 시트를 프로젝트 소계만 보이게 접어서 저장 (엑셀에서 [+]로 일자별을 펼칠 수 있음)
+                                </label>
                             </div>
 
                             {/* 안내 정보 박스 */}
@@ -3430,8 +3496,8 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                                 <span style={{ fontSize: '15px' }}><Icon name="info" size="1.1em" /></span>
                                 <div>
                                     <span>
-                                        설정한 기간({startDate} ~ {endDate}) 동안 {analysisSite.length === 0 ? '전체 사이트' : analysisSite.join(', ')}에 등록된 공사일보를 취합합니다.
-                                        시트: 일보 목록(작업내용·특이사항·부서별 인원) / 프로젝트별 공수 / 일자별 공수.
+                                        엑셀은 2개 시트입니다. <b>일보 내용</b>: 프로젝트별로 묶어 날짜순으로 작업내용·특이사항·투입 인원을 정리합니다.
+                                        {' '}<b>공수</b>: 일자별 부서 인원, 프로젝트 소계, 맨 위 전체 합계(수식)를 한 표에서 봅니다.
                                     </span>
                                 </div>
                             </div>

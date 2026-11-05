@@ -1910,3 +1910,50 @@
 
 
 
+
+/* 공사일보 취합 엑셀 창: 기준 전환 / 프로젝트 목록 */
+.aim-seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.aim-seg button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border: 0;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.aim-seg button + button { border-left: 1px solid var(--line); }
+.aim-seg button.active { background: var(--btn-bg); color: var(--btn-ink); }
+.aim-proj-tools { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+.aim-proj-tools .aim-date-input { flex: 1 1 200px; min-width: 160px; }
+.aim-proj-list {
+  max-height: 210px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.aim-proj-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--line);
+}
+.aim-proj-row:last-child { border-bottom: 0; }
+.aim-proj-row.checked { background: var(--brand-wash); }
+.aim-proj-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.aim-proj-meta { color: var(--text-secondary); font-size: 11.5px; white-space: nowrap; }
+.aim-proj-empty { padding: 14px; text-align: center; color: var(--text-secondary); font-size: 12.5px; }
+.aim-check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12.5px; cursor: pointer; }
+.aim-quick-btn:disabled { opacity: 0.5; cursor: not-allowed; }

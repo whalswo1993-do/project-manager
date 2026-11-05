@@ -42,6 +42,7 @@ import {
   parseExcelMasterPlan,
   parseTSVWithQuotes,
   isSameProjectIdentity,
+  extractProjectTags,
   adjustProjectDates
 } from "./masterPlanParser";
 
@@ -111,6 +112,33 @@ export const CUSTOMERS = [
   { id: "Hyundai", label: "Hyundai", sub: "완성차", color: "#10b981", logo: <HyundaiLogo height={15} />, cls: "tab-customer-hyundai" }
 ];
 export const DEFAULT_CUSTOMER = "SK on";
+
+// 신규 등록할 설비(p)와 겹치는 기존 프로젝트를 찾아 겹치는 항목을 돌려준다. (제조번호 · Site · Line · 설비 종류 · 공사 종류 · 이름/코드)
+const baseMfgNo = v => String(v || "").replace(/-[a-f0-9]{4}$/i, "").trim().toLowerCase();
+function findOverlapCandidates(p, existingList, sites) {
+  const inT = extractProjectTags(p, sites);
+  const kindOf = t => (/notcher|노칭/i.test(t.name) || /notcher|노칭/i.test(t.eq) ? "Notcher" : (/stacker|스태커|스택/i.test(t.name) || /stacker|스태커|스택/i.test(t.eq) ? "Stacker" : ""));
+  const out = [];
+  for (const ex of existingList) {
+    const exT = extractProjectTags(ex, sites);
+    const reasons = [];
+    const mfg = !!baseMfgNo(p.manufacturingNo) && baseMfgNo(p.manufacturingNo) === baseMfgNo(ex.manufacturingNo);
+    if (mfg) reasons.push("제조번호");
+    const siteSame = !!inT.site && inT.site === exT.site;
+    const lineSame = !!inT.line && inT.line === exT.line;
+    if (siteSame) reasons.push("Site");
+    if (lineSame) reasons.push("Line");
+    const kin = kindOf(inT), kex = kindOf(exT);
+    if (kin && kin === kex) reasons.push(`설비 종류(${kin})`);
+    if (inT.isJC === exT.isJC && (siteSame || lineSame || mfg)) reasons.push(inT.isJC ? "공사 종류(형교환)" : "공사 종류(셋업/일반)");
+    const identity = isSameProjectIdentity(ex, p, sites);
+    if (identity) reasons.push("이름·코드 유사");
+    const qualifies = mfg || identity || (siteSame && lineSame);
+    if (!qualifies) continue;
+    out.push({ id: ex.id, name: ex.name, site: ex.site, line: ex.line, startDate: ex.startDate, endDate: ex.endDate, reasons, mfg, score: (mfg ? 100 : 0) + (identity ? 50 : 0) + (siteSame && lineSame ? 20 : 0) + reasons.length });
+  }
+  return out.sort((a, b) => b.score - a.score).slice(0, 4);
+}
 
 const newMs = () => Array.from({ length: 5 }, () => ({ id: uid(), name: "", startDate: iso(), endDate: iso() }));
 
@@ -365,6 +393,7 @@ export default function App() {
   const [expanded, setExpanded] = useState({});
   const [noteEdit, setNoteEdit] = useState(null); // { id, text }
   const [masterResult, setMasterResult] = useState(null); // 마스터 스케줄 등록/수정 결과 팝업 { items: [{ name, kind, detail }] }
+  const [registerPreview, setRegisterPreview] = useState(null); // 신규 등록 시 겹침 확인 { sourceLabel, cands, rows, choice }
   const [bulkPreview, setBulkPreview] = useState(null); // 일괄 갱신 매칭 확인 { sourceLabel, targets, cands, map }
   const [bulkMasterIds, setBulkMasterIds] = useState(null); // 선택 프로젝트 마스터 일정 일괄 갱신 모드(대상 id 배열)
   const canEditNote = edit || isGrade2Tier;
@@ -1508,7 +1537,7 @@ export default function App() {
     }
   }
 
-  async function saveDirectProjects(directProjects, sourceLabel = "엑셀") {
+  async function saveDirectProjects(directProjects, sourceLabel = "엑셀", decisions = null) {
     if (!directProjects || directProjects.length === 0) return false;
 
     // 0. 선택한 여러 프로젝트를 한 번에 갱신: 표의 설비를 선택한 프로젝트와 맞춰 보고(자동 추천), 사용자가 확인·수정한 뒤 적용한다.
@@ -1608,6 +1637,16 @@ export default function App() {
       return true;
     }
 
+    // 신규 등록: 기존 프로젝트와 겹치는 것이 있으면 "기존 수정 / 신규 등록"을 먼저 묻는다. 겹침이 없으면 바로 등록한다.
+    if (!decisions) {
+      const pool = projects.filter(ep => (ep.customer || 'SK on') === currentCustomer);
+      const rows = directProjects.map(p => findOverlapCandidates(p, pool, sites));
+      if (rows.some(r => r.length > 0)) {
+        setRegisterPreview({ sourceLabel, cands: directProjects, rows, choice: rows.map(r => (r[0] && r[0].mfg ? r[0].id : "new")) });
+        return true;
+      }
+    }
+
     // B. Multi-project (e.g. 4 equipments) OR new registration mode:
     // Process ALL projects in directProjects sequentially with duplicate resolution
     const processedProjects = [...projects];
@@ -1616,7 +1655,7 @@ export default function App() {
     const projectResults = [];
     const errorLogs = [];
 
-    for (const p of directProjects) {
+    for (const [pi, p] of directProjects.entries()) {
       let siteVal = p.site || form.site;
       const projName = normalizeJVName(p.projectName);
       if (!siteVal && projName && currentCustomerSites.length) {
@@ -1625,7 +1664,9 @@ export default function App() {
       }
 
       // Check against current DB list for same customer + already processed in this batch
-      const existing = processedProjects.find(ep => (ep.customer || 'SK on') === currentCustomer && isSameProjectIdentity(ep, p, sites));
+      const existing = decisions
+        ? (decisions[pi] && decisions[pi] !== "new" ? processedProjects.find(ep => ep.id === decisions[pi]) : null)
+        : processedProjects.find(ep => (ep.customer || 'SK on') === currentCustomer && isSameProjectIdentity(ep, p, sites));
       const cleanMs = p.milestones.map(m => ({ ...m, name: normalizeJVName(m.name), id: uid() }));
       const autoStat = computeAutoStatus({ startDate: p.startDate || iso(), endDate: p.endDate || iso(), milestones: cleanMs });
 
@@ -1735,6 +1776,18 @@ export default function App() {
 
     load("projects");
     return true;
+  }
+
+  async function applyRegisterPreview() {
+    if (!registerPreview) return;
+    const { cands, choice, sourceLabel } = registerPreview;
+    const picked = choice.filter(c => c !== "new");
+    if (new Set(picked).size !== picked.length) {
+      setMsg("같은 기존 프로젝트가 두 설비에 중복 선택되었습니다. 설비마다 다른 프로젝트를 선택하거나 신규 등록을 선택해주세요.");
+      return;
+    }
+    setRegisterPreview(null);
+    await saveDirectProjects(cands, sourceLabel, choice);
   }
 
   async function applyBulkPreview() {
@@ -4336,6 +4389,60 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
                 })}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {registerPreview && (
+        <div className="back" onMouseDown={() => setRegisterPreview(null)} style={{ zIndex: 99998 }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            onMouseDown={e => e.stopPropagation()}
+            style={{ maxWidth: '760px', width: '94%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', background: 'var(--surface)', borderRadius: 'var(--radius-xl)', padding: '24px', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--line)' }}
+          >
+            <h3 style={{ margin: '0 0 4px', fontSize: '17px', color: 'var(--ink)' }}>기존 프로젝트와 겹치는 항목이 있습니다</h3>
+            <p style={{ margin: '0 0 12px', fontSize: '12px', color: 'var(--ink-3)' }}>설비마다 기존 프로젝트를 수정할지, 새 프로젝트로 등록할지 선택해주세요. 제조번호가 같으면 수정이 기본 선택됩니다.</p>
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
+              {registerPreview.cands.map((p, i) => {
+                const opts = registerPreview.rows[i] || [];
+                const cur = registerPreview.choice[i];
+                const setChoice = v => setRegisterPreview(prev => ({ ...prev, choice: prev.choice.map((c, j) => (j === i ? v : c)) }));
+                return (
+                  <div key={i} style={{ padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)' }}>
+                    <div style={{ fontSize: '13px', color: 'var(--ink)', marginBottom: '6px', wordBreak: 'break-word' }}>
+                      <b>표의 설비: {p.projectName}</b>
+                      <span style={{ display: 'block', fontSize: '11px', color: 'var(--ink-3)' }}>{p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} · 제조번호 {p.manufacturingNo || "-"} · {p.startDate} ~ {p.endDate}</span>
+                    </div>
+                    {opts.length === 0 ? (
+                      <div style={{ fontSize: '12px', color: 'var(--ink-3)' }}>겹치는 기존 프로젝트가 없어 새로 등록합니다.</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {opts.map(o => (
+                          <label key={o.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '12.5px', cursor: 'pointer', color: 'var(--ink)' }}>
+                            <input type="radio" name={`reg-choice-${i}`} checked={cur === o.id} onChange={() => setChoice(o.id)} style={{ width: 'auto', margin: '3px 0 0' }} />
+                            <span style={{ minWidth: 0, wordBreak: 'break-word' }}>
+                              <b>기존 프로젝트 수정</b> · {o.name}
+                              <span style={{ display: 'block', fontSize: '11px', color: 'var(--ink-3)' }}>{o.site || "-"} · {o.line ? `Line ${o.line}` : "-"} · {o.startDate} ~ {o.endDate} · 겹침: <b style={{ color: 'var(--signal)' }}>{o.reasons.join(", ")}</b></span>
+                            </span>
+                          </label>
+                        ))}
+                        <label style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '12.5px', cursor: 'pointer', color: 'var(--ink)' }}>
+                          <input type="radio" name={`reg-choice-${i}`} checked={cur === "new"} onChange={() => setChoice("new")} style={{ width: 'auto', margin: 0 }} />
+                          <b>신규 프로젝트로 등록</b>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setRegisterPreview(null)} style={{ height: '34px', padding: '0 16px', cursor: 'pointer' }}>취소</button>
+              <button type="button" autoFocus onClick={applyRegisterPreview} style={{ height: '34px', padding: '0 16px', background: 'var(--btn-bg)', color: 'var(--btn-ink)', border: 0, borderRadius: 'var(--radius-md)', fontWeight: 700, cursor: 'pointer' }}>
+                선택한 대로 반영 (수정 {registerPreview.choice.filter(c => c !== "new").length} · 신규 {registerPreview.choice.filter(c => c === "new").length})
+              </button>
+            </div>
           </div>
         </div>
       )}

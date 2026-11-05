@@ -364,6 +364,7 @@ export default function App() {
   const [permissionModal, setPermissionModal] = useState(null);
   const [expanded, setExpanded] = useState({});
   const [noteEdit, setNoteEdit] = useState(null); // { id, text }
+  const [bulkMasterIds, setBulkMasterIds] = useState(null); // 선택 프로젝트 마스터 일정 일괄 갱신 모드(대상 id 배열)
   const canEditNote = edit || isGrade2Tier;
   const [ganttExpanded, setGanttExpanded] = useState({});
   const [month, setMonth] = useState(new Date());
@@ -1507,6 +1508,58 @@ export default function App() {
   async function saveDirectProjects(directProjects, sourceLabel = "엑셀") {
     if (!directProjects || directProjects.length === 0) return false;
 
+    // 0. 선택한 여러 프로젝트를 한 번에 갱신: 표의 설비를 선택한 프로젝트와 1:1로 맞춰 갱신하고, 새로 등록하지는 않는다.
+    if (bulkMasterIds) {
+      const targets = projects.filter(pr => bulkMasterIds.includes(pr.id));
+      const used = new Set();
+      const matched = [];
+      const missing = [];
+      for (const t of targets) {
+        const idx = directProjects.findIndex((p, i) => !used.has(i) && isSameProjectIdentity(t, p, sites));
+        if (idx === -1) missing.push(t); else { used.add(idx); matched.push({ t, p: directProjects[idx] }); }
+      }
+      const skipped = directProjects.filter((_, i) => !used.has(i));
+      const failed = [];
+      for (const { t, p } of matched) {
+        const cleanMs = p.milestones.map(m => ({ ...m, name: normalizeJVName(m.name), id: uid() }));
+        const autoStat = computeAutoStatus({ startDate: p.startDate || t.startDate, endDate: p.endDate || t.endDate, milestones: cleanMs });
+        const updated = {
+          ...t,
+          startDate: p.startDate || t.startDate,
+          endDate: p.endDate || t.endDate,
+          manufacturingNo: normalizeJVName(p.manufacturingNo || t.manufacturingNo || ""),
+          line: normalizeJVName(p.line || t.line || ""),
+          status: autoStat, autoStatus: true, isManualStatus: false, manualStatusBy: "",
+          milestones: cleanMs, manpower: p.manpower || t.manpower || null
+        };
+        const payload = to(updated);
+        let { error } = await supabase.from("projects").update(payload).eq("id", t.id);
+        if (error && String(error.message || "").toLowerCase().includes("customer")) {
+          const fallback = { ...payload };
+          delete fallback.customer;
+          error = (await supabase.from("projects").update(fallback).eq("id", t.id)).error;
+        }
+        if (error) failed.push(`${t.name}: ${error.message}`);
+      }
+      const okCount = matched.length - failed.length;
+      setMsg(
+        <div>
+          <b>[{sourceLabel}] 선택한 {targets.length}개 중 {okCount}개 최신화{failed.length ? `, ${failed.length}개 실패` : ""}</b>
+          <div style={{ fontSize: '12px', marginTop: '4px', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
+            {[
+              ...matched.map(({ t, p }) => `• ${t.name} ← ${p.projectName} (공수 ${p.manpower?.totalManday || 0} M/D)`),
+              ...missing.map(t => `• ${t.name}: 붙여넣은 표에서 일치하는 설비를 찾지 못해 변경하지 않았습니다`),
+              ...skipped.map(p => `• 표의 '${p.projectName}': 선택한 프로젝트와 일치하지 않아 건너뛰었습니다 (새로 등록하지 않음)`),
+              ...failed.map(x => `• 저장 실패 ${x}`)
+            ].join('\n')}
+          </div>
+        </div>
+      );
+      if (okCount > 0) { setBulkMasterIds(null); setSelectedProjects(new Set()); }
+      load("projects");
+      return okCount > 0;
+    }
+
     // A. 수정 모드: 붙여넣은 표에 설비가 여러 개여도, 수정 중인 프로젝트와 같은 것 하나만 골라 그 프로젝트를 갱신한다.
     //    (새 프로젝트로 등록되지 않게. 같은 것이 없으면 아무것도 만들지 않고 안내한다.)
     let editTarget = null;
@@ -1697,6 +1750,42 @@ export default function App() {
 
     load("projects");
     return true;
+  }
+
+  function handleMasterPasteEvent(e) {
+                          const html = e.clipboardData?.getData("text/html") || "";
+                          const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text") || "";
+                          
+                          // 1. If tabular text or HTML table exists in clipboard (Excel copy always contains text/plain with tabs or HTML table)
+                          if ((text && text.includes('\t')) || (html && html.includes('<table'))) {
+                            e.preventDefault();
+                            e.target.value = "";
+                            handleMasterPlanUpload({ text, html });
+                            return;
+                          }
+
+                          // 2. Only if NO tabular text/html, check for standalone image paste
+                          const items = e.clipboardData?.items;
+                          if (items) {
+                            for (let i = 0; i < items.length; i++) {
+                              const item = items[i];
+                              if (item.type.indexOf("image") !== -1) {
+                                e.preventDefault();
+                                const file = item.getAsFile();
+                                if (file) {
+                                  handleMasterPlanUpload(file);
+                                  return;
+                                }
+                              }
+                            }
+                          }
+
+                          // 3. Fallback for general text
+                          if (text && text.trim().length > 5) {
+                            e.preventDefault();
+                            e.target.value = "";
+                            handleMasterPlanUpload({ text, html });
+                          }
   }
 
   async function handleMasterPlanUpload(input) {
@@ -2653,41 +2742,7 @@ JSON 출력 예시:
                         hint="표 복사 → 클릭 → Ctrl+V"
                         busy={isExtracting}
                         busyLabel="AI 분석 중..."
-                        onPaste={(e) => {
-                          const html = e.clipboardData?.getData("text/html") || "";
-                          const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text") || "";
-                          
-                          // 1. If tabular text or HTML table exists in clipboard (Excel copy always contains text/plain with tabs or HTML table)
-                          if ((text && text.includes('\t')) || (html && html.includes('<table'))) {
-                            e.preventDefault();
-                            e.target.value = "";
-                            handleMasterPlanUpload({ text, html });
-                            return;
-                          }
-
-                          // 2. Only if NO tabular text/html, check for standalone image paste
-                          const items = e.clipboardData?.items;
-                          if (items) {
-                            for (let i = 0; i < items.length; i++) {
-                              const item = items[i];
-                              if (item.type.indexOf("image") !== -1) {
-                                e.preventDefault();
-                                const file = item.getAsFile();
-                                if (file) {
-                                  handleMasterPlanUpload(file);
-                                  return;
-                                }
-                              }
-                            }
-                          }
-
-                          // 3. Fallback for general text
-                          if (text && text.trim().length > 5) {
-                            e.preventDefault();
-                            e.target.value = "";
-                            handleMasterPlanUpload({ text, html });
-                          }
-                        }}
+                        onPaste={handleMasterPasteEvent}
                       />
                     </PasteEntry>
                   </div>
@@ -3060,7 +3115,36 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
                           선택 항목 삭제 ({selectedProjects.size}) {!del && <Icon name="lock" size={12} />}
                         </button>
                       )}
+                      {selectedProjects.size > 0 && (
+                        <button
+                          onClick={() => {
+                            if (!edit) return showPermissionModal("프로젝트 수정");
+                            setBulkMasterIds(prev => prev ? null : Array.from(selectedProjects));
+                          }}
+                          style={{ background: 'var(--brand-wash)', color: 'var(--brand)', border: '1px solid color-mix(in srgb, var(--brand) 40%, transparent)', padding: '4px 10px', borderRadius: 'var(--radius-md)', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          선택 항목 마스터 일정 갱신 ({selectedProjects.size}) {!edit && <Icon name="lock" size={12} />}
+                        </button>
+                      )}
                     </div>
+                    {bulkMasterIds && (
+                      <div style={{ margin: '0 14px 12px', padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '13px', marginBottom: '6px' }}>
+                          <span><b>선택한 {bulkMasterIds.length}개 프로젝트 마스터 일정 갱신</b> · 설비가 여러 개 들어 있는 표 전체를 붙여넣으면 이름·Site·Line으로 선택한 프로젝트와 맞춰 일정·공수를 갱신합니다 (새로 등록하지 않음)</span>
+                          <button type="button" onClick={() => setBulkMasterIds(null)} style={{ fontSize: '12px', cursor: 'pointer' }}>닫기</button>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--ink-3)', marginBottom: '8px' }}>
+                          {projects.filter(pr => bulkMasterIds.includes(pr.id)).map(pr => pr.name).join(' / ')}
+                        </div>
+                        <PasteZone
+                          label="엑셀 표 붙여넣기"
+                          hint="표 전체 복사 → 클릭 → Ctrl+V"
+                          busy={isExtracting}
+                          busyLabel="AI 분석 중..."
+                          onPaste={handleMasterPasteEvent}
+                        />
+                      </div>
+                    )}
                   </>
                 )}
                 {view.map(p => (

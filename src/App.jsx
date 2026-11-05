@@ -179,7 +179,8 @@ const from = p => {
     progress: p.progress || 0,
     autoProgress: p.auto_progress ?? true,
     milestones: cleanMs,
-    manpower: manpowerMeta?.manpower || p.manpower || null
+    manpower: manpowerMeta?.manpower || p.manpower || null,
+    note: meta?.note || ""
   };
 };
 
@@ -192,7 +193,8 @@ const to = p => {
   const isPOWaiting = (p.status === "PO대기중");
   const isManual = isPOWaiting || (p.isManualStatus !== undefined ? Boolean(p.isManualStatus) : (existingMeta ? Boolean(existingMeta.isManual) : false));
   const manualBy = p.manualStatusBy !== undefined && p.manualStatusBy !== "" ? p.manualStatusBy : (existingMeta?.by || (isManual ? (p.pm || "수동지정 담당자") : ""));
-  const statusMeta = { id: '__status_meta__', isManual, by: manualBy, at: existingMeta?.at || iso(), startDate: p.startDate, endDate: p.endDate };
+  const noteVal = String(p.note !== undefined ? p.note : (existingMeta?.note || "")).trim();
+  const statusMeta = { id: '__status_meta__', isManual, by: manualBy, at: existingMeta?.at || iso(), startDate: p.startDate, endDate: p.endDate, ...(noteVal ? { note: noteVal } : {}) };
   const manpowerMeta = p.manpower ? { id: '__manpower_meta__', manpower: p.manpower } : (existingManpowerMeta || null);
   const custVal = p.customer || existingCustomerMeta?.customer || "SK on";
   const customerMeta = { id: '__customer_meta__', customer: custVal };
@@ -361,6 +363,8 @@ export default function App() {
   const [editTeam, setEditTeam] = useState("");
   const [permissionModal, setPermissionModal] = useState(null);
   const [expanded, setExpanded] = useState({});
+  const [noteEdit, setNoteEdit] = useState(null); // { id, text }
+  const canEditNote = edit || isGrade2Tier;
   const [ganttExpanded, setGanttExpanded] = useState({});
   const [month, setMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(null);
@@ -900,10 +904,24 @@ export default function App() {
     setForm(f => ({ ...f, autoProgress: checked }));
   }
 
+  async function saveProjectNote(p, text) {
+    if (!canEditNote) return;
+    const next = String(text || "").trim();
+    if (next === (p.note || "")) { setNoteEdit(null); return; }
+    const row = to({ ...p, note: next });
+    const { error } = await supabase.from("projects").update({ milestones: row.milestones }).eq("id", p.id);
+    if (error) {
+      setMsg("특이사항 저장 실패: " + error.message);
+      return;
+    }
+    setNoteEdit(null);
+    load("projects");
+  }
+
   async function switchToAutoStatus(p) {
     const cleanMs = (p.milestones || []).filter(m => m && m.id !== '__status_meta__');
     const autoStat = computeAutoStatus({ startDate: p.startDate, endDate: p.endDate, milestones: cleanMs });
-    const statusMeta = { id: '__status_meta__', isManual: false, by: "", at: iso(), startDate: p.startDate, endDate: p.endDate };
+    const statusMeta = { id: '__status_meta__', isManual: false, by: "", at: iso(), startDate: p.startDate, endDate: p.endDate, ...(p.note ? { note: p.note } : {}) };
     const finalMilestones = [...cleanMs, statusMeta];
     const { error } = await supabase.from("projects").update({ status: autoStat, milestones: finalMilestones }).eq("id", p.id);
     if (error) {
@@ -1263,7 +1281,7 @@ export default function App() {
     const isManual = isPOWaiting || Boolean(form.isManualStatus) || !form.autoStatus;
     const manualBy = isManual ? (form.manualStatusBy || currentUserName) : "";
     const calculatedStatus = isManual ? form.status : computeAutoStatus({ ...form, milestones: m });
-    const statusMeta = { id: '__status_meta__', isManual, by: manualBy, at: iso(), startDate: form.startDate, endDate: form.endDate };
+    const statusMeta = { id: '__status_meta__', isManual, by: manualBy, at: iso(), startDate: form.startDate, endDate: form.endDate, ...(form.note ? { note: form.note } : {}) };
     const targetCustomer = form.customer || currentCustomer || "SK on";
     const customerMeta = { id: '__customer_meta__', customer: targetCustomer };
     const finalMilestones = [...m, statusMeta, customerMeta];
@@ -3042,6 +3060,36 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
                       <p>
                         {p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} &nbsp;|&nbsp; 소장 {p.pm || p.manager || "-"} · 설계 {p.design || "-"} · 설비 {p.facilityTechnology || "-"} · 제어 {p.control || "-"} · 비전 {p.vision || "-"} &nbsp;|&nbsp; {p.startDate} ~ {p.endDate} · <b style={{ color: p.isManualStatus ? (p.status === "PO대기중" ? 'var(--bad)' : 'var(--signal)') : 'inherit' }}>{p.status}</b>
                       </p>
+                      {noteEdit?.id === p.id ? (
+                        <div className="project-note-edit">
+                          <textarea
+                            autoFocus
+                            rows={2}
+                            maxLength={500}
+                            value={noteEdit.text}
+                            placeholder="특이사항을 입력하세요 (Ctrl+Enter 저장, Esc 취소)"
+                            onChange={e => setNoteEdit({ id: p.id, text: e.target.value })}
+                            onKeyDown={e => {
+                              if (e.key === "Escape") setNoteEdit(null);
+                              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) saveProjectNote(p, noteEdit.text);
+                            }}
+                          />
+                          <button type="button" onClick={() => saveProjectNote(p, noteEdit.text)}>저장</button>
+                          <button type="button" onClick={() => setNoteEdit(null)}>취소</button>
+                        </div>
+                      ) : p.note ? (
+                        <div
+                          className={`project-note ${canEditNote ? "editable" : ""}`}
+                          title={canEditNote ? "눌러서 특이사항 수정" : ""}
+                          onClick={() => canEditNote && setNoteEdit({ id: p.id, text: p.note })}
+                        >
+                          <Icon name="alert" size={12} /> <span>{p.note}</span>
+                        </div>
+                      ) : canEditNote ? (
+                        <button type="button" className="project-note-add" onClick={() => setNoteEdit({ id: p.id, text: "" })}>
+                          + 특이사항
+                        </button>
+                      ) : null}
                       {p.isManualStatus && (
                         <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--warning-muted)', border: '1px solid color-mix(in srgb, var(--signal) 28%, transparent)', padding: '4px 9px', borderRadius: 'var(--radius-md)', fontSize: '11px', color: 'var(--warning)', fontWeight: '600' }}>
                           <span><Icon name="alert" size={13} /> <b>수동 설정 ({p.manualStatusBy || "담당자"})</b> : 상태 확인 후 상태 변경을 해주세요</span>

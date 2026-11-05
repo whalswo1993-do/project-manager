@@ -12,7 +12,7 @@ import {
 export const MAIN = "PJT 출장자";
 const FONT = "맑은 고딕";
 const C = {
-  ink: "FF1F2937", muted: "FF6B7280", line: "FFD1D5DB", head: "FFDCE8F5", brand: "FF0B57A4", zebra: "FFF8FAFC", wash: "FFEAF1FB",
+  ink: "FF1F2937", muted: "FF6B7280", line: "FFD1D5DB", head: "FFE5E7EB", brand: "FF0B57A4", zebra: "FFF9FAFB", wash: "FFF3F4F6",
   open: "FFFDE2E2", openInk: "FFB91C1C", ok: "FFE7F5EC", warn: "FFFFF1D6", away: "FFDDF3F1", awayInk: "FF0F766E",
 };
 const DEPT_COLOR = { mechanical: "FF2563A8", vision: "FF7048C2", control: "FF0F8A80", electrical: "FFB83A76", manager: "FF566478" };
@@ -74,10 +74,15 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     pageSetup: { orientation: "landscape", paperSize: 8, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: "5:7", printTitlesColumn: "A:D" },
   });
   // (outlineProperties 는 쓰지 않는다: 엑셀 기본값이 "요약 줄이 아래"이고, ExcelJS 가 fitToPage 와 같이 쓰면 XML 순서가 어긋나 엑셀이 파일을 못 연다)
+  const textWidth = (t) => Array.from(String(t || "")).reduce((w, ch) => w + (ch.charCodeAt(0) > 0x2e80 ? 2 : 1.1), 0);
+  const fitWidth = (values, min, max) => Math.min(max, Math.max(min, Math.ceil(Math.max(0, ...values.map(textWidth)) * 1.05 + 2)));
   ws.columns = [
-    { width: 2.2 }, { width: 10 }, { width: 46 }, { width: 10 },
+    { width: 2.2 },
+    { width: fitWidth(plans.map((p) => p.site), 10, 24) },
+    { width: fitWidth(plans.map((p) => p.name), 46, 90) },
+    { width: 10 },
     ...Array.from({ length: weeks }, () => ({ width: 7.6 })),
-    { width: 20 },
+    { width: fitWidth(plans.map((p) => [p.site, p.line].filter(Boolean).join(" ") || p.name), 20, 60) },
   ];
 
   // ── 머리글(1~7줄) ──
@@ -183,7 +188,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     ws.getCell(r, AJ).value = shortLabel;
     for (let c = 2; c <= AJ; c += 1) {
       const cell = ws.getCell(r, c);
-      cell.fill = solid(c <= 4 ? C.head : "FFF1F5F9");
+      cell.fill = solid(c <= 4 ? C.head : "FFF3F4F6");
       cell.font = c <= 4 ? font({ bold: true, color: { argb: "FFFFFFFF" }, size: c === 3 ? 11 : 10 }) : font({ size: 9.5, color: { argb: C.muted } });
       cell.alignment = { vertical: "middle", horizontal: c === 3 || c === 5 ? "left" : "center", wrapText: false, shrinkToFit: c === 3 };
       cell.border = box;
@@ -191,46 +196,27 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     ws.getCell(r, 2).alignment = { vertical: "middle", horizontal: "center" };
     ws.getCell(r, 4).font = font({ bold: true, size: 9, color: { argb: "FFFFFFFF" } });
     ws.getCell(r, 1).font = font({ size: 6, color: { argb: "FFE5E7EB" } });
-    // 마일스톤 간트: 프로젝트마다 이 한 줄에 모두 담는다. 같은 주에 둘 이상 겹치면 줄무늬 칸으로 표시하고 이름을 "+"로 잇는다.
-    {
-      const items = phaseLanes.flat();
-      const segs = [];
-      const addSeg = (from, to, label, colorIdx2, note) => segs.push({ from, to, label, colorIdx2, note });
-      if (items.length) {
-        let i0 = 0;
-        const keyAt = (i) => items.map((it, k) => (it.from <= i && i <= it.to ? k : -1)).filter((k) => k >= 0);
-        while (i0 < cols.length) {
-          const ks = keyAt(i0);
-          if (!ks.length) { i0 += 1; continue; }
-          let i1 = i0;
-          while (i1 + 1 < cols.length && keyAt(i1 + 1).join(",") === ks.join(",")) i1 += 1;
-          const its = ks.map((k) => items[k]);
-          addSeg(i0, i1, its.map((x) => x.label).join(" + "), its.map((x) => x.color), its.length > 1 ? `겹치는 단계: ${its.map((x) => x.label).join(", ")}` : "");
-          i0 = i1 + 1;
-        }
-      } else {
-        let f = -1;
-        let t = -1;
-        cols.forEach((col, i) => { if (overlaps(plan.start_date, plan.end_date, col.start, col.end)) { if (f < 0) f = i; t = i; } });
-        if (f >= 0) addSeg(f, t, rangeLabel(plan.start_date, plan.end_date), null, "");
-      }
-      segs.forEach((sg) => {
-        const c1 = WEEK_COL0 + sg.from;
-        const c2 = WEEK_COL0 + sg.to;
+    r += 1;
+
+    // 마일스톤(작업 단계) 띠: 겹치는 단계는 줄을 나누되, 줄 두께는 최대한 얇게 한다
+    phaseLanes.forEach((lane, li) => {
+      ws.getRow(r).height = 11;
+      ws.getCell(r, 1).value = "M";
+      ws.getCell(r, 1).font = font({ size: 6, color: { argb: "FFE5E7EB" } });
+      if (li === 0) { ws.getCell(r, 3).value = "작업 단계"; ws.getCell(r, 3).font = font({ size: 8, color: { argb: C.muted } }); ws.getCell(r, 3).alignment = { horizontal: "right", vertical: "middle" }; }
+      lane.forEach((it) => {
+        const c1 = WEEK_COL0 + it.from;
+        const c2 = WEEK_COL0 + it.to;
         if (c2 > c1) ws.mergeCells(r, c1, r, c2);
         const cell = ws.getCell(r, c1);
-        cell.value = sg.label;
-        const cs = sg.colorIdx2;
-        if (!cs) cell.fill = solid("FFE5E7EB");
-        else if (cs.length === 1) cell.fill = solid(MS_COLOR[cs[0] % MS_COLOR.length]);
-        else cell.fill = { type: "pattern", pattern: "lightUp", fgColor: { argb: MS_COLOR[cs[0] % MS_COLOR.length] }, bgColor: { argb: MS_COLOR[cs[1] % MS_COLOR.length] } };
-        cell.font = font({ size: 9, color: { argb: C.ink } });
+        cell.value = it.label;
+        cell.fill = solid(MS_COLOR[it.color % MS_COLOR.length]);
+        cell.font = font({ size: 8, color: { argb: C.ink } });
         cell.alignment = { horizontal: "center", vertical: "middle", shrinkToFit: true };
-        if (sg.note) cell.note = sg.note;
         for (let c = c1; c <= c2; c += 1) ws.getCell(r, c).border = box;
       });
-    }
-    r += 1;
+      r += 1;
+    });
 
     // 부서별 칸(슬롯) 줄
     const slotFirst = r;
@@ -392,8 +378,6 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   TRIP_DEPTS.forEach((d) => {
     const row = ws.getRow(r);
     row.height = 18;
-    ws.mergeCells(r, 2, r, 3);
-    ws.getCell(r, 2).value = "PJT 별 취합 공수";
     ws.getCell(r, 4).value = d.label;
     for (let c = 2; c <= AJ; c += 1) { const cell = ws.getCell(r, c); cell.border = box; cell.font = font({ bold: true }); cell.alignment = { horizontal: "center", vertical: "middle" }; cell.fill = solid(DEPT_TINT[d.key].label); }
     ws.getCell(r, 4).font = font({ bold: true, color: { argb: DEPT_COLOR[d.key] } });
@@ -408,6 +392,24 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   });
   const sumFirst = sumTitle;
   const sumLast = r - 1;
+  ws.mergeCells(sumFirst, 2, sumLast, 3); // 5줄에 반복되던 제목을 하나로 병합
+  ws.getCell(sumFirst, 2).value = "PJT 별 취합 공수";
+  ws.getCell(sumFirst, 2).alignment = { horizontal: "center", vertical: "middle" };
+  ws.getCell(sumFirst, 2).fill = solid(C.head);
+  // 부서별 합산(TOTAL): 위 5줄을 SUM 으로 더한다 → 어느 줄을 고쳐도 자동 반영
+  {
+    const totalRow = r;
+    ws.getRow(r).height = 20;
+    ws.mergeCells(r, 2, r, 4);
+    ws.getCell(r, 2).value = "TOTAL";
+    for (let c = 2; c <= AJ; c += 1) { const cell = ws.getCell(r, c); cell.border = box; cell.font = font({ bold: true }); cell.alignment = { horizontal: "center", vertical: "middle" }; cell.fill = solid(C.head); }
+    cols.forEach((col, i) => {
+      const c = WEEK_COL0 + i;
+      const L = colLetter(c);
+      ws.getCell(totalRow, c).value = { formula: `SUM(${L}${sumFirst}:${L}${sumLast})`, result: TRIP_DEPTS.reduce((t, d) => t + grandCount[d.key][i], 0) };
+    });
+    r += 1;
+  }
   ws.addConditionalFormatting({ ref: `E${sumFirst}:${lastColL}${sumLast}`, rules: [{ type: "colorScale", cfvo: [{ type: "min" }, { type: "max" }], color: [{ argb: "FFFFFFFF" }, { argb: "FFC6EBD3" }] }] });
 
   // 같은 주에 두 곳에 배정된 이름(외주 제외)은 빨강 — 전체 데이터 범위에서 센다
@@ -521,7 +523,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     const rowN = sr + ti;
     if (ti > 0) { sm.mergeCells(rowN, 2, rowN, 4); }
     sm.getCell(rowN, 2).value = `전 부서 · ${label}`;
-    for (let c = 2; c <= LAST_COL; c += 1) { const cell = sm.getCell(rowN, c); cell.fill = solid("FFEEF2F7"); cell.border = box; cell.font = font({ bold: true }); cell.alignment = { horizontal: c <= 4 ? "left" : "center", vertical: "middle", indent: c === 2 ? 1 : 0 }; }
+    for (let c = 2; c <= LAST_COL; c += 1) { const cell = sm.getCell(rowN, c); cell.fill = solid("FFEDEEF0"); cell.border = box; cell.font = font({ bold: true }); cell.alignment = { horizontal: c <= 4 ? "left" : "center", vertical: "middle", indent: c === 2 ? 1 : 0 }; }
     sm.getRow(rowN).height = 18;
     cols.forEach((col, i) => {
       const c = WEEK_COL0 + i;
@@ -596,7 +598,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     { type: "expression", priority: 3, formulae: [`LEFT(E${MX0},3)="부재:"`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFE5E7EB" } }, font: { color: { argb: "FF6B7280" } } } },
     { type: "expression", priority: 4, formulae: [`E${MX0}="본사"`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFE7F5EC" } }, font: { color: { argb: "FF1F2937" } } } },
     { type: "expression", priority: 5, formulae: [`E${MX0}="퇴사"`], style: { font: { color: { argb: "FF9CA3AF" } } } },
-    { type: "expression", priority: 6, formulae: [`AND(E${MX0}<>"",E${MX0}<>"본사")`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFEAF1FB" } }, font: { color: { argb: "FF1F2937" } } } },
+    { type: "expression", priority: 6, formulae: [`AND(E${MX0}<>"",E${MX0}<>"본사")`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFF3F4F6" } }, font: { color: { argb: "FF1F2937" } } } },
   ] });
   mx.autoFilter = { from: { row: 7, column: 2 }, to: { row: 7, column: 4 } };
 
@@ -652,7 +654,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   ["부서", "소속 팀", "이름", "직위", "등급", "B1", "상태", "비고"].forEach((h, i) => {
     const cell = ro.getCell(5, 1 + i);
     cell.value = h;
-    cell.fill = solid(i === 0 || i === 2 ? "FFBFD9F2" : C.head);
+    cell.fill = solid(i === 0 || i === 2 ? "FFD1D5DB" : C.head);
     cell.font = font({ bold: true, color: { argb: "FFFFFFFF" } });
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = box;
@@ -689,7 +691,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   ["부서", "이름", "종류", "간 곳(장소·내용)", "시작일", "종료일", "메모", "표시(자동)"].forEach((h, i) => {
     const cell = ev.getCell(5, 1 + i);
     cell.value = h;
-    cell.fill = solid(i === 1 || i === 4 ? "FFBFD9F2" : C.head);
+    cell.fill = solid(i === 1 || i === 4 ? "FFD1D5DB" : C.head);
     cell.font = font({ bold: true, color: { argb: "FFFFFFFF" } });
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = box;

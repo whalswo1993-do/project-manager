@@ -82,7 +82,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     { width: fitWidth(plans.map((p) => p.name), 46, 90) },
     { width: 10 },
     ...Array.from({ length: weeks }, () => ({ width: 7.6 })),
-    { width: fitWidth(plans.map((p) => [p.site, p.line].filter(Boolean).join(" ") || p.name), 20, 60) },
+    { width: 20, hidden: true },
   ];
 
   // ── 머리글(1~7줄) ──
@@ -139,11 +139,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     rules: [{ type: "expression", formulae: [`AND(E$7<=TODAY(),E$7+7>TODAY())`], style: { fill: { type: "pattern", pattern: "solid", bgColor: { argb: "FFFFE699" } }, font: { color: { argb: "FF1F2937" } } } }],
   });
   ws.getCell(1, AJ).value = null;
-  ws.getCell(5, AJ).value = "프로젝트 표시";
-  ws.mergeCells(5, AJ, 7, AJ);
-  ws.getCell(5, AJ).fill = solid(C.head);
-  ws.getCell(5, AJ).font = font({ bold: true, color: { argb: "FFFFFFFF" }, size: 9 });
-  ws.getCell(5, AJ).alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+  ws.getColumn(AJ).hidden = true; // 계산용 열(이름 → 프로젝트 찾기). 화면에는 보이지 않는다
 
   // ── 프로젝트 블록 ──
   let r = FIRST_DATA_ROW;
@@ -198,23 +194,21 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     ws.getCell(r, 1).font = font({ size: 6, color: { argb: "FFE5E7EB" } });
     r += 1;
 
-    // 마일스톤(작업 단계) 띠: 겹치는 단계는 줄을 나누되, 줄 두께는 최대한 얇게 한다
-    phaseLanes.forEach((lane, li) => {
+    // 마일스톤(작업 단계): 시작일 순서대로 한 줄에 하나씩 계단식으로 나열. 프로젝트 이름 칸부터 끝까지 모든 칸에 테두리를 둬서 격자가 이어지게 한다.
+    phaseLanes.flat().sort((x, y) => x.from - y.from || String(x.start).localeCompare(String(y.start)) || y.to - x.to).forEach((it, li) => {
       ws.getRow(r).height = 11;
       ws.getCell(r, 1).value = "M";
       ws.getCell(r, 1).font = font({ size: 6, color: { argb: "FFE5E7EB" } });
+      for (let c = 2; c <= LAST_COL; c += 1) ws.getCell(r, c).border = box;
       if (li === 0) { ws.getCell(r, 3).value = "작업 단계"; ws.getCell(r, 3).font = font({ size: 8, color: { argb: C.muted } }); ws.getCell(r, 3).alignment = { horizontal: "right", vertical: "middle" }; }
-      lane.forEach((it) => {
-        const c1 = WEEK_COL0 + it.from;
-        const c2 = WEEK_COL0 + it.to;
-        if (c2 > c1) ws.mergeCells(r, c1, r, c2);
-        const cell = ws.getCell(r, c1);
-        cell.value = it.label;
-        cell.fill = solid(MS_COLOR[it.color % MS_COLOR.length]);
-        cell.font = font({ size: 8, color: { argb: C.ink } });
-        cell.alignment = { horizontal: "center", vertical: "middle", shrinkToFit: true };
-        for (let c = c1; c <= c2; c += 1) ws.getCell(r, c).border = box;
-      });
+      const c1 = WEEK_COL0 + it.from;
+      const c2 = WEEK_COL0 + it.to;
+      if (c2 > c1) ws.mergeCells(r, c1, r, c2);
+      const cell = ws.getCell(r, c1);
+      cell.value = it.label;
+      cell.fill = solid(MS_COLOR[it.color % MS_COLOR.length]);
+      cell.font = font({ size: 8, color: { argb: C.ink } });
+      cell.alignment = { horizontal: "center", vertical: "middle", shrinkToFit: true };
       r += 1;
     });
 
@@ -402,7 +396,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     ws.getRow(r).height = 20;
     ws.mergeCells(r, 2, r, 4);
     ws.getCell(r, 2).value = "TOTAL";
-    for (let c = 2; c <= AJ; c += 1) { const cell = ws.getCell(r, c); cell.border = box; cell.font = font({ bold: true }); cell.alignment = { horizontal: "center", vertical: "middle" }; cell.fill = solid(C.head); }
+    for (let c = 2; c <= AJ; c += 1) { const cell = ws.getCell(r, c); cell.border = box; cell.font = font({ bold: true }); cell.alignment = { horizontal: "center", vertical: "middle" }; cell.fill = solid("FFF4B183"); }
     cols.forEach((col, i) => {
       const c = WEEK_COL0 + i;
       const L = colLetter(c);
@@ -734,7 +728,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     ["종합 현황", "부서별로 계획 공수(내려받은 시점 고정값) 대비 배정, 외주, 과부족, 미배정 칸, 본사 가용, 외부 일정을 주별로 보여 줍니다. 모두 수식입니다."],
     ["인원별 위치 현황", "인원 명단의 모든 사람이 주마다 어디에 있는지(프로젝트 / 본사 / 외부:간 곳 / 부재) 자동으로 나옵니다. 같은 주에 두 곳이면 빨강으로 표시됩니다."],
     ["인원 명단 · 외부 일정", "새 인원이나 외부 일정은 두 시트의 맨 아래 빈 줄에 이어서 적으면 됩니다. 이름 선택 목록과 B1 확인, 인원별 위치 현황이 그 값을 씁니다."],
-    ["주의", "A열(작은 회색 글자)과 AJ열(프로젝트 표시)은 계산에 쓰이니 지우지 마세요. 열이 거슬리면 숨기기만 하세요."],
+    ["주의", "A열(작은 회색 글자)과 숨겨진 열(맨 오른쪽, 프로젝트 이름표)은 계산에 쓰이니 지우지 마세요."],
   ];
   lines.forEach(([k, v], i) => {
     const rr = 4 + i;

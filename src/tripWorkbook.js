@@ -169,7 +169,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     // 머리글 줄 (표시 열 A = "H")
     const headerRow = r;
     const hr = ws.getRow(r);
-    hr.height = 24;
+    hr.height = 13.5;
     ws.getCell(r, 1).value = "H";
     ws.getCell(r, 2).value = plan.site || "";
     ws.getCell(r, 3).value = plan.name;
@@ -185,7 +185,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     for (let c = 2; c <= AJ; c += 1) {
       const cell = ws.getCell(r, c);
       cell.fill = solid(c <= 4 ? C.head : "FFF3F4F6");
-      cell.font = c <= 4 ? font({ bold: true, color: { argb: "FFFFFFFF" }, size: c === 3 ? 11 : 10 }) : font({ size: 9.5, color: { argb: C.muted } });
+      cell.font = c <= 4 ? font({ bold: true, color: { argb: "FFFFFFFF" }, size: 10 }) : font({ size: 9.5, color: { argb: C.muted } });
       cell.alignment = { vertical: "middle", horizontal: c === 3 || c === 5 ? "left" : "center", wrapText: false, shrinkToFit: c === 3 };
       cell.border = box;
     }
@@ -209,7 +209,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     const steps = phaseLanes.flat().sort((x, y) => x.from - y.from || String(x.start).localeCompare(String(y.start)) || y.to - x.to);
     if (steps.length) gantt(headerRow, steps[0]);
     steps.slice(1).forEach((it) => {
-      ws.getRow(r).height = 11;
+      ws.getRow(r).height = 13.5;
       ws.getCell(r, 1).value = "M";
       ws.getCell(r, 1).font = font({ size: 6, color: { argb: "FFE5E7EB" } });
       for (let c = WEEK_COL0; c <= LAST_COL; c += 1) ws.getCell(r, c).border = box;

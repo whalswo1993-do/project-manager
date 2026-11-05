@@ -364,6 +364,7 @@ export default function App() {
   const [permissionModal, setPermissionModal] = useState(null);
   const [expanded, setExpanded] = useState({});
   const [noteEdit, setNoteEdit] = useState(null); // { id, text }
+  const [masterResult, setMasterResult] = useState(null); // 마스터 스케줄 등록/수정 결과 팝업 { items: [{ name, kind, detail }] }
   const [bulkMasterIds, setBulkMasterIds] = useState(null); // 선택 프로젝트 마스터 일정 일괄 갱신 모드(대상 id 배열)
   const canEditNote = edit || isGrade2Tier;
   const [ganttExpanded, setGanttExpanded] = useState({});
@@ -1542,6 +1543,12 @@ export default function App() {
         if (error) failed.push(`${t.name}: ${error.message}`);
       }
       const okCount = matched.length - failed.length;
+      setMasterResult({ items: [
+        ...matched.filter(({ t }) => !failed.some(x => x.startsWith(t.name + ":"))).map(({ t, p }) => ({ name: t.name, kind: "updated", detail: `${p.startDate || t.startDate} ~ ${p.endDate || t.endDate} · 공수 ${p.manpower?.totalManday || 0} M/D` })),
+        ...failed.map(x => ({ name: x.split(":")[0], kind: "failed", detail: x })),
+        ...missing.map(t => ({ name: t.name, kind: "skipped", detail: "붙여넣은 표에서 일치하는 설비를 찾지 못해 변경하지 않았습니다" })),
+        ...skipped.map(p => ({ name: p.projectName, kind: "skipped", detail: "선택한 프로젝트와 일치하지 않아 건너뜀 (새로 등록하지 않음)" })),
+      ] });
       setMsg(
         <div>
           <b>[{sourceLabel}] 선택한 {targets.length}개 중 {okCount}개 최신화{failed.length ? `, ${failed.length}개 실패` : ""}</b>
@@ -1619,11 +1626,13 @@ export default function App() {
       if (error) {
         console.error("Master plan update error:", error);
         setMsg(`마스터 플랜 최신화 실패: ${error.message}`);
+        setMasterResult({ items: [{ name: updatedRow.name, kind: "failed", detail: error.message }] });
         return false;
       }
 
       const mpText = targetP.manpower ? ` (총 공수 ${targetP.manpower.totalManday} M/D 최신화)` : "";
       setMsg(`'${updatedRow.name}' 프로젝트의 마스터 스케줄 및 공수가 최신 버전으로 업데이트되었습니다!${mpText}`);
+      setMasterResult({ items: [{ name: updatedRow.name, kind: "updated", detail: `${updatedRow.startDate} ~ ${updatedRow.endDate}${targetP.manpower ? ` · 공수 ${targetP.manpower.totalManday} M/D` : ""}` }] });
       load("projects");
       return true;
     }
@@ -1730,6 +1739,11 @@ export default function App() {
       setForm(blank());
       setMilestones(newMs());
     }
+
+    setMasterResult({ items: [
+      ...projectResults.map(r => ({ name: r.name, kind: r.status === "신규 등록" ? "created" : "updated", detail: `${r.line ? `Line ${r.line} · ` : ""}공수 ${r.manday} M/D` })),
+      ...errorLogs.map(x => ({ name: x.split(":")[0], kind: "failed", detail: x })),
+    ] });
 
     const totalMpSum = directProjects.reduce((acc, p) => acc + (p.manpower?.totalManday || 0), 0);
     const summaryHeader = `[${sourceLabel} 완료] 총 ${directProjects.length}개 설비 프로젝트 중 ${createdCount > 0 ? `${createdCount}개 신규 등록` : ""}${createdCount > 0 && updatedCount > 0 ? ", " : ""}${updatedCount > 0 ? `${updatedCount}개 최신화` : ""} (총 공수 ${totalMpSum} M/D)`;
@@ -4310,6 +4324,53 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
           </div>
         </div>
       )}
+
+      {masterResult && (() => {
+        const items = masterResult.items || [];
+        const count = k => items.filter(i => i.kind === k).length;
+        const created = count("created"), updated = count("updated"), failed = count("failed");
+        const KIND = {
+          created: { label: "신규 등록", color: "var(--ok)", icon: "check" },
+          updated: { label: "수정됨", color: "var(--brand)", icon: "check" },
+          skipped: { label: "변경 없음", color: "var(--ink-3)", icon: "alert" },
+          failed: { label: "실패", color: "var(--bad)", icon: "x" },
+        };
+        const headColor = failed && !created && !updated ? "var(--bad)" : "var(--ok)";
+        const title = failed && !created && !updated ? "마스터 스케줄 저장에 실패했습니다"
+          : [created ? `${created}개 프로젝트가 새로 등록되었습니다` : "", updated ? `${updated}개 프로젝트가 수정되었습니다` : ""].filter(Boolean).join(" · ") || "변경된 프로젝트가 없습니다";
+        return (
+          <div className="back" onMouseDown={() => setMasterResult(null)} style={{ zIndex: 99999 }}>
+            <div
+              role="dialog"
+              aria-modal="true"
+              onMouseDown={e => e.stopPropagation()}
+              style={{ maxWidth: '520px', width: '92%', maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: 'var(--surface)', borderRadius: 'var(--radius-xl)', padding: '28px 24px 20px', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--line)' }}
+            >
+              <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                <div style={{ width: '52px', height: '52px', margin: '0 auto 12px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: headColor, background: `color-mix(in srgb, ${headColor} 12%, transparent)`, border: `1px solid color-mix(in srgb, ${headColor} 30%, transparent)` }}>
+                  <Icon name={headColor === "var(--bad)" ? "x" : "check"} size={26} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--ink)', letterSpacing: '-0.02em', wordBreak: 'keep-all' }}>{title}</h3>
+              </div>
+              <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
+                {items.map((it, i) => {
+                  const k = KIND[it.kind] || KIND.skipped;
+                  return (
+                    <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '8px 10px', border: '1px solid var(--line)', borderLeft: `3px solid ${k.color}`, borderRadius: 'var(--radius-md)', background: 'var(--surface-2)' }}>
+                      <span style={{ flex: '0 0 auto', fontSize: '11px', fontWeight: 700, color: k.color, minWidth: '54px', paddingTop: '2px' }}>{k.label}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <b style={{ display: 'block', fontSize: '13px', color: 'var(--ink)', wordBreak: 'break-word' }}>{it.name}</b>
+                        {it.detail && <span style={{ display: 'block', fontSize: '11.5px', color: 'var(--ink-3)', marginTop: '2px', wordBreak: 'break-word' }}>{it.detail}</span>}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <button type="button" autoFocus onClick={() => setMasterResult(null)} style={{ height: '36px', background: 'var(--btn-bg)', color: 'var(--btn-ink)', border: 0, borderRadius: 'var(--radius-md)', fontWeight: 700, cursor: 'pointer' }}>확인</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {permissionModal && (
         <div className="back" onMouseDown={() => setPermissionModal(null)} style={{ zIndex: 99999 }}>

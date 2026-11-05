@@ -365,6 +365,7 @@ export default function App() {
   const [expanded, setExpanded] = useState({});
   const [noteEdit, setNoteEdit] = useState(null); // { id, text }
   const [masterResult, setMasterResult] = useState(null); // 마스터 스케줄 등록/수정 결과 팝업 { items: [{ name, kind, detail }] }
+  const [bulkPreview, setBulkPreview] = useState(null); // 일괄 갱신 매칭 확인 { sourceLabel, targets, cands, map }
   const [bulkMasterIds, setBulkMasterIds] = useState(null); // 선택 프로젝트 마스터 일정 일괄 갱신 모드(대상 id 배열)
   const canEditNote = edit || isGrade2Tier;
   const [ganttExpanded, setGanttExpanded] = useState({});
@@ -1354,6 +1355,7 @@ export default function App() {
 
   function editProject(p) {
     if (!edit) return showPermissionModal("프로젝트 수정");
+    setBulkMasterIds(null);
     setEditing(p.id);
     setCollapsedSections(prev => ({ ...prev, form: false }));
     const cleanMs = (p.milestones || []).filter(x => x && x.id !== '__status_meta__' && x.id !== '__manpower_meta__');
@@ -1509,62 +1511,31 @@ export default function App() {
   async function saveDirectProjects(directProjects, sourceLabel = "엑셀") {
     if (!directProjects || directProjects.length === 0) return false;
 
-    // 0. 선택한 여러 프로젝트를 한 번에 갱신: 표의 설비를 선택한 프로젝트와 1:1로 맞춰 갱신하고, 새로 등록하지는 않는다.
+    // 0. 선택한 여러 프로젝트를 한 번에 갱신: 표의 설비를 선택한 프로젝트와 맞춰 보고(자동 추천), 사용자가 확인·수정한 뒤 적용한다.
+    //    새로 등록하지는 않는다. 이름이 달라도 제조번호·순서로 추천하고, 팝업에서 직접 바꿀 수 있다.
     if (bulkMasterIds) {
       const targets = projects.filter(pr => bulkMasterIds.includes(pr.id));
-      const used = new Set();
-      const matched = [];
-      const missing = [];
+      const map = {};
+      const usedC = new Set();
+      const baseNo = v => String(v || "").replace(/-[a-f0-9]{4}$/i, "").trim().toLowerCase();
+      // 1) 이름·Site·Line이 맞는 것
       for (const t of targets) {
-        const idx = directProjects.findIndex((p, i) => !used.has(i) && isSameProjectIdentity(t, p, sites));
-        if (idx === -1) missing.push(t); else { used.add(idx); matched.push({ t, p: directProjects[idx] }); }
+        const idx = directProjects.findIndex((p, i) => !usedC.has(i) && isSameProjectIdentity(t, p, sites));
+        if (idx !== -1) { map[t.id] = idx; usedC.add(idx); }
       }
-      const skipped = directProjects.filter((_, i) => !used.has(i));
-      const failed = [];
-      for (const { t, p } of matched) {
-        const cleanMs = p.milestones.map(m => ({ ...m, name: normalizeJVName(m.name), id: uid() }));
-        const autoStat = computeAutoStatus({ startDate: p.startDate || t.startDate, endDate: p.endDate || t.endDate, milestones: cleanMs });
-        const updated = {
-          ...t,
-          startDate: p.startDate || t.startDate,
-          endDate: p.endDate || t.endDate,
-          manufacturingNo: normalizeJVName(p.manufacturingNo || t.manufacturingNo || ""),
-          line: normalizeJVName(p.line || t.line || ""),
-          status: autoStat, autoStatus: true, isManualStatus: false, manualStatusBy: "",
-          milestones: cleanMs, manpower: p.manpower || t.manpower || null
-        };
-        const payload = to(updated);
-        let { error } = await supabase.from("projects").update(payload).eq("id", t.id);
-        if (error && String(error.message || "").toLowerCase().includes("customer")) {
-          const fallback = { ...payload };
-          delete fallback.customer;
-          error = (await supabase.from("projects").update(fallback).eq("id", t.id)).error;
-        }
-        if (error) failed.push(`${t.name}: ${error.message}`);
+      // 2) 제조번호가 같은 것
+      for (const t of targets) {
+        if (map[t.id] !== undefined || !baseNo(t.manufacturingNo)) continue;
+        const idx = directProjects.findIndex((p, i) => !usedC.has(i) && baseNo(p.manufacturingNo) === baseNo(t.manufacturingNo));
+        if (idx !== -1) { map[t.id] = idx; usedC.add(idx); }
       }
-      const okCount = matched.length - failed.length;
-      setMasterResult({ items: [
-        ...matched.filter(({ t }) => !failed.some(x => x.startsWith(t.name + ":"))).map(({ t, p }) => ({ name: t.name, kind: "updated", detail: `${p.startDate || t.startDate} ~ ${p.endDate || t.endDate} · 공수 ${p.manpower?.totalManday || 0} M/D` })),
-        ...failed.map(x => ({ name: x.split(":")[0], kind: "failed", detail: x })),
-        ...missing.map(t => ({ name: t.name, kind: "skipped", detail: "붙여넣은 표에서 일치하는 설비를 찾지 못해 변경하지 않았습니다" })),
-        ...skipped.map(p => ({ name: p.projectName, kind: "skipped", detail: "선택한 프로젝트와 일치하지 않아 건너뜀 (새로 등록하지 않음)" })),
-      ] });
-      setMsg(
-        <div>
-          <b>[{sourceLabel}] 선택한 {targets.length}개 중 {okCount}개 최신화{failed.length ? `, ${failed.length}개 실패` : ""}</b>
-          <div style={{ fontSize: '12px', marginTop: '4px', lineHeight: '1.5', whiteSpace: 'pre-line' }}>
-            {[
-              ...matched.map(({ t, p }) => `• ${t.name} ← ${p.projectName} (공수 ${p.manpower?.totalManday || 0} M/D)`),
-              ...missing.map(t => `• ${t.name}: 붙여넣은 표에서 일치하는 설비를 찾지 못해 변경하지 않았습니다`),
-              ...skipped.map(p => `• 표의 '${p.projectName}': 선택한 프로젝트와 일치하지 않아 건너뛰었습니다 (새로 등록하지 않음)`),
-              ...failed.map(x => `• 저장 실패 ${x}`)
-            ].join('\n')}
-          </div>
-        </div>
-      );
-      if (okCount > 0) { setBulkMasterIds(null); setSelectedProjects(new Set()); }
-      load("projects");
-      return okCount > 0;
+      // 3) 남은 것의 개수가 같으면 목록 순서대로 짝지어 추천
+      const restT = targets.filter(t => map[t.id] === undefined);
+      const restC = directProjects.map((_, i) => i).filter(i => !usedC.has(i));
+      if (restT.length > 0 && restT.length === restC.length) restT.forEach((t, i) => { map[t.id] = restC[i]; });
+      restT.forEach(t => { if (map[t.id] === undefined) map[t.id] = -1; });
+      setBulkPreview({ sourceLabel, targets, cands: directProjects, map });
+      return true;
     }
 
     // A. 수정 모드: 붙여넣은 표에 설비가 여러 개여도, 수정 중인 프로젝트와 같은 것 하나만 골라 그 프로젝트를 갱신한다.
@@ -1764,6 +1735,50 @@ export default function App() {
 
     load("projects");
     return true;
+  }
+
+  async function applyBulkPreview() {
+    if (!bulkPreview) return;
+    const { targets, cands, map } = bulkPreview;
+    const chosen = Object.values(map).filter(v => v >= 0);
+    if (new Set(chosen).size !== chosen.length) {
+      setMsg("같은 표 설비가 두 프로젝트에 중복 선택되었습니다. 프로젝트마다 다른 설비를 선택해주세요.");
+      return;
+    }
+    const matched = targets.filter(t => map[t.id] >= 0).map(t => ({ t, p: cands[map[t.id]] }));
+    const missing = targets.filter(t => !(map[t.id] >= 0));
+    const skipped = cands.filter((_, i) => !chosen.includes(i));
+    const failed = [];
+    for (const { t, p } of matched) {
+      const cleanMs = p.milestones.map(m => ({ ...m, name: normalizeJVName(m.name), id: uid() }));
+      const autoStat = computeAutoStatus({ startDate: p.startDate || t.startDate, endDate: p.endDate || t.endDate, milestones: cleanMs });
+      const updated = {
+        ...t,
+        startDate: p.startDate || t.startDate,
+        endDate: p.endDate || t.endDate,
+        manufacturingNo: normalizeJVName(p.manufacturingNo || t.manufacturingNo || ""),
+        line: normalizeJVName(p.line || t.line || ""),
+        status: autoStat, autoStatus: true, isManualStatus: false, manualStatusBy: "",
+        milestones: cleanMs, manpower: p.manpower || t.manpower || null
+      };
+      const payload = to(updated);
+      let { error } = await supabase.from("projects").update(payload).eq("id", t.id);
+      if (error && String(error.message || "").toLowerCase().includes("customer")) {
+        const fallback = { ...payload };
+        delete fallback.customer;
+        error = (await supabase.from("projects").update(fallback).eq("id", t.id)).error;
+      }
+      if (error) failed.push({ name: t.name, msg: error.message });
+    }
+    setMasterResult({ items: [
+      ...matched.filter(({ t }) => !failed.some(x => x.name === t.name)).map(({ t, p }) => ({ name: t.name, kind: "updated", detail: `표의 '${p.projectName}' 적용 · ${p.startDate || t.startDate} ~ ${p.endDate || t.endDate} · 공수 ${p.manpower?.totalManday || 0} M/D` })),
+      ...failed.map(x => ({ name: x.name, kind: "failed", detail: x.msg })),
+      ...missing.map(t => ({ name: t.name, kind: "skipped", detail: "연결한 표 설비가 없어 변경하지 않았습니다" })),
+      ...skipped.map(p => ({ name: p.projectName, kind: "skipped", detail: "표의 설비 중 연결되지 않아 반영하지 않았습니다 (새로 등록하지 않음)" })),
+    ] });
+    if (matched.length > failed.length) { setBulkMasterIds(null); setSelectedProjects(new Set()); }
+    setBulkPreview(null);
+    load("projects");
   }
 
   function handleMasterPasteEvent(e) {
@@ -4321,6 +4336,46 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
                 })}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {bulkPreview && (
+        <div className="back" onMouseDown={() => setBulkPreview(null)} style={{ zIndex: 99998 }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            onMouseDown={e => e.stopPropagation()}
+            style={{ maxWidth: '720px', width: '94%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', background: 'var(--surface)', borderRadius: 'var(--radius-xl)', padding: '24px', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--line)' }}
+          >
+            <h3 style={{ margin: '0 0 4px', fontSize: '17px', color: 'var(--ink)' }}>표의 설비를 어느 프로젝트에 반영할까요?</h3>
+            <p style={{ margin: '0 0 12px', fontSize: '12px', color: 'var(--ink-3)' }}>이름·Site·Line, 제조번호, 순서로 자동 연결했습니다. 다르면 직접 바꿔주세요. 새 프로젝트는 만들지 않습니다.</p>
+            <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+              {bulkPreview.targets.map(t => (
+                <div key={t.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '10px', alignItems: 'center', padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-md)', background: 'var(--surface-2)' }}>
+                  <span style={{ fontSize: '12.5px', color: 'var(--ink)', wordBreak: 'break-word' }}>
+                    <b>{t.name}</b>
+                    <span style={{ display: 'block', fontSize: '11px', color: 'var(--ink-3)' }}>{t.site || "-"} · {t.line ? `Line ${t.line}` : "-"} · {t.startDate} ~ {t.endDate}</span>
+                  </span>
+                  <select
+                    value={bulkPreview.map[t.id]}
+                    onChange={e => setBulkPreview(prev => ({ ...prev, map: { ...prev.map, [t.id]: Number(e.target.value) } }))}
+                    style={{ fontSize: '12px', minWidth: 0 }}
+                  >
+                    <option value={-1}>변경 안 함</option>
+                    {bulkPreview.cands.map((c, i) => (
+                      <option key={i} value={i}>{c.projectName} ({c.startDate} ~ {c.endDate})</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setBulkPreview(null)} style={{ height: '34px', padding: '0 16px', cursor: 'pointer' }}>취소</button>
+              <button type="button" autoFocus onClick={applyBulkPreview} style={{ height: '34px', padding: '0 16px', background: 'var(--btn-bg)', color: 'var(--btn-ink)', border: 0, borderRadius: 'var(--radius-md)', fontWeight: 700, cursor: 'pointer' }}>
+                선택한 대로 반영 ({Object.values(bulkPreview.map).filter(v => v >= 0).length}건)
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -3059,37 +3059,36 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
                       </h3>
                       <p>
                         {p.site || "-"} · {p.line ? `Line ${p.line}` : "-"} &nbsp;|&nbsp; 소장 {p.pm || p.manager || "-"} · 설계 {p.design || "-"} · 설비 {p.facilityTechnology || "-"} · 제어 {p.control || "-"} · 비전 {p.vision || "-"} &nbsp;|&nbsp; {p.startDate} ~ {p.endDate} · <b style={{ color: p.isManualStatus ? (p.status === "PO대기중" ? 'var(--bad)' : 'var(--signal)') : 'inherit' }}>{p.status}</b>
+                        &nbsp;|&nbsp;
+                        {noteEdit?.id === p.id ? (
+                          <span className="project-note-edit">
+                            <input
+                              autoFocus
+                              type="text"
+                              maxLength={300}
+                              value={noteEdit.text}
+                              placeholder="특이사항 (Enter 저장, Esc 취소)"
+                              onChange={e => setNoteEdit({ id: p.id, text: e.target.value })}
+                              onKeyDown={e => {
+                                if (e.key === "Escape") setNoteEdit(null);
+                                if (e.key === "Enter") saveProjectNote(p, noteEdit.text);
+                              }}
+                            />
+                            <button type="button" onClick={() => saveProjectNote(p, noteEdit.text)}>저장</button>
+                            <button type="button" onClick={() => setNoteEdit(null)}>취소</button>
+                          </span>
+                        ) : p.note ? (
+                          <span
+                            className={`project-note ${canEditNote ? "editable" : ""}`}
+                            title={canEditNote ? "눌러서 특이사항 수정" : p.note}
+                            onClick={() => canEditNote && setNoteEdit({ id: p.id, text: p.note })}
+                          >
+                            <Icon name="alert" size={12} /> {p.note}
+                          </span>
+                        ) : canEditNote ? (
+                          <button type="button" className="project-note-add" onClick={() => setNoteEdit({ id: p.id, text: "" })}>+ 특이사항</button>
+                        ) : null}
                       </p>
-                      {noteEdit?.id === p.id ? (
-                        <div className="project-note-edit">
-                          <textarea
-                            autoFocus
-                            rows={2}
-                            maxLength={500}
-                            value={noteEdit.text}
-                            placeholder="특이사항을 입력하세요 (Ctrl+Enter 저장, Esc 취소)"
-                            onChange={e => setNoteEdit({ id: p.id, text: e.target.value })}
-                            onKeyDown={e => {
-                              if (e.key === "Escape") setNoteEdit(null);
-                              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) saveProjectNote(p, noteEdit.text);
-                            }}
-                          />
-                          <button type="button" onClick={() => saveProjectNote(p, noteEdit.text)}>저장</button>
-                          <button type="button" onClick={() => setNoteEdit(null)}>취소</button>
-                        </div>
-                      ) : p.note ? (
-                        <div
-                          className={`project-note ${canEditNote ? "editable" : ""}`}
-                          title={canEditNote ? "눌러서 특이사항 수정" : ""}
-                          onClick={() => canEditNote && setNoteEdit({ id: p.id, text: p.note })}
-                        >
-                          <Icon name="alert" size={12} /> <span>{p.note}</span>
-                        </div>
-                      ) : canEditNote ? (
-                        <button type="button" className="project-note-add" onClick={() => setNoteEdit({ id: p.id, text: "" })}>
-                          + 특이사항
-                        </button>
-                      ) : null}
                       {p.isManualStatus && (
                         <div style={{ marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--warning-muted)', border: '1px solid color-mix(in srgb, var(--signal) 28%, transparent)', padding: '4px 9px', borderRadius: 'var(--radius-md)', fontSize: '11px', color: 'var(--warning)', fontWeight: '600' }}>
                           <span><Icon name="alert" size={13} /> <b>수동 설정 ({p.manualStatusBy || "담당자"})</b> : 상태 확인 후 상태 변경을 해주세요</span>

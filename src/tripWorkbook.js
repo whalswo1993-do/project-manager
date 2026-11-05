@@ -229,7 +229,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
         const row = ws.getRow(r);
         row.outlineLevel = 1;
         setCollapsed(row, false);
-        row.height = 16.5;
+        row.height = 13.5;
         ws.getCell(r, 1).value = "S";
         ws.getCell(r, 1).font = font({ size: 6, color: { argb: "FFE5E7EB" } });
         ws.getCell(r, 2).value = k + 1;
@@ -285,7 +285,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
       const row = ws.getRow(r);
       row.outlineLevel = 1;
       setCollapsed(row, false);
-      row.height = 16.5;
+      row.height = 13.5;
       ws.getCell(r, 1).value = "S";
       ws.getCell(r, 1).font = font({ size: 6, color: { argb: "FFE5E7EB" } });
       ws.getCell(r, 2).value = "+";
@@ -319,7 +319,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     const totalRows = [];
     TRIP_DEPTS.forEach((d) => {
       const row = ws.getRow(r);
-      row.outlineLevel = 1; setCollapsed(row, false); row.height = 16.5;
+      row.outlineLevel = 1; setCollapsed(row, false); row.height = 13.5;
       ws.getCell(r, 1).value = "T";
       ws.getCell(r, 1).font = font({ size: 6, color: { argb: "FFE5E7EB" } });
       ws.mergeCells(r, 2, r, 3);
@@ -348,7 +348,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     r += 1;
     TRIP_DEPTS.forEach((d) => {
       const row = ws.getRow(r);
-      row.outlineLevel = 1; setCollapsed(row, false); row.height = 16.5;
+      row.outlineLevel = 1; setCollapsed(row, false); row.height = 13.5;
       ws.getCell(r, 2).value = d.label;
       ws.getCell(r, 2).font = font({ bold: true, size: 9.5, color: { argb: DEPT_COLOR[d.key] } });
       ws.getCell(r, 2).alignment = { horizontal: "center" };
@@ -376,7 +376,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   const grand = {};
   TRIP_DEPTS.forEach((d) => {
     const row = ws.getRow(r);
-    row.height = 18;
+    row.height = 13.5;
     ws.getCell(r, 4).value = d.label;
     for (let c = 2; c <= AJ; c += 1) { const cell = ws.getCell(r, c); cell.border = box; cell.font = font({ bold: true }); cell.alignment = { horizontal: "center", vertical: "middle" }; cell.fill = solid(DEPT_TINT[d.key].label); }
     ws.getCell(r, 4).font = font({ bold: true, color: { argb: DEPT_COLOR[d.key] } });
@@ -398,7 +398,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
   // 부서별 합산(TOTAL): 위 5줄을 SUM 으로 더한다 → 어느 줄을 고쳐도 자동 반영
   {
     const totalRow = r;
-    ws.getRow(r).height = 20;
+    ws.getRow(r).height = 13.5;
     ws.mergeCells(r, 2, r, 4);
     ws.getCell(r, 2).value = "TOTAL";
     for (let c = 2; c <= AJ; c += 1) { const cell = ws.getCell(r, c); cell.border = box; cell.font = font({ bold: true }); cell.alignment = { horizontal: "center", vertical: "middle" }; cell.fill = solid("FFF4B183"); }

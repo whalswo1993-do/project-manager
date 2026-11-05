@@ -1507,10 +1507,23 @@ export default function App() {
   async function saveDirectProjects(directProjects, sourceLabel = "엑셀") {
     if (!directProjects || directProjects.length === 0) return false;
 
-    // A. Single project upload while in edit mode: update currently editing project
-    if (directProjects.length === 1 && editing) {
+    // A. 수정 모드: 붙여넣은 표에 설비가 여러 개여도, 수정 중인 프로젝트와 같은 것 하나만 골라 그 프로젝트를 갱신한다.
+    //    (새 프로젝트로 등록되지 않게. 같은 것이 없으면 아무것도 만들지 않고 안내한다.)
+    let editTarget = null;
+    if (editing) {
+      const editingRow = projects.find(pr => pr.id === editing) || form;
+      if (directProjects.length === 1) editTarget = directProjects[0];
+      else {
+        editTarget = directProjects.find(p => isSameProjectIdentity(editingRow, p, sites)) || null;
+        if (!editTarget) {
+          setMsg(`붙여넣은 표에서 수정 중인 '${editingRow.name || ""}'와 일치하는 설비를 찾지 못했습니다 (표에 ${directProjects.length}개 설비가 있습니다). 새 프로젝트로 등록되지 않았습니다. 해당 설비 행만 붙여넣어 주세요.`);
+          return false;
+        }
+      }
+    }
+    if (editTarget) {
       const curP = projects.find(pr => pr.id === editing) || form;
-      const targetP = directProjects[0];
+      const targetP = editTarget;
 
       const cleanMs = targetP.milestones.map(m => ({ ...m, name: normalizeJVName(m.name), id: uid() }));
       const autoStat = computeAutoStatus({

@@ -2,11 +2,10 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Icon } from './icons';
 import './IssueManagement.css';
 import { supabase } from './supabase';
-import { generateAIText, isAIConfigured } from './ai';
+import { generateAIText } from './ai';
 import * as XLSX from 'xlsx';
-import pptxgen from 'pptxgenjs';
-import { exportIssuesPpt } from './exportIssuePpt';
-import { fetchRemoteIssues, getRegisteredSiteNames } from './issueService';
+import { exportDailyReportsExcel } from './exportDailyReports';
+import { getRegisteredSiteNames } from './issueService';
 import { PasteZone, PasteEntry } from './PasteZone';
 import MultiSiteSelect from './MultiSiteSelect';
 import { confirmDialog } from "./confirmService";
@@ -14,10 +13,8 @@ import { confirmDialog } from "./confirmService";
 export default function IssueManagement({ projects, sites = [], role, onPermissionDenied, currentCustomer, onNavigateToIssueCenter }) {
     const isGrade1 = role === 'grade1';
     const canEditReport = ['admin', 'grade3'].includes(role);
-    // 분석 창(이슈 분석 PPT는 AI 호출 없음)은 grade2 도 쓴다. AI 를 호출하는 공사일보 분석만 grade2_5 이상.
-    const canOpenAnalysis = ['admin', 'grade3', 'grade2_5', 'grade2'].includes(role);
-    const canRunAIAnalysis = ['admin', 'grade3', 'grade2_5'].includes(role);
-    const AI_ANALYSIS_FEATURE = '공사일보 AI 종합분석 PPT (Grade 2.5 이상)';
+    // 공사일보 취합 엑셀 내려받기 (AI 호출 없음): grade2 이상
+    const canExportReports = ['admin', 'grade3', 'grade2_5', 'grade2'].includes(role);
     const notifyPermission = (feature) => {
         if (onPermissionDenied) {
             onPermissionDenied(feature);
@@ -158,8 +155,7 @@ export default function IssueManagement({ projects, sites = [], role, onPermissi
     
     // 이슈 통합분석 PPT 팝업 상태
     const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
-    const [analysisMode, setAnalysisMode] = useState('issues'); // 'issues' | 'reports'
-    const [analysisSite, setAnalysisSite] = useState([]); // PPT 대상 SITE 배열(빈 배열 = 전체)
+        const [analysisSite, setAnalysisSite] = useState([]); // 엑셀 대상 SITE 배열(빈 배열 = 전체)
     const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10));
     const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
     const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -2450,31 +2446,6 @@ ${allText.substring(0, 100000)}
         toggleAllReports(expand);
     };
 
-    // 이슈 분석: 이슈 통합 관리에 등록된 이슈/조치 이력을 기간·SITE로 모아 PPT 생성 (AI 호출 없음)
-    const generateIssuesPPT = async () => {
-        if (!canOpenAnalysis) return notifyPermission('이슈 통합분석 PPT');
-        if (startDate > endDate) return setAnalyzeMsg('오류: 시작일이 종료일보다 클 수 없습니다.');
-
-        setIsAnalyzing(true);
-        setAnalyzeMsg('등록된 이슈를 수집하는 중...');
-        try {
-            const allIssues = await fetchRemoteIssues();
-            setAnalyzeMsg('PPT 보고서를 생성 중입니다...');
-            const { total } = await exportIssuesPpt({ issues: allIssues, startDate, endDate, siteFilter: analysisSite });
-            setAnalyzeMsg(`이슈 ${total}건 분석 PPT 생성이 완료되었습니다!`);
-        } catch (error) {
-            console.error(error);
-            setAnalyzeMsg('오류 발생: ' + error.message);
-        } finally {
-            setIsAnalyzing(false);
-        }
-    };
-
-    const handleGenerateAnalysis = () => {
-        if (analysisMode === 'issues') return generateIssuesPPT();
-        return generateReportsPPT();
-    };
-
     const applyQuickPeriod = (days) => {
         const end = new Date();
         const start = new Date(Date.now() - days * 86400000);
@@ -2483,138 +2454,43 @@ ${allText.substring(0, 100000)}
     };
 
     const openAnalysisModal = () => {
-        if (!canOpenAnalysis) return notifyPermission('이슈 통합분석 PPT');
+        if (!canExportReports) return notifyPermission('공사일보 취합 엑셀 다운로드');
         setAnalyzeMsg('');
         setIsAnalysisModalOpen(true);
     };
 
-    const generateReportsPPT = async () => {
-        if (!canRunAIAnalysis) return notifyPermission(AI_ANALYSIS_FEATURE);
-        if (startDate > endDate) return setAnalyzeMsg('시작일이 종료일보다 클 수 없습니다.');
-        
-        if (!isAIConfigured()) return setAnalyzeMsg('AI API 키(Gemini 또는 Claude)가 설정되지 않았습니다.');
-
+    // 공사일보 취합 엑셀: 현재 고객사의 프로젝트 중 선택 SITE·기간의 일보를 모아 내려받는다 (AI 호출 없음)
+    const handleExportReportsExcel = async () => {
+        if (!canExportReports) return notifyPermission('공사일보 취합 엑셀 다운로드');
+        if (startDate > endDate) return setAnalyzeMsg('오류: 시작일이 종료일보다 클 수 없습니다.');
         setIsAnalyzing(true);
-        setAnalyzeMsg('데이터를 수집하는 중...');
-
+        setAnalyzeMsg('공사일보를 수집하는 중...');
         try {
-            // 1. Fetch all reports in date range
-            const { data: reports, error } = await supabase
-                .from('daily_reports')
-                .select('*')
-                .gte('report_date', startDate)
-                .lte('report_date', endDate + 'T23:59:59.999Z');
-
-            if (error) throw error;
-            if (!reports || reports.length === 0) {
-                throw new Error('해당 기간에 등록된 공사일보가 없습니다.');
+            const ids = (projects || []).map(p => p.id);
+            const all = [];
+            // 프로젝트가 많아도 URL 이 길어지지 않게 나눠서 조회 (Supabase 기본 1000행 제한도 페이지로 넘김)
+            for (let i = 0; i < ids.length; i += 50) {
+                const chunk = ids.slice(i, i + 50);
+                for (let from = 0; ; from += 1000) {
+                    const { data, error } = await supabase
+                        .from('daily_reports')
+                        .select('*')
+                        .in('project_id', chunk)
+                        .gte('report_date', startDate)
+                        .lte('report_date', endDate)
+                        .order('report_date', { ascending: true })
+                        .range(from, from + 999);
+                    if (error) throw error;
+                    all.push(...(data || []));
+                    if (!data || data.length < 1000) break;
+                }
             }
-
-            setAnalyzeMsg('AI가 전체 프로젝트를 종합 분석 중입니다... (약 10~30초)');
-
-            // Group reports by project
-            const grouped = {};
-            reports.forEach(r => {
-                const p = projects.find(x => x.id === r.project_id);
-                if (!p) return;
-                const pName = p.manufacturingNo ? `${p.manufacturingNo} ${p.name}` : p.name;
-                if (!grouped[pName]) grouped[pName] = [];
-                // Use structured data for PPT gen
-                const details = `작업내용: ${r.work_details || ''}\n특이/이슈사항: ${r.special_notes || r.issues || ''}\n투입인원: ${r.personnel_count || 0}명`;
-                const content = r.content || details; // Fallback for old records
-                grouped[pName].push(`- ${r.report_date}:\n${content}`);
-            });
-
-            let compiledText = '';
-            for (const [pName, lines] of Object.entries(grouped)) {
-                compiledText += `\n\n[프로젝트: ${pName}]\n` + lines.join('\n\n');
-            }
-
-            // 2. Call AI (Gemini, 실패 시 Claude)
-            const prompt = `
-다음은 ${startDate}부터 ${endDate}까지 수집된 각 프로젝트들의 공사일보 내용입니다.
-이 내용들을 분석하여 1페이지 분량의 [전체 종합 요약]과, [각 프로젝트별 주요 이슈/특이사항]을 정리해주세요.
-결과는 반드시 아래 JSON 형식으로만 응답하세요 (마크다운 백틱 없이 순수 JSON만 반환).
-
-{
-  "summary": "전체 프로젝트들의 진행 상황, 공통 이슈, 주의점 등을 포함한 상세한 종합 요약 텍스트 (줄바꿈은 \\n 사용)",
-  "projects": [
-    {
-      "project_name": "프로젝트 이름",
-      "issues": [
-        "분석된 주요 이슈나 특이사항 1",
-        "분석된 주요 이슈나 특이사항 2"
-      ]
-    }
-  ]
-}
-
-공사일보 내역:
-${compiledText.substring(0, 30000)}
-`;
-
-            const responseText = await generateAIText(prompt);
-            const cleanText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
-            const parsed = JSON.parse(cleanText);
-
-            if (!parsed.summary || !parsed.projects) {
-                throw new Error('AI 응답이 올바른 형식이 아닙니다.');
-            }
-
-            setAnalyzeMsg('PPT 보고서를 생성 중입니다...');
-
-            // 3. Create PPT
-            let pptx = new pptxgen();
-            pptx.author = 'AI Issue Management';
-            pptx.company = 'TW Project';
-            pptx.title = 'Project Issues Report';
-
-            // Master Slide Layout
-            pptx.defineSlideMaster({
-                title: 'MASTER_SLIDE',
-                background: { color: 'F1F5F9' },
-                objects: [
-                    { rect: { x: 0, y: 0, w: '100%', h: 0.6, fill: { color: '0F172A' } } },
-                    { text: { text: 'TW 프로젝트 관리 - AI 통합 분석 보고서', options: { x: 0.2, y: 0.1, w: 5, h: 0.4, color: 'FFFFFF', fontSize: 12, bold: true, fontFace: '맑은 고딕' } } },
-                    { text: { text: `${startDate} ~ ${endDate}`, options: { x: '70%', y: 0.1, w: '28%', h: 0.4, color: 'FFFFFF', fontSize: 10, align: 'right', fontFace: '맑은 고딕' } } },
-                    { rect: { x: 0.5, y: 1.5, w: '90%', h: 3.5, fill: { color: 'FFFFFF' }, line: { color: 'CBD5E1', width: 1 } } }
-                ]
-            });
-
-            // Slide 1: Summary
-            let slide1 = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
-            slide1.addText('전체 프로젝트 종합 요약', { x: 0.5, y: 0.8, w: '90%', h: 0.5, fontSize: 12, bold: true, color: '0F172A', fontFace: '맑은 고딕' });
-            
-            slide1.addText(parsed.summary, {
-                x: 0.7, y: 1.7, w: '86%', h: 3.1,
-                fontSize: 8, color: '334155', valign: 'top', breakLine: true, fontFace: '맑은 고딕',
-                lineSpacingMultiple: 1.5, autoPaged: true
-            });
-
-            // Slide 2..N: Projects
-            parsed.projects.forEach(p => {
-                let pSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
-                pSlide.addText(`프로젝트별 이슈: ${p.project_name}`, { x: 0.5, y: 0.8, w: '90%', h: 0.5, fontSize: 12, bold: true, color: '0F172A', fontFace: '맑은 고딕' });
-                
-                const bulletList = p.issues.map(iss => ({ text: iss, options: { bullet: true, fontFace: '맑은 고딕' } }));
-                pSlide.addText(bulletList, {
-                    x: 0.7, y: 1.7, w: '86%', h: 3.1,
-                    fontSize: 8, color: '334155', valign: 'top', fontFace: '맑은 고딕',
-                    lineSpacingMultiple: 1.5, autoPaged: true
-                });
-            });
-
-            await pptx.writeFile({ fileName: `프로젝트_통합분석보고서_${endDate}.pptx` });
-
-            setAnalyzeMsg('분석 및 PPT 생성이 완료되었습니다!');
-
+            setAnalyzeMsg('엑셀 파일을 만드는 중...');
+            const { total } = await exportDailyReportsExcel({ reports: all, projects, startDate, endDate, sites: analysisSite });
+            setAnalyzeMsg(`공사일보 ${total}건 엑셀 다운로드가 완료되었습니다!`);
         } catch (error) {
             console.error(error);
-            if (error.message.includes('429') || error.message.includes('quota') || error.message.toLowerCase().includes('too many requests') || error.message.includes('exceeded')) {
-                setAnalyzeMsg('무료 AI 사용량이 일시적으로 초과되었습니다. 1분 뒤에 다시 시도해주세요. (과금되지 않습니다)');
-            } else {
-                setAnalyzeMsg('오류 발생: ' + error.message);
-            }
+            setAnalyzeMsg('오류 발생: ' + error.message);
         } finally {
             setIsAnalyzing(false);
         }
@@ -2643,10 +2519,10 @@ ${compiledText.substring(0, 30000)}
                         <button
                             type="button"
                             onClick={openAnalysisModal}
-                            title={!canOpenAnalysis ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : "기간을 설정하여 이슈 분석 PPT 또는 공사일보 AI 종합분석 PPT를 다운로드합니다"}
-                            className="ppt-btn"
+                            title={!canExportReports ? "Grade 1은 권한이 제한됩니다 (클릭 시 권한 안내)" : "기간·SITE를 정해 공사일보를 취합한 엑셀을 다운로드합니다"}
+                            className="excel-export-btn"
                         >
-                            <Icon name="barChart" size="1.1em" /> 공사일보 분석 PPT {!canOpenAnalysis && <Icon name="lock" size={12} />}
+                            <Icon name="download" size="1.1em" /> 공사일보 취합 엑셀 {!canExportReports && <Icon name="lock" size={12} />}
                         </button>
                         <button
                             type="button"
@@ -3478,8 +3354,8 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                             <div className="aim-title-group">
                                 <span className="aim-title-icon"><Icon name="barChart" size="1.1em" /></span>
                                 <div>
-                                    <h3 className="aim-title">이슈 통합분석 PPT 보고서 다운로드</h3>
-                                    <p className="aim-subtitle">분석 대상(이슈 또는 프로젝트 공사일보)과 기간을 선택하여 PPT를 생성합니다.</p>
+                                    <h3 className="aim-title">공사일보 취합 엑셀 다운로드</h3>
+                                    <p className="aim-subtitle">SITE와 기간을 선택하면 등록된 공사일보를 취합해 엑셀로 내려받습니다.</p>
                                 </div>
                             </div>
                             <button
@@ -3494,44 +3370,10 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                         </div>
 
                         <div className="aim-body">
-                            {/* 분석 유형 선택 */}
-                            <div className="aim-section">
-                                <label className="aim-label">1. 분석 보고서 유형 선택 *</label>
-                                <div className="aim-mode-grid">
-                                    <button
-                                        type="button"
-                                        className={`aim-mode-card ${analysisMode === 'issues' ? 'selected' : ''}`}
-                                        onClick={() => { setAnalysisMode('issues'); setAnalyzeMsg(''); }}
-                                    >
-                                        <div className="aim-mode-badge issues"> 이슈 분석</div>
-                                        <div className="aim-mode-name">스태킹 · 노칭 공정 이슈 종합 분석</div>
-                                        <div className="aim-mode-desc">
-                                            스태킹/노칭 공정별 조치 현황, 완료율, 미결 이슈 현황 및 전체 조치 이력 카드 슬라이드
-                                        </div>
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        className={`aim-mode-card ${analysisMode === 'reports' ? 'selected' : ''}`}
-                                        onClick={() => {
-                                            if (!canRunAIAnalysis) return notifyPermission(AI_ANALYSIS_FEATURE);
-                                            setAnalysisMode('reports'); setAnalyzeMsg('');
-                                        }}
-                                        title={!canRunAIAnalysis ? "AI 분석은 Grade 2.5 이상 계정만 사용할 수 있습니다" : undefined}
-                                    >
-                                        <div className="aim-mode-badge reports"><Icon name="pencil" size="1.1em" /> 공사일보 분석 {!canRunAIAnalysis && <Icon name="lock" size={12} />}</div>
-                                        <div className="aim-mode-name">프로젝트 공사일보 AI 종합 분석</div>
-                                        <div className="aim-mode-desc">
-                                            수집된 공사일보 데이터를 Gemini AI가 종합 1페이지 요약 및 프로젝트별 이슈로 자동 분석
-                                        </div>
-                                    </button>
-                                </div>
-                            </div>
-
                             {/* 옵션: 이슈 분석 시 사이트 필터 */}
-                            {analysisMode === 'issues' && (
+                            {(
                                 <div className="aim-section">
-                                    <label className="aim-label">2. 대상 SITE 선택 (등록 사이트 기준)</label>
+                                    <label className="aim-label">1. 대상 SITE 선택 (등록 사이트 기준)</label>
                                     <div className="aim-site-select-wrap">
                                         <MultiSiteSelect
                                             options={registeredSiteNames}
@@ -3550,7 +3392,7 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                             <div className="aim-section">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                                     <label className="aim-label" style={{ margin: 0 }}>
-                                        {analysisMode === 'issues' ? '3. 분석 대상 기간 설정 *' : '2. 공사일보 수집 기간 설정 *'}
+                                        2. 공사일보 수집 기간 설정 *
                                     </label>
                                     <div className="aim-quick-pills">
                                         <button type="button" onClick={() => applyQuickPeriod(7)} className="aim-quick-btn">최근 7일</button>
@@ -3587,15 +3429,10 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                             <div className="aim-guide-box">
                                 <span style={{ fontSize: '15px' }}><Icon name="info" size="1.1em" /></span>
                                 <div>
-                                    {analysisMode === 'issues' ? (
-                                        <span>
-                                            설정한 기간({startDate} ~ {endDate}) 동안 등록된 {analysisSite.length === 0 ? '전체 사이트' : analysisSite.join(', ')}의 스태킹/노칭 이슈를 취합하여 16:9 와이드 프레젠테이션(PPTX)으로 즉시 내보냅니다.
-                                        </span>
-                                    ) : (
-                                        <span>
-                                            선택한 기간({startDate} ~ {endDate}) 동안 등록된 모든 프로젝트의 공사일보를 수집하여, Gemini AI가 종합 1페이지 요약과 프로젝트별 이슈를 분석해 PPT로 만들어 줍니다.
-                                        </span>
-                                    )}
+                                    <span>
+                                        설정한 기간({startDate} ~ {endDate}) 동안 {analysisSite.length === 0 ? '전체 사이트' : analysisSite.join(', ')}에 등록된 공사일보를 취합합니다.
+                                        시트: 일보 목록(작업내용·특이사항·부서별 인원) / 프로젝트별 공수 / 일자별 공수.
+                                    </span>
                                 </div>
                             </div>
 
@@ -3620,12 +3457,10 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)',
                             <button
                                 type="button"
                                 className="aim-btn-execute"
-                                onClick={handleGenerateAnalysis}
+                                onClick={handleExportReportsExcel}
                                 disabled={isAnalyzing}
                             >
-                                <Icon name="barChart" size="1.1em" /> {isAnalyzing 
-                                    ? (analysisMode === 'issues' ? '이슈 PPT 생성 중...' : 'AI 일보 분석 및 PPT 생성 중...') 
-                                    : (analysisMode === 'issues' ? '이슈 분석 PPT 다운로드 ' : '프로젝트 공사일보 분석 PPT 다운로드 ')}
+                                <Icon name="download" size="1.1em" /> {isAnalyzing ? '공사일보 엑셀 생성 중...' : '공사일보 엑셀 다운로드'}
                             </button>
                         </div>
                     </div>

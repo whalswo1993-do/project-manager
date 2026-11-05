@@ -40,7 +40,7 @@ npm run build     # 프로덕션 빌드 → dist/
 `VITE_` 접두사 변수는 번들에 그대로 포함되어 브라우저에 노출된다. 비밀 키(service_role, Anthropic 키 등)는 절대 `VITE_`로 넣지 않는다. `.env.local`에는 Vercel 프로덕션 환경변수가 들어 있으니 커밋하지 않는다.
 
 ## AI 호출 구조 (Gemini + Claude)
-- 앱의 모든 AI 분석(마스터플랜 판독, 일보 구조화, 이슈 통합분석 PPT)은 `src/ai.js`의 `generateAIText()` 하나를 거친다. (견적서는 AI를 쓰지 않는다 — 아래 "견적서 파서" 참고) **새 AI 기능도 반드시 이걸 쓰고**, `@google/generative-ai`나 Anthropic SDK를 컴포넌트에서 직접 부르지 않는다.
+- 앱의 모든 AI 분석(마스터플랜 판독, 일보 구조화)은 `src/ai.js`의 `generateAIText()` 하나를 거친다. (견적서는 AI를 쓰지 않는다 — 아래 "견적서 파서" 참고) **새 AI 기능도 반드시 이걸 쓰고**, `@google/generative-ai`나 Anthropic SDK를 컴포넌트에서 직접 부르지 않는다.
 - Gemini 경로: ① `/api/gemini`(서버, 키가 브라우저에 없음) → ② 서버를 쓸 수 없을 때만(키 미설정·서버 로그인 없음·개발 서버·413) 브라우저 키(`VITE_GEMINI_API_KEY`)로 직접 호출. 서버가 429 등 실제 Gemini 오류를 주면 같은 키/한도이므로 직접 재시도하지 않는다.
 - `auto`: Gemini 성공 시 그대로 사용. Gemini 실패 시 `/api/claude`(Vercel 서버 함수)로 재시도. Claude가 미설정/비로그인/개발서버이면 Gemini의 원래 오류를 그대로 보여준다(호출부의 429·403 안내 문구 유지).
 - `api/gemini.js`·`api/claude.js`(엔드포인트, 골격은 `api/_lib/handler.js`) → `api/_lib/auth.js`(Supabase 로그인 검증: `current_app_role()`이 null이 아니어야 통과) → `api/_lib/gemini.js` / `api/_lib/claude.js`(각 SDK). 기본 모델 `claude-sonnet-5-5`(`ANTHROPIC_MODEL`로 변경), 스트리밍, refusal 서버 fallback(Haiku 제외).
@@ -150,7 +150,7 @@ npm run build     # 프로덕션 빌드 → dist/
 - 변경 후에는 Supabase advisor(security)로 RLS 경고를 점검한다.
 - `supabase/snapshots/`는 특정 시점의 스키마 기록(수정 전 상태 포함)일 뿐이고, **현재 스키마의 정본은 `supabase/migrations/`다.** 공개 저장소이므로 **아직 고치지 않은 취약점 정보는 커밋하지 않는다**(적용 전 SQL은 로컬 `supabase/pending/` 같은 곳에 두고 `.git/info/exclude`로 제외).
 - 현재 권한 모델(DB RLS 기준): 조회=활성 사용자 전원 / `projects` 등록·삭제=admin·grade3 / 수정=admin·grade3·grade2_5·grade2(grade2_5·grade2는 트리거로 status·progress 등만)
-- **AI(API) 호출 권한(2026-10-20)**: `grade2_5`(각 부서 팀장)는 `grade2`와 같은 화면·DB 권한이고, AI 호출은 admin·grade3·grade2_5만 된다. grade2는 서버(`api/_lib/handler.js`의 `AI_ALLOWED_ROLES`)에서 `403 ai_not_allowed`로 막히며, `src/ai.js`는 이 코드를 받으면 브라우저 키·Claude로 우회하지 않는다. 화면은 공사일보 AI 분석 PPT(`IssueManagement.jsx`)만 grade2에게 잠겨 있고 나머지 내보내기는 AI를 쓰지 않아 grade2도 된다. **새 AI 기능은 `generateAIText`를 쓰면 서버가 자동으로 막아 주지만, 화면에도 `canRunAIAnalysis` 같은 잠금 표시를 달 것.** 역할 값은 `grade2_5`(소수점 없음). / `project_history`는 admin만 열람. `daily_reports`·`project_issues`는 로그인한 활성 사용자만.
+- **AI(API) 호출 권한(2026-10-20)**: `grade2_5`(각 부서 팀장)는 `grade2`와 같은 화면·DB 권한이고, AI 호출은 admin·grade3·grade2_5만 된다. grade2는 서버(`api/_lib/handler.js`의 `AI_ALLOWED_ROLES`)에서 `403 ai_not_allowed`로 막히며, `src/ai.js`는 이 코드를 받으면 브라우저 키·Claude로 우회하지 않는다. 공사일보 AI 종합분석 PPT와 이슈 통합분석 PPT는 2026-11-05에 없앴다(공사일보 화면의 "공사일보 취합 엑셀" `src/exportDailyReports.js`는 AI를 쓰지 않아 grade2도 된다). 새 AI 기능은 `generateAIText`를 쓰면 서버가 자동으로 막아 주지만, 화면에도 `canRunAIAnalysis` 같은 잠금 표시를 달 것.** 역할 값은 `grade2_5`(소수점 없음). / `project_history`는 admin만 열람. `daily_reports`·`project_issues`는 로그인한 활성 사용자만.
 - 남은 알려진 경고(Supabase advisor): `current_app_role()`을 로그인 사용자가 호출 가능(RLS·서버 로그인 검증이 쓰므로 의도적), 유출 비밀번호 보호 꺼짐(요금제 설정).
 - **모든 로그인은 Supabase Auth뿐이다.** 예전의 "가짜 테스트 계정" 코드(비밀번호 하드코딩, 브라우저 로컬 세션)는 제거했다. 테스트 계정은 `test3@twgroup.co.kr` 하나만 실제 서버 계정으로 운영하며(역할 grade3), 비밀번호는 저장소·채팅에 적지 않고 관리자가 SQL Editor로 직접 설정한다. 데이터 보호는 화면이 아니라 DB의 RLS 정책이 담당한다.
 - 사용자 정보의 정본은 DB `profiles`다: `name`, `team`, `role`, `active`, `last_sign_in_at`, `last_active_at`. 브라우저 로컬 저장소에 이름/팀/삭제 목록/접속 기록을 두지 않는다(컴퓨터마다 달라지는 원인이었다).

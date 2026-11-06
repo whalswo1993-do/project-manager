@@ -143,6 +143,40 @@ button.nav-tab-btn.active { background: transparent; color: var(--ink); border-c
   height: 2px;
   background: var(--brand);
 }
+/* 라이트 모드: 시스템 메뉴를 파란 띠로, 버튼마다 칸을 나눠 클릭 영역이 한눈에 보이게 한다 */
+[data-theme="light"] .system-nav-bar-row {
+  align-self: center;
+  height: 40px;
+  gap: 0;
+  background: var(--brand);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+[data-theme="light"] .nav-tab-btn {
+  padding: 0 16px;
+  color: rgba(255, 255, 255, .82);
+  font-weight: 600;
+  transition: background var(--dur-fast) var(--ease-in-out), color var(--dur-fast) var(--ease-in-out);
+}
+[data-theme="light"] .nav-tab-btn + .nav-tab-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 1px;
+  background: rgba(255, 255, 255, .28);
+}
+[data-theme="light"] .nav-tab-btn .ui-icon { opacity: 1; }
+[data-theme="light"] .nav-tab-btn:hover { background: rgba(255, 255, 255, .16); color: #fff; }
+[data-theme="light"] .nav-tab-btn.active,
+[data-theme="light"] button.nav-tab-btn.active { background: #fff; color: var(--brand); font-weight: 700; }
+[data-theme="light"] .nav-tab-btn.active .ui-icon { color: var(--brand); }
+[data-theme="light"] .nav-tab-btn.active::after { display: none; }
+[data-theme="light"] .nav-tab-btn.active::before,
+[data-theme="light"] .nav-tab-btn.active + .nav-tab-btn::before { display: none; }
+[data-theme="light"] .nav-tab-lock { color: rgba(255, 255, 255, .7); }
+
 .nav-tab-btn.restricted { opacity: .6; }
 .nav-tab-lock { color: var(--ink-4); }
 .nav-tab-label { line-height: 1; }

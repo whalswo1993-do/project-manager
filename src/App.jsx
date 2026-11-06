@@ -3164,11 +3164,14 @@ JSON 출력 예시:
                     const rows = selectedProjects.size > 0 ? view.filter(p => selectedProjects.has(p.id)) : view;
                     setGanttExportRows({ rows, label: selectedProjects.size > 0 ? `선택${rows.length}건` : (isAllYears ? "전체" : selectedYearsLabel) });
                   }}
-                  title="프로젝트별 전체 일정·마일스톤 간트차트(접기/펼치기, 일·주 단위)와 부서별 계획공수 합산표를 엑셀로 다운로드합니다"
+                  title="프로젝트별 전체 일정·마일스톤 간트차트(접기/펼치기, 일·주 단위)와 부서별 계획공수 합산표를 엑셀로 다운로드합니다. 아래 목록에서 체크한 프로젝트만 골라 받을 수 있습니다"
                 >
                   <Icon name="download" size={15} />
-                  {selectedProjects.size > 0 ? `선택 ${selectedProjects.size}건 엑셀 다운로드` : "엑셀 다운로드"}
+                  {selectedProjects.size > 0 ? `선택 ${selectedProjects.size}건 PJT 일정 간트엑셀` : "PJT 일정 간트엑셀"}
                 </button>
+                <span style={{ fontSize: '11.5px', color: selectedProjects.size > 0 ? 'var(--brand)' : 'var(--ink-3)', whiteSpace: 'nowrap', fontWeight: selectedProjects.size > 0 ? 600 : 400 }}>
+                  {selectedProjects.size > 0 ? `체크한 ${selectedProjects.size}건만 내려받습니다` : "체크한 프로젝트만 골라 받을 수 있습니다"}
+                </span>
               </div>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="제조번호, Site, Line, 프로젝트, 담당자 검색" />
               {["전체", "진행중", "완료", "지연"].map(x => {

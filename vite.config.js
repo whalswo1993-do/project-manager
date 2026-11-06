@@ -42,7 +42,7 @@ export default defineConfig({
         scope: '/',
         display: 'standalone',
         background_color: '#eef3f8',
-        theme_color: '#075ca8',
+        theme_color: '#FFFFFF',
         lang: 'ko-KR',
         icons: [
           { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },

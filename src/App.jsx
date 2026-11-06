@@ -321,6 +321,10 @@ export default function App() {
       document.documentElement.setAttribute('data-theme', theme);
       document.body.className = `theme-${theme}`;
       localStorage.setItem('pm_theme_mode', theme);
+      // 설치형 웹 앱(PWA) 창의 제목 표시줄 색을 화면 테마에 맞춘다
+      document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+        m.setAttribute('content', theme === 'dark' ? '#111113' : '#FFFFFF');
+      });
     } catch (e) {}
   }, [theme]);
 

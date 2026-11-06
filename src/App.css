@@ -899,7 +899,7 @@ button.active {
    ======================================================== */
 article {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 168px 330px;
+  grid-template-columns: minmax(0, 1fr) auto 168px 330px;
   gap: 20px;
   align-items: center;
   margin: 0;
@@ -913,6 +913,15 @@ article {
   transition: background var(--dur-fast) var(--ease-in-out);
 }
 article:hover { background: var(--surface-2); }
+
+/* 진행률 앞의 Master Schedule 다운로드 버튼 (크기만 목록 행에 맞춘다) */
+article .ms-dl-btn {
+  height: 28px !important;
+  padding: 0 10px !important;
+  gap: 6px !important;
+  font-size: 12px !important;
+  white-space: nowrap;
+}
 
 article h3 {
   margin: 0 0 3px 0;

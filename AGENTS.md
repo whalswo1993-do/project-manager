@@ -86,6 +86,12 @@ npm run build     # 프로덕션 빌드 → dist/
 - `src/ai.js` — AI 단일 진입점. `api/` — Vercel 서버 함수. `tests/` — 회귀 테스트. `supabase/` — 연결 설정과 마이그레이션
 - 권한별 기능 가이드 pptx는 `generate_permissions_presentation.js`로 생성
 
+## Master Schedule 내려받기 (`src/masterScheduleExport.js`, 2026-11-06)
+- 프로젝트 목록 각 행의 진행률 앞 "Master Schedule" 버튼: 저장된 마일스톤·부서별 일 공수를 **원본 Master Schedule 양식 xlsx의 입력 칸에만** 채워 내려받는다(수식·서식·조건부 서식(간트 막대) 불변). 설비 1개가 양식의 첫 블록(Planning 7~39행)에 들어가고 나머지 블록은 비어 있다. 공수 상세 권한(`canViewManpowerDetail`)이 있어야 한다.
+- 채우는 칸: Edit!F3 프로젝트명·H3 시작일·F6:F25 공정명(최대 20개)·C14:C17 여분 부서명 / Planning!C7 Line·D7 Equipment·G7:G26 Start·I7:I26 Duration(=끝-시작+1)·J28:NJ39 부서별 일 공수(시작일부터 365일). 수식 칸은 수식을 두고 저장된 계산값만 맞추며 `fullCalcOnLoad`로 열 때 재계산한다. ExcelJS로 다시 쓰지 않고 시트 XML 셀만 바꾼다(JSZip).
+- **양식 파일은 `public/master-schedule-fill.b64`(base64 텍스트)로 둔다.** 사내 문서보안(Fasoo DRM)이 저장소 폴더의 xlsx/zip 파일을 자동으로 암호화해서(`9b20 DRMONE` 헤더) `public/*.xlsx`·`.bin`이 모두 암호화돼 코드로 읽을 수 없었다. 암호화되기 전 원본은 git 커밋 `e4d3eaf`의 `public/Master Schedule 양식.xlsx`에 있다. **xlsx/zip 파일을 저장소 폴더에 풀거나 복사해 두지 말고 임시 폴더(`$TEMP`)에서 작업한다.** (참고: 지금 `public/master-schedule-template.xlsx` 등 "양식 다운로드"용 파일은 암호화된 상태로 커밋돼 있다.)
+- 시험 `tests/masterScheduleExport.test.js`: 수식·병합·조건부 서식이 원본과 같은지, 앱 파서(`parseExcelMasterPlan`)로 다시 읽으면 같은 일정·공수가 나오는지 확인한다. 양식을 바꾸면 `base64 -w0 <새 xlsx> > public/master-schedule-fill.b64`로 갱신한다.
+
 ## 부서별 공수 직접 등록 (`src/manualManpower.js`, `ManualManpowerEditor.jsx`, 2026-10-29)
 - **마스터 스케줄 공수가 없는 프로젝트**에서만 쓴다. 프로젝트 수정 폼의 "부서별 공수 직접 등록"에서 부서·시작일·종료일·인원 구간을 적으면 `buildManualManpower`가 마스터 플랜과 같은 모양의 `manpower`(`source: "manual"`, 구간 원본은 `manualRows`)로 바꿔 저장한다. 그래서 공수 관리·출장자 관리·내보내기가 코드 변경 없이 그대로 읽는다. 일요일은 제외(월~토).
 - 마스터 공수가 있는 프로젝트(`hasMasterManpower`)는 직접 등록을 쓰지 않고 안내만 보이며, 마스터를 붙여넣으면 직접 등록 값은 대체된다. 입력 중인 구간은 폼 상태 `manualManpowerRows`에 두고(DB에는 저장 안 함), 저장 여부는 `to()`가 정한다. DB 변경 없음. 테스트 `tests/manualManpower.test.js`.

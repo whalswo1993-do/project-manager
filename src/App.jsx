@@ -669,6 +669,23 @@ export default function App() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [selectedManpowerProject, setSelectedManpowerProject] = useState(null);
   const [selectedProjects, setSelectedProjects] = useState(new Set());
+  const [msDownloadingId, setMsDownloadingId] = useState(null);
+
+  // 프로젝트에 저장된 일정·공수를 Master Schedule 양식 파일에 채워 내려받는다 (양식의 수식·서식은 그대로)
+  const downloadProjectMasterSchedule = async (p) => {
+    if (!canViewManpowerDetail) return showPermissionModal("Master Schedule 다운로드");
+    if (!p.milestones.length && !p.manpower) return alert("이 프로젝트에는 내려받을 마스터 일정/공수 데이터가 없습니다.");
+    setMsDownloadingId(p.id);
+    try {
+      const { downloadMasterSchedule } = await import('./masterScheduleExport.js');
+      const warnings = await downloadMasterSchedule(p);
+      if (warnings.length) alert(["Master Schedule을 내려받았습니다. 확인할 점:", ...warnings.map(w => "- " + w)].join("\n"));
+    } catch (err) {
+      alert("Master Schedule 파일을 만들지 못했습니다: " + (err?.message || err));
+    } finally {
+      setMsDownloadingId(null);
+    }
+  };
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const masterPlanInput = useRef(null);
@@ -3300,6 +3317,15 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
                         </div>
                       )}
                     </div>
+                    <button
+                      type="button"
+                      className="excel-export-btn ms-dl-btn"
+                      onClick={() => downloadProjectMasterSchedule(p)}
+                      disabled={msDownloadingId === p.id}
+                      title={!canViewManpowerDetail ? "Master Schedule 다운로드는 Grade 2 이상 권한이 필요합니다" : "저장된 일정·공수를 Master Schedule 양식 엑셀 파일로 내려받습니다"}
+                    >
+                      <Icon name="download" size={14} /> {msDownloadingId === p.id ? "만드는 중..." : "Master Schedule"} {!canViewManpowerDetail && <Icon name="lock" size={12} />}
+                    </button>
                     <div className="bar">
                       <i style={{ width: p.value + "%", background: p.projectColor }} />
                       <b>{p.value}%</b>

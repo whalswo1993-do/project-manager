@@ -708,7 +708,7 @@ function PlanBoard({ plan, planStates, demands, assignments, members, notes, iss
                 const cov = coverage[dept];
                 const deptDemands = planDemands.filter((x) => x.dept === dept);
                 const deptAsg = planAssignments.filter((a) => a.dept === dept);
-                const lanes = layoutLanes(deptAsg);
+                const lanes = layoutLanes(deptAsg, planDemands, dept);
                 const slots = Math.max(peakNeed(planDemands, dept), lanes.length);
                 const editable = canEditDept(dept);
                 const noteRow = notes.find((n) => n.project_id === plan.id && n.dept === dept);

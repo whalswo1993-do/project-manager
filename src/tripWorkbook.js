@@ -221,7 +221,7 @@ export function buildTripWorkbook(ExcelJS, input, options = {}) {
     const slotFirst = r;
     TRIP_DEPTS.forEach((d) => {
       const deptDemands = pDemands.filter((x) => x.dept === d.key);
-      const lanes = layoutLanes(pAsg.filter((a) => a.dept === d.key));
+      const lanes = layoutLanes(pAsg.filter((a) => a.dept === d.key), pDemands, d.key);
       const slots = Math.max(peakNeed(deptDemands, d.key), lanes.length);
       const needBy = cols.map((col) => needForWeek(deptDemands, d.key, col));
       cols.forEach((col, i) => { planWeekly[d.key][i] += needBy[i]; });

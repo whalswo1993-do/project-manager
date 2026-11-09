@@ -254,15 +254,50 @@ export function peakNeed(demands, dept) {
  * 한 사람이 끝난 뒤 이어지는 교대 인원은 같은 줄에 놓이고, 동시에 일하는 사람이 많을수록 줄이 늘어난다.
  * → [[assignment, …], …]  (줄마다 시작일 순)
  */
-export function layoutLanes(assignments) {
+export function layoutLanes(assignments, demands = null, dept = null) {
   // 시작일이 같으면 먼저 등록한 순서: 종료일을 고쳐도(교대 등) 칸 위치가 뒤바뀌지 않는다
   const sorted = [...assignments].sort((a, b) => a.start_date.localeCompare(b.start_date) || String(a.created_at || "").localeCompare(String(b.created_at || "")) || String(a.id).localeCompare(String(b.id)));
   const lanes = [];
+  const fits = (list, a) => list.every((x) => (x.end_date || OPEN_END) < a.start_date || x.start_date > (a.end_date || OPEN_END));
+  const placed = new Set();
+
+  // 1) 계획 공수상 비어 있는 칸(줄 i 의 연속 구간)과 시작일·종료일이 딱 맞는 인원은 그 칸에 넣는다.
+  //    일찍 시작한다는 이유로 앞칸을 차지해 다른 인원을 밀어내지 않게 한다.
+  if (demands && dept && sorted.length) {
+    const mine = demands.filter((d) => d.dept === dept);
+    if (mine.length) {
+      const from = mine.reduce((m, d) => (d.start_date < m ? d.start_date : m), mine[0].start_date);
+      const to = mine.reduce((m, d) => (d.end_date > m ? d.end_date : m), mine[0].end_date);
+      const peak = peakNeed(mine, dept);
+      for (let i = 0; i < peak; i += 1) {
+        let runStart = null;
+        const closeRun = (end) => {
+          if (runStart === null) return;
+          const hit = sorted.find((a) => !placed.has(a.id) && a.start_date === runStart && a.end_date === end);
+          if (hit) {
+            while (lanes.length <= i) lanes.push([]);
+            if (fits(lanes[i], hit)) { lanes[i].push(hit); placed.add(hit.id); }
+          }
+          runStart = null;
+        };
+        let prev = from;
+        for (let day = from; day <= to; day = addDays(day, 1)) {
+          if (needOnDay(mine, dept, day) >= i + 1) { if (runStart === null) runStart = day; } else closeRun(prev);
+          prev = day;
+        }
+        closeRun(prev);
+      }
+    }
+  }
+
+  // 2) 나머지는 시작일 순으로 앞칸부터 채운다.
   sorted.forEach((a) => {
-    const lane = lanes.find((list) => list[list.length - 1].end_date < a.start_date);
+    if (placed.has(a.id)) return;
+    const lane = lanes.find((list) => fits(list, a));
     if (lane) lane.push(a);
     else lanes.push([a]);
   });
+  lanes.forEach((list) => list.sort((a, b) => a.start_date.localeCompare(b.start_date)));
   return lanes;
 }
 

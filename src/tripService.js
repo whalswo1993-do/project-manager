@@ -141,9 +141,12 @@ const assignmentRow = (a) => ({
   end_date: a.end_date,
   note: blankToNull(a.note),
   overlap_reason: blankToNull(a.overlap_reason),
+  ...("lane" in a ? { lane: Number.isInteger(a.lane) ? a.lane : null } : {}), // 편집 창은 lane 을 모르므로 있을 때만 쓴다
 });
 export const createAssignment = (a) => write(TABLES.assignments, "insert", { row: assignmentRow(a) });
 export const updateAssignment = (id, a) => write(TABLES.assignments, "update", { id, row: assignmentRow(a) });
+/** 막대를 끌어다 놓은 칸(0부터) 저장. null 이면 자동 배치로 되돌린다. */
+export const moveAssignmentLane = (id, lane) => write(TABLES.assignments, "update", { id, row: { lane } });
 export const deleteAssignment = (id) => write(TABLES.assignments, "delete", { id });
 
 // ── 부재 ──

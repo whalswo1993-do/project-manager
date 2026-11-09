@@ -3,7 +3,7 @@ import { Icon } from "./icons";
 import "./TripManagement.css";
 import {
   fetchTripData, createMember, updateMember, deleteMember, insertMembers,
-  createAssignment, updateAssignment, deleteAssignment, createAbsence, updateAbsence, deleteAbsence,
+  createAssignment, updateAssignment, moveAssignmentLane, deleteAssignment, createAbsence, updateAbsence, deleteAbsence,
   saveDeptNote,
 } from "./tripService";
 import {
@@ -165,6 +165,13 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
 
   const actions = {
     saveAssignment: async (a) => ((await guard([a.dept], "출장자 배정")) ? run(a.id ? updateAssignment(a.id, a) : createAssignment(a), a.id ? "배정을 수정했습니다." : "출장자를 배정했습니다.") : cancelled),
+    moveLane: async (id, lane) => {
+      const a = assignments.find((x) => x.id === id);
+      if (!a || !(await guard([a.dept], "출장자 배정"))) return;
+      const res = await moveAssignmentLane(id, lane);
+      if (res.error) flash("err", res.error);
+      else { await reload(); flash("ok", `${lane + 1}번 칸으로 옮겼습니다.`); }
+    },
     deleteAssignment: async (id) => ((await guard([assignments.find((x) => x.id === id)?.dept], "출장자 배정")) ? run(deleteAssignment(id), "배정을 삭제했습니다.") : cancelled),
     saveMember: async (id, m) => ((await guard([m.dept, id ? deptOfMember(id) : null], "인원")) ? run(id ? updateMember(id, m) : createMember(m), id ? "인원 정보를 저장했습니다." : "인원을 추가했습니다.") : cancelled),
     deleteMember: async (id) => ((await guard([deptOfMember(id)], "인원")) ? run(deleteMember(id), "인원을 삭제했습니다.") : cancelled),
@@ -336,7 +343,7 @@ export default function TripManagement({ role, myTeam = "", projects = [], onPer
             demands={demands} assignments={assignments} members={members} notes={notes}
             issuesByAssignment={issuesByAssignment} viewMode={viewMode}
             canWrite={canWrite} canEditDept={canEditDept} today={today}
-            setModal={setModal} saveNote={actions.saveNote}
+            setModal={setModal} saveNote={actions.saveNote} moveLane={actions.moveLane} flash={flash}
           />
         )}
         {data && tab === "roster" && (
@@ -568,7 +575,7 @@ function Board(props) {
 }
 
 // 프로젝트 하나의 배정판: 부서마다 계획 공수만큼 칸(줄)을 만들고, 칸을 눌러 출장 가능자를 넣는다
-function PlanBoard({ plan, planStates, demands, assignments, members, notes, issuesByAssignment, viewMode, canEditDept, today, setModal, saveNote }) {
+function PlanBoard({ plan, planStates, demands, assignments, members, notes, issuesByAssignment, viewMode, canEditDept, today, setModal, saveNote, moveLane, flash }) {
   const planDemands = useMemo(() => demands.filter((d) => d.project_id === plan.id), [demands, plan.id]);
   const planAssignments = useMemo(() => assignments.filter((a) => a.project_id === plan.id), [assignments, plan.id]);
   const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
@@ -609,6 +616,21 @@ function PlanBoard({ plan, planStates, demands, assignments, members, notes, iss
   const coverage = useMemo(() => planCoverage(planDemands, planAssignments, cols), [planDemands, planAssignments, cols]);
   const st = planStates.get(plan.id)?.state || "ok";
   const outside = (c) => c.end < plan.start_date || c.start > plan.end_date;
+
+  // 막대 끌어다 놓기: 같은 부서의 다른 칸으로 옮긴다
+  const [drag, setDrag] = useState(null); // { id, dept }
+  const [dropLane, setDropLane] = useState(null); // `${dept}-${k}`
+  function dropOnLane(dept, k, lanes) {
+    const cur = drag;
+    setDrag(null); setDropLane(null);
+    if (!cur || cur.dept !== dept) return;
+    const a = planAssignments.find((x) => x.id === cur.id);
+    if (!a) return;
+    if ((lanes[k] || []).includes(a)) return;
+    const clash = (lanes[k] || []).find((x) => x.id !== a.id && x.start_date <= a.end_date && a.start_date <= x.end_date);
+    if (clash) { flash("err", `${k + 1}번 칸에는 ${memberById.get(clash.member_id)?.name || clash.label || "다른 인원"}의 기간(${rangeLabel(clash.start_date, clash.end_date)})이 겹쳐 옮길 수 없습니다.`); return; }
+    moveLane(a.id, k);
+  }
 
   function openAssign(dept, assignment, defaults) {
     if (!canEditDept(dept) && !assignment) return;
@@ -756,7 +778,9 @@ function PlanBoard({ plan, planStates, demands, assignments, members, notes, iss
                       });
                       const lastA = lane[lane.length - 1];
                       return (
-                        <tr key={`${dept}-${k}`} className="tr-slot-row" data-dept={dept}>
+                        <tr key={`${dept}-${k}`} className={`tr-slot-row${dropLane === `${dept}-${k}` ? " tr-drop" : ""}`} data-dept={dept}
+                          onDragOver={editable && drag?.dept === dept ? (e) => { e.preventDefault(); if (dropLane !== `${dept}-${k}`) setDropLane(`${dept}-${k}`); } : undefined}
+                          onDrop={editable && drag?.dept === dept ? (e) => { e.preventDefault(); dropOnLane(dept, k, lanes); } : undefined}>
                           <th className="tr-col-name">
                             <div className="tr-slot-label">
                               <span className="no">{k + 1}</span>
@@ -784,7 +808,9 @@ function PlanBoard({ plan, planStates, demands, assignments, members, notes, iss
                             const tip = sg.items.map((a) => `${memberById.get(a.member_id)?.name || a.label}: ${rangeLabel(a.start_date, a.end_date)}${a.note ? ` · ${a.note}` : ""}`).concat((issuesByAssignment[first.id] || []).map((i) => i.message)).join("\n");
                             return (
                               <td key={si} colSpan={sg.span} className={`tr-cell filled lv-${worst || "ok"}`}>
-                                <button type="button" onClick={() => openAssign(dept, first)} title={tip}>
+                                <button type="button" onClick={() => openAssign(dept, first)} title={editable ? `${tip}
+(끌어서 아래·위 칸으로 옮길 수 있습니다)` : tip}
+                                  draggable={editable} onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", first.id); setDrag({ id: first.id, dept }); }} onDragEnd={() => { setDrag(null); setDropLane(null); }}>
                                   <span className="nm">{names.join(" → ")}</span>
                                   {sg.span >= 3 && m && <span className="sub">{[m.team, m.rank].filter(Boolean).join(" · ")}{m.b1_visa ? " · B1" : ""}</span>}
                                   {worst && worst !== "info" && <Icon name="alert" size={12} className="tr-seg-ico" />}

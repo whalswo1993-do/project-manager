@@ -613,3 +613,7 @@ button.tr-now:hover { text-decoration: underline; }
   font-size: 16px !important;
   font-weight: 700 !important;
 }
+
+/* 막대를 끌어서 다른 칸으로 옮길 때 놓을 칸 표시 */
+.tr-cell.filled button[draggable="true"] { cursor: grab; }
+.tr-slot-row.tr-drop > * { outline: 2px dashed var(--brand); outline-offset: -2px; background: var(--brand-wash); }

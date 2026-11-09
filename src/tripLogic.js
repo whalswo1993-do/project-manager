@@ -261,6 +261,13 @@ export function layoutLanes(assignments, demands = null, dept = null) {
   const fits = (list, a) => list.every((x) => (x.end_date || OPEN_END) < a.start_date || x.start_date > (a.end_date || OPEN_END));
   const placed = new Set();
 
+  // 0) 사용자가 끌어다 놓은 칸(lane)이 있으면 그 칸에 먼저 둔다(겹치면 무시하고 자동 배치)
+  sorted.forEach((a) => {
+    if (!Number.isInteger(a.lane) || a.lane < 0 || a.lane > 60) return;
+    while (lanes.length <= a.lane) lanes.push([]);
+    if (fits(lanes[a.lane], a)) { lanes[a.lane].push(a); placed.add(a.id); }
+  });
+
   // 1) 계획 공수상 비어 있는 칸(줄 i 의 연속 구간)과 시작일·종료일이 딱 맞는 인원은 그 칸에 넣는다.
   //    일찍 시작한다는 이유로 앞칸을 차지해 다른 인원을 밀어내지 않게 한다.
   if (demands && dept && sorted.length) {

@@ -69,6 +69,12 @@ describe("칸(슬롯) 배치", () => {
     // 공수 정보가 없으면 예전처럼 앞칸부터
     expect(layoutLanes([asg("a1", "m1", "2026-11-02", "2026-11-08"), asg("a2", "m2", "2026-11-09", "2026-11-22")])[0].map((a) => a.id)).toEqual(["a1", "a2"]);
   });
+  it("끌어다 놓아 저장한 칸(lane)은 그 칸에 두고, 겹치면 무시한다", () => {
+    const lanes = layoutLanes([asg("a1", "m1", "2026-11-02", "2026-11-08"), asg("a2", "m2", "2026-11-02", "2026-11-08", { lane: 2 })]);
+    expect(lanes.map((l) => l.map((a) => a.id))).toEqual([["a1"], [], ["a2"]]);
+    const clash = layoutLanes([asg("a1", "m1", "2026-11-02", "2026-11-08", { lane: 1 }), asg("a2", "m2", "2026-11-05", "2026-11-12", { lane: 1 })]);
+    expect(clash.flat().length).toBe(2);
+  });
   it("종료일을 고쳐도 먼저 등록한 순서의 칸 위치가 바뀌지 않는다", () => {
     const before = layoutLanes([asg("a1", "m1", "2026-11-02", "2026-12-06", { created_at: "1" }), asg("a2", "m2", "2026-11-02", "2026-11-29", { created_at: "2" })]);
     const after = layoutLanes([asg("a1", "m1", "2026-11-02", "2026-11-16", { created_at: "1" }), asg("a2", "m2", "2026-11-02", "2026-11-29", { created_at: "2" })]);

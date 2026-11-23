@@ -396,6 +396,7 @@ export default function App() {
   const [editName, setEditName] = useState("");
   const [editTeam, setEditTeam] = useState("");
   const [permissionModal, setPermissionModal] = useState(null);
+  const [mfgDupModal, setMfgDupModal] = useState(null);
   const [expanded, setExpanded] = useState({});
   const [noteEdit, setNoteEdit] = useState(null); // { id, text }
   const [masterResult, setMasterResult] = useState(null); // 마스터 스케줄 등록/수정 결과 팝업 { items: [{ name, kind, detail }] }
@@ -1324,11 +1325,16 @@ export default function App() {
     });
   }, [view, ganttStartDate, ganttEndDate, ganttMode]);
 
-  async function save() {
+  async function save(opts) {
     if (!editing && !create) return showPermissionModal("새 프로젝트 생성");
     if (editing && !edit) return showPermissionModal("프로젝트 수정");
     if (!form.site || !form.name.trim()) return setMsg("Site, 프로젝트명은 필수입니다.");
     if (dt(form.endDate) < dt(form.startDate)) return setMsg("프로젝트 종료일을 확인하세요.");
+    // 제조번호가 같은 프로젝트가 이미 있으면 팝업으로 알리고, 확인하면 그대로 등록한다. (수정 권한이 제한된 등급은 번호를 못 바꾸므로 건너뜀)
+    if (opts?.confirmedDup !== true && !(editing && isGrade2Tier) && baseMfgNo(form.manufacturingNo)) {
+      const dups = projects.filter(x => x.id !== editing && baseMfgNo(x.manufacturingNo) === baseMfgNo(form.manufacturingNo));
+      if (dups.length) return setMfgDupModal({ no: form.manufacturingNo, list: dups.slice(0, 5), total: dups.length });
+    }
     const m = milestones.filter(x => x.name.trim() && x.startDate && x.endDate && x.id !== '__status_meta__' && x.id !== '__manpower_meta__' && x.id !== '__customer_meta__');
     if (m.some(x => dt(x.endDate) < dt(x.startDate))) return setMsg("마일스톤 종료일은 시작일 이후여야 합니다.");
 
@@ -4441,6 +4447,31 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
                 })}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {mfgDupModal && (
+        <div className="back" onMouseDown={() => setMfgDupModal(null)} style={{ zIndex: 99999 }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            onMouseDown={e => e.stopPropagation()}
+            style={{ maxWidth: '520px', width: '94%', background: 'var(--surface)', borderRadius: 'var(--radius-xl)', padding: '24px', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--line)' }}
+          >
+            <h3 style={{ margin: '0 0 6px', fontSize: '17px', color: 'var(--ink)' }}>이미 등록된 제조번호입니다</h3>
+            <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--ink-2)' }}>
+              제조번호 <b>{mfgDupModal.no}</b>을(를) 쓰는 프로젝트가 {mfgDupModal.total}건 있습니다. 같은 제조번호로 그대로 등록할 수 있습니다.
+            </p>
+            <ul style={{ margin: '0 0 16px', padding: '0 0 0 18px', fontSize: '12.5px', color: 'var(--ink)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {mfgDupModal.list.map(x => (
+                <li key={x.id} style={{ wordBreak: 'break-word' }}>{x.name} <span style={{ color: 'var(--ink-3)' }}>· {x.site || "-"} · {x.startDate} ~ {x.endDate}</span></li>
+              ))}
+            </ul>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button onClick={() => setMfgDupModal(null)}>제조번호 다시 확인</button>
+              <button className="primary" onClick={() => { setMfgDupModal(null); save({ confirmedDup: true }); }}>그대로 등록</button>
+            </div>
           </div>
         </div>
       )}

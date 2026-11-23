@@ -4461,11 +4461,12 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
           >
             <h3 style={{ margin: '0 0 6px', fontSize: '17px', color: 'var(--ink)' }}>이미 등록된 제조번호입니다</h3>
             <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--ink-2)' }}>
-              제조번호 <b>{mfgDupModal.no}</b>을(를) 쓰는 프로젝트가 {mfgDupModal.total}건 있습니다. 같은 제조번호로 그대로 등록할 수 있습니다.
+              제조번호 <b>{mfgDupModal.no}</b>을(를) 쓰는 프로젝트가 {mfgDupModal.total}건 있습니다.<br />
+              같은 제조번호로 그대로 등록할 수 있습니다.
             </p>
             <ul style={{ margin: '0 0 16px', padding: '0 0 0 18px', fontSize: '12.5px', color: 'var(--ink)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {mfgDupModal.list.map(x => (
-                <li key={x.id} style={{ wordBreak: 'break-word' }}>{x.name} <span style={{ color: 'var(--ink-3)' }}>· {x.site || "-"} · {x.startDate} ~ {x.endDate}</span></li>
+                <li key={x.id} style={{ wordBreak: 'break-word' }}>{x.name}<span style={{ display: 'block', color: 'var(--ink-3)' }}>{x.site || "-"} · {x.startDate} ~ {x.endDate}</span></li>
               ))}
             </ul>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>

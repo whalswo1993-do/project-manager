@@ -114,7 +114,9 @@ export const CUSTOMERS = [
 export const DEFAULT_CUSTOMER = "SK on";
 
 // 신규 등록할 설비(p)와 겹치는 기존 프로젝트를 찾아 겹치는 항목을 돌려준다. (제조번호 · Site · Line · 설비 종류 · 공사 종류 · 이름/코드)
-const baseMfgNo = v => String(v || "").replace(/-[a-f0-9]{4}$/i, "").trim().toLowerCase();
+// "제조번호 미정"(또는 '미정' 글자가 든 값)은 번호가 아니므로 비워서 저장하고(DB 중복 제한은 빈 값을 건너뜀) 중복 비교에서도 뺀다.
+const isMfgTbd = v => /미정/.test(String(v || ""));
+const baseMfgNo = v => isMfgTbd(v) ? "" : String(v || "").replace(/-[a-f0-9]{4}$/i, "").trim().toLowerCase();
 function findOverlapCandidates(p, existingList, sites) {
   const inT = extractProjectTags(p, sites);
   const kindOf = t => (/notcher|노칭/i.test(t.name) || /notcher|노칭/i.test(t.eq) ? "Notcher" : (/stacker|스태커|스택/i.test(t.name) || /stacker|스태커|스택/i.test(t.eq) ? "Stacker" : ""));
@@ -232,7 +234,7 @@ const to = p => {
   return {
     id: p.id,
     customer: custVal,
-    manufacturing_no: normalizeJVName((p.manufacturingNo || "").trim()) || null,
+    manufacturing_no: isMfgTbd(p.manufacturingNo) ? null : (normalizeJVName((p.manufacturingNo || "").trim()) || null),
     site: normalizeJVName(p.site),
     line: normalizeJVName((p.line || "").trim()),
     name: normalizeJVName((p.name || "").trim()),
@@ -2860,7 +2862,24 @@ JSON 출력 예시:
                         {CUSTOMERS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                       </select>
                     </label>
-                    <label>제조번호<input value={form.manufacturingNo} disabled={isGrade2Tier} onChange={e => setForm({ ...form, manufacturingNo: e.target.value })} /></label>
+                    <label>제조번호
+                      <input
+                        value={isMfgTbd(form.manufacturingNo) ? "" : form.manufacturingNo}
+                        placeholder={isMfgTbd(form.manufacturingNo) ? "제조번호 미정" : ""}
+                        disabled={isGrade2Tier || isMfgTbd(form.manufacturingNo)}
+                        onChange={e => setForm({ ...form, manufacturingNo: e.target.value })}
+                      />
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12, fontWeight: 400 }}>
+                        <input
+                          type="checkbox"
+                          style={{ width: 'auto' }}
+                          checked={isMfgTbd(form.manufacturingNo)}
+                          disabled={isGrade2Tier}
+                          onChange={e => setForm({ ...form, manufacturingNo: e.target.checked ? "제조번호 미정" : "" })}
+                        />
+                        제조번호 미정
+                      </span>
+                    </label>
                     <label>Site *
                       <select value={form.site} disabled={isGrade2Tier} onChange={e => setForm({ ...form, site: e.target.value })}>
                         <option value="">선택</option>

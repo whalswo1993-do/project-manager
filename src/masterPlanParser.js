@@ -467,6 +467,19 @@ export function parseTSVWithQuotes(text) {
  * 엑셀 워크북(XLSX Workbook) 또는 붙여넣은 표 데이터를 분석하여
  * 각 설비(Equipment)별 프로젝트 일정, 마일스톤, 공수(Manpower) 정보를 추출합니다.
  */
+// 형교환 모델명(E1127, H055, S012A 등)은 제조번호가 아니다. 제조번호 후보에서 뺀다.
+export const isModelCode = s => /^(?:[EH]\d{3,4}|S\d{3}[A-Z]?)$/i.test(String(s || "").trim());
+
+// 글에서 제조번호를 찾는다. 형태: 2202HNM-9L-02R · 2309AD-03R · SKBA-25C (끝이 R/C/N 리비전).
+// 모델명과 헷갈리지 않도록 숫자 4자리 이상으로 시작하거나 `사이트-숫자C` 형태만 인정한다.
+export function extractManufacturingNo(text) {
+  const s = String(text || "");
+  const labeled = s.match(/(?:제조\s*번호|manufacturing\s*no\.?|mfg\.?\s*no\.?)\s*[:：]?\s*([0-9A-Za-z][0-9A-Za-z-]*)/i);
+  if (labeled && !isModelCode(labeled[1]) && !/미정/.test(labeled[1]) && /[-\d]/.test(labeled[1]) && labeled[1].length >= 4) return labeled[1].toUpperCase();
+  const m = s.match(/\b(\d{4,}[A-Z]*(?:-[A-Z0-9]+)*-\d{2}[RCN]|[A-Z]{3,5}-\d{2}C)\b/i);
+  return m && !isModelCode(m[1]) ? m[1].toUpperCase() : "";
+}
+
 export function parseExcelMasterPlan(wb, context = {}) {
   let targetName = wb.SheetNames.find(n => /planning|schedule|master|일정/i.test(n));
   if (!targetName) {
@@ -479,15 +492,19 @@ export function parseExcelMasterPlan(wb, context = {}) {
   if (!rows || !rows.length) return null;
 
   let baseProjectName = "", baseStartDate = "", headerRowIdx = -1, colMap = {};
-  let lineMfgMap = {};
+  let lineModelMap = {};
   let titleLines = [];
-  let mfgMatches = [];
+  let modelMatches = [];
+  let detectedMfgNo = "";
 
   for (let r = 0; r < Math.min(25, rows.length); r++) {
     const row = rows[r] || [];
     for (let c = 0; c < row.length; c++) {
       const val = String(row[c] || "").trim();
       if (!val) continue;
+      if (!detectedMfgNo && /제조\s*번호|manufacturing\s*no|mfg\.?\s*no/i.test(val)) {
+        detectedMfgNo = extractManufacturingNo(val) || extractManufacturingNo(`${val} ${row[c + 1] || ""}`.replace(/(제조\s*번호|manufacturing\s*no\.?|mfg\.?\s*no\.?)\s*[:：]?\s*/i, "$1: "));
+      }
       const pMatch = val.match(/(?:project\s*name|프로젝트명)\s*[:：]\s*(.+)/i);
       if (pMatch && pMatch[1].trim()) {
         baseProjectName = normalizeJVName(pMatch[1].trim());
@@ -534,16 +551,17 @@ export function parseExcelMasterPlan(wb, context = {}) {
       const prefixPart = baseProjectName.slice(0, linesMatch.index).trim().replace(/[:\-_]+$/, '').trim();
       if (prefixPart && !siteMatch) clientPrefix = prefixPart;
     }
-    mfgMatches = baseProjectName.match(/([EH]\d{3,4})/gi) || [];
-    if (mfgMatches && titleLines.length > 0) {
+    if (!detectedMfgNo) detectedMfgNo = extractManufacturingNo(baseProjectName);
+    modelMatches = baseProjectName.match(/([EH]\d{3,4})/gi) || [];
+    if (modelMatches && titleLines.length > 0) {
       titleLines.forEach((ln, idx) => {
-        if (mfgMatches[idx]) lineMfgMap[ln] = mfgMatches[idx].toUpperCase();
+        if (modelMatches[idx]) lineModelMap[ln] = modelMatches[idx].toUpperCase();
       });
     } else {
       const mfgMatch = baseProjectName.match(/(?:Line\s*:\s*|제조번호\s*[:：]\s*)([0-9,\s]+)/i);
       if (mfgMatch) {
         const mfgs = mfgMatch[1].split(',').map(s => s.trim()).filter(Boolean);
-        titleLines.forEach((ln, idx) => { if (mfgs[idx]) lineMfgMap[ln] = mfgs[idx]; });
+        titleLines.forEach((ln, idx) => { if (mfgs[idx]) lineModelMap[ln] = mfgs[idx]; });
       }
     }
 
@@ -844,11 +862,11 @@ export function parseExcelMasterPlan(wb, context = {}) {
         }
       }
     }
-    const mfgMatch2 = combinedLineStr.match(/(E[0-9]{4})/i);
-    if (mfgMatch2 && !/total|manpower/i.test(combinedLineStr)) {
-      const matchedMfg = mfgMatch2[1].toUpperCase();
-      for (let l in lineMfgMap) {
-        if (lineMfgMap[l] === matchedMfg) { currentLine = l; break; }
+    const modelMatch2 = combinedLineStr.match(/(E[0-9]{4})/i);
+    if (modelMatch2 && !/total|manpower/i.test(combinedLineStr)) {
+      const matchedModel = modelMatch2[1].toUpperCase();
+      for (let l in lineModelMap) {
+        if (lineModelMap[l] === matchedModel) { currentLine = l; break; }
       }
     }
 
@@ -919,7 +937,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
       mpTotalCol = -1;
       mpPeakCol = -1;
       const lineLabel = currentLine ? (currentLine.toLowerCase().includes('line') ? currentLine : `${currentLine}Line`) : (context.formLine || "");
-      const mfgNo = context.formMfg || "";
+      const mfgNo = context.formMfg || detectedMfgNo;
       const parts = [clientPrefix, lineLabel];
       if (projectDetail) {
         const cleanDetail = projectDetail.toLowerCase().replace(/[\s\-_()대호기]+/g, '');
@@ -961,7 +979,7 @@ export function parseExcelMasterPlan(wb, context = {}) {
       projects.push(currentProject);
     } else if (!currentProject && isDateRow) {
       const lineLabel = currentLine ? (currentLine.toLowerCase().includes('line') ? currentLine : `${currentLine}Line`) : (context.formLine || "");
-      const mfgNo = context.formMfg || "";
+      const mfgNo = context.formMfg || detectedMfgNo;
       const fallbackEq = context.editingProjectName || context.formName || "Main Equipment";
       const parts = [clientPrefix, lineLabel];
       if (projectDetail) {

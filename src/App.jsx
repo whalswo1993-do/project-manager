@@ -191,7 +191,7 @@ const from = p => {
   return {
     id: p.id,
     customer: p.customer || customerMeta?.customer || "SK on",
-    manufacturingNo: normalizeJVName(p.manufacturing_no || ""),
+    manufacturingNo: normalizeJVName(p.manufacturing_no || "") || MFG_TBD, // 번호가 없으면 목록에서 "제조번호 미정"으로 보인다
     site: normalizeJVName(p.site || ""),
     line: normalizeJVName(p.line || ""),
     name: normalizeJVName(p.name || ""),

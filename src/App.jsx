@@ -114,7 +114,8 @@ export const CUSTOMERS = [
 export const DEFAULT_CUSTOMER = "SK on";
 
 // 신규 등록할 설비(p)와 겹치는 기존 프로젝트를 찾아 겹치는 항목을 돌려준다. (제조번호 · Site · Line · 설비 종류 · 공사 종류 · 이름/코드)
-// "제조번호 미정"(또는 '미정' 글자가 든 값)은 번호가 아니므로 비워서 저장하고(DB 중복 제한은 빈 값을 건너뜀) 중복 비교에서도 뺀다.
+// "제조번호 미정"은 번호가 아니라 표시용 글자다. 어떤 형태로 적어도 이 글자로 통일해 저장하고(중복 제한은 풀려 있음), 중복 비교에서는 뺀다.
+const MFG_TBD = "제조번호 미정";
 const isMfgTbd = v => /미정/.test(String(v || ""));
 const baseMfgNo = v => isMfgTbd(v) ? "" : String(v || "").replace(/-[a-f0-9]{4}$/i, "").trim().toLowerCase();
 function findOverlapCandidates(p, existingList, sites) {
@@ -234,7 +235,7 @@ const to = p => {
   return {
     id: p.id,
     customer: custVal,
-    manufacturing_no: isMfgTbd(p.manufacturingNo) ? null : (normalizeJVName((p.manufacturingNo || "").trim()) || null),
+    manufacturing_no: isMfgTbd(p.manufacturingNo) ? MFG_TBD : (normalizeJVName((p.manufacturingNo || "").trim()) || null),
     site: normalizeJVName(p.site),
     line: normalizeJVName((p.line || "").trim()),
     name: normalizeJVName((p.name || "").trim()),
@@ -2881,7 +2882,7 @@ JSON 출력 예시:
                           style={{ width: 'auto' }}
                           checked={isMfgTbd(form.manufacturingNo)}
                           disabled={isGrade2Tier}
-                          onChange={e => setForm({ ...form, manufacturingNo: e.target.checked ? "제조번호 미정" : "" })}
+                          onChange={e => setForm({ ...form, manufacturingNo: e.target.checked ? MFG_TBD : "" })}
                         />
                         제조번호 미정
                       </span>

@@ -3160,13 +3160,6 @@ JSON 출력 예시:
                   <option value="전체">담당자: 전체</option>
                   {peopleNames.map(p => <option key={p} value={p}>담당자: {p}</option>)}
                 </select>
-                <button 
-                  type="button"
-                  className="filter-reset-btn"
-                  onClick={() => { handlePresetYears('current'); setCountryFilter([]); setSiteFilter([]); setProcessFilter("전체"); setProjectFilter([]); setPersonFilter("전체"); }}
-                >
-                  <Icon name="refresh" size={14} /> 필터 초기화
-                </button>
               </div>
             ) : (
               <div 

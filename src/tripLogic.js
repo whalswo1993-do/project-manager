@@ -318,20 +318,35 @@ export function laneCellState(lane, laneIndex, col, need) {
   return { state: need >= laneIndex + 1 ? "gap" : "idle", items: [] };
 }
 
+/** 빈 칸 기간을 잡을 때 이어진 것으로 보는 공수 공백의 최대 길이(일). 일요일·연휴처럼 짧게 끊긴 날을 건너뛴다. */
+export const GAP_BRIDGE_DAYS = 6;
+
 /**
  * 비어 있는 칸을 눌렀을 때 채울 기간: 누른 칸 안에서 처음 비는 날부터, 필요한데 비어 있는 날이 이어지는 데까지.
- * 필요 없는 날(공수 0)이나 배정이 있는 날을 만나면 멈춘다. 프로젝트 기간을 넘지 않는다.
+ * 마스터 플랜 일 공수는 일요일(·연휴)이 0이라, 공수가 0인 날이 GAP_BRIDGE_DAYS일 이하로 짧게 끊겼다가
+ * 다시 필요해지면 하나의 기간으로 잇는다. 배정이 있는 날을 만나거나 공백이 길면 멈춘다. 프로젝트 기간을 넘지 않는다.
  */
 export function laneGapRange(lane, laneIndex, demands, dept, col, plan) {
   const lo = col.start < plan.start_date ? plan.start_date : col.start;
   const hi = col.end > plan.end_date ? plan.end_date : col.end;
   const covered = (day) => lane.some((a) => a.start_date <= day && day <= (a.end_date || OPEN_END));
-  const open = (day) => day <= plan.end_date && needOnDay(demands, dept, day) >= laneIndex + 1 && !covered(day);
+  const needed = (day) => needOnDay(demands, dept, day) >= laneIndex + 1;
+  const open = (day) => day <= plan.end_date && needed(day) && !covered(day);
   let start = lo;
   while (start <= hi && !open(start)) start = addDays(start, 1);
   if (start > hi) return { start: lo, end: hi < lo ? lo : hi };
   let end = start;
-  while (open(addDays(end, 1))) end = addDays(end, 1);
+  for (;;) {
+    let next = addDays(end, 1);
+    let skipped = 0;
+    // 필요 없는 짧은 공백(배정도 없음)은 건너뛰어 본다
+    while (skipped < GAP_BRIDGE_DAYS && next <= plan.end_date && !needed(next) && !covered(next)) {
+      next = addDays(next, 1);
+      skipped += 1;
+    }
+    if (!open(next)) break;
+    end = next;
+  }
   return { start, end };
 }
 

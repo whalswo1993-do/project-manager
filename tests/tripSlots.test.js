@@ -99,6 +99,26 @@ describe("칸(슬롯) 배치", () => {
     // 앞칸(index 0)은 12/27까지 필요하므로 이어서 채운다
     expect(laneGapRange([], 0, demands, "mechanical", { start: "2026-11-30", end: "2026-12-06" }, plan)).toEqual({ start: "2026-11-30", end: "2026-12-27" });
   });
+  it("마스터 플랜 일 공수처럼 일요일마다 끊겨도 계획 기간 전체를 잡는다", () => {
+    // 월~토 1명씩(일요일 0), 11/12(목)부터 12/26(토)까지 — 예전에는 첫 토요일(11/14)에서 멈췄다
+    const demands = [];
+    for (let d = new Date(Date.UTC(2026, 10, 12)); d <= new Date(Date.UTC(2026, 11, 26)); d.setUTCDate(d.getUTCDate() + 1)) {
+      if (d.getUTCDay() === 0) continue;
+      const iso = d.toISOString().slice(0, 10);
+      demands.push(dem(iso, iso, 1));
+    }
+    const week = { start: "2026-11-09", end: "2026-11-15" };
+    expect(laneGapRange([], 0, demands, "mechanical", week, plan)).toEqual({ start: "2026-11-12", end: "2026-12-26" });
+    // 중간에 배정이 있으면 그 앞에서 멈춘다
+    const lane = [asg("a1", "m1", "2026-11-23", "2026-11-28")];
+    expect(laneGapRange(lane, 0, demands, "mechanical", week, plan)).toEqual({ start: "2026-11-12", end: "2026-11-21" });
+    // 공수가 일주일 넘게 비면 다른 기간으로 본다
+    const split = [dem("2026-11-02", "2026-11-07", 1), dem("2026-11-16", "2026-11-21", 1)];
+    expect(laneGapRange([], 0, split, "mechanical", { start: "2026-11-02", end: "2026-11-08" }, plan)).toEqual({ start: "2026-11-02", end: "2026-11-07" });
+    // 짧은 공백(연휴 5일)은 잇는다
+    const holiday = [dem("2026-11-02", "2026-11-07", 1), dem("2026-11-13", "2026-11-21", 1)];
+    expect(laneGapRange([], 0, holiday, "mechanical", { start: "2026-11-02", end: "2026-11-08" }, plan)).toEqual({ start: "2026-11-02", end: "2026-11-21" });
+  });
 });
 
 describe("팀원 표 붙여넣기 (양식)", () => {

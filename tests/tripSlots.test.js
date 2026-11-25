@@ -112,12 +112,12 @@ describe("칸(슬롯) 배치", () => {
     // 중간에 배정이 있으면 그 앞에서 멈춘다
     const lane = [asg("a1", "m1", "2026-11-23", "2026-11-28")];
     expect(laneGapRange(lane, 0, demands, "mechanical", week, plan)).toEqual({ start: "2026-11-12", end: "2026-11-21" });
-    // 공수가 일주일 넘게 비면 다른 기간으로 본다
-    const split = [dem("2026-11-02", "2026-11-07", 1), dem("2026-11-16", "2026-11-21", 1)];
+    // 일요일 말고 다른 날(월요일)까지 비면 다른 기간으로 본다
+    const split = [dem("2026-11-02", "2026-11-07", 1), dem("2026-11-10", "2026-11-21", 1)];
     expect(laneGapRange([], 0, split, "mechanical", { start: "2026-11-02", end: "2026-11-08" }, plan)).toEqual({ start: "2026-11-02", end: "2026-11-07" });
-    // 짧은 공백(연휴 5일)은 잇는다
-    const holiday = [dem("2026-11-02", "2026-11-07", 1), dem("2026-11-13", "2026-11-21", 1)];
-    expect(laneGapRange([], 0, holiday, "mechanical", { start: "2026-11-02", end: "2026-11-08" }, plan)).toEqual({ start: "2026-11-02", end: "2026-11-21" });
+    // 평일 하루가 비어도 잇지 않는다(일요일만 잇는다)
+    const weekday = [dem("2026-11-02", "2026-11-03", 1), dem("2026-11-05", "2026-11-07", 1)];
+    expect(laneGapRange([], 0, weekday, "mechanical", { start: "2026-11-02", end: "2026-11-08" }, plan)).toEqual({ start: "2026-11-02", end: "2026-11-03" });
   });
 });
 

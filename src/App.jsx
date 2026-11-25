@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import "./App.css";
 import { supabase } from "./supabase";
 import Login from "./Login";
@@ -24,6 +24,8 @@ import { filterSitesByCustomer } from "./siteCustomers";
 import MultiSiteSelect from "./MultiSiteSelect";
 import ProjectGanttExportModal from "./ProjectGanttExportModal";
 import { matchesSites, sitesLabel } from "./siteFilter";
+import { matchesProcess, processLabel, PROCESS_OPTIONS } from "./projectProcess";
+import { siteCountry, matchesCountries, countriesOf } from "./siteCountry";
 import { normalizeJVName, getConstructionPeriod, getMonthDailyDeptMatrix, getDailyDepartmentManpower } from "./utils";
 import { SkOnLogo, SamsungSdiLogo, HyundaiLogo } from "./CustomerLogos";
 import ManualManpowerEditor from "./ManualManpowerEditor";
@@ -417,6 +419,8 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("진행중");
   const [siteFilter, setSiteFilter] = useState([]); // 선택한 Site 배열(빈 배열 = 전체)
+  const [countryFilter, setCountryFilter] = useState([]); // 선택한 국가 배열(빈 배열 = 전체). Site 목록을 좁힌다
+  const [processFilter, setProcessFilter] = useState("전체"); // 공정: 전체 | NC | ST | 기타
   const [projectFilter, setProjectFilter] = useState([]); // 선택한 프로젝트 id 배열(빈 배열 = 전체)
   const [ganttExportRows, setGanttExportRows] = useState(null); // 간트 엑셀 내려받기 창: { rows, label } | null
   const [personFilter, setPersonFilter] = useState("전체");
@@ -1164,11 +1168,23 @@ export default function App() {
 
   const peopleNames = [...new Set(people.map(p => p.name))].sort();
 
-  // 프로젝트 필터 목록: 선택한 Site에 속한 프로젝트만, 제조번호·이름순
+  // 국가 → Site: 국가를 고르면 Site 목록이 그 국가의 Site로 좁혀진다(국가를 안 골라도 Site만 골라 쓸 수 있다)
+  const countryOptions = useMemo(() => countriesOf(currentCustomerSites.map(s => s.name)), [currentCustomerSites]);
+  const effectiveCountryFilter = useMemo(() => countryFilter.filter(c => countryOptions.includes(c)), [countryFilter, countryOptions]);
+  const siteFilterOptions = useMemo(() => currentCustomerSites
+    .map(s => s.name)
+    .filter(name => matchesCountries(effectiveCountryFilter, name))
+    .map(name => effectiveCountryFilter.length === 1 ? name : { value: name, label: `${name} · ${siteCountry(name)}` }),
+  [currentCustomerSites, effectiveCountryFilter]);
+  // 국가를 바꿔서 목록에서 빠진 Site는 선택에서도 뺀다
+  const effectiveSiteFilter = useMemo(() => siteFilter.filter(n => siteFilterOptions.some(o => (typeof o === "string" ? o : o.value) === n)), [siteFilter, siteFilterOptions]);
+  const matchesPlace = useCallback(p => matchesCountries(effectiveCountryFilter, p.site) && matchesSites(effectiveSiteFilter, p.site), [effectiveCountryFilter, effectiveSiteFilter]);
+
+  // 프로젝트 필터 목록: 선택한 국가·Site·공정에 속한 프로젝트만, 제조번호·이름순
   const projectFilterOptions = useMemo(() => currentCustomerProjects
-    .filter(p => matchesSites(siteFilter, p.site))
+    .filter(p => matchesPlace(p) && matchesProcess(processFilter, p))
     .map(p => ({ value: p.id, label: [p.manufacturingNo, p.name].filter(Boolean).join(" · ") || "(이름 없음)" }))
-    .sort((a, b) => a.label.localeCompare(b.label, "ko")), [currentCustomerProjects, siteFilter]);
+    .sort((a, b) => a.label.localeCompare(b.label, "ko")), [currentCustomerProjects, matchesPlace, processFilter]);
   // Site를 바꿔서 목록에서 빠진 프로젝트는 선택에서도 뺀다(화면에 안 보이는 선택이 조회를 막지 않게)
   const effectiveProjectFilter = useMemo(() => projectFilter.filter(id => projectFilterOptions.some(o => o.value === id)), [projectFilter, projectFilterOptions]);
 
@@ -1221,7 +1237,7 @@ export default function App() {
 
       const text = [p.manufacturingNo, p.site, p.line, p.name, p.pm, p.design, p.facilityTechnology, p.control, p.vision].join(" ").toLowerCase();
       const status = filter === "전체" || (filter === "완료" && p.status === "완료") || (filter === "진행중" && p.status !== "완료") || (filter === "지연" && p.overdue) || (p.status === filter);
-      const site = matchesSites(siteFilter, p.site) && (effectiveProjectFilter.length === 0 || effectiveProjectFilter.includes(p.id));
+      const site = matchesPlace(p) && matchesProcess(processFilter, p) && (effectiveProjectFilter.length === 0 || effectiveProjectFilter.includes(p.id));
       const person = personFilter === "전체" || [p.pm, p.design, p.facilityTechnology, p.control, p.vision].includes(personFilter);
       return yearMatch && text.includes(search.toLowerCase()) && status && site && person;
     });
@@ -1244,7 +1260,7 @@ export default function App() {
 
     // 동시 진행 프로젝트 간 중복 및 유사 색상을 방지하는 지능형 색상 분산 적용
     return assignDistinctColors(list, PROJECT_COLORS[theme] || PROJECT_COLORS.dark);
-  }, [currentCustomerProjects, search, filter, siteFilter, effectiveProjectFilter, personFilter, selectedYears, isAllYears, theme]);
+  }, [currentCustomerProjects, search, filter, matchesPlace, processFilter, effectiveProjectFilter, personFilter, selectedYears, isAllYears, theme]);
 
   // 등록된 프로젝트들의 기간에서 추출한 고유 연도 목록 (최신순)
   const availableYears = useMemo(() => {
@@ -3067,9 +3083,9 @@ JSON 출력 예시:
                 {!collapsedSections.filter && (
                   <button 
                     type="button"
-                    onClick={() => { handlePresetYears('current'); setSiteFilter([]); setProjectFilter([]); setPersonFilter("전체"); }}
+                    onClick={() => { handlePresetYears('current'); setCountryFilter([]); setSiteFilter([]); setProcessFilter("전체"); setProjectFilter([]); setPersonFilter("전체"); }}
                     className="filter-reset-btn"
-                    title="조회 연도, Site, 담당자 필터를 초기화합니다"
+                    title="조회 연도, 국가, Site, 공정, 프로젝트, 담당자 필터를 초기화합니다"
                   >
                     <Icon name="refresh" size={14} /> 필터 초기화
                   </button>
@@ -3112,11 +3128,24 @@ JSON 출력 예시:
                   ))}
                 </select>
                 <MultiSiteSelect
-                  options={currentCustomerSites.map(s => s.name)}
-                  value={siteFilter}
-                  onChange={setSiteFilter}
-                  allLabel="Site: 전체"
+                  className="country-msite"
+                  options={countryOptions}
+                  value={effectiveCountryFilter}
+                  onChange={setCountryFilter}
+                  allLabel="국가: 전체"
+                  ariaLabel="국가 필터"
+                  title="국가를 고르면 Site 목록이 그 국가의 Site로 좁혀집니다(선택하지 않아도 됩니다)"
                 />
+                <MultiSiteSelect
+                  options={siteFilterOptions}
+                  value={effectiveSiteFilter}
+                  onChange={setSiteFilter}
+                  allLabel={effectiveCountryFilter.length ? `Site: ${effectiveCountryFilter.join(", ")} 전체` : "Site: 전체"}
+                />
+                <select value={processFilter} onChange={e => setProcessFilter(e.target.value)} aria-label="공정 필터" title="NC(노칭)·ST(스태킹) 공정으로 거릅니다">
+                  <option value="전체">공정: 전체</option>
+                  {PROCESS_OPTIONS.map(o => <option key={o.value} value={o.value}>공정: {o.label}</option>)}
+                </select>
 
                 <MultiSiteSelect
                   className="project-msite"
@@ -3134,7 +3163,7 @@ JSON 출력 예시:
                 <button 
                   type="button"
                   className="filter-reset-btn"
-                  onClick={() => { handlePresetYears('current'); setSiteFilter([]); setProjectFilter([]); setPersonFilter("전체"); }}
+                  onClick={() => { handlePresetYears('current'); setCountryFilter([]); setSiteFilter([]); setProcessFilter("전체"); setProjectFilter([]); setPersonFilter("전체"); }}
                 >
                   <Icon name="refresh" size={14} /> 필터 초기화
                 </button>
@@ -3154,7 +3183,7 @@ JSON 출력 예시:
                   marginTop: '8px'
                 }}
               >
-                <Icon name="filter" size={14} /> 연도: <b>{selectedYearsLabel}</b> · Site: <b>{sitesLabel(siteFilter)}</b> · 프로젝트: <b>{effectiveProjectFilter.length ? `${effectiveProjectFilter.length}개 선택` : "전체"}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경)
+                <Icon name="filter" size={14} /> 연도: <b>{selectedYearsLabel}</b> · 국가: <b>{sitesLabel(effectiveCountryFilter)}</b> · Site: <b>{sitesLabel(effectiveSiteFilter)}</b> · 공정: <b>{processLabel(processFilter)}</b> · 프로젝트: <b>{effectiveProjectFilter.length ? `${effectiveProjectFilter.length}개 선택` : "전체"}</b> · 담당자: <b>{personFilter}</b> (클릭하여 필터 변경)
               </div>
             )}
           </section>
@@ -4775,7 +4804,7 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
         defaultStartDate={integratedModalSource === 'calendar' ? new Date(month.getFullYear(), month.getMonth(), 1).toISOString().slice(0, 10) : (ganttStartDate || `${new Date().toISOString().slice(0, 7)}-01`)}
         defaultEndDate={integratedModalSource === 'calendar' ? new Date(month.getFullYear(), month.getMonth() + 1, 0).toISOString().slice(0, 10) : (ganttEndDate || new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10))}
         customer={currentCustomer}
-        filters={{ filter, siteFilter: sitesLabel(siteFilter), personFilter, search }}
+        filters={{ filter, siteFilter: [effectiveCountryFilter.length ? sitesLabel(effectiveCountryFilter) : "", sitesLabel(effectiveSiteFilter), processFilter !== "전체" ? processFilter : ""].filter(Boolean).join(" / "), personFilter, search }}
         onExport={handleIntegratedExportSubmit}
       />
     </main>

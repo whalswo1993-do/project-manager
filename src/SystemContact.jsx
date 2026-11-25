@@ -11,23 +11,8 @@ export const SYSTEM_CONTACT = {
   tel: "+82 10 5506 8739",
 };
 
-const MAIL_SUBJECT = "[TW Project Manager] 시스템 문의";
-
-export function contactMailto({ requester = "", topic = "" } = {}) {
-  const lines = [
-    `문의자: ${requester || ""}`,
-    `문의 종류: ${topic || "권한 요청 / 오류 신고 / 기능 제안 / 기타"}`,
-    "화면(메뉴): ",
-    "",
-    "내용:",
-    "",
-  ];
-  const q = `subject=${encodeURIComponent(MAIL_SUBJECT)}&body=${encodeURIComponent(lines.join("\n"))}`;
-  return `mailto:${SYSTEM_CONTACT.email}?${q}`;
-}
-
-// 담당자 연락처 상자 (메일은 바로 쓰기, 전화는 걸기 링크)
-export function SystemContactBox({ requester, topic, title = "권한 부여 및 시스템 문의" }) {
+// 담당자 연락처 상자. 메일은 사내 그룹웨어로 보내므로 메일 프로그램을 여는 링크(mailto) 대신 주소 복사만 둔다.
+export function SystemContactBox({ title = "권한 부여 및 시스템 문의" }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -49,7 +34,7 @@ export function SystemContactBox({ requester, topic, title = "권한 부여 및 
         <dd>{SYSTEM_CONTACT.name} ({SYSTEM_CONTACT.team})</dd>
         <dt>E-mail</dt>
         <dd>
-          <a href={contactMailto({ requester, topic })}>{SYSTEM_CONTACT.email}</a>
+          <span className="sc-email">{SYSTEM_CONTACT.email}</span>
           <button type="button" className="sc-copy" onClick={copy} title="메일 주소 복사">
             <Icon name={copied ? "check" : "copy"} size={13} />
             <span>{copied ? "복사됨" : "복사"}</span>
@@ -65,7 +50,7 @@ export function SystemContactBox({ requester, topic, title = "권한 부여 및 
 }
 
 // 사용자 메뉴 → "시스템 문의" 창
-export function SystemContactModal({ requester, onClose }) {
+export function SystemContactModal({ onClose }) {
   return (
     <div className="back" onMouseDown={onClose}>
       <div className="sc-modal" role="dialog" aria-modal="true" aria-labelledby="sc-modal-title" onMouseDown={(e) => e.stopPropagation()}>
@@ -80,15 +65,11 @@ export function SystemContactModal({ requester, onClose }) {
           </button>
         </div>
         <p className="sc-modal-desc">
-          권한 요청, 오류 신고, 기능 제안 등 시스템 관련 문의는 아래 담당자에게 메일이나 전화로 연락해 주세요.
+          권한 요청, 오류 신고, 기능 제안 등 시스템 관련 문의는 아래 담당자에게 그룹웨어 메일이나 전화로 연락해 주세요.
           오류는 어느 화면에서 무엇을 눌렀는지와 화면 캡처를 함께 보내 주시면 빨리 확인할 수 있습니다.
         </p>
-        <SystemContactBox requester={requester} title="문의 담당자" />
+        <SystemContactBox title="문의 담당자" />
         <div className="sc-modal-actions">
-          <a className="sc-mail-btn" href={contactMailto({ requester })}>
-            <Icon name="pencil" size={15} />
-            <span>메일 쓰기</span>
-          </a>
           <button type="button" className="sc-close-btn" onClick={onClose}>닫기</button>
         </div>
       </div>

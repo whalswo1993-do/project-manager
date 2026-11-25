@@ -4646,7 +4646,6 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
 
       {showContactModal && (
         <SystemContactModal
-          requester={getUserDisplayName(session?.user?.email, profile || session?.user?.user_metadata)}
           onClose={() => setShowContactModal(false)}
         />
       )}
@@ -4712,10 +4711,7 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
             </p>
 
             <div style={{ marginBottom: '24px' }}>
-              <SystemContactBox
-                requester={getUserDisplayName(session?.user?.email, profile || session?.user?.user_metadata)}
-                topic={`권한 요청 (${permissionModal.feature})`}
-              />
+              <SystemContactBox />
             </div>
 
             <button

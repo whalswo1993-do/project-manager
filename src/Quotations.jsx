@@ -80,7 +80,7 @@ function QuotationsAccessDenied() {
                     견적 조회 및 관리 기능은 <b>Grade 3(PM/소장) 이상</b> 등급만 이용할 수 있습니다.<br />
                     해당 기능을 이용하시려면 운영자에게 권한을 부여받으시기 바랍니다.
                 </p>
-                <SystemContactBox topic="권한 요청 (견적 조회)" />
+                <SystemContactBox />
             </div>
     );
 }

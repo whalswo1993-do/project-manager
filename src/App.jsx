@@ -3156,9 +3156,9 @@ JSON 출력 예시:
                   ariaLabel="프로젝트 필터"
                   title="프로젝트를 하나 이상 선택해서 볼 수 있습니다"
                 />
-                <select value={personFilter} onChange={e => setPersonFilter(e.target.value)}>
-                  <option>전체</option>
-                  {peopleNames.map(p => <option key={p}>{p}</option>)}
+                <select value={personFilter} onChange={e => setPersonFilter(e.target.value)} aria-label="담당자 필터">
+                  <option value="전체">담당자: 전체</option>
+                  {peopleNames.map(p => <option key={p} value={p}>담당자: {p}</option>)}
                 </select>
                 <button 
                   type="button"

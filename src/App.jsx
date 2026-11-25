@@ -15,6 +15,7 @@ import { PasteZone, PasteEntry } from "./PasteZone";
 import ManpowerManagement, { ProjectManpowerModal } from "./ManpowerManagement";
 import PasswordChangeModal from "./PasswordChangeModal";
 import HeaderUserMenu from "./HeaderUserMenu";
+import { SystemContactBox, SystemContactModal } from "./SystemContact";
 import SystemBackdrop from "./SystemBackdrop";
 import { Icon } from "./icons";
 import { generateAIText } from "./ai";
@@ -695,6 +696,7 @@ export default function App() {
     }
   };
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
   const masterPlanInput = useRef(null);
 
@@ -2354,6 +2356,7 @@ JSON 출력 예시:
               newUserCount={newRegisteredUsers.length}
               onUpdate={handlePerformUpdate}
               onPassword={() => setShowPasswordModal(true)}
+              onContact={() => setShowContactModal(true)}
               onSignOut={handleSignOut}
               onUsers={() => {
                 setModal("users");
@@ -4641,6 +4644,13 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
         );
       })()}
 
+      {showContactModal && (
+        <SystemContactModal
+          requester={getUserDisplayName(session?.user?.email, profile || session?.user?.user_metadata)}
+          onClose={() => setShowContactModal(false)}
+        />
+      )}
+
       {permissionModal && (
         <div className="back" onMouseDown={() => setPermissionModal(null)} style={{ zIndex: 99999 }}>
           <div
@@ -4701,44 +4711,11 @@ border: '1px solid color-mix(in srgb, var(--bad) 35%, transparent)', padding: '4
               해당 기능을 이용하시려면 운영자에게 권한을 부여받으시기 바랍니다.
             </p>
 
-            <div
-              style={{
-                background: 'var(--bg-card-subtle, var(--brand-wash))',
-                border: '1px solid var(--border-medium, color-mix(in srgb, var(--brand) 40%, transparent))',
-                borderRadius: 'var(--radius-xl)',
-                padding: '16px 20px',
-                marginBottom: '24px',
-                textAlign: 'left'
-              }}
-            >
-              <div
-                style={{
-                  fontWeight: 700,
-                  color: 'var(--text-primary, var(--brand))',
-                  fontSize: '14.5px',
-                  marginBottom: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <Icon name="info" size={14} />
-                <span>권한 부여 및 시스템 문의</span>
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  fontSize: '13.5px',
-                  color: 'var(--text-secondary, var(--brand))',
-                  lineHeight: 1.6
-                }}
-              >
-                <div>• 담당자: 조민재 선임 (PM팀)</div>
-                <div>• E-mail: cmj1012@twgroup.co.kr</div>
-                <div>• Tel: +82 10 5506 8739</div>
-              </div>
+            <div style={{ marginBottom: '24px' }}>
+              <SystemContactBox
+                requester={getUserDisplayName(session?.user?.email, profile || session?.user?.user_metadata)}
+                topic={`권한 요청 (${permissionModal.feature})`}
+              />
             </div>
 
             <button

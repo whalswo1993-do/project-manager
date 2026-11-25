@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "./icons";
 
-// 상단 오른쪽 사용자 메뉴: 흩어져 있던 캐시 새로고침 / 비밀번호 변경 / 로그아웃 / 사용자 권한 관리를 한곳에 모은다.
+// 상단 오른쪽 사용자 메뉴: 흩어져 있던 캐시 새로고침 / 비밀번호 변경 / 시스템 문의 / 로그아웃 / 사용자 권한 관리를 한곳에 모은다.
 export default function HeaderUserMenu({
   name,
   roleLabel,
@@ -11,6 +11,7 @@ export default function HeaderUserMenu({
   onUpdate,
   onPassword,
   onUsers,
+  onContact,
   onSignOut,
 }) {
   const [open, setOpen] = useState(false);
@@ -96,6 +97,18 @@ export default function HeaderUserMenu({
             <span>캐시 새로고침</span>
             {hasUpdate && <span className="user-menu-flag">업데이트</span>}
           </button>
+          {onContact && (
+            <button
+              type="button"
+              role="menuitem"
+              className="user-menu-item"
+              onClick={run(onContact)}
+              title="권한 요청·오류 신고·기능 제안 등 시스템 문의 담당자 연락처"
+            >
+              <Icon name="headset" size={16} />
+              <span>시스템 문의</span>
+            </button>
+          )}
           <div className="user-menu-sep" />
           <button
             type="button"

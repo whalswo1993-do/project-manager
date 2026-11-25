@@ -8,6 +8,7 @@ import { detectQuotationSite, SITE_UNASSIGNED } from './quotationSite';
 import { PasteZone, PasteEntry } from './PasteZone';
 import MultiSiteSelect from './MultiSiteSelect';
 import { confirmDialog } from "./confirmService";
+import { SystemContactBox } from "./SystemContact";
 
 // 품목 구분 (견적 라인 대분류 + 상세 리스트 품목 구분). 화면 필터 순서이기도 하다.
 const CATEGORY_ORDER = ['가공품', '시장품', '잡자재', '기구 SET', '인건비', '경비', '프로그램', '차감', '기타'];
@@ -79,16 +80,7 @@ function QuotationsAccessDenied() {
                     견적 조회 및 관리 기능은 <b>Grade 3(PM/소장) 이상</b> 등급만 이용할 수 있습니다.<br />
                     해당 기능을 이용하시려면 운영자에게 권한을 부여받으시기 바랍니다.
                 </p>
-                <div style={{ background: 'var(--bg-card-subtle, var(--bg-card-subtle))', border: '1px solid var(--border-medium, var(--border-subtle))', borderRadius: 'var(--radius-xl)', padding: '16px 20px', textAlign: 'left', fontSize: '13.5px', color: 'var(--text-secondary, var(--brand))', margin: '0 auto' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--text-primary, var(--brand))', marginBottom: '10px', fontSize: '14.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span><Icon name="info" size="1.1em" /></span><span>권한 부여 및 시스템 문의</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', lineHeight: 1.6 }}>
-                        <div>• 담당자: 조민재 선임 (PM팀)</div>
-                        <div>• E-mail: cmj1012@twgroup.co.kr</div>
-                        <div>• Tel: +82 10 5506 8739</div>
-                    </div>
-                </div>
+                <SystemContactBox topic="권한 요청 (견적 조회)" />
             </div>
     );
 }

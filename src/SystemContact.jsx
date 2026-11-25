@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Icon } from "./icons";
 import "./SystemContact.css";
 
-// 시스템 문의 담당자. 권한 요청·오류·기능 제안은 모두 여기로 받는다.
+// 시스템 관리자(문의 창구). 권한 요청·오류·기능 제안은 모두 여기로 받는다.
 // 권한 제한 팝업, 견적 접근 제한 화면, 사용자 메뉴의 "시스템 문의"가 같은 값을 쓴다.
 export const SYSTEM_CONTACT = {
   name: "조민재 선임",
@@ -11,7 +11,7 @@ export const SYSTEM_CONTACT = {
   tel: "+82 10 5506 8739",
 };
 
-// 담당자 연락처 상자. 메일은 사내 그룹웨어로 보내므로 메일 프로그램을 여는 링크(mailto) 대신 주소 복사만 둔다.
+// 시스템 관리자 연락처 상자. 메일은 사내 그룹웨어로 보내므로 메일 프로그램을 여는 링크(mailto) 대신 주소 복사만 둔다.
 export function SystemContactBox({ title = "권한 부여 및 시스템 문의" }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -30,7 +30,7 @@ export function SystemContactBox({ title = "권한 부여 및 시스템 문의" 
         <span>{title}</span>
       </div>
       <dl className="sc-list">
-        <dt>담당자</dt>
+        <dt>시스템 관리자</dt>
         <dd>{SYSTEM_CONTACT.name} ({SYSTEM_CONTACT.team})</dd>
         <dt>E-mail</dt>
         <dd>
@@ -65,10 +65,10 @@ export function SystemContactModal({ onClose }) {
           </button>
         </div>
         <p className="sc-modal-desc">
-          권한 요청, 오류 신고, 기능 제안 등 시스템 관련 문의는 아래 담당자에게 그룹웨어 메일이나 전화로 연락해 주세요.
+          권한 요청, 오류 신고, 기능 제안 등 시스템 관련 문의는 아래 시스템 관리자에게 그룹웨어 메일이나 전화로 연락해 주세요.
           오류는 어느 화면에서 무엇을 눌렀는지와 화면 캡처를 함께 보내 주시면 빨리 확인할 수 있습니다.
         </p>
-        <SystemContactBox title="문의 담당자" />
+        <SystemContactBox title="시스템 관리자" />
         <div className="sc-modal-actions">
           <button type="button" className="sc-close-btn" onClick={onClose}>닫기</button>
         </div>

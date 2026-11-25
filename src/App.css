@@ -886,6 +886,8 @@ button.active {
 }
 
 .filterbar select { max-width: 200px; }
+/* 일정 조회 필터: 칸을 양 끝으로 벌리지 않고 왼쪽부터 일정한 간격으로 붙인다(칸 크기는 그대로) */
+.filterbar { justify-content: flex-start; gap: 10px; }
 
 .title span, .calhead p {
   font-size: 12px;
